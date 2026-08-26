@@ -102,7 +102,7 @@ docs/      design spec
 ```bash
 npm install
 npm run dev          # http://localhost:5173
-npm test             # 44 app tests + 7 worker tests
+npm test             # 60 app tests + 7 worker tests
 npm run typecheck
 ```
 
