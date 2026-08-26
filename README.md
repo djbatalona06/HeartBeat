@@ -88,13 +88,29 @@ publishing it here would be redistribution. `gift:build:music` produces
 `birthday-with-music.html`, which is gitignored and meant to be sent directly.
 See [NOTICE.md](NOTICE.md).
 
+## The website
+
+`main` publishes the whole repository to GitHub Pages via
+`.github/workflows/static.yml`. `index.html` at the root is the front door and
+links to the gift; without it the Pages URL serves a 404, because the artifact is
+uploaded raw and there is no Jekyll step to render the README.
+
+```bash
+npm run site:check   # serve the root as Pages does and check every link resolves
+```
+
+`robots.txt` asks crawlers to stay out of `gift/`. That is a request, not access
+control: it discourages the photographs from surfacing in image search, but
+anyone holding the URL can still open them.
+
 ## Layout
 
 ```
-app/       Vite + React + TypeScript PWA   →  Cloudflare Pages
-worker/    Cloudflare Worker + D1          →  pairing, sync, push
-gift/      the birthday piece              →  one self-contained HTML file
-docs/      design spec
+index.html  landing page                     ->  GitHub Pages
+app/        Vite + React + TypeScript PWA    ->  Cloudflare Pages
+worker/     Cloudflare Worker + D1           ->  pairing, sync, push
+gift/       the birthday piece               ->  one self-contained HTML file
+docs/       design spec
 ```
 
 ## Local development

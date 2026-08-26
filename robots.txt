@@ -1,0 +1,14 @@
+# The photographs here are personal. The links are meant to be opened by
+# someone who was sent one, not surfaced in image search, so crawlers are
+# asked to stay out of the gift.
+#
+# This is a request, not access control: robots.txt discourages indexing but
+# does not restrict anyone who has the URL. Anything that must not be public
+# should not be in a public repository in the first place.
+
+User-agent: *
+Disallow: /HeartBeat/gift/
+Disallow: /gift/
+
+# The project itself is fine to index.
+Allow: /$
