@@ -26,3 +26,8 @@
 @keyframes hint { 0% { opacity: 0.28; } 50% { opacity: 0.8; } 100% { opacity: 0.28; } }
 
 @keyframes sealIn { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }
+
+/* The platter. 33⅓ rpm is 1.8s per revolution — the flat deck turns at the
+   same speed the WebGL one does, because a record player that spins wrong is
+   worse than one that does not spin. */
+@keyframes spin33 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

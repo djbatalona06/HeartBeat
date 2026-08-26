@@ -77,6 +77,19 @@ people; a third join is refused.
 typefaces and three.js are inside it. Download it, double-click it, and it works
 with no internet, forever.
 
+Six screens: a gate, a title, an envelope, a letter that types itself, the
+records, and the guide to installing the app. The records are the middle of it —
+twenty-nine photographs pressed as vinyl, standing in a file box you flip
+through with a drag. Tap one and it lifts onto a pink turntable, the arm swings
+over, and it turns at a real 33⅓ rpm. Tap it again to see the photograph full
+screen. Play them all, or press *make the heart*, and the records rise out of
+the box and re-form the heart the original piece was built around.
+
+Everything in that scene is built from three.js primitives at runtime — the
+box, the turntable, the cat. There are no model files. Machines without WebGL
+get a flat version in DOM and CSS with the same two gestures, and it is walked
+by the same tests.
+
 ```bash
 npm run gift:build         # rebuild birthday.html from gift/src/
 npm run gift:build:music   # local-only build with the song embedded

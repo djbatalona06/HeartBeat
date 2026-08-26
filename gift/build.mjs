@@ -91,6 +91,7 @@ let html = read('index.html')
   .replace('/*INLINE:KEYFRAMES*/', () => read('keyframes.css'))
   .replace('/*INLINE:STYLES*/', () => read('styles.css'))
   .replace('/*INLINE:THREE*/', () => safe(readFileSync(join(SRC, 'vendor', 'three.min.js'), 'utf8')))
+  .replace('/*INLINE:TURNTABLE*/', () => safe(read('turntable.js')))
   .replace('/*INLINE:CRATE*/', () => safe(read('crate.js')))
   .replace('/*INLINE:APP*/', () => safe(photosJs + read('app.js')))
   .replace('<!--INLINE:AUDIO-->', () => audioTag);

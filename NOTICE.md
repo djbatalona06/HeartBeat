@@ -36,8 +36,10 @@ Every graphic is original and generated from code:
 - Theme backdrops in `app/src/themes/packs/` are procedural canvas animations:
   drifting shapes, gradients and particles, painted at runtime. Nothing is
   loaded from a file.
-- The record sleeves, crate and heart layout in `gift/src/crate.js` are built
-  from three.js primitives.
+- The file box, records and heart layout in `gift/src/crate.js`, and the
+  turntable in `gift/src/turntable.js`, are built from three.js primitives —
+  extruded rounded rectangles, cylinders, capsules and cones. No model file or
+  texture is loaded; the only images anywhere in the scene are the photographs.
 
 The photographs in `gift/src/photos/` are personal photographs belonging to the
 people in them.
