@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2a0f1c">
+<title>HeartBeat</title>
+<meta name="description" content="A gamified life tracker for two people.">
+<link rel="icon" href="app/public/icons/icon-192.png">
+<link rel="apple-touch-icon" href="app/public/icons/icon-192.png">
+<style>
+  /* System fonts on purpose: this page is the front door and should paint
+     instantly, with no webfont round-trip and no external request at all. */
+  :root {
+    --white: #fffdfa;
+    --pink: #ff8fb0;
+    --pink-deep: #e2467a;
+    --red: #d81f45;
+    --gold: #f5c85c;
+    --ground: #2a0f1c;
+    --ground-lo: #1a0812;
+    --surface: rgba(58, 22, 38, 0.9);
+    --border: rgba(255, 143, 176, 0.2);
+    --text: #fff3f7;
+    --muted: rgba(255, 214, 228, 0.68);
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(ellipse 70% 50% at 50% 0%, rgba(255,143,176,0.14), transparent 70%),
+      var(--ground);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 660px;
+    margin: 0 auto;
+    padding: clamp(40px, 9vh, 84px) clamp(20px, 5vw, 32px) 72px;
+  }
+
+  header { text-align: center; margin-bottom: clamp(34px, 6vw, 52px); }
+  .mark { width: 84px; height: 66px; margin: 0 auto 20px; display: block; }
+
+  h1 {
+    font-size: clamp(34px, 8vw, 52px);
+    font-weight: 300;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+  }
+
+  .tagline {
+    margin-top: 10px;
+    font-size: clamp(15px, 2.6vw, 17px);
+    color: var(--muted);
+  }
+
+  /* The gift is the reason most people will open this page, so it leads. */
+  .gift {
+    display: block;
+    padding: clamp(22px, 4.5vw, 30px);
+    margin-bottom: 30px;
+    text-decoration: none;
+    color: inherit;
+    background: linear-gradient(150deg, rgba(216,31,69,0.22), rgba(255,143,176,0.08));
+    border: 1px solid rgba(255,143,176,0.32);
+    border-radius: 20px;
+    transition: transform 220ms cubic-bezier(0.16,1,0.3,1), border-color 220ms ease;
+  }
+  .gift:hover { transform: translateY(-2px); border-color: rgba(255,143,176,0.6); }
+  .gift:focus-visible { outline: 2px solid var(--pink); outline-offset: 3px; }
+
+  .gift-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--pink);
+  }
+  .gift-title { margin-top: 8px; font-size: clamp(21px, 4.4vw, 26px); font-weight: 400; }
+  .gift-body { margin-top: 7px; font-size: 14.5px; color: var(--muted); }
+  .gift-go {
+    display: inline-block;
+    margin-top: 16px;
+    font-size: 14.5px;
+    color: var(--pink);
+  }
+
+  h2 {
+    margin: clamp(30px, 5.5vw, 42px) 0 14px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .card {
+    padding: clamp(18px, 3.6vw, 24px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+
+  .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  @media (max-width: 430px) { .tiles { grid-template-columns: 1fr; } }
+
+  .tile {
+    padding: 15px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .tile-name { font-size: 14.5px; font-weight: 500; }
+  .tile-desc { margin-top: 3px; font-size: 13px; color: var(--muted); }
+
+  ol { list-style: none; counter-reset: step; }
+  ol li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 40px;
+    margin-bottom: 15px;
+    font-size: 14.5px;
+  }
+  ol li:last-child { margin-bottom: 0; }
+  ol li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 1px;
+    width: 25px;
+    height: 25px;
+    border-radius: 999px;
+    background: var(--pink-deep);
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  ol strong { font-weight: 600; display: block; }
+  ol span { color: var(--muted); font-size: 13.5px; }
+
+  p.note { font-size: 14px; color: var(--muted); }
+  p.note + p.note { margin-top: 11px; }
+
+  a { color: var(--pink); }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    padding: 1.5px 5px;
+    border-radius: 5px;
+    background: rgba(26,8,18,0.7);
+    color: var(--gold);
+  }
+
+  footer {
+    margin-top: clamp(34px, 6vw, 50px);
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  footer a { margin: 0 7px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <!-- Original artwork; no third-party asset. See NOTICE.md. -->
+    <svg class="mark" viewBox="0 0 100 78" aria-hidden="true">
+      <path d="M22 26 C16 12 20 6 26 5 C33 4 40 11 44 20 Z" fill="#fffdfa"/>
+      <path d="M78 26 C84 12 80 6 74 5 C67 4 60 11 56 20 Z" fill="#fffdfa"/>
+      <ellipse cx="50" cy="44" rx="33" ry="27" fill="#fffdfa"/>
+      <ellipse cx="38" cy="42" rx="3.4" ry="4.6" fill="#2a0f1c"/>
+      <ellipse cx="62" cy="42" rx="3.4" ry="4.6" fill="#2a0f1c"/>
+      <ellipse cx="50" cy="50" rx="4.6" ry="3.3" fill="#f5c85c"/>
+      <g stroke="#2a0f1c" stroke-width="1.5" stroke-linecap="round" opacity="0.85">
+        <line x1="14" y1="38" x2="28" y2="40"/><line x1="13" y1="46" x2="28" y2="46"/>
+        <line x1="15" y1="54" x2="28" y2="51"/><line x1="86" y1="38" x2="72" y2="40"/>
+        <line x1="87" y1="46" x2="72" y2="46"/><line x1="85" y1="54" x2="72" y2="51"/>
+      </g>
+      <g transform="translate(24,17)">
+        <path d="M0 5 L-11 -2 L-11 12 Z" fill="#d81f45"/>
+        <path d="M2 5 L13 -2 L13 12 Z" fill="#d81f45"/>
+        <circle cx="1" cy="5" r="4.2" fill="#f2578a"/>
+      </g>
+    </svg>
+    <h1>HeartBeat</h1>
+    <p class="tagline">A gamified life tracker for two people.</p>
+  </header>
+
+  <a class="gift" href="gift/birthday.html">
+    <div class="gift-eyebrow">25 September</div>
+    <div class="gift-title">Open the present</div>
+    <div class="gift-body">
+      A letter, and every photograph, in a record crate.
+      Works offline once it has loaded — about 4 MB, so give it a moment on data.
+    </div>
+    <div class="gift-go">Open it &rarr;</div>
+  </a>
+
+  <h2>What the app does</h2>
+  <div class="tiles">
+    <div class="tile">
+      <div class="tile-name">Mood</div>
+      <div class="tile-desc">Hunger, joy and moody, 1&ndash;10, both of you side by side.</div>
+    </div>
+    <div class="tile">
+      <div class="tile-name">Exercise</div>
+      <div class="tile-desc">A workout log, and camera proof that you did it.</div>
+    </div>
+    <div class="tile">
+      <div class="tile-name">Work</div>
+      <div class="tile-desc">A shared calendar, filled from a file you export.</div>
+    </div>
+    <div class="tile">
+      <div class="tile-name">The pet</div>
+      <div class="tile-desc">Gains XP when either of you logs. Neglect it and it sulks.</div>
+    </div>
+  </div>
+
+  <h2>Getting it on your phone</h2>
+  <div class="card">
+    <ol>
+      <li>
+        <strong>Open the app link in Safari</strong>
+        <span>Not Chrome, and not the browser inside Instagram or Messages. iPhone only lets web apps install from Safari.</span>
+      </li>
+      <li>
+        <strong>Share &rarr; Add to Home Screen</strong>
+        <span>Not cosmetic. iOS refuses to deliver notifications to a web app unless it was added to the Home Screen and opened from that icon.</span>
+      </li>
+      <li>
+        <strong>Open it from the icon, then allow notifications</strong>
+        <span>The prompt only appears on a tap inside the installed app. Decline by accident and the only way back is to delete the icon and re-add it.</span>
+      </li>
+      <li>
+        <strong>Tap the invite link</strong>
+        <span>One tap and the two phones are paired. No account, no password, no phone number.</span>
+      </li>
+    </ol>
+  </div>
+
+  <h2>Privacy</h2>
+  <div class="card">
+    <p class="note">
+      Your phone holds the record. The server keeps a copy so the other phone can
+      read it &mdash; that is the whole reason it exists.
+    </p>
+    <p class="note">
+      Mood, exercise, cycle and calendar entries are readable only by the two
+      devices paired to your couple. Photos and camera proof stay on your own
+      phone and are never uploaded. No accounts, no analytics, no third parties.
+    </p>
+    <p class="note">
+      Invite links expire after fifteen minutes and work exactly once. A couple is
+      two people; a third join is refused.
+    </p>
+  </div>
+
+  <h2>Building it yourself</h2>
+  <div class="card">
+    <p class="note">
+      <code>npm install</code> then <code>npm run dev</code>. The app is Vite, React
+      and TypeScript on Cloudflare Pages; the Worker is Cloudflare D1.
+      <a href="https://github.com/djbatalona06/HeartBeat#readme">The README</a>
+      covers deployment and
+      <a href="https://github.com/djbatalona06/HeartBeat/blob/main/docs/DESIGN.md">the design doc</a>
+      explains why each piece is shaped the way it is.
+    </p>
+  </div>
+
+  <footer>
+    <a href="https://github.com/djbatalona06/HeartBeat">Source</a>·<a href="https://github.com/djbatalona06/HeartBeat/blob/main/NOTICE.md">Notice</a>·<a href="https://github.com/djbatalona06/HeartBeat/blob/main/docs/DESIGN.md">Design</a>
+    <div style="margin-top:8px">All artwork original. Not affiliated with any rights holder.</div>
+  </footer>
+
+</div>
+</body>
+</html>

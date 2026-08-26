@@ -16,7 +16,8 @@
     "gift:extract": "node gift/tools/extract.mjs",
     "gift:build": "node gift/build.mjs",
     "gift:verify": "node gift/tools/verify.mjs",
-    "gift:build:music": "node gift/build.mjs --with-audio"
+    "gift:build:music": "node gift/build.mjs --with-audio",
+    "site:check": "node gift/tools/check-landing.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0",
