@@ -1,0 +1,45 @@
+name: CI
+
+# Deliberately credential-free: this runs on every pull request, including from
+# forks, and never needs a deploy secret to prove the build is sound.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          APP_BASE: /
+
+      - name: Build the gift
+        # The gift is a committed artefact, so CI rebuilds it and fails if the
+        # checked-in file has drifted from its sources.
+        run: |
+          node gift/build.mjs
+          git diff --exit-code -- gift/birthday.html \
+            || (echo "::error::gift/birthday.html is stale — run 'npm run gift:build' and commit the result" && exit 1)

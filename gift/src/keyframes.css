@@ -1,0 +1,28 @@
+/* The eight animations from the original letter, lifted unchanged.
+   Timing and easing here are load-bearing: they are what makes the
+   envelope feel like paper rather than a div. Repalette freely, retime never. */
+
+@keyframes typewrite { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+@keyframes flicker {
+  0%   { opacity: 0.8; transform: scale(1); }
+  35%  { opacity: 1;   transform: scale(1.07); }
+  60%  { opacity: 0.86; transform: scale(0.97); }
+  100% { opacity: 0.95; transform: scale(1.04); }
+}
+
+@keyframes bloomIn { from { transform: scale(0.22); opacity: 0; } to { transform: scale(1.15); opacity: 1; } }
+
+@keyframes softIn { from { opacity: 0; } to { opacity: 0.5; } }
+
+@keyframes breathe {
+  0%   { opacity: 0.4;  transform: rotate(-45deg) scale(0.86); }
+  50%  { opacity: 0.95; transform: rotate(-45deg) scale(1.08); }
+  100% { opacity: 0.4;  transform: rotate(-45deg) scale(0.86); }
+}
+
+@keyframes drift { 0% { transform: translate3d(0,0,0); } 50% { transform: translate3d(0,-10px,0); } 100% { transform: translate3d(0,0,0); } }
+
+@keyframes hint { 0% { opacity: 0.28; } 50% { opacity: 0.8; } 100% { opacity: 0.28; } }
+
+@keyframes sealIn { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }

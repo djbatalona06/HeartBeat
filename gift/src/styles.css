@@ -1,0 +1,352 @@
+/* ============================================================================
+   For Jennifer — 25 September, her twentieth.
+
+   Repaletted from the original midnight/amber letter into Hello Kitty's
+   register: warm plum ground, ribbon pink, a red bow. Every animation timing
+   is inherited untouched from keyframes.css; only colour changed.
+
+   All artwork here is drawn from scratch in CSS and inline SVG. No Sanrio
+   asset is used or reproduced. See NOTICE.md.
+   ========================================================================== */
+
+:root {
+  --hk-white:      #fffdfa;
+  --hk-pink:       #ff8fb0;
+  --hk-pink-deep:  #e2467a;
+  --hk-red:        #d81f45;
+  --hk-gold:       #f5c85c;
+  --hk-ground:     #2a0f1c;
+  --hk-ground-lo:  #1a0812;
+
+  --paper-1: #fdf4e8;
+  --paper-2: #f6e7d4;
+  --paper-3: #ecd9c2;
+  --ink:     #3b1f2a;
+
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: 'Outfit', system-ui, -apple-system, sans-serif;
+  --serif: Georgia, 'Times New Roman', serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  background: var(--hk-ground);
+  color: #f7e9ee;
+  font-family: var(--sans);
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#stage { position: fixed; inset: 0; overflow: hidden; }
+
+/* Warm bloom + vignette, the two atmospheric layers from the original. */
+.atmos, .vignette { position: absolute; inset: 0; pointer-events: none; }
+.atmos {
+  background: radial-gradient(ellipse 68% 54% at 50% 46%,
+    rgba(255, 143, 176, 0.16) 0%,
+    rgba(216, 31, 69, 0.08) 38%,
+    rgba(42, 15, 28, 0) 72%);
+}
+.vignette { box-shadow: inset 0 0 220px 70px rgba(26, 8, 18, 0.94); }
+
+/* ---- phases ------------------------------------------------------------- */
+.phase { position: absolute; inset: 0; }
+.phase[hidden] { display: none !important; }
+
+/* ---- gate --------------------------------------------------------------- */
+#gate {
+  z-index: 60; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 34px; cursor: pointer;
+}
+.ember {
+  width: 10px; height: 10px; border-radius: 9999px; background: var(--hk-pink);
+  box-shadow: 0 0 26px 9px rgba(255, 143, 176, 0.5),
+              0 0 70px 26px rgba(216, 31, 69, 0.18);
+  animation: flicker 2.6s ease-in-out infinite alternate;
+}
+.eyebrow {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: rgba(255, 235, 242, 0.62);
+}
+#gate .eyebrow { animation: hint 3.2s ease-in-out infinite; }
+
+/* ---- intro -------------------------------------------------------------- */
+#intro {
+  z-index: 50; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 30px;
+  padding: 24px; cursor: pointer;
+  transition: opacity 700ms ease;
+}
+.bloom {
+  position: absolute; left: 50%; top: 50%;
+  width: 880px; height: 880px; margin: -440px 0 0 -440px;
+  border-radius: 9999px; pointer-events: none;
+  background: radial-gradient(circle,
+    rgba(255, 143, 176, 0.26) 0%,
+    rgba(226, 70, 122, 0.10) 30%,
+    rgba(42, 15, 28, 0) 64%);
+  animation: bloomIn 6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.intro-date {
+  position: relative; font-family: var(--mono);
+  font-size: clamp(10px, 2.6vw, 13px); letter-spacing: 0.28em;
+  text-transform: uppercase; color: rgba(255, 190, 210, 0.82);
+  white-space: nowrap;
+  /* 27 characters in "September 25 · her twentieth" */
+  animation: typewrite 2.8s steps(27, end) 0.8s both;
+}
+.intro-name {
+  position: relative; font-size: clamp(52px, 13vw, 132px);
+  font-weight: 300; letter-spacing: -0.03em; line-height: 1;
+  color: var(--hk-white);
+  text-shadow: 0 0 60px rgba(255, 143, 176, 0.42);
+  /* 9 characters in "Jennifer." */
+  animation: typewrite 1.9s steps(9, end) 4.6s both;
+}
+.intro-skip {
+  position: relative; font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(255, 235, 242, 0.4);
+  animation: softIn 1.2s ease 8s both;
+}
+
+/* ---- envelope ----------------------------------------------------------- */
+#envelope {
+  z-index: 55; display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.env {
+  position: relative; width: min(80vw, 440px); height: min(53vw, 292px);
+  pointer-events: auto; cursor: pointer;
+  transition: transform 1100ms cubic-bezier(0.16, 1, 0.3, 1), opacity 800ms ease;
+}
+.env-drift { position: absolute; inset: 0; animation: drift 7s ease-in-out infinite; }
+.env-body {
+  position: absolute; inset: 0; border-radius: 4px;
+  background: linear-gradient(155deg, #ffd9e6, #ffc4d8 58%, #ffb3cc);
+  box-shadow: 0 40px 90px rgba(10, 3, 7, 0.78),
+              0 0 0 1px rgba(216, 31, 69, 0.3),
+              0 0 80px rgba(255, 143, 176, 0.22),
+              inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+.env-flaps { position: absolute; inset: 0; overflow: hidden; border-radius: 4px; }
+.flap-lower {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 62%;
+  background: linear-gradient(180deg, rgba(216, 31, 69, 0.2), rgba(216, 31, 69, 0.06));
+  clip-path: polygon(0 100%, 50% 6%, 100% 100%);
+}
+.flap-upper {
+  position: absolute; left: 0; right: 0; top: 0; height: 62%;
+  background: linear-gradient(175deg, #fff2f7 0%, #ffe2ec 62%, #ffd2e2 100%);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.flap-edge {
+  position: absolute; left: 0; top: 0; width: 100%; height: 62%;
+  background: rgba(216, 31, 69, 0.5);
+  clip-path: polygon(0 0, 1.6px 0, 50% calc(100% - 1px), 100% 0, 100% 0, 100% 1.6px, 50% 100%, 0 1.6px);
+}
+.seal {
+  position: absolute; left: 50%; top: 56%;
+  width: 84px; height: 84px; margin: -42px 0 0 -42px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 36% 28%, #e8386a 0%, #c4113a 44%, #7d0a23 100%);
+  box-shadow: 0 12px 26px rgba(10, 3, 7, 0.6),
+              0 0 30px rgba(216, 31, 69, 0.32),
+              inset 0 -4px 10px rgba(90, 6, 26, 0.5),
+              inset 0 3px 9px rgba(255, 200, 215, 0.3);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  animation: sealIn 900ms cubic-bezier(0.16, 1, 0.3, 1) 400ms both;
+}
+.seal::after {
+  content: ''; position: absolute; inset: 8px;
+  border-radius: 9999px; border: 1px solid rgba(255, 210, 224, 0.22);
+}
+.seal svg { width: 34px; height: 26px; display: block; }
+.seal-20 {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+  color: rgba(255, 226, 235, 0.9);
+}
+.env-hint {
+  position: absolute; left: 50%; bottom: -36px; transform: translateX(-50%);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: rgba(255, 170, 196, 0.7); white-space: nowrap;
+  animation: hint 3s ease-in-out 1s infinite both;
+}
+
+/* ---- letter ------------------------------------------------------------- */
+#letter {
+  z-index: 70; display: flex; align-items: flex-start; justify-content: center;
+  padding: clamp(24px, 4.5vh, 54px) clamp(20px, 4.5vw, 52px);
+  transition: opacity 900ms ease;
+  overflow-y: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+#letter::-webkit-scrollbar { display: none; }
+
+/* 46 ornaments ring the page. Exactly 20 of them are bows. */
+.border-layer { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+.orn { position: absolute; width: 12px; height: 12px; animation: breathe 4.4s ease-in-out infinite both; }
+.orn svg { width: 100%; height: 100%; display: block; }
+
+.paper {
+  position: relative; z-index: 10; width: min(660px, 100%); margin: auto;
+  background: linear-gradient(168deg, var(--paper-1) 0%, var(--paper-2) 52%, var(--paper-3) 100%);
+  border-radius: 3px;
+  padding: clamp(28px, 4.6vw, 50px) clamp(24px, 4.6vw, 48px);
+  box-shadow: 0 60px 120px rgba(10, 3, 7, 0.8),
+              0 0 90px rgba(255, 143, 176, 0.16),
+              inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  color: var(--ink); font-family: var(--serif);
+}
+/* Scalloped pink rule along the top edge of the page. */
+.paper::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 6px;
+  border-radius: 3px 3px 0 0;
+  background: radial-gradient(circle at 6px 0, var(--hk-pink) 4.5px, transparent 5px) repeat-x;
+  background-size: 12px 6px;
+  opacity: 0.75;
+}
+.paper-bow { position: absolute; right: 14px; top: 14px; width: 30px; height: 23px; opacity: 0.6; }
+
+/* The typewriter. Each line wipes in left-to-right; steps() counts are tuned
+   per line to the character count, so the reveal lands letter by letter. */
+.wipe { clip-path: inset(0 100% 0 0); }
+
+.letter-date {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: rgba(59, 31, 42, 0.45);
+  margin-bottom: clamp(16px, 2.4vw, 24px);
+}
+.salutation { margin: 0 0 0.9em; font-size: clamp(22px, 3.6vw, 29px); line-height: 1.22; }
+.para {
+  margin: 0 0 0.85em; font-size: clamp(15px, 2.1vw, 17px);
+  line-height: 1.62; text-wrap: pretty;
+}
+.para:last-of-type { margin-bottom: 1.35em; }
+
+.sign { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; text-align: right; }
+.sign-pre { font-size: clamp(14px, 2vw, 17px); color: rgba(59, 31, 42, 0.7); }
+.sign-name { font-size: clamp(24px, 4vw, 33px); line-height: 1.12; color: var(--hk-pink-deep); }
+.sign-alias { font-size: clamp(12px, 1.8vw, 14px); font-style: italic; color: rgba(59, 31, 42, 0.52); }
+
+.closer {
+  margin-top: clamp(18px, 2.8vw, 26px); padding-top: clamp(14px, 2vw, 18px);
+  border-top: 1px solid rgba(226, 70, 122, 0.24); text-align: center;
+}
+.closer-line { font-size: clamp(15px, 2.4vw, 19px); color: var(--hk-pink-deep); }
+
+.letter-next {
+  margin: clamp(22px, 3.4vw, 32px) auto 0; display: block;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: rgba(255, 170, 196, 0.85);
+  background: rgba(42, 15, 28, 0.55); border: 1px solid rgba(255, 143, 176, 0.3);
+  border-radius: 9999px; padding: 11px 22px; cursor: pointer;
+  transition: background 240ms ease, opacity 600ms ease;
+}
+.letter-next:hover { background: rgba(66, 24, 44, 0.8); }
+
+/* ---- crate (3D) --------------------------------------------------------- */
+#crate { z-index: 40; }
+#crate canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.crate-hint {
+  position: absolute; left: 0; right: 0; bottom: 10vh; text-align: center;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: rgba(255, 170, 196, 0.55);
+  transition: opacity 1000ms ease; pointer-events: none; padding: 0 20px;
+}
+
+/* Full-screen record inspect. */
+.inspect {
+  position: absolute; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(26, 8, 18, 0.9); cursor: pointer;
+  opacity: 0; pointer-events: none; transition: opacity 400ms ease;
+}
+.inspect.on { opacity: 1; pointer-events: auto; }
+.inspect img {
+  max-width: min(88vw, 620px); max-height: 78vh;
+  border-radius: 4px; box-shadow: 0 40px 90px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 143, 176, 0.3);
+}
+
+/* ---- guide -------------------------------------------------------------- */
+#guide {
+  z-index: 75; overflow-y: auto; scrollbar-width: none;
+  padding: clamp(28px, 6vh, 64px) clamp(20px, 5vw, 48px);
+}
+#guide::-webkit-scrollbar { display: none; }
+.guide-inner { width: min(620px, 100%); margin: 0 auto; }
+.guide-kitty { width: 76px; height: 58px; margin: 0 auto clamp(18px, 3vw, 26px); display: block; }
+.guide-h {
+  font-size: clamp(28px, 6vw, 44px); font-weight: 300; letter-spacing: -0.02em;
+  text-align: center; color: var(--hk-white); margin-bottom: 10px;
+}
+.guide-sub {
+  text-align: center; font-size: clamp(14px, 2.2vw, 16px); line-height: 1.6;
+  color: rgba(255, 214, 228, 0.75); margin-bottom: clamp(26px, 4.5vw, 40px);
+}
+.step {
+  display: flex; gap: 16px; align-items: flex-start;
+  padding: 18px 20px; margin-bottom: 12px;
+  background: rgba(255, 143, 176, 0.07);
+  border: 1px solid rgba(255, 143, 176, 0.18); border-radius: 14px;
+}
+.step-n {
+  flex: none; width: 26px; height: 26px; border-radius: 9999px;
+  background: var(--hk-pink-deep); color: var(--hk-white);
+  font-family: var(--mono); font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.step-t { font-size: clamp(14px, 2.1vw, 16px); font-weight: 500; color: var(--hk-white); margin-bottom: 4px; }
+.step-b { font-size: clamp(13px, 1.9vw, 14px); line-height: 1.55; color: rgba(255, 214, 228, 0.7); }
+.step-b code {
+  font-family: var(--mono); font-size: 0.92em;
+  background: rgba(42, 15, 28, 0.6); padding: 1px 5px; border-radius: 4px;
+  color: var(--hk-gold);
+}
+.guide-cta {
+  display: block; margin: clamp(26px, 4.5vw, 38px) auto 0; width: fit-content;
+  padding: 15px 30px; border-radius: 9999px;
+  background: linear-gradient(140deg, var(--hk-red), var(--hk-pink-deep));
+  color: var(--hk-white); text-decoration: none;
+  font-size: clamp(14px, 2.1vw, 16px); font-weight: 500;
+  box-shadow: 0 14px 32px rgba(216, 31, 69, 0.34);
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease;
+}
+.guide-cta:hover { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(216, 31, 69, 0.44); }
+.guide-foot {
+  text-align: center; margin-top: clamp(22px, 3.6vw, 32px);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: rgba(255, 214, 228, 0.35);
+}
+
+/* ---- chrome ------------------------------------------------------------- */
+.sound {
+  position: absolute; right: 14px; top: 14px; z-index: 90;
+  padding: 7px 11px; border-radius: 9999px;
+  border: 1px solid rgba(255, 143, 176, 0.2);
+  background: rgba(26, 8, 18, 0.6);
+  display: flex; align-items: center; gap: 7px; cursor: pointer;
+  transition: opacity 600ms ease, background 240ms ease;
+}
+.sound:hover { background: rgba(56, 20, 36, 0.9); }
+.sound-dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--hk-pink); }
+.sound-dot.off { background: rgba(255, 235, 242, 0.22); }
+.sound-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: rgba(255, 235, 242, 0.6); white-space: nowrap;
+}
+
+/* Phase dots, bottom-left: quiet wayfinding without a nav bar. */
+.dots { position: absolute; left: 14px; bottom: 14px; z-index: 90; display: flex; gap: 7px; transition: opacity 600ms ease; }
+.dot { width: 6px; height: 6px; border-radius: 9999px; background: rgba(255, 143, 176, 0.25); transition: background 300ms ease, transform 300ms ease; }
+.dot.on { background: var(--hk-pink); transform: scale(1.35); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ember, .bloom, .env-drift, .env-hint, #gate .eyebrow, .orn { animation: none !important; }
+  .intro-date, .intro-name, .intro-skip { animation-duration: 0.01ms !important; }
+}
