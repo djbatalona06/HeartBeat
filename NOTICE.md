@@ -23,6 +23,17 @@ This project is **not affiliated with, endorsed by, sponsored by, or approved
 by** any of them. The names are used only as descriptive labels for colour
 palettes, in the way someone might say a room is painted "sunflower".
 
+### Collectible pets
+
+The RPG layer has sixteen collectible pets. **None of them is named after, or
+drawn from, any character belonging to anyone above.** A character you *collect*
+is a stronger claim than a palette label, so the line is drawn well short of it:
+the four species are Horse, Fairy, Vampire and **Ribbon Cat**, and the Ribbon
+Cat is the repository's own hand-drawn cat mark — the ellipses, bow and
+line-segment whiskers already in `gift/src/index.html` and `app/public/icons/` —
+named descriptively for what it is. A test in `app/src/domain/rpg/pets.test.ts`
+fails if any rights holder's character name appears in a pet name or its lore.
+
 ## Artwork
 
 **No third-party artwork is used anywhere in this repository.** There are no

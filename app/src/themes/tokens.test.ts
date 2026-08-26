@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { THEMES } from './index';
-import { contrast, themeToCssVars } from './tokens';
+import { SHARED_TOKENS, contrast, themeToCssVars } from './tokens';
 
 /**
  * A theme that ships unreadable is worse than no theme, and it is very easy to
@@ -44,4 +44,66 @@ describe('theme palettes', () => {
       });
     });
   }
+});
+
+/**
+ * The shared design language. Finch's shape is inherited by every pack; only
+ * the palette and the radii are a pack's own. These pin that split, because the
+ * failure mode is silent — a token that quietly stops being emitted does not
+ * throw, it just makes one screen look slightly wrong on one theme.
+ */
+describe('the shared shape layer', () => {
+  const SPACING = ['--space-1', '--space-2', '--space-3', '--space-4', '--space-5', '--space-6', '--space-7'];
+  const TYPE = ['--text-xs', '--text-sm', '--text-base', '--text-lg', '--text-xl', '--text-2xl', '--text-3xl'];
+
+  it('reaches every theme', () => {
+    for (const theme of THEMES) {
+      const vars = themeToCssVars(theme);
+      for (const key of [...SPACING, ...TYPE, '--tap', '--ease-soft']) {
+        expect(vars[key], `${theme.id} ${key}`).toBeTruthy();
+      }
+    }
+  });
+
+  it('is identical across every theme, because shape is not palette', () => {
+    const first = themeToCssVars(THEMES[0]);
+    for (const theme of THEMES.slice(1)) {
+      const vars = themeToCssVars(theme);
+      for (const key of [...SPACING, ...TYPE, '--tap']) {
+        expect(vars[key], `${theme.id} ${key}`).toBe(first[key]);
+      }
+    }
+  });
+
+  it('rises monotonically through the spacing scale', () => {
+    const px = (key: string) => Number.parseFloat(SHARED_TOKENS[key]);
+    for (let i = 1; i < SPACING.length; i += 1) {
+      expect(px(SPACING[i])).toBeGreaterThan(px(SPACING[i - 1]));
+    }
+  });
+
+  it('never puts a meaningful size below 12px', () => {
+    for (const key of TYPE) {
+      const floor = Number.parseFloat(
+        SHARED_TOKENS[key].startsWith('clamp(')
+          ? SHARED_TOKENS[key].slice('clamp('.length)
+          : SHARED_TOKENS[key],
+      );
+      expect(floor, key).toBeGreaterThanOrEqual(12);
+    }
+  });
+
+  it('keeps the tap target above the 44px floor', () => {
+    expect(Number.parseFloat(SHARED_TOKENS['--tap'])).toBeGreaterThanOrEqual(44);
+  });
+
+  /** Radii are character, not inconsistency: sharp shinobi, round pony. */
+  it('leaves each pack its own radius', () => {
+    expect(SHARED_TOKENS['--radius']).toBeUndefined();
+    const radii = THEMES.map((t) => t.shape.radius);
+    expect(new Set(radii).size).toBeGreaterThan(1);
+    for (const theme of THEMES) {
+      expect(themeToCssVars(theme)['--radius'], theme.id).toBe(theme.shape.radius);
+    }
+  });
 });

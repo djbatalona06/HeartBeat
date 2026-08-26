@@ -3,6 +3,8 @@ import type {
   Achievement, CycleEntry, ExerciseEntry, Member, MoodEntry, Pet, Quest, Settings, WorkEvent,
 } from '../domain/types';
 import { DEFAULT_SETTINGS } from '../domain/types';
+import type { Avatar, LifeEvent, Redemption, Reward, Task } from '../domain/rpg/types';
+import type { PetInstance } from '../domain/rpg/pets';
 
 /**
  * The phone holds the whole record. The Worker keeps a copy so the other half
@@ -19,6 +21,16 @@ export class HeartBeatDB extends Dexie {
   achievements!: Table<Achievement, string>;
   settings!: Table<Settings, string>;
 
+  // v2 — the RPG layer.
+  tasks!: Table<Task, string>;
+  avatars!: Table<Avatar, string>;
+  rewards!: Table<Reward, string>;
+  redemptions!: Table<Redemption, string>;
+  lifeEvents!: Table<LifeEvent, string>;
+
+  // v3 — companions.
+  pets!: Table<PetInstance, string>;
+
   constructor() {
     super('heartbeat');
     this.version(1).stores({
@@ -32,6 +44,26 @@ export class HeartBeatDB extends Dexie {
       quests: 'id, coupleId, expiresAt',
       achievements: 'id, coupleId, code',
       settings: 'id',
+    });
+
+    // v2 adds the RPG layer. Dexie carries v1 rows forward untouched, so there
+    // is no data migration here — the new stores simply start empty.
+    this.version(2).stores({
+      // [memberId+type] is the hot path: the Tasks page reads one person's
+      // Dailies, then their Habits, then their To-Dos.
+      tasks: 'id, coupleId, memberId, type, [memberId+type], archivedAt',
+      avatars: 'memberId, coupleId',
+      rewards: 'id, coupleId, memberId',
+      redemptions: 'id, coupleId, memberId, day',
+      // Life events are read two ways: one person's day, and the whole couple's
+      // recent history for the Good Vibes cap.
+      lifeEvents: 'id, coupleId, memberId, day, [memberId+day], [coupleId+day]',
+    });
+
+    // v3 adds companions. Split from v2 rather than folded into it so the two
+    // phases stay legible in the schema history.
+    this.version(3).stores({
+      pets: 'id, coupleId, memberId, kindId, [memberId+kindId]',
     });
   }
 }
