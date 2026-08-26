@@ -151,7 +151,7 @@
 
     var next = document.createElement('button');
     next.className = 'letter-next';
-    next.textContent = 'there are photos →';
+    next.textContent = 'there are records →';
     next.style.opacity = '0';
     next.style.pointerEvents = 'none';
     next.addEventListener('click', function (e) { e.stopPropagation(); toCrate(); });
@@ -235,7 +235,7 @@
     });
   }
 
-  // ---- 5 · crate ------------------------------------------------------------
+  // ---- 5 · the file box and record player ------------------------------------
   function toCrate() {
     clearTimers();
     show('crate');
@@ -244,9 +244,20 @@
       window.GiftCrate.mount(el.crate, {
         photos: window.GIFT_PHOTOS || [],
         onInspect: openInspect,
+        onPlay: onNeedleDrop,
         onDone: toGuide
       });
     }
+  }
+
+  // Dropping the needle is a fresh user gesture, which is the one thing that
+  // can start audio a browser refused to autoplay back at the gate. Lifting the
+  // arm deliberately does not stop the song: she did not ask for silence, and a
+  // gift that takes the music away as a side effect of putting a record down
+  // reads as a bug.
+  function onNeedleDrop() {
+    var a = song();
+    if (a && state.sound && a.paused) playAudio();
   }
 
   function openInspect(src) {

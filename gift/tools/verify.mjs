@@ -32,8 +32,12 @@ const CANDIDATES = [
   '/opt/pw-browsers/chromium/chrome-linux/chrome'
 ].filter(Boolean);
 const executablePath = CANDIDATES.find((p) => existsSync(p));
+// Headless Chromium has no GPU here, so WebGL comes from SwiftShader. Without
+// these flags the 3D passes silently fall back to the flat deck and the scene
+// this file exists to check never renders at all.
+const ARGS = ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
 const browser = await chromium.launch(
-  executablePath ? { executablePath, args: ['--no-sandbox'] } : { args: ['--no-sandbox'] }
+  executablePath ? { executablePath, args: ARGS } : { args: ARGS }
 );
 
 async function run(label, viewport, forceNoWebGL) {
@@ -115,51 +119,96 @@ async function run(label, viewport, forceNoWebGL) {
 
   await page.click('.letter-next');
   await page.waitForTimeout(1400);
-  check('crate visible', await vis('#crate'));
+  check('box visible', await vis('#crate'));
 
   const mode = await page.evaluate(() => ({
     canvas: !!document.querySelector('#crate canvas'),
-    cells: document.querySelectorAll('#crate img').length
+    cards: document.querySelectorAll('#crate .flat-card').length,
+    flat: !!(window.GiftCrate.ctl() && window.GiftCrate.ctl().state().flat)
   }));
   if (forceNoWebGL) {
-    check('fell back to 2D mosaic', !mode.canvas && mode.cells > 20, JSON.stringify(mode));
+    check('fell back to the flat deck', !mode.canvas && mode.cards === 29, JSON.stringify(mode));
   } else {
-    check('WebGL canvas present', mode.canvas, JSON.stringify(mode));
-    const meshes = await page.evaluate(() => {
-      const c = document.querySelector('#crate canvas');
-      return c ? c.width > 0 && c.height > 0 : false;
-    });
-    check('canvas has dimensions', meshes);
+    check('WebGL canvas present', mode.canvas && !mode.flat, JSON.stringify(mode));
+    check('canvas has dimensions',
+      await page.evaluate(() => {
+        const c = document.querySelector('#crate canvas');
+        return !!c && c.width > 0 && c.height > 0;
+      }));
   }
-  await page.screenshot({ path: join(SHOTS, `${label}-5-crate.png`) });
+  await page.screenshot({ path: join(SHOTS, `${label}-5-box.png`) });
 
-  // Pull a record: tap once to have her lift it out, tap again to open it.
-  if (forceNoWebGL) {
-    // The mosaic is real DOM, so click a tile directly — coordinates picked off
-    // the container centre land in the mask's gaps as often as not.
-    await page.click('#crate img');
-    await page.waitForTimeout(600);
-    await page.screenshot({ path: join(SHOTS, `${label}-5b-pull.png`) });
+  // ---- flipping through the box ----
+  const flipStart = await page.evaluate(() => window.GiftCrate.ctl().state().flip);
+  // The 3D scene takes the drag on its canvas; the flat fallback takes it on
+  // the bin, which is only part of the phase, so aim at whichever is there.
+  const bin = await page.evaluate(() => {
+    const n = document.querySelector('#crate .flat-bin') || document.querySelector('#crate');
+    const r = n.getBoundingClientRect();
+    return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+  });
+  // Drag right-to-left, which is the gesture that brings the next record up.
+  await page.mouse.move(bin.cx + 120, bin.cy);
+  await page.mouse.down();
+  for (let k = 1; k <= 8; k++) await page.mouse.move(bin.cx + 120 - k * 26, bin.cy);
+  await page.mouse.up();
+  await page.waitForTimeout(700);
+  const flipEnd = await page.evaluate(() => window.GiftCrate.ctl().state().flip);
+  check('dragging flips through the box', flipEnd > flipStart, `${flipStart} -> ${flipEnd}`);
+  await page.screenshot({ path: join(SHOTS, `${label}-5b-flip.png`) });
+
+  // ---- putting one on the platter ----
+  await page.evaluate(() => window.GiftCrate.ctl().play(4));
+  await page.waitForTimeout(1500);
+  const seated = await page.evaluate(() => window.GiftCrate.ctl().state());
+  check('a record is on the platter', seated.seated === 4 && seated.playing, JSON.stringify(seated));
+  await page.screenshot({ path: join(SHOTS, `${label}-5c-playing.png`) });
+
+  // The platter has to actually turn. Sample the angle across two moments
+  // rather than trusting the flag that says it is playing.
+  if (!forceNoWebGL) {
+    const a1 = await page.evaluate(() => window.GiftCrate.ctl().state().platter);
+    await page.waitForTimeout(500);
+    const a2 = await page.evaluate(() => window.GiftCrate.ctl().state().platter);
+    check('the platter is turning', a2 > a1 + 0.2, `${a1.toFixed(3)} -> ${a2.toFixed(3)}`);
   } else {
-    const box = await page.$eval('#crate', (n) => {
-      const r = n.getBoundingClientRect();
-      return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
-    });
-    await page.mouse.click(box.cx, box.cy - 20);
-    await page.waitForTimeout(1600);
-    await page.screenshot({ path: join(SHOTS, `${label}-5b-pull.png`) });
-    await page.mouse.click(box.cx, box.cy);
-    await page.waitForTimeout(700);
+    check('the flat platter is animating',
+      await page.$eval('#flatDisc', (n) => getComputedStyle(n).animationName === 'spin33'));
   }
+
+  // ---- tapping the playing record opens it ----
+  if (forceNoWebGL) {
+    // The disc is mid-spin, so Playwright's actionability check never settles
+    // on it. Dispatch the click instead — the same listener, same event.
+    await page.evaluate(() => document.getElementById('flatDisc').click());
+  } else {
+    // Tap where the record actually is on screen. The container centre sits
+    // between the box and the deck and hits neither.
+    const at = await page.evaluate(() => window.GiftCrate.ctl().seatScreen());
+    check('the seated record projects on screen', !!at, JSON.stringify(at));
+    if (at) await page.mouse.click(at.x, at.y);
+  }
+  await page.waitForTimeout(600);
   const inspecting = await page.$eval('#inspect', (n) => n.classList.contains('on'));
-  check('tapping a photo opens it full screen', inspecting);
+  check('tapping the playing record opens it full screen', inspecting);
   if (inspecting) {
     check('inspect shows a real photo',
       await page.$eval('#inspectImg', (i) => i.naturalWidth > 100 && i.src.startsWith('data:image/jpeg')));
-    await page.screenshot({ path: join(SHOTS, `${label}-5c-inspect.png`) });
+    await page.screenshot({ path: join(SHOTS, `${label}-5d-inspect.png`) });
     await page.click('#inspect');
     await page.waitForTimeout(400);
   }
+
+  // ---- the finale ----
+  await page.evaluate(() => window.GiftCrate.ctl().heart());
+  await page.waitForTimeout(2600);
+  const heart = await page.evaluate(() => window.GiftCrate.ctl().state());
+  check('the heart forms', heart.mode === 'heart', JSON.stringify(heart));
+  // Not just the flag: every record has to be at its place in the heart. The
+  // flat build once reported a finale it was not drawing.
+  check('all 29 records reach the heart', heart.atHome === 29, `${heart.atHome}/29`);
+  check('nothing is left on the platter', heart.seated === -1 && !heart.playing);
+  await page.screenshot({ path: join(SHOTS, `${label}-5e-heart.png`) });
 
   await page.click('#crate .letter-next');
   await page.waitForTimeout(500);
