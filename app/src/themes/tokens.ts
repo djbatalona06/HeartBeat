@@ -1,13 +1,64 @@
 import type { Theme } from './types';
 
 /**
+ * The shared design language — Finch's *shape*, borrowed on purpose.
+ *
+ * Finch reads the way it does because of generous padding, a big friendly type
+ * scale, and tap targets you can hit without looking. None of that is a colour,
+ * so none of it belongs in a theme pack: it lives here, and every pack inherits
+ * it and keeps its own palette.
+ *
+ * Two things stay out of this layer deliberately. Per-pack radii are character,
+ * not inconsistency — shinobi being sharp and pony being round is the point of
+ * having five packs at all. And Finch's own density is not copied: its screens
+ * are widely and fairly critiqued as cluttered, so what is taken is the shape
+ * and the breathing room, not the number of things on a page.
+ */
+export const SHARED_TOKENS: Record<string, string> = {
+  // A 4px scale. Everything in the stylesheet is one of these, so the rhythm
+  // is a decision made once rather than a guess made per component.
+  '--space-1': '4px',
+  '--space-2': '8px',
+  '--space-3': '12px',
+  '--space-4': '16px',
+  '--space-5': '24px',
+  '--space-6': '32px',
+  '--space-7': '44px',
+
+  // Big, friendly, and fluid. The floor matters more than the ceiling: nothing
+  // that carries meaning is allowed below 12px.
+  '--text-xs': '12px',
+  '--text-sm': '13.5px',
+  '--text-base': '15.5px',
+  '--text-lg': 'clamp(17px, 4.4vw, 19px)',
+  '--text-xl': 'clamp(21px, 5.4vw, 25px)',
+  '--text-2xl': 'clamp(26px, 7vw, 34px)',
+  '--text-3xl': 'clamp(32px, 9vw, 44px)',
+  '--line-tight': '1.15',
+  '--line-body': '1.55',
+
+  // 48px, above Apple's 44pt floor. A one-handed tap on a phone in bed is the
+  // posture this app is actually used in.
+  '--tap': '48px',
+
+  // One soft curve, used by everything that moves. Overshoot on purpose: it is
+  // what makes a bar filling read as a reward rather than a progress report.
+  '--ease-soft': 'cubic-bezier(0.34, 1.4, 0.5, 1)',
+  '--motion-slow': '520ms',
+};
+
+/**
  * Themes reach the UI only as CSS custom properties. Components reference
  * `var(--color-accent)` and never import a theme object, so switching theme
  * repaints without re-rendering a single component.
+ *
+ * The shared tokens go in first, so a pack that genuinely needs to override one
+ * still can — but has to say so.
  */
 export function themeToCssVars(theme: Theme): Record<string, string> {
   const c = theme.colors;
   return {
+    ...SHARED_TOKENS,
     '--color-base': c.base,
     '--color-surface': c.surface,
     '--color-surface-muted': c.surfaceMuted,

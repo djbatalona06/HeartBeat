@@ -5,9 +5,12 @@ import { SettingsPage } from './features/settings/SettingsPage';
 import { ExercisePage } from './features/exercise/ExercisePage';
 import { MoodPage } from './features/mood/MoodPage';
 import { WorkPage } from './features/work/WorkPage';
+import { TasksPage } from './features/tasks/TasksPage';
+import { PartyPage } from './features/party/PartyPage';
 
 const TABS = [
   { to: '/', label: 'Home', glyph: '♥' },
+  { to: '/tasks', label: 'Tasks', glyph: '✦' },
   { to: '/mood', label: 'Mood', glyph: '◑' },
   { to: '/exercise', label: 'Move', glyph: '▲' },
   { to: '/work', label: 'Work', glyph: '▦' },
@@ -24,6 +27,10 @@ export function App() {
         <main className="shell">
           <Routes>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/tasks" element={<TasksPage />} />
+            {/* Not a tab. Six across the bottom is already the ceiling on a
+                phone, and the party is somewhere you go from the sheet. */}
+            <Route path="/party" element={<PartyPage />} />
             <Route path="/mood" element={<MoodPage />} />
             <Route path="/exercise" element={<ExercisePage />} />
             <Route path="/work" element={<WorkPage />} />

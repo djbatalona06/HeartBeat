@@ -1,4 +1,4 @@
-import { db } from './database';
+import { db, loadSettings, saveSettings } from './database';
 import type { CycleEntry, DayKey, ExerciseEntry, MemberId, MoodEntry } from '../domain/types';
 import { addDays } from '../domain/day';
 import {
@@ -476,4 +476,23 @@ export async function startAdventure(
   await db.avatars.put(paid);
   if (avatar.companionId) await bondPet(avatar.companionId, 2);
   return { ok: true, hours: cost.hours };
+}
+
+/**
+ * The app has to work on the phone that installed it first, before there is a
+ * partner to pair with, so a solo identity is minted locally on first use.
+ *
+ * Pairing later replaces both ids with the ones the Worker issues. Rows written
+ * before that point keep the provisional ids and would need re-keying — a real
+ * loose end, recorded in docs/DESIGN.md rather than papered over here.
+ */
+export async function ensureIdentity(): Promise<{ memberId: MemberId; coupleId: string }> {
+  const settings = await loadSettings();
+  if (settings.memberId && settings.coupleId) {
+    return { memberId: settings.memberId, coupleId: settings.coupleId };
+  }
+  const memberId = settings.memberId ?? id();
+  const coupleId = settings.coupleId ?? id();
+  await saveSettings({ memberId, coupleId });
+  return { memberId, coupleId };
 }

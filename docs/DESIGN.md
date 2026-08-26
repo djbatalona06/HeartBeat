@@ -161,8 +161,13 @@ quests       (id, couple_id, template_id, difficulty, target, progress, xp, expi
 achievements (id, couple_id, code, xp, unlocked_at)
 ```
 
-- **XP is shared, not per-person.** One pet, one bar. Competing with your partner
-  over a streak counter is the wrong game.
+- **XP is shared *and* personal.** One pet with one bar for the couple, and a
+  character sheet each. An earlier draft of this document said personal
+  progression was the wrong game; that was half right. What is wrong is
+  *competing* — a leaderboard, a streak either of you can be behind on. Having
+  your own level is not competing, and without one there is nothing for gear,
+  skills or a growth stage to hang off. Both bars move on the same completion,
+  and neither is ever shown next to the other's.
 - **Levelling curve** is in `domain/xp.ts`: `100 × 1.35^(n-1)` per level,
   cumulative. Early levels arrive fast enough to be worth chasing; later ones
   still mean something. Tests assert the curve is monotonic, that levelling
@@ -173,6 +178,98 @@ achievements (id, couple_id, code, xp, unlocked_at)
 - **A quest pays out once**, on the transition to complete. Overshooting the
   target does not pay twice.
 - Pet mood is derived from recent activity, not stored as state to be managed.
+
+## The RPG layer
+
+Habitica's skeleton wearing Finch's manner. Habitica gamifies achievement;
+Finch gamifies self-compassion. Everything composes except one thing.
+
+```
+tasks       (id, couple_id, member_id, type, difficulty, value, streak, ...)
+avatars     (member_id, couple_id, xp, coins, energy, mp, gear, companion_id)
+pets        (id, couple_id, member_id, kind_id, bond, mp, hatched_at)
+rewards     (id, couple_id, member_id, title, cost)
+life_events (id, couple_id, member_id, kind, day, from_member_id, note)
+boss_fights (couple_id, tier, hp, max_hp, ready_a, ready_b, state)   -- D1 only
+```
+
+### The ruling: health exists only inside a boss fight
+
+Habitica charges you health for a missed Daily. HeartBeat is for two people who
+live together, so that mechanic would mean **her bad week damages him**. Shared
+punishment is worse than the competition this document already rules out.
+
+So in daily life there is no bar to lose. Miss a day and the boss takes no
+damage that day — absence of progress, never a penalty.
+
+This is enforced by shape rather than by discipline. `neglect()` returns exactly
+`{ value, streak }`: there is no field for a cost, so a future edit that wants
+one has to change the signature and the test that pins the key set. No type
+outside `BossFight` carries a health field at all, and a test in
+`db/rpg.repository.test.ts` walks a person through missing every Daily for a
+month and asserts that not one pool came out smaller.
+
+### What survives from Habitica, and what was changed
+
+| Decision | Where | Why |
+|---|---|---|
+| Value clamps at **±11**, not ±22 | `rpg/task.ts` | At ±22 a neglected task pays **3×** a well-worn one, which stops being a nudge and becomes an instruction. ±11 gives ≈1.76×. A test asserts the spread stays between 1.2 and 1.8. |
+| XP and coins ride the value curve; **energy and MP do not** | `rpg/task.ts` | Habitica's economy is meant to be value-sensitive. Finch's energy is meant to be *plannable* — if an adventure costs 25 and a task pays 4–9 depending on history, you cannot tell whether tonight's list gets the pet out the door, and that uncertainty is the anxious feeling this half of the design exists to avoid. |
+| **No classes.** All four stats rise together | `rpg/avatar.ts` | Habitica's classes are good design for a party of six, where the fun is that the healer cannot tank. For a party of two they mean one person's build can lock the other out of a boss, and there is nobody else to call. Gear is where a choice lives, and it comes off in one tap. |
+| Level, stats and pet rank are **never stored** | `rpg/avatar.ts`, `rpg/pets.ts` | A stored level is a second copy of the XP that can disagree with it, and the one that disagrees is always the one on screen. |
+| Period start is weighted toward **energy over XP** | `rpg/lifeEvents.ts` | The point is to make a hard day cost less, not to reward having one. If a bad week levelled you faster than a good one, the game would be quietly asking for bad weeks. |
+| Streak is a counter, never a multiplier | `rpg/task.ts` | A streak that pays is a streak you can be punished for breaking, which is the mechanic this layer exists to avoid. |
+
+### Good Vibes
+
+Finch's friend feature, and the single best fit for a two-person app in either
+game: it makes your partner a source of progress rather than a rival, which is
+this app's whole thesis. A short note grants the other person energy; sending
+pays the sender a little too, or nobody sends. Capped at three per sender per
+day — they keep their weight by being rare.
+
+### The boss fight, and why it is the one server-side feature
+
+Boss HP is **contested state**. Everything else in HeartBeat renders from
+IndexedDB and syncs last-write-wins, which is right for a record of what one
+person did and wrong for a number two people are subtracting from at the same
+time: one of their hits would silently vanish. So HP lives in D1 and damage
+lands as `UPDATE boss_fights SET hp = MAX(0, hp - ?)`, atomic in SQL. Verified
+against a local D1: twenty simultaneous blows from both members all land.
+
+- **Both ready before it starts.** One person cannot drag the other into a fight
+  they would both wear.
+- **Escalation on victory only**: `hp = 600 × 1.25^(n-1)`, damage likewise. A
+  defeat re-runs the same tier — losing a week should not mean the boss grew
+  while you were having it.
+- **Clearing a tier improves the drop table** by 20% at tier 1, rising two
+  points a tier to a 30% cap. Each rarity above common has its chance multiplied
+  by exactly `1 + bonus`; common absorbs the remainder.
+- A fight nobody finishes inside seven days is closed by the existing
+  every-minute cron, so the tier can be attempted again rather than staying open
+  forever.
+- `worker/src/boss.ts` is a deliberate second copy of the app's tier maths — two
+  workspaces, two bundles. Both test files pin the same exact values for tiers 1
+  to 5, so a change to one side and not the other fails CI rather than desyncing
+  mid-fight.
+
+### The design language
+
+Finch's *shape* is shared by every theme and lives in `themes/tokens.ts` as
+`SHARED_TOKENS`: a 4px spacing scale, a fluid type scale with a 12px floor, a
+48px tap target, and one soft overshooting curve for anything that fills. Packs
+keep their palettes and their radii — shinobi being sharp and pony being round
+is character, not inconsistency. Finch's own density is deliberately not copied;
+its screens are fairly criticised as cluttered, so what is taken is the breathing
+room, not the number of things on a page.
+
+### Known loose end: provisional identity
+
+The app mints a local `memberId`/`coupleId` on first use so it works before
+there is a partner to pair with. Pairing later replaces both with the ids the
+Worker issues, and rows written before that point keep the provisional ones and
+would need re-keying. Recorded here rather than papered over; it wants fixing
+when onboarding is built.
 
 ## Reminders
 
