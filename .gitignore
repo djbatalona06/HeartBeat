@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.wrangler/
+.shots/
+*.local
+.DS_Store
+.dev.vars
+
+# The song is a commercial recording: kept local, never published. See NOTICE.md.
+gift/src/audio/*.mp3
+gift/birthday-with-music.html

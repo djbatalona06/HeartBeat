@@ -1,0 +1,28 @@
+{
+  "name": "heartbeat",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A gamified life tracker for two people.",
+  "license": "MIT",
+  "workspaces": [
+    "app",
+    "worker"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace app",
+    "build": "npm run build --workspace app",
+    "test": "npm run test --workspace app && npm run test --workspace worker",
+    "typecheck": "npm run typecheck --workspace app && npm run typecheck --workspace worker",
+    "gift:extract": "node gift/tools/extract.mjs",
+    "gift:build": "node gift/build.mjs",
+    "gift:verify": "node gift/tools/verify.mjs",
+    "gift:build:music": "node gift/build.mjs --with-audio"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0",
+    "wrangler": "^3.99.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

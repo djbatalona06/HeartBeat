@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#2a0f1c">
+<title>For Jennifer</title>
+<!--INLINE:FAVICON-->
+<style>/*INLINE:FONTS*/</style>
+<style>/*INLINE:KEYFRAMES*/</style>
+<style>/*INLINE:STYLES*/</style>
+</head>
+<body>
+
+<!-- Reusable artwork. All original; no third-party asset is used. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- The cat mark: round head, bow on the left ear, six whiskers, no mouth. -->
+    <symbol id="kitty" viewBox="0 0 100 78">
+      <path d="M22 26 C16 12 20 6 26 5 C33 4 40 11 44 20 Z" fill="currentColor"/>
+      <path d="M78 26 C84 12 80 6 74 5 C67 4 60 11 56 20 Z" fill="currentColor"/>
+      <ellipse cx="50" cy="44" rx="33" ry="27" fill="currentColor"/>
+      <ellipse cx="38" cy="42" rx="3.4" ry="4.6" fill="#2a0f1c"/>
+      <ellipse cx="62" cy="42" rx="3.4" ry="4.6" fill="#2a0f1c"/>
+      <ellipse cx="50" cy="50" rx="4.6" ry="3.3" fill="#f5c85c"/>
+      <g stroke="#2a0f1c" stroke-width="1.5" stroke-linecap="round" opacity="0.85">
+        <line x1="14" y1="38" x2="28" y2="40"/>
+        <line x1="13" y1="46" x2="28" y2="46"/>
+        <line x1="15" y1="54" x2="28" y2="51"/>
+        <line x1="86" y1="38" x2="72" y2="40"/>
+        <line x1="87" y1="46" x2="72" y2="46"/>
+        <line x1="85" y1="54" x2="72" y2="51"/>
+      </g>
+      <g transform="translate(24,17)">
+        <path d="M0 5 L-11 -2 L-11 12 Z" fill="#d81f45"/>
+        <path d="M2 5 L13 -2 L13 12 Z" fill="#d81f45"/>
+        <circle cx="1" cy="5" r="4.2" fill="#f2578a"/>
+      </g>
+    </symbol>
+
+    <symbol id="bow" viewBox="0 0 30 23">
+      <path d="M14 11.5 L1 3 L1 20 Z" fill="currentColor"/>
+      <path d="M16 11.5 L29 3 L29 20 Z" fill="currentColor"/>
+      <circle cx="15" cy="11.5" r="4.6" fill="currentColor"/>
+      <circle cx="15" cy="11.5" r="2" fill="rgba(255,253,250,0.5)"/>
+    </symbol>
+
+    <symbol id="heart" viewBox="0 0 24 22">
+      <path d="M12 21.4 C4.4 15.4 1 11.6 1 7.6 A6.3 6.3 0 0 1 12 3.6 A6.3 6.3 0 0 1 23 7.6 C23 11.6 19.6 15.4 12 21.4 Z" fill="currentColor"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div id="stage">
+  <div class="atmos"></div>
+  <div class="vignette"></div>
+
+  <!-- 1 · gate -->
+  <div class="phase" id="gate">
+    <div class="ember"></div>
+    <div class="eyebrow">tap to begin</div>
+  </div>
+
+  <!-- 2 · intro -->
+  <div class="phase" id="intro" hidden>
+    <div class="bloom"></div>
+    <div class="intro-date">September 25 · her twentieth</div>
+    <div class="intro-name">Jennifer.</div>
+    <div class="intro-skip">tap to skip</div>
+  </div>
+
+  <!-- 3 · envelope -->
+  <div class="phase" id="envelope" hidden>
+    <div class="env" id="env">
+      <div class="env-drift">
+        <div class="env-body"></div>
+        <div class="env-flaps">
+          <div class="flap-lower"></div>
+          <div class="flap-upper"></div>
+          <div class="flap-edge"></div>
+        </div>
+        <div class="seal">
+          <svg viewBox="0 0 100 78"><use href="#kitty" color="#fffdfa"/></svg>
+          <div class="seal-20">20</div>
+        </div>
+      </div>
+      <div class="env-hint">break the seal</div>
+    </div>
+  </div>
+
+  <!-- 4 · letter -->
+  <div class="phase" id="letter" hidden>
+    <div class="border-layer" id="borderLayer"></div>
+    <div class="paper" id="paper">
+      <svg class="paper-bow" viewBox="0 0 30 23"><use href="#bow" color="#ff8fb0"/></svg>
+      <!-- filled by app.js so the typewriter timing is derived from the copy itself -->
+    </div>
+  </div>
+
+  <!-- 5 · crate (three.js, with a 2D fallback) -->
+  <div class="phase" id="crate" hidden>
+    <div class="crate-hint" id="crateHint">tap a record · she'll pull it for you</div>
+  </div>
+
+  <!-- 6 · guide -->
+  <div class="phase" id="guide" hidden>
+    <div class="guide-inner">
+      <svg class="guide-kitty" viewBox="0 0 100 78"><use href="#kitty" color="#fffdfa"/></svg>
+      <h1 class="guide-h">One more thing.</h1>
+      <p class="guide-sub">
+        I built us an app. It's called HeartBeat — it keeps our moods, workouts,
+        cycles and calendars in one place, and it nudges us when the other one
+        needs something. Here's how to get it on your phone.
+      </p>
+
+      <div class="step">
+        <div class="step-n">1</div>
+        <div>
+          <div class="step-t">Open the link in Safari</div>
+          <div class="step-b">Not Chrome, not the in-app browser inside Instagram — actual Safari. iPhone only lets web apps install from there.</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-n">2</div>
+        <div>
+          <div class="step-t">Share → Add to Home Screen</div>
+          <div class="step-b">This part isn't optional or cosmetic. iOS refuses to send notifications to a web app unless it's been added to the Home Screen and opened from there.</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-n">3</div>
+        <div>
+          <div class="step-t">Open it from the icon, then allow notifications</div>
+          <div class="step-b">iOS only shows the permission prompt on a tap inside the installed app. If you say no by accident you have to delete the icon and re-add it, so — say yes.</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-n">4</div>
+        <div>
+          <div class="step-t">I'll send you an invite link</div>
+          <div class="step-b">Tap it once and we're paired. That's the whole setup — no accounts, no passwords, no phone number.</div>
+        </div>
+      </div>
+
+      <a class="guide-cta" id="repoLink" href="https://github.com/djbatalona06/HeartBeat" target="_blank" rel="noopener">Go to HeartBeat →</a>
+      <div class="guide-foot">everything after this is on the repo</div>
+    </div>
+  </div>
+
+  <!-- record inspect overlay -->
+  <div class="inspect" id="inspect"><img id="inspectImg" alt=""></div>
+
+  <!-- chrome -->
+  <div class="sound" id="sound" style="opacity:0">
+    <div class="sound-dot" id="soundDot"></div>
+    <div class="sound-label" id="soundLabel">music on</div>
+  </div>
+  <div class="dots" id="dots" style="opacity:0"></div>
+
+  <audio id="song" loop preload="none"><!--INLINE:AUDIO--></audio>
+</div>
+
+<script>/*INLINE:THREE*/</script>
+<script>/*INLINE:CRATE*/</script>
+<script>/*INLINE:APP*/</script>
+</body>
+</html>
