@@ -1,0 +1,20 @@
+# Bindings for the Pages Functions in app/functions/, read by
+# `wrangler pages deploy` in .github/workflows/deploy.yml.
+#
+# These live here rather than in the Cloudflare dashboard so that what the
+# functions can reach is reviewable in a diff. The Worker in ../worker keeps its
+# own config: it owns push and the every-minute boss cron, which Pages Functions
+# cannot do. Both bind the same D1 database.
+name = "heartbeat"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-12-30"
+
+# Transcription runs on Cloudflare's own models, so dictation needs no
+# third-party API key — only the account credentials the deploy already uses.
+[ai]
+binding = "AI"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "heartbeat"
+database_id = "dcfde6ff-f415-427a-bfc4-c08bd6911699"

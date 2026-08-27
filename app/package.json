@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit && tsc -p tsconfig.functions.json"
   },
   "dependencies": {
     "dexie": "^4.0.10",
@@ -28,6 +28,7 @@
     "vite": "^6.0.7",
     "vite-plugin-pwa": "^0.21.1",
     "vitest": "^2.1.8",
-    "workbox-precaching": "^7.3.0"
+    "workbox-precaching": "^7.3.0",
+    "@cloudflare/workers-types": "^4.20241230.0"
   }
 }
