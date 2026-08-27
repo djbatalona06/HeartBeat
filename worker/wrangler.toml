@@ -10,8 +10,8 @@ crons = ["* * * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "heartbeat"
-# Replace with the id printed by: wrangler d1 create heartbeat
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+# Created with: wrangler d1 create heartbeat
+database_id = "dcfde6ff-f415-427a-bfc4-c08bd6911699"
 
 [vars]
 # Origins allowed to call this Worker: the Pages production URL plus its preview

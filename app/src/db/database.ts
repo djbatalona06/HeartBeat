@@ -1,6 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type {
-  Achievement, CycleEntry, ExerciseEntry, Member, MoodEntry, Pet, Quest, Settings, WorkEvent,
+  Achievement, ChatMessage, CycleEntry, ExerciseEntry, Member, MoodEntry, Pet, Quest, Settings,
+  WorkEvent,
 } from '../domain/types';
 import { DEFAULT_SETTINGS } from '../domain/types';
 import type { Avatar, LifeEvent, Redemption, Reward, Task } from '../domain/rpg/types';
@@ -27,6 +28,9 @@ export class HeartBeatDB extends Dexie {
   rewards!: Table<Reward, string>;
   redemptions!: Table<Redemption, string>;
   lifeEvents!: Table<LifeEvent, string>;
+
+  // v4 — the thread.
+  messages!: Table<ChatMessage, string>;
 
   // v3 — companions.
   pets!: Table<PetInstance, string>;
@@ -64,6 +68,14 @@ export class HeartBeatDB extends Dexie {
     // phases stay legible in the schema history.
     this.version(3).stores({
       pets: 'id, coupleId, memberId, kindId, [memberId+kindId]',
+    });
+
+    // v4 adds the message thread. Kept as its own version for the same reason
+    // v3 was: the schema history should read as the order things were built.
+    this.version(4).stores({
+      // Read one way only — this couple's thread, oldest first — so createdAt
+      // is the index that matters. It doubles as the sync cursor.
+      messages: 'id, coupleId, createdAt, [coupleId+createdAt]',
     });
   }
 }

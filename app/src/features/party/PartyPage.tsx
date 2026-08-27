@@ -15,12 +15,33 @@ import {
   unequipSlot,
 } from '../../db/repository';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
-import { RARITY_NAMES, canEquip, gearBonus, gearForSlot } from '../../domain/rpg/gear';
+import { RARITY_NAMES, canEquip, gearBonus, gearForSlot, type Rarity } from '../../domain/rpg/gear';
 import { adventureCost } from '../../domain/rpg/stage';
 import { petKindById, petSheet, type PetInstance } from '../../domain/rpg/pets';
 import { SKILLS, castBlockedBecause, skillById } from '../../domain/rpg/skills';
 import { hpFraction, resolveBlow, victoryDropBonus, waitingOn, type BossState } from '../../domain/rpg/boss';
 import { GEAR_SLOTS, type Avatar, type GearSlot } from '../../domain/rpg/types';
+import { BorderGlow } from '../../components/BorderGlow';
+
+/**
+ * How brightly a companion's card is lit, by how rare it is.
+ *
+ * Gold is reserved for godly and appears nowhere else in the theme, so a godly
+ * drop is recognisable across the room without a badge saying so.
+ */
+const RARITY_GLOW: Record<Rarity, string[]> = {
+  common: ['var(--color-border)', 'var(--color-surface-muted)', 'var(--color-border)'],
+  rare: ['var(--color-accent)', 'var(--color-border)', 'var(--color-accent)'],
+  epic: ['var(--color-accent)', '#f5c85c', 'var(--color-accent)'],
+  godly: ['#f5c85c', 'var(--color-accent)', '#f5c85c'],
+};
+
+const RARITY_INTENSITY: Record<Rarity, number> = {
+  common: 0.4,
+  rare: 0.7,
+  epic: 1,
+  godly: 1.3,
+};
 
 interface BossPayload {
   tier: number;
@@ -160,8 +181,16 @@ function Companions({ avatar, pets, onChoose, onSeeLore, onHatch, onAdventure }:
           {pets.map((pet) => {
             const view = petSheet(pet);
             const chosen = avatar.companionId === pet.id;
+            // A rarer companion is lit more brightly, and the one you have
+            // actually chosen is the only one whose ring drifts on its own.
             return (
-              <li key={pet.id} className={`pet ${chosen ? 'pet-chosen' : ''}`}>
+              <li key={pet.id}>
+                <BorderGlow
+                  className={`pet ${chosen ? 'pet-chosen' : ''}`}
+                  colors={RARITY_GLOW[view.kind.rarity]}
+                  intensity={RARITY_INTENSITY[view.kind.rarity]}
+                  animated={chosen}
+                >
                 <div className="pet-head">
                   <span className="pet-name">{view.kind.name}</span>
                   <span className="pet-rarity">{RARITY_NAMES[view.kind.rarity]} · rank {view.rank}</span>
@@ -200,6 +229,7 @@ function Companions({ avatar, pets, onChoose, onSeeLore, onHatch, onAdventure }:
                 >
                   {chosen ? 'Walking with you' : 'Walk with this one'}
                 </button>
+                </BorderGlow>
               </li>
             );
           })}

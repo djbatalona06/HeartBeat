@@ -202,25 +202,44 @@
   // hold someone hostage to its own animation.
   el.letter.addEventListener('click', function () { if (state.typing) finishTyping(); });
 
-  // 46 ornaments ring the page; exactly 20 are bows, one for each year.
+  // The ornaments no longer ring a rectangle. They trace the heart the letter
+  // itself is cut into, so the border reads as an aura around the shape rather
+  // than a frame around the window.
+  //
+  // Exactly 20 are bows, one for each year — that count is the point of them,
+  // so it survives the lilies being added. The rest alternate hearts and
+  // stargazers, the flower the letter names.
+  var ORNAMENT_COUNT = 46;
+  var BOW_COUNT = 20;
+
+  // Walk the real silhouette rather than a curve that resembles it. The
+  // ornaments and the paper are then cut from the same path by definition, so
+  // the ring cannot drift out of register with the shape it is ringing.
+  function heartRing(count) {
+    var path = $('heartOutline');
+    var spots = [];
+    if (!path || typeof path.getTotalLength !== 'function') return spots;
+    var total = path.getTotalLength();
+    if (!total) return spots;
+    for (var i = 0; i < count; i++) {
+      var at = path.getPointAtLength((i / count) * total);
+      // The path is in 0..1 units; the layer it sits in wants percentages.
+      spots.push({ left: at.x * 100, top: at.y * 100, delay: (i % 6) * 0.45 });
+    }
+    return spots;
+  }
+
   function buildBorder() {
     var layer = $('borderLayer');
-    var spots = [];
-    var n = 15, m = 9;
-    for (var i = 0; i < n; i++) {
-      var x = (i / (n - 1)) * 95 + 2;
-      spots.push({ left: x, top: 1.4, delay: (i % 6) * 0.45 });
-      spots.push({ left: x, top: 96.6, delay: ((i + 3) % 6) * 0.45 });
-    }
-    for (var j = 1; j < m; j++) {
-      var y = (j / m) * 95 + 2;
-      spots.push({ left: 1.1, top: y, delay: (j % 6) * 0.45 });
-      spots.push({ left: 97.3, top: y, delay: ((j + 2) % 6) * 0.45 });
-    }
+    var spots = heartRing(ORNAMENT_COUNT);
+    // If the browser will not measure the path, the ring is the only thing
+    // lost — the letter itself is untouched, so say nothing and carry on.
+    if (!spots.length) return;
+
     // Spread the 20 bows evenly through the ring rather than clustering them.
-    var step = spots.length / 20;
+    var step = spots.length / BOW_COUNT;
     var bowAt = {};
-    for (var b = 0; b < 20; b++) bowAt[Math.floor(b * step)] = true;
+    for (var b = 0; b < BOW_COUNT; b++) bowAt[Math.floor(b * step)] = true;
 
     spots.forEach(function (s, idx) {
       var d = document.createElement('div');
@@ -228,10 +247,45 @@
       d.style.left = s.left + '%';
       d.style.top = s.top + '%';
       d.style.animationDelay = s.delay + 's';
-      d.innerHTML = bowAt[idx]
-        ? '<svg viewBox="0 0 30 23"><use href="#bow" color="#d81f45"/></svg>'
-        : '<svg viewBox="0 0 24 22"><use href="#heart" color="#ff8fb0"/></svg>';
+      if (bowAt[idx]) {
+        d.innerHTML = '<svg viewBox="0 0 30 23"><use href="#bow" color="#d81f45"/></svg>';
+      } else if (idx % 2 === 0) {
+        d.className = 'orn orn-lily';
+        d.innerHTML = '<svg viewBox="0 0 100 100"><use href="#lily" color="#ff8fb0"/></svg>';
+      } else {
+        d.innerHTML = '<svg viewBox="0 0 24 22"><use href="#heart" color="#ff8fb0"/></svg>';
+      }
       layer.appendChild(d);
+    });
+  }
+
+  // A sparse drift of large, faint lilies behind everything. Sizes and delays
+  // are derived from the index rather than random, so the arrangement is the
+  // same every time she opens it — this is a keepsake, not a screensaver.
+  function buildLilies() {
+    var field = $('lilyField');
+    if (!field) return;
+    var placements = [
+      { left: 6, top: 12, size: 190, tilt: -14, dur: 26, delay: 0 },
+      { left: 74, top: 7, size: 150, tilt: 22, dur: 31, delay: 3 },
+      { left: 84, top: 58, size: 210, tilt: -8, dur: 28, delay: 7 },
+      { left: 2, top: 63, size: 165, tilt: 17, dur: 34, delay: 11 },
+      { left: 44, top: 84, size: 130, tilt: -25, dur: 29, delay: 5 },
+      { left: 30, top: 2, size: 110, tilt: 9, dur: 33, delay: 14 },
+      { left: 60, top: 40, size: 96, tilt: -19, dur: 36, delay: 9 }
+    ];
+    placements.forEach(function (p) {
+      var d = document.createElement('div');
+      d.className = 'lily-drift';
+      d.style.left = p.left + '%';
+      d.style.top = p.top + '%';
+      d.style.width = p.size + 'px';
+      d.style.height = p.size + 'px';
+      d.style.setProperty('--tilt', p.tilt + 'deg');
+      d.style.animationDuration = p.dur + 's';
+      d.style.animationDelay = '-' + p.delay + 's';
+      d.innerHTML = '<svg viewBox="0 0 100 100"><use href="#lily" color="#ff8fb0"/></svg>';
+      field.appendChild(d);
     });
   }
 
@@ -305,7 +359,33 @@
     else if (state.phase === 'crate') toGuide();
   });
 
+  // The pointer-reactive edge, borrowed from the landing page and rewritten
+  // without its framework. The ring itself is CSS; this only reports where the
+  // finger is, as two custom properties, so nothing re-renders on move.
+  //
+  // Skipped entirely under reduced motion, where the ring is given a soft
+  // static glow instead.
+  function attachAura() {
+    var wrap = $('paperWrap');
+    if (!wrap) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      wrap.style.setProperty('--go', '0.4');
+      return;
+    }
+    wrap.addEventListener('pointermove', function (e) {
+      var r = wrap.getBoundingClientRect();
+      wrap.style.setProperty('--gx', (e.clientX - r.left) + 'px');
+      wrap.style.setProperty('--gy', (e.clientY - r.top) + 'px');
+      wrap.style.setProperty('--go', '1');
+    }, { passive: true });
+    wrap.addEventListener('pointerleave', function () {
+      wrap.style.setProperty('--go', '0');
+    });
+  }
+
   buildBorder();
+  buildLilies();
+  attachAura();
   show('gate');
 
   window.GIFT = {

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
+import { VoiceInput } from '../../components/VoiceInput';
+import { parseTask } from '../../domain/voice/parseTask';
 import {
   archiveTask,
   completeTask,
@@ -280,12 +282,33 @@ function AddTask({ onAdd }: {
   const [title, setTitle] = useState('');
   const [type, setType] = useState<TaskType>('daily');
   const [difficulty, setDifficulty] = useState<TaskDifficulty>('easy');
+  const [heard, setHeard] = useState<string | null>(null);
+
+  // Speech fills the form rather than submitting it. The parser is good but it
+  // is guessing, and a task that saves itself from a misheard sentence is
+  // worse than one you glance at first.
+  const applyTranscript = (text: string) => {
+    if (!text.trim()) return;
+    const intent = parseTask(text);
+    setTitle(intent.title);
+    setType(intent.type);
+    setDifficulty(intent.difficulty);
+    setHeard(text.trim());
+    setOpen(true);
+  };
 
   if (!open) {
     return (
-      <button type="button" className="primary" onClick={() => setOpen(true)}>
-        Add something
-      </button>
+      <>
+        <button type="button" className="primary" onClick={() => setOpen(true)}>
+          Add something
+        </button>
+        <VoiceInput
+          onTranscript={applyTranscript}
+          label="Say it instead"
+          hint="“a daily habit, drink water, easy”"
+        />
+      </>
     );
   }
 
@@ -298,6 +321,7 @@ function AddTask({ onAdd }: {
         if (!trimmed) return;
         await onAdd({ type, title: trimmed, difficulty });
         setTitle('');
+        setHeard(null);
         setOpen(false);
       }}
     >
@@ -309,6 +333,12 @@ function AddTask({ onAdd }: {
         aria-label="Task name"
         autoFocus
       />
+
+      {heard ? (
+        <p className="heard">
+          Heard: <q>{heard}</q>
+        </p>
+      ) : null}
 
       <div className="chips" role="radiogroup" aria-label="Kind">
         {SECTIONS.map((section) => (
@@ -340,9 +370,23 @@ function AddTask({ onAdd }: {
         ))}
       </div>
 
+      <VoiceInput
+        onTranscript={applyTranscript}
+        label={heard ? 'Say it again' : 'Say it instead'}
+      />
+
       <div className="row">
         <button type="submit" className="primary">Add it</button>
-        <button type="button" className="quiet" onClick={() => setOpen(false)}>Not now</button>
+        <button
+          type="button"
+          className="quiet"
+          onClick={() => {
+            setOpen(false);
+            setHeard(null);
+          }}
+        >
+          Not now
+        </button>
       </div>
     </form>
   );

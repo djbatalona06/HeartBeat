@@ -31,3 +31,17 @@
    same speed the WebGL one does, because a record player that spins wrong is
    worse than one that does not spin. */
 @keyframes spin33 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* The loving aura behind the heart. New rather than a retimed `breathe`:
+   the note at the top of this file says repalette freely, retime never. */
+@keyframes aura {
+  0%, 100% { transform: scale(1);    opacity: 0.5; }
+  50%      { transform: scale(1.05); opacity: 0.85; }
+}
+
+/* Stargazers turning slowly in the deep background. */
+@keyframes lilyTurn {
+  0%   { transform: rotate(calc(var(--tilt) - 6deg)) scale(1); }
+  50%  { transform: rotate(calc(var(--tilt) + 6deg)) scale(1.05); }
+  100% { transform: rotate(calc(var(--tilt) - 6deg)) scale(1); }
+}

@@ -73,7 +73,12 @@ export interface WorkEvent {
   id: string;
   memberId: MemberId;
   day: DayKey;
-  startsAt: MinuteOfDay;
+  /**
+   * Minutes past midnight, or absent for an all-day event. Birthdays and
+   * anniversaries are the ones people most want on a shared calendar, and
+   * neither of them starts at a time.
+   */
+  startsAt?: MinuteOfDay;
   endsAt?: MinuteOfDay;
   title: string;
   source: 'manual' | 'import';
@@ -110,6 +115,24 @@ export interface Achievement {
   code: string;
   xp: number;
   unlockedAt: number;
+}
+
+/**
+ * One line of the couple's thread, mirrored locally so it reads offline.
+ *
+ * `mine` is resolved by the server rather than compared here: the thread has to
+ * render before Settings has necessarily loaded, and getting the side wrong is
+ * the kind of bug you only notice in a screenshot.
+ */
+export interface ChatMessage {
+  id: string;
+  memberId: MemberId;
+  coupleId: CoupleId;
+  body: string;
+  createdAt: number;
+  mine: boolean;
+  /** Set while a message is on its way, cleared once the server has it. */
+  pending?: boolean;
 }
 
 export interface Settings {

@@ -1,0 +1,22 @@
+{
+  // The Pages Functions in functions/ run on the Workers runtime, not in the
+  // browser, so they need workers-types and must not see lib.dom. The app's own
+  // tsconfig only includes src/, which would leave every one of these files
+  // unchecked — and a server route that only fails at runtime fails in front of
+  // whoever is using the app.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["@cloudflare/workers-types"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["functions"]
+}
