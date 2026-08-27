@@ -2,6 +2,34 @@
    custom property written by the theme engine, so a component never imports a
    theme object and switching theme repaints without re-rendering anything. */
 
+/* Outfit. Every one of the five theme packs names it as both display and body
+   face, and none of them ever loaded it — the whole app has been rendering in
+   system-ui since the theme engine was written. One variable file per
+   unicode-range covers weights 300-600, which is the full range the packs ask
+   for. font-display: swap so a cold start paints text immediately rather than
+   holding a blank screen for a typeface. */
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 300 600;
+  font-display: swap;
+  src: url('/fonts/outfit-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+                 U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+                 U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 300 600;
+  font-display: swap;
+  src: url('/fonts/outfit-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+                 U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+                 U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body, #root { height: 100%; }
@@ -768,3 +796,92 @@ body {
   letter-spacing: 0.22em;
   color: var(--color-accent);
 }
+
+/* ---- border glow ---------------------------------------------------------- */
+/* A gradient ring (::before) plus a pointer spotlight (::after) that brightens
+   it where the finger is. Both are masked to a thin ring with mask-composite,
+   so the fill only ever paints the edge and never washes over the content.
+   Ported from the Yawn landing page and repainted in the theme's own accent. */
+.border-glow { position: relative; isolation: isolate; border-radius: var(--radius-large); }
+
+.border-glow::before,
+.border-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.border-glow::before { background: var(--bg-gradient); opacity: 0.45; z-index: 1; }
+
+.border-glow::after {
+  background: radial-gradient(
+    var(--glow-radius) var(--glow-radius) at var(--gx) var(--gy),
+    var(--color-accent) 0%,
+    transparent 62%
+  );
+  opacity: var(--go, 0);
+  transition: opacity 0.25s ease-out;
+  z-index: 2;
+}
+
+.border-glow-animated::before {
+  background-size: 220% 220%;
+  animation: aurora-slide 9s ease-in-out infinite;
+}
+
+@keyframes aurora-slide {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* The ambient bloom sitting behind a lit panel. */
+@keyframes aurora-drift {
+  0%, 100% { transform: scale(1);    opacity: 0.5; }
+  50%      { transform: scale(1.12); opacity: 0.85; }
+}
+
+/* A newly hatched companion announces itself once, then settles. */
+@keyframes spark {
+  0%, 100% { transform: scale(0.7); opacity: 0.35; }
+  50%      { transform: scale(1.15); opacity: 1; }
+}
+
+/* The gentle perpetual float the koala has on the landing page. */
+@keyframes lift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -5px, 0); }
+}
+
+/* Calm mode is a first-class off switch, not just a reduced-motion alias. */
+:root[data-calm='true'] .border-glow-animated::before,
+:root[data-calm='true'] .lifts,
+:root[data-calm='true'] .sparks {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .border-glow-animated::before,
+  .lifts,
+  .sparks { animation: none; }
+  .border-glow::after { transition: none; }
+}
+
+/* A lit pet card. BorderGlow paints its ring on the element's own radius, so
+   the card keeps its padding and background and only gains the edge. */
+.pet-list > li { list-style: none; }
+
+.pet.border-glow { border-radius: var(--radius); }
+
+/* The chosen companion breathes; the others sit still. One moving thing in a
+   list reads as "this one", where five moving things read as noise. */
+.pet-chosen { animation: lift 5.5s ease-in-out infinite; }
+
+:root[data-calm='true'] .pet-chosen { animation: none; }
+@media (prefers-reduced-motion: reduce) { .pet-chosen { animation: none; } }
