@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { loadSettings } from '../db/database';
 import { startRecording, type Recorder } from '../pwa/recorder';
 import { transcribe } from '../pwa/api';
-import { micFailure, transcribeFailure, type Failure } from '../pwa/micErrors';
+import { TranscribeError, micFailure, transcribeFailure, type Failure } from '../pwa/micErrors';
 
 /**
  * One microphone button, used by tasks, the calendar and the chat composer.
@@ -131,11 +131,8 @@ export function VoiceInput({ onTranscript, hint, label = 'Speak' }: Props) {
     let blob: Blob | null = null;
     try {
       blob = await rec.stop();
-      if (!token) {
-        // Reuse the transcribe error path so the wording stays in one place.
-        const { TranscribeError } = await import('../pwa/micErrors');
-        throw new TranscribeError('not paired', 'auth', 401);
-      }
+      // Reuse the transcribe error path so the wording stays in one place.
+      if (!token) throw new TranscribeError('not paired', 'auth', 401);
       const text = await transcribe(blob, token);
       onTranscript(text);
       setPhase('idle');

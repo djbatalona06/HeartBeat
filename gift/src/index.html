@@ -14,6 +14,21 @@
 
 <!-- Reusable artwork. All original; no third-party asset is used. -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!--
+    The heart, in objectBoundingBox units so one definition fits the paper, the
+    aura and the glow ring whatever size each of them ends up. clip-path: path()
+    cannot do this — its coordinates are absolute pixels, so the same path on
+    two differently sized boxes cuts two different shapes.
+  -->
+  <clipPath id="heartClip" clipPathUnits="objectBoundingBox">
+    <path d="M 0.5 0.99 C 0.20 0.78, 0.02 0.55, 0.02 0.33 C 0.02 0.13, 0.20 0.02, 0.34 0.02 C 0.43 0.02, 0.50 0.10, 0.50 0.19 C 0.50 0.10, 0.57 0.02, 0.66 0.02 C 0.80 0.02, 0.98 0.13, 0.98 0.33 C 0.98 0.55, 0.80 0.78, 0.50 0.99 Z"/>
+  </clipPath>
+  <!--
+    The same outline again, laid out rather than in <defs>, so app.js can walk
+    it with getPointAtLength and place the ornaments exactly on the silhouette
+    instead of on a parametric curve that only resembles it.
+  -->
+  <path id="heartOutline" d="M 0.5 0.99 C 0.20 0.78, 0.02 0.55, 0.02 0.33 C 0.02 0.13, 0.20 0.02, 0.34 0.02 C 0.43 0.02, 0.50 0.10, 0.50 0.19 C 0.50 0.10, 0.57 0.02, 0.66 0.02 C 0.80 0.02, 0.98 0.13, 0.98 0.33 C 0.98 0.55, 0.80 0.78, 0.50 0.99 Z" fill="none" stroke="none"/>
   <defs>
     <!-- The cat mark: round head, bow on the left ear, six whiskers, no mouth. -->
     <symbol id="kitty" viewBox="0 0 100 78">
@@ -48,11 +63,94 @@
     <symbol id="heart" viewBox="0 0 24 22">
       <path d="M12 21.4 C4.4 15.4 1 11.6 1 7.6 A6.3 6.3 0 0 1 12 3.6 A6.3 6.3 0 0 1 23 7.6 C23 11.6 19.6 15.4 12 21.4 Z" fill="currentColor"/>
     </symbol>
+
+    <!--
+      The stargazer lily. Six recurved tepals, speckled throat, six stamens.
+
+      Drawn in the same hand as the cat and the bow above: flat fills, no
+      gradients, no strokes except the hairlines the whiskers already use, and
+      the body in currentColor so every instance can be recoloured where it
+      sits. The palette is the page's own five — nothing new is introduced.
+
+      It is in here because the letter names it: "bloom like the stargazer of
+      mine that you are". Original geometry, like everything else — see NOTICE.md.
+    -->
+    <symbol id="lily" viewBox="0 0 100 100">
+      <!-- Tepals, six at sixty degrees. -->
+      <path d="M 50 48 C 43 38, 40 24, 45 11 C 47 6, 50 3, 50 3 C 50 3, 53 6, 55 11 C 60 24, 57 38, 50 48 Z" fill="currentColor"/>
+      <path d="M 50 48 C 43 38, 40 24, 45 11 C 47 6, 50 3, 50 3 C 50 3, 53 6, 55 11 C 60 24, 57 38, 50 48 Z" transform="rotate(60 50 50)" fill="currentColor"/>
+      <path d="M 50 48 C 43 38, 40 24, 45 11 C 47 6, 50 3, 50 3 C 50 3, 53 6, 55 11 C 60 24, 57 38, 50 48 Z" transform="rotate(120 50 50)" fill="currentColor"/>
+      <path d="M 50 48 C 43 38, 40 24, 45 11 C 47 6, 50 3, 50 3 C 50 3, 53 6, 55 11 C 60 24, 57 38, 50 48 Z" transform="rotate(180 50 50)" fill="currentColor"/>
+      <path d="M 50 48 C 43 38, 40 24, 45 11 C 47 6, 50 3, 50 3 C 50 3, 53 6, 55 11 C 60 24, 57 38, 50 48 Z" transform="rotate(240 50 50)" fill="currentColor"/>
+      <path d="M 50 48 C 43 38, 40 24, 45 11 C 47 6, 50 3, 50 3 C 50 3, 53 6, 55 11 C 60 24, 57 38, 50 48 Z" transform="rotate(300 50 50)" fill="currentColor"/>
+      <!-- The speckled throat, the marking that makes it a stargazer. -->
+      <g fill="#d81f45" opacity="0.75">
+        <g>
+          <circle cx="50" cy="22" r="1.5"/>
+          <circle cx="46.5" cy="31" r="1.7"/>
+          <circle cx="53.5" cy="34" r="1.4"/>
+        </g>
+        <g transform="rotate(60 50 50)">
+          <circle cx="50" cy="22" r="1.5"/>
+          <circle cx="46.5" cy="31" r="1.7"/>
+          <circle cx="53.5" cy="34" r="1.4"/>
+        </g>
+        <g transform="rotate(120 50 50)">
+          <circle cx="50" cy="22" r="1.5"/>
+          <circle cx="46.5" cy="31" r="1.7"/>
+          <circle cx="53.5" cy="34" r="1.4"/>
+        </g>
+        <g transform="rotate(180 50 50)">
+          <circle cx="50" cy="22" r="1.5"/>
+          <circle cx="46.5" cy="31" r="1.7"/>
+          <circle cx="53.5" cy="34" r="1.4"/>
+        </g>
+        <g transform="rotate(240 50 50)">
+          <circle cx="50" cy="22" r="1.5"/>
+          <circle cx="46.5" cy="31" r="1.7"/>
+          <circle cx="53.5" cy="34" r="1.4"/>
+        </g>
+        <g transform="rotate(300 50 50)">
+          <circle cx="50" cy="22" r="1.5"/>
+          <circle cx="46.5" cy="31" r="1.7"/>
+          <circle cx="53.5" cy="34" r="1.4"/>
+        </g>
+      </g>
+      <!-- Stamens, offset thirty degrees so they sit between the tepals. -->
+      <g transform="rotate(30 50 50)">
+        <line x1="50" y1="50" x2="50" y2="29" stroke="#f5c85c" stroke-width="1.6" stroke-linecap="round"/>
+        <ellipse cx="50" cy="25.5" rx="1.8" ry="3.4" fill="#d81f45"/>
+      </g>
+      <g transform="rotate(90 50 50)">
+        <line x1="50" y1="50" x2="50" y2="29" stroke="#f5c85c" stroke-width="1.6" stroke-linecap="round"/>
+        <ellipse cx="50" cy="25.5" rx="1.8" ry="3.4" fill="#d81f45"/>
+      </g>
+      <g transform="rotate(150 50 50)">
+        <line x1="50" y1="50" x2="50" y2="29" stroke="#f5c85c" stroke-width="1.6" stroke-linecap="round"/>
+        <ellipse cx="50" cy="25.5" rx="1.8" ry="3.4" fill="#d81f45"/>
+      </g>
+      <g transform="rotate(210 50 50)">
+        <line x1="50" y1="50" x2="50" y2="29" stroke="#f5c85c" stroke-width="1.6" stroke-linecap="round"/>
+        <ellipse cx="50" cy="25.5" rx="1.8" ry="3.4" fill="#d81f45"/>
+      </g>
+      <g transform="rotate(270 50 50)">
+        <line x1="50" y1="50" x2="50" y2="29" stroke="#f5c85c" stroke-width="1.6" stroke-linecap="round"/>
+        <ellipse cx="50" cy="25.5" rx="1.8" ry="3.4" fill="#d81f45"/>
+      </g>
+      <g transform="rotate(330 50 50)">
+        <line x1="50" y1="50" x2="50" y2="29" stroke="#f5c85c" stroke-width="1.6" stroke-linecap="round"/>
+        <ellipse cx="50" cy="25.5" rx="1.8" ry="3.4" fill="#d81f45"/>
+      </g>
+      <circle cx="50" cy="50" r="4.4" fill="#f5c85c"/>
+      <circle cx="50" cy="50" r="1.9" fill="#d81f45"/>
+    </symbol>
   </defs>
 </svg>
 
 <div id="stage">
   <div class="atmos"></div>
+  <!-- Stargazers drifting behind everything, filled by app.js. -->
+  <div class="lily-field" id="lilyField" aria-hidden="true"></div>
   <div class="vignette"></div>
 
   <!-- 1 · gate -->
@@ -84,16 +182,31 @@
           <div class="seal-20">20</div>
         </div>
       </div>
+      <!-- A stargazer laid against the envelope, the way one would be. -->
+      <svg class="env-lily" viewBox="0 0 100 100" aria-hidden="true">
+        <use href="#lily" color="#ff8fb0"/>
+      </svg>
       <div class="env-hint">break the seal</div>
     </div>
   </div>
 
   <!-- 4 · letter -->
   <div class="phase" id="letter" hidden>
-    <div class="border-layer" id="borderLayer"></div>
-    <div class="paper" id="paper">
-      <svg class="paper-bow" viewBox="0 0 30 23"><use href="#bow" color="#ff8fb0"/></svg>
-      <!-- filled by app.js so the typewriter timing is derived from the copy itself -->
+    <div class="paper-wrap" id="paperWrap">
+      <!-- The loving aura: a heart-shaped bloom behind the page, under the ring
+           of ornaments that traces the same shape. Both are inside the wrapper
+           so they are sized against the paper, not against the window. -->
+      <div class="aura" aria-hidden="true"></div>
+      <div class="border-layer" id="borderLayer"></div>
+      <div class="paper" id="paper">
+        <!-- Two floats whose shape-outside is the heart's inverse. They carry
+             no content; they exist so the text lines shorten toward the point. -->
+        <div class="flow flow-left" aria-hidden="true"></div>
+        <div class="flow flow-right" aria-hidden="true"></div>
+        <svg class="paper-bow" viewBox="0 0 30 23"><use href="#bow" color="#ff8fb0"/></svg>
+        <svg class="paper-lily" viewBox="0 0 100 100"><use href="#lily" color="#e2467a"/></svg>
+        <!-- filled by app.js so the typewriter timing is derived from the copy itself -->
+      </div>
     </div>
   </div>
 
@@ -105,7 +218,15 @@
   <!-- 6 · guide -->
   <div class="phase" id="guide" hidden>
     <div class="guide-inner">
-      <svg class="guide-kitty" viewBox="0 0 100 78"><use href="#kitty" color="#fffdfa"/></svg>
+      <div class="guide-mark">
+        <svg class="guide-lily" viewBox="0 0 100 100" aria-hidden="true">
+          <use href="#lily" color="#ff8fb0"/>
+        </svg>
+        <svg class="guide-kitty" viewBox="0 0 100 78"><use href="#kitty" color="#fffdfa"/></svg>
+        <svg class="guide-lily guide-lily-r" viewBox="0 0 100 100" aria-hidden="true">
+          <use href="#lily" color="#ff8fb0"/>
+        </svg>
+      </div>
       <h1 class="guide-h">One more thing.</h1>
       <p class="guide-sub">
         I built us an app. It's called HeartBeat — it keeps our moods, workouts,
