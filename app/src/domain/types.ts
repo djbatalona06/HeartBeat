@@ -73,7 +73,12 @@ export interface WorkEvent {
   id: string;
   memberId: MemberId;
   day: DayKey;
-  startsAt: MinuteOfDay;
+  /**
+   * Minutes past midnight, or absent for an all-day event. Birthdays and
+   * anniversaries are the ones people most want on a shared calendar, and
+   * neither of them starts at a time.
+   */
+  startsAt?: MinuteOfDay;
   endsAt?: MinuteOfDay;
   title: string;
   source: 'manual' | 'import';
