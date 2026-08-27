@@ -7,6 +7,7 @@ import { MoodPage } from './features/mood/MoodPage';
 import { WorkPage } from './features/work/WorkPage';
 import { TasksPage } from './features/tasks/TasksPage';
 import { PartyPage } from './features/party/PartyPage';
+import { ChatPanel } from './features/chat/ChatPanel';
 
 const TABS = [
   { to: '/', label: 'Home', glyph: '♥' },
@@ -38,6 +39,10 @@ export function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+        {/* Inside the router so its "open Settings" link works, but outside
+            <main> so it survives every route change — the thread should not
+            reset because she looked at the calendar mid-sentence. */}
+        <ChatPanel />
         <NavBar />
       </HashRouter>
     </ThemeProvider>

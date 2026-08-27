@@ -625,3 +625,146 @@ body {
 
 .cal-time { display: block; margin-top: var(--space-3); }
 .cal-time .field { margin-top: var(--space-1); }
+
+/* ---- messages ------------------------------------------------------------- */
+/* Not a tab: six across the bottom is already the ceiling. The pill floats just
+   above the tab bar, and opens into a sheet over whatever screen you were on. */
+.chat-pill {
+  position: fixed;
+  right: calc(env(safe-area-inset-right) + 14px);
+  bottom: calc(env(safe-area-inset-bottom) + 78px);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  padding: 0 var(--space-4);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  border: none;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--ease-soft);
+}
+.chat-pill:active { transform: scale(0.95); }
+.chat-pill:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+
+.chat-unread {
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-base);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat {
+  position: fixed;
+  left: 0;
+  right: 0;
+  /* Above the tab bar, never over it: the tabs stay reachable mid-conversation. */
+  bottom: calc(env(safe-area-inset-bottom) + 66px);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  max-height: min(70vh, 520px);
+  max-width: 560px;
+  margin: 0 auto;
+  padding: var(--space-4) calc(env(safe-area-inset-left) + 16px) var(--space-4)
+           calc(env(safe-area-inset-right) + 16px);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large) var(--radius-large) 0 0;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+.chat-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.chat-title { flex: 1 1 auto; font-family: var(--font-display); font-size: var(--text-lg); }
+.chat-state { font-size: var(--text-xs); color: var(--color-text-muted); }
+.chat-close {
+  min-width: 36px;
+  min-height: 36px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.chat-thread { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+.chat-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 78%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+  /* Long links and pasted paths must wrap rather than widen the sheet. */
+  overflow-wrap: anywhere;
+}
+.chat-mine {
+  align-self: flex-end;
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+.chat-theirs { align-self: flex-start; background: var(--color-surface-muted); }
+.chat-msg[data-pending='true'] { opacity: 0.6; }
+
+.chat-time { font-size: var(--text-xs); opacity: 0.7; }
+
+.chat-composer { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+.chat-composer .field { flex: 1 1 auto; }
+.chat-send { flex: none; }
+
+/* ---- settings ------------------------------------------------------------- */
+.set-block { margin-bottom: var(--space-6); }
+
+.set-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  min-height: var(--tap);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.set-toggle input { width: 20px; height: 20px; accent-color: var(--color-accent); }
+
+.invite {
+  margin: var(--space-3) 0;
+  padding: var(--space-4);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.invite-code {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  /* Read aloud across a room, so the characters need air between them. */
+  letter-spacing: 0.22em;
+  color: var(--color-accent);
+}

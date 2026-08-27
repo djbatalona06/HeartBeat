@@ -1,7 +1,11 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db, loadSettings, saveSettings } from './database';
-import { addXp, putCycle, putExercise, putMood, putWorkEvent, removeWorkEvent } from './repository';
+import {
+  addXp, confirmMessage, draftMessage, mergeMessages, putCycle, putExercise, putMood,
+  putWorkEvent, removeWorkEvent,
+} from './repository';
+import type { ChatMessage } from '../domain/types';
 
 /**
  * The repository is thin, but not trivial: each writer upserts on a composite
@@ -17,7 +21,7 @@ const DAY = '2026-09-25';
 beforeEach(async () => {
   await Promise.all([
     db.moods.clear(), db.exercises.clear(), db.cycles.clear(),
-    db.work.clear(), db.pet.clear(), db.settings.clear(),
+    db.work.clear(), db.messages.clear(), db.pet.clear(), db.settings.clear(),
   ]);
 });
 
@@ -212,5 +216,82 @@ describe('removeWorkEvent', () => {
 
     const rows = await db.work.where('[memberId+day]').equals([ME, DAY]).toArray();
     expect(rows.map((r) => r.title)).toEqual(['Still on']);
+  });
+});
+
+
+const COUPLE = 'couple-1';
+
+describe('the message thread', () => {
+  it('writes a draft locally and marks it pending', async () => {
+    const row = await draftMessage(COUPLE, ME, '  how do I add a habit?  ');
+    expect(row).not.toBeNull();
+    expect(row?.body).toBe('how do I add a habit?');
+    expect(row?.pending).toBe(true);
+    expect(row?.mine).toBe(true);
+    expect(await db.messages.count()).toBe(1);
+  });
+
+  it('refuses an empty message rather than storing a blank line', async () => {
+    expect(await draftMessage(COUPLE, ME, '   ')).toBeNull();
+    expect(await db.messages.count()).toBe(0);
+  });
+
+  // The whole point of an optimistic send: the local row must be replaced by
+  // the server's, never joined by it.
+  it('replaces the pending row with the server’s, leaving one message', async () => {
+    const local = await draftMessage(COUPLE, ME, 'hello');
+    const confirmed: ChatMessage = {
+      id: 'server-id', coupleId: COUPLE, memberId: ME,
+      body: 'hello', createdAt: 1234, mine: true,
+    };
+    await confirmMessage(local!.id, confirmed);
+
+    const all = await db.messages.toArray();
+    expect(all).toHaveLength(1);
+    expect(all[0].id).toBe('server-id');
+    expect(all[0].pending).toBe(false);
+  });
+
+  it('folds a pull in without duplicating what it already has', async () => {
+    const rows: ChatMessage[] = [
+      { id: 'a', coupleId: COUPLE, memberId: THEM, body: 'first', createdAt: 1, mine: false },
+      { id: 'b', coupleId: COUPLE, memberId: ME, body: 'second', createdAt: 2, mine: true },
+    ];
+    await mergeMessages(rows);
+    // The same pull arriving twice — a retried poll — must not stack.
+    await mergeMessages(rows);
+
+    expect(await db.messages.count()).toBe(2);
+  });
+
+  it('lets a re-pull correct a message it already stored', async () => {
+    await mergeMessages([
+      { id: 'a', coupleId: COUPLE, memberId: THEM, body: 'typo', createdAt: 1, mine: false },
+    ]);
+    await mergeMessages([
+      { id: 'a', coupleId: COUPLE, memberId: THEM, body: 'fixed', createdAt: 1, mine: false },
+    ]);
+
+    expect((await db.messages.get('a'))?.body).toBe('fixed');
+  });
+
+  it('does nothing at all on an empty pull', async () => {
+    await mergeMessages([]);
+    expect(await db.messages.count()).toBe(0);
+  });
+
+  it('reads back in the order things were said', async () => {
+    await mergeMessages([
+      { id: 'c', coupleId: COUPLE, memberId: ME, body: 'third', createdAt: 30, mine: true },
+      { id: 'a', coupleId: COUPLE, memberId: THEM, body: 'first', createdAt: 10, mine: false },
+      { id: 'b', coupleId: COUPLE, memberId: ME, body: 'second', createdAt: 20, mine: true },
+    ]);
+
+    const thread = await db.messages
+      .where('[coupleId+createdAt]')
+      .between([COUPLE, 0], [COUPLE, Infinity])
+      .toArray();
+    expect(thread.map((m) => m.body)).toEqual(['first', 'second', 'third']);
   });
 });
