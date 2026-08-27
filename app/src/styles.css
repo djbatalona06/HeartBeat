@@ -374,3 +374,121 @@ body {
 
 .slot { margin-top: var(--space-4); }
 .slot-name { font-size: var(--text-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* ---- voice input ---------------------------------------------------------- */
+/* One microphone control, shared by tasks, the calendar and the chat composer.
+   Errors render in place rather than as a toast: a message you have to catch
+   before it fades is one you cannot act on. */
+.voice { margin-top: var(--space-3); }
+
+.voice-mic {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  padding: 0 var(--space-4);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 999px;
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-soft),
+              transform var(--motion-fast) var(--ease-soft);
+}
+.voice-mic:active { transform: scale(0.96); }
+.voice-mic:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.voice-hint {
+  margin-left: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.voice-live {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: 999px;
+}
+
+.voice-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--color-danger);
+  animation: voice-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes voice-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+.voice-wave { flex: 1 1 auto; height: 26px; min-width: 60px; }
+
+.voice-clock {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  /* So the row does not jiggle every time the seconds tick over. */
+  font-variant-numeric: tabular-nums;
+}
+
+.voice-stop, .voice-cancel {
+  flex: none;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: 999px;
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.voice-stop { background: var(--color-accent); color: var(--color-accent-text); }
+.voice-cancel { background: transparent; color: var(--color-text-muted); padding: 0 var(--space-2); }
+
+.voice-working { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+.voice-failed {
+  padding: var(--space-4);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid var(--color-danger);
+  border-radius: var(--radius);
+}
+.voice-failed-title { display: block; font-size: var(--text-base); }
+.voice-failed-body {
+  margin: var(--space-2) 0 var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
+.voice-diag {
+  margin-top: var(--space-3);
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-dot { animation: none; }
+}
+
+/* What speech heard, kept visible next to the fields it filled, so a mishearing
+   is caught before the task is saved rather than after. */
+.heard {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
