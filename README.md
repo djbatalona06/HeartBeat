@@ -79,9 +79,10 @@ with no internet, forever.
 
 Six screens: a gate, a title, an envelope, a letter that types itself, the
 records, and the guide to installing the app. The records are the middle of it —
-twenty-nine photographs pressed as vinyl, standing in a file box you flip
-through with a drag. Tap one and it lifts onto a pink turntable, the arm swings
-over, and it turns at a real 33⅓ rpm. Tap it again to see the photograph full
+every photograph pressed as vinyl, standing in a file box you flip
+through — dragged sideways with a mouse, swiped up and down with a thumb. On a
+desktop you tap one; on a phone you hold it and carry it across. Either way it
+lands on a pink turntable, the arm swings over, and it turns at a real 33⅓ rpm. Tap it again to see the photograph full
 screen. Play them all, or press *make the heart*, and the records rise out of
 the box and re-form the heart the original piece was built around.
 
