@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { loadSettings, saveSettings } from '../../db/database';
 import { useTheme } from '../../themes/ThemeProvider';
@@ -154,6 +155,22 @@ export function SettingsPage() {
           ))}
         </div>
         <p className="section-sub">{THEMES.find((t) => t.id === themeId)?.blurb}</p>
+      </section>
+
+      <section className="set-block">
+        <h2 className="section-title">Cycle</h2>
+        <label className="set-toggle">
+          <input
+            type="checkbox"
+            checked={settings?.tracksCycle === true}
+            onChange={(e) => void saveSettings({ tracksCycle: e.target.checked })}
+          />
+          <span>I log my cycle. Off means the page shows my partner&rsquo;s.</span>
+        </label>
+        <p className="section-sub">
+          The page itself, and its PIN, are on <Link to="/cycle">the Cycle screen</Link>. A PIN
+          set there stays on this phone and is never synced.
+        </p>
       </section>
 
       <section className="set-block">

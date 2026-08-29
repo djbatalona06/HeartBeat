@@ -21,6 +21,9 @@ export function DashboardPage() {
     () => (settings?.coupleId ? db.pet.get(settings.coupleId) : undefined),
     [settings?.coupleId],
   );
+  // Whether there is a cycle log at all, not what is in it: the tile is a door,
+  // and a door should not read out what is behind it to whoever walks past.
+  const hasCycle = useLiveQuery(async () => (await db.cycles.count()) > 0, []);
 
   const progress = levelProgress(pet?.xp ?? 0);
 
@@ -71,6 +74,13 @@ export function DashboardPage() {
           glyph="▦"
           value="–"
           hint="Shared calendar"
+        />
+        <Tile
+          to="/cycle"
+          title="Cycle"
+          glyph="☾"
+          value={hasCycle ? 'Logged' : '–'}
+          hint="Private to the two of you"
         />
       </div>
     </div>

@@ -83,6 +83,35 @@ export async function putCycle(
   await db.cycles.put(row);
 }
 
+/** One member's cycle log, ascending, for the calendar and the engine. */
+export async function listCycles(
+  memberId: MemberId,
+  from: DayKey,
+  to: DayKey,
+): Promise<CycleEntry[]> {
+  const rows = await db.cycles
+    .where('[memberId+day]')
+    .between([memberId, from], [memberId, to], true, true)
+    .toArray();
+  return rows.sort((a, b) => a.day.localeCompare(b.day));
+}
+
+/**
+ * The whole log for one member.
+ *
+ * The engine needs every period start it can get — trimming to the visible
+ * month would shorten the history the averages rest on, and the averages are
+ * the whole estimate. One person's cycle log is a few hundred rows a year.
+ */
+export async function allCycles(memberId: MemberId): Promise<CycleEntry[]> {
+  const rows = await db.cycles.where('memberId').equals(memberId).toArray();
+  return rows.sort((a, b) => a.day.localeCompare(b.day));
+}
+
+export async function getCycle(memberId: MemberId, day: DayKey): Promise<CycleEntry | undefined> {
+  return db.cycles.where('[memberId+day]').equals([memberId, day]).first();
+}
+
 /**
  * A calendar event.
  *

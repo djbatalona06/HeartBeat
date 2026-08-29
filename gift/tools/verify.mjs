@@ -40,9 +40,15 @@ const browser = await chromium.launch(
   executablePath ? { executablePath, args: ARGS } : { args: ARGS }
 );
 
-async function run(label, viewport, forceNoWebGL) {
+async function run(label, viewport, forceNoWebGL, touch = false) {
   console.log(`\n=== ${label} ===`);
-  const page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
+  // `isMobile` is what flips Chromium's `(pointer: coarse)`, which is the
+  // predicate the crate branches its gestures on. Resizing the viewport alone
+  // leaves the pointer fine, so a plain narrow profile exercises the desktop
+  // path and would never have caught a broken touch gesture.
+  const page = await browser.newPage({
+    viewport, deviceScaleFactor: 1, hasTouch: touch, isMobile: touch
+  });
 
   page.on('console', (m) => { if (m.type() === 'error') problems.push(`[${label}] ${m.text()}`); });
   page.on('pageerror', (e) => problems.push(`[${label}] pageerror: ${e.message}`));
@@ -63,7 +69,10 @@ async function run(label, viewport, forceNoWebGL) {
   const vis = (id) => page.$eval(id, (n) => !n.hidden);
 
   check('gate visible', await vis('#gate'));
-  check('29 photos inlined', (await page.evaluate(() => window.GIFT_PHOTOS.length)) === 29);
+  // The count is whatever is in gift/src/photos; what matters is that every one
+  // of them is inlined and, later, that every one reaches the heart.
+  const photoCount = await page.evaluate(() => window.GIFT_PHOTOS.length);
+  check(`${photoCount} photos inlined`, photoCount > 0);
   check('photos are data URIs', await page.evaluate(() => window.GIFT_PHOTOS.every((s) => s.startsWith('data:image/jpeg;base64,'))));
   await page.screenshot({ path: join(SHOTS, `${label}-1-gate.png`) });
 
@@ -127,7 +136,7 @@ async function run(label, viewport, forceNoWebGL) {
     flat: !!(window.GiftCrate.ctl() && window.GiftCrate.ctl().state().flat)
   }));
   if (forceNoWebGL) {
-    check('fell back to the flat deck', !mode.canvas && mode.cards === 29, JSON.stringify(mode));
+    check('fell back to the flat deck', !mode.canvas && mode.cards === photoCount, JSON.stringify(mode));
   } else {
     check('WebGL canvas present', mode.canvas && !mode.flat, JSON.stringify(mode));
     check('canvas has dimensions',
@@ -139,6 +148,9 @@ async function run(label, viewport, forceNoWebGL) {
   await page.screenshot({ path: join(SHOTS, `${label}-5-box.png`) });
 
   // ---- flipping through the box ----
+  check(`pointer is ${touch ? 'coarse' : 'fine'}`,
+    (await page.evaluate(() => window.GiftCrate.ctl().state().touch)) === touch);
+
   const flipStart = await page.evaluate(() => window.GiftCrate.ctl().state().flip);
   // The 3D scene takes the drag on its canvas; the flat fallback takes it on
   // the bin, which is only part of the phase, so aim at whichever is there.
@@ -147,15 +159,80 @@ async function run(label, viewport, forceNoWebGL) {
     const r = n.getBoundingClientRect();
     return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
   });
-  // Drag right-to-left, which is the gesture that brings the next record up.
-  await page.mouse.move(bin.cx + 120, bin.cy);
-  await page.mouse.down();
-  for (let k = 1; k <= 8; k++) await page.mouse.move(bin.cx + 120 - k * 26, bin.cy);
-  await page.mouse.up();
+  // Up on touch, right-to-left on a mouse: either way, the gesture that brings
+  // the next record up. Asserting the *wrong* axis does nothing is what keeps
+  // the two paths from quietly collapsing into one.
+  if (touch) {
+    await page.mouse.move(bin.cx, bin.cy + 120);
+    await page.mouse.down();
+    for (let k = 1; k <= 8; k++) await page.mouse.move(bin.cx, bin.cy + 120 - k * 26);
+    await page.mouse.up();
+  } else {
+    await page.mouse.move(bin.cx + 120, bin.cy);
+    await page.mouse.down();
+    for (let k = 1; k <= 8; k++) await page.mouse.move(bin.cx + 120 - k * 26, bin.cy);
+    await page.mouse.up();
+  }
   await page.waitForTimeout(700);
   const flipEnd = await page.evaluate(() => window.GiftCrate.ctl().state().flip);
-  check('dragging flips through the box', flipEnd > flipStart, `${flipStart} -> ${flipEnd}`);
+  check(`${touch ? 'swiping up' : 'dragging'} flips through the box`,
+    flipEnd > flipStart, `${flipStart} -> ${flipEnd}`);
   await page.screenshot({ path: join(SHOTS, `${label}-5b-flip.png`) });
+
+  // The other axis must do nothing, or the gesture has not really moved.
+  const offAxisStart = await page.evaluate(() => window.GiftCrate.ctl().state().flip);
+  if (touch) {
+    await page.mouse.move(bin.cx + 120, bin.cy);
+    await page.mouse.down();
+    for (let k = 1; k <= 8; k++) await page.mouse.move(bin.cx + 120 - k * 26, bin.cy);
+  } else {
+    await page.mouse.move(bin.cx, bin.cy + 120);
+    await page.mouse.down();
+    for (let k = 1; k <= 8; k++) await page.mouse.move(bin.cx, bin.cy + 120 - k * 26);
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  const offAxisEnd = await page.evaluate(() => window.GiftCrate.ctl().state().flip);
+  check(`${touch ? 'sideways' : 'vertical'} movement does not flip`,
+    Math.abs(offAxisEnd - offAxisStart) < 0.5, `${offAxisStart} -> ${offAxisEnd}`);
+
+  if (touch) {
+    // ---- hold a record and carry it to the deck ----
+    await page.evaluate(() => window.GiftCrate.ctl().flipTo(3));
+    await page.waitForTimeout(500);
+    const from = await page.evaluate(() => window.GiftCrate.ctl().recordScreen(3));
+    const deck = await page.evaluate(() => window.GiftCrate.ctl().deckScreen());
+
+    // A quick tap must not play any more: tap and swipe share an opening
+    // frame, so a flick that began on a record would otherwise play it.
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForTimeout(400);
+    const tapped = await page.evaluate(() => window.GiftCrate.ctl().state());
+    check('a tap no longer plays on touch', tapped.seated === -1, JSON.stringify(tapped));
+
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.waitForTimeout(360);            // longer than the 200ms hold
+    const held = await page.evaluate(() => window.GiftCrate.ctl().state());
+    check('holding lifts the record', held.carrying === 3, JSON.stringify(held));
+    await page.screenshot({ path: join(SHOTS, `${label}-5b2-carry.png`) });
+
+    for (let k = 1; k <= 10; k++) {
+      await page.mouse.move(
+        from.x + ((deck.x - from.x) * k) / 10,
+        from.y + ((deck.y - from.y) * k) / 10,
+      );
+    }
+    await page.mouse.up();
+    await page.waitForTimeout(1500);
+    const dropped = await page.evaluate(() => window.GiftCrate.ctl().state());
+    check('dropping it on the deck plays it',
+      dropped.seated === 3 && dropped.playing && dropped.carrying === -1,
+      JSON.stringify(dropped));
+    await page.screenshot({ path: join(SHOTS, `${label}-5b3-dropped.png`) });
+  }
 
   // ---- putting one on the platter ----
   await page.evaluate(() => window.GiftCrate.ctl().play(4));
@@ -206,7 +283,7 @@ async function run(label, viewport, forceNoWebGL) {
   check('the heart forms', heart.mode === 'heart', JSON.stringify(heart));
   // Not just the flag: every record has to be at its place in the heart. The
   // flat build once reported a finale it was not drawing.
-  check('all 29 records reach the heart', heart.atHome === 29, `${heart.atHome}/29`);
+  check('every record reaches the heart', heart.atHome === photoCount, `${heart.atHome}/${photoCount}`);
   check('nothing is left on the platter', heart.seated === -1 && !heart.playing);
   await page.screenshot({ path: join(SHOTS, `${label}-5e-heart.png`) });
 
@@ -248,8 +325,12 @@ async function naturalReveal() {
 }
 
 await run('desktop', { width: 1280, height: 800 }, false);
+// Narrow but still a mouse: the desktop gestures have to survive a small
+// window, which is the regression guard on "the desktop looks good".
 await run('iphone', { width: 390, height: 844 }, false);
+await run('touch', { width: 390, height: 844 }, false, true);
 await run('nowebgl', { width: 1280, height: 800 }, true);
+await run('touch-nowebgl', { width: 390, height: 844 }, true, true);
 await naturalReveal();
 
 await browser.close();

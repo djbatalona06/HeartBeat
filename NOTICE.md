@@ -64,6 +64,35 @@ people in them.
 | [JetBrains Mono](https://www.jetbrains.com/lp/mono/) | SIL Open Font License 1.1 |
 | React, Vite, Dexie, Workbox, Wrangler | MIT / Apache-2.0, per each package |
 
+## The cycle page
+
+`app/src/domain/cycle/` is an independent implementation, written from the
+published method rather than copied from anyone's source.
+
+Two projects informed it and neither contributed code to it:
+
+| Project | Licence | What was taken |
+|---|---|---|
+| [Mensinator](https://github.com/EmmaTellblom/Mensinator) | MIT | Nothing directly. It is the origin of the calendar-and-luteal approach used here, by way of lunara. |
+| [lunara](https://github.com/djbatalona06/lunara) | AGPL-3.0 | Nothing. It was read for its shape — that `checkInComplete` is worth storing, and that the uncertainty band should be clamped — and those are ideas, not expression. |
+
+This distinction matters and is not a formality. lunara is licensed AGPL-3.0
+and is other people's work; HeartBeat is MIT. Copying its engine in would have
+made this repository's licence a false statement about its own contents. So the
+arithmetic here — a median cycle length, a median absolute deviation for the
+spread, a luteal-anchored estimate where there is ovulation evidence, and a
+fertile window five days before ovulation to one day after — was written from
+the method, which is standard and not anyone's property. The symptom and mood
+vocabularies are ordinary clinical terms.
+
+If any of that reads as too fine a line to you, the remedy is the same as
+below: open an issue.
+
+Nothing on that page is medical advice, and the fertile window it estimates is
+not contraception.
+
+## The song
+
 The song used in the gift is a commercially released recording and is **not**
 included in this repository. It is gitignored, the committed `birthday.html` is
 built without it, and the version with music is built locally and sent directly.

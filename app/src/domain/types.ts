@@ -147,6 +147,30 @@ export interface Settings {
   vapidPublicKey?: string;
   pushEndpoint?: string;
   onboarded: boolean;
+  /**
+   * Sync watermarks.
+   *
+   * `syncPushedAt` is a local clock reading: rows edited after it have not been
+   * sent. `syncPulledAt` is the server's own cursor, echoed back from the rows
+   * it served — never a local timestamp, because a phone whose clock is a
+   * minute fast would otherwise ask for changes since a future moment and skip
+   * everything the other phone wrote in between.
+   */
+  syncPushedAt?: number;
+  syncPulledAt?: number;
+  /** Set when the cycle page is locked; see features/cycle/lock.ts. */
+  cyclePinSalt?: string;
+  cyclePinHash?: string;
+  /**
+   * Whether this device's owner logs a cycle, rather than reading their
+   * partner's. Undefined until asked — which is different from "no", because
+   * "no" is an answer and undefined is a question not yet put.
+   *
+   * It lives here rather than on Member because identity in this app is a
+   * device with a memberId in settings; the members table has never been
+   * written to.
+   */
+  tracksCycle?: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

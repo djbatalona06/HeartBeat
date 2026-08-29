@@ -26,6 +26,17 @@
       Independent of frame rate, which `dt * rate` is not. */
   function decay(rate, dt) { return 1 - Math.exp(-rate * dt); }
 
+  /* Is a finger doing the pointing?
+
+     `(pointer: coarse)` rather than a width breakpoint, because the question
+     the gestures actually turn on is the input device, not the screen: a
+     narrow window on a laptop still wants the mouse behaviour, and a large
+     tablet still wants the touch one. Read live rather than cached so a
+     hybrid machine that gains a touchscreen mid-session is not stuck. */
+  function coarsePointer() {
+    return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  }
+
   function supportsWebGL() {
     try {
       var c = document.createElement('canvas');
@@ -47,30 +58,108 @@
   }
 
   /* -- heart layout ---------------------------------------------------------
-     Kept verbatim from the crate, because it is what the finale flies to. A
-     parametric heart curve sounds better and reads worse: sampled at 29 points
-     it comes out as a vague teardrop, because the two top lobes need a hard gap
-     between them to register. This grid puts that gap in explicitly — row 0
-     skips column 3 — and it is already proven, since it is the shape the
-     photographs shipped in. */
-  var MASK = [
-    [0, 1, 2, 4, 5, 6],
-    [0, 1, 2, 3, 4, 5, 6],
-    [0, 1, 2, 3, 4, 5, 6],
-    [1, 2, 3, 4, 5],
-    [2, 3, 4],
-    [3]
-  ];
-  var CELL_X = 1.42, CELL_Y = 1.36, TOP_Y = 3.15;
+     The finale flies the photographs into a heart, so the grid has to hold
+     exactly as many slots as there are photographs — a hardcoded mask silently
+     stacks two records on one slot the day a photo is added.
 
-  function layout() {
-    var pts = [];
-    MASK.forEach(function (cols, r) {
-      cols.forEach(function (c) {
-        pts.push({ x: (c - 3) * CELL_X, y: TOP_Y - r * CELL_Y, r: r, c: c });
-      });
+     A parametric heart *curve* is still the wrong tool: sampled at thirty-odd
+     points it comes out a vague teardrop, because the two top lobes need a hard
+     gap between them to register. But the mask this replaces was never a curve
+     — it was a filled region, typed out by hand. So fill the region instead:
+     rasterise the implicit heart, whose cleft and bottom point fall out of the
+     equation rather than having to be put in by hand, and search grids for one
+     that lands on the count wanted. */
+  function insideHeart(x, y) {
+    var a = x * x + y * y - 1;
+    return a * a * a - x * x * y * y * y <= 0;
+  }
+
+  // Bounding box of that curve, measured rather than guessed.
+  var HX = 1.14, HY0 = -1.02, HY1 = 1.28;
+
+  function rasterHeart(cols, rows) {
+    var out = [];
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        var x = -HX + (c + 0.5) * (2 * HX) / cols;
+        var y = HY1 - (r + 0.5) * (HY1 - HY0) / rows;
+        if (insideHeart(x, y)) out.push({ r: r, c: c });
+      }
+    }
+    return out;
+  }
+
+  /* Spend a surplus by taking the outermost pair off whichever row is currently
+     widest. Always going after the widest row is what stops one row being left
+     jutting out of the silhouette once the surplus runs out. */
+  function trimHeart(cells, extra) {
+    var byRow = {}, r;
+    cells.forEach(function (p) { (byRow[p.r] = byRow[p.r] || []).push(p.c); });
+    while (extra >= 2) {
+      var wr = -1, wide = -1;
+      for (r in byRow) if (byRow[r].length > wide) { wide = byRow[r].length; wr = r; }
+      if (wide < 3) break;
+      byRow[wr].sort(function (a, b) { return a - b; });
+      byRow[wr].pop();
+      byRow[wr].shift();
+      extra -= 2;
+    }
+    var out = [], cs = [], rs = [];
+    Object.keys(byRow).forEach(function (k) {
+      byRow[k].forEach(function (c) { out.push({ r: +k, c: c }); cs.push(c); rs.push(+k); });
     });
-    return pts;
+    var c0 = Math.min.apply(null, cs), r0 = Math.min.apply(null, rs);
+    return {
+      cells: out.map(function (p) { return { r: p.r - r0, c: p.c - c0 }; }),
+      cols: Math.max.apply(null, cs) - c0 + 1,
+      rows: Math.max.apply(null, rs) - r0 + 1
+    };
+  }
+
+  function heartMask(n) {
+    var best = null;
+    for (var cols = 5; cols <= 21; cols += 2) {
+      for (var rows = 4; rows <= 21; rows++) {
+        var cells = rasterHeart(cols, rows);
+        var extra = cells.length - n;
+        // Rasterised rows are symmetric, so cells only come off in pairs; an
+        // odd surplus could be spent only by breaking that symmetry.
+        if (extra < 0 || extra % 2 !== 0) continue;
+        var m = trimHeart(cells, extra);
+        if (m.cells.length !== n) continue;
+        // Score the shape that actually results, not the grid it was cut from:
+        // a tall grid can hold a square heart, and the other way round.
+        var score = Math.abs(m.cols / m.rows - 1.05) + extra * 0.02;
+        if (!best || score < best.score) { best = m; best.score = score; }
+      }
+    }
+    return best;
+  }
+
+  /* Cell pitch is set from the record's own diameter rather than fixed, so the
+     photographs sit close enough to read as one shape. The old 1.42 × 1.36
+     against a 1.04-wide record left a visible gap around every disc. */
+  var HEART_PACK_X = 1.06, HEART_PACK_Y = 1.02;
+
+  /* Share of the frame held back under the finale, for the hint pill. */
+  var HEART_BOTTOM_RESERVE = 0.18;
+
+  function layout(n) {
+    var mask = heartMask(n);
+    if (!mask) return [];
+    var d = 2 * HEART_SCALE;
+    var cx = d * HEART_PACK_X, cy = d * HEART_PACK_Y;
+    var midC = (mask.cols - 1) / 2, midR = (mask.rows - 1) / 2;
+    return mask.cells.map(function (p) {
+      return {
+        x: (p.c - midC) * cx,
+        y: (midR - p.r) * cy,
+        r: p.r,
+        c: p.c,
+        cols: mask.cols,
+        rows: mask.rows
+      };
+    });
   }
 
   /* A solid heart for the relief on the box. Here a bezier outline is the right
@@ -220,11 +309,11 @@
     var vinylMat = new THREE.MeshStandardMaterial({ map: vinyl, roughness: 0.55, metalness: 0.15 });
     var holeMat = new THREE.MeshBasicMaterial({ color: 0x2a0f1c });
 
-    var spots = layout();
+    var spots = layout(photos.length);
     var records = [];
 
     photos.forEach(function (src, i) {
-      var spot = spots[i % spots.length];
+      var spot = spots[i];
       var g = new THREE.Group();
 
       var disc = new THREE.Mesh(discGeo, vinylMat);
@@ -299,8 +388,8 @@
 
        Records recede *and rise*, the way cards stagger in a card index. Stacked
        dead flat they are coaxial with the one in front and a head-on camera
-       sees exactly one record; the rise is what makes twenty-nine of them
-       legible as twenty-nine. */
+       sees exactly one record; the rise is what makes a stack of them
+       legible as a stack. */
     function boxSlot(i, out) {
       var d = i - flip;
       var z, y, rx;
@@ -355,14 +444,25 @@
       box3.getSize(size);
       box3.getCenter(mid);
 
+      // The hint pill sits at a fixed 16.5vh from the bottom, and in the finale
+      // there is no box or deck left to keep the heart clear of it. So hold
+      // back a slice of the frame and sit the heart above it, rather than
+      // fitting to the full height and letting the lowest photograph land
+      // under the caption.
+      var reserve = mode === 'heart' ? HEART_BOTTOM_RESERVE : 0;
       var vFov = camera.fov * Math.PI / 180;
-      var dH = (size.y / 2) / Math.tan(vFov / 2);
+      var dH = (size.y / 2 / (1 - reserve)) / Math.tan(vFov / 2);
       var hHalf = Math.atan(Math.tan(vFov / 2) * camera.aspect);
       var dW = (size.x / 2) / Math.tan(hHalf);
       var d = Math.max(dH, dW) * MARGIN + size.z / 2;
 
-      camera.position.set(0, mid.y, d);
-      camera.lookAt(0, mid.y, 0);
+      // Drop the frame by half the reserved slice: the heart rises by the same
+      // amount, and all the slack ends up underneath it where the hint is.
+      var visH = 2 * (d - size.z / 2) * Math.tan(vFov / 2);
+      var look = mid.y - (reserve / 2) * visH;
+
+      camera.position.set(0, look, d);
+      camera.lookAt(0, look, 0);
       camera.updateProjectionMatrix();
       // Fog is set from the camera distance so the far edge stays just-visible
       // at any framing rather than vanishing on a narrow screen.
@@ -373,7 +473,7 @@
     // ---- interaction ----
     var raycaster = new THREE.Raycaster();
     var pointer = new THREE.Vector2();
-    var drag = { on: false, x: 0, y: 0, moved: false, vel: 0, hit: null };
+    var drag = { on: false, x: 0, y: 0, moved: false, vel: 0, hit: null, touch: false };
 
     function castAt(ev, targets) {
       var rect = renderer.domElement.getBoundingClientRect();
@@ -428,37 +528,110 @@
       if (opts.onStop) opts.onStop();
     }
 
+    /* Carrying a record to the deck, which is the touch way of playing one.
+
+       Press and hold lifts the record out of the stack; it then follows the
+       finger, and letting go over the turntable puts it on. A tap does not
+       play any more on touch, because tap and swipe share an opening frame and
+       the stack is now swiped through vertically — a quick flick that started
+       on a record would otherwise play it on the way past. */
+    var HOLD_MS = 200, CARRY_SCALE = 0.92;
+    var carry = { rec: null, on: false, timer: null, pos: new THREE.Vector3() };
+    var carryPlane = new THREE.Plane();
+    var carryNormal = new THREE.Vector3();
+
+    function carryCancel() {
+      if (carry.timer) { clearTimeout(carry.timer); carry.timer = null; }
+      if (carry.rec) carry.rec.userData.returning = true;
+      carry.rec = null;
+      carry.on = false;
+    }
+
+    function carryTrack(ev) {
+      // A plane through the record, square to the camera: the record then
+      // tracks the finger across the screen rather than sliding along its own
+      // depth, which at this camera angle reads as it running away.
+      camera.getWorldDirection(carryNormal);
+      carryPlane.setFromNormalAndCoplanarPoint(carryNormal, carry.rec.position);
+      var rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      raycaster.ray.intersectPlane(carryPlane, carry.pos);
+    }
+
     function onDown(ev) {
       drag.on = true;
       drag.x = ev.clientX;
       drag.y = ev.clientY;
       drag.moved = false;
       drag.hit = pick(ev);
+      drag.touch = coarsePointer();
+      carryCancel();
+      if (drag.touch && mode === 'box' && drag.hit && drag.hit.kind === 'record') {
+        var rec = drag.hit.record;
+        carry.timer = setTimeout(function () {
+          carry.timer = null;
+          carry.rec = rec;
+          carry.on = true;
+          carryTrack(ev);
+          setHint();
+          // A short tick so the lift is felt as well as seen. Not every device
+          // has it, and none is worse off without it.
+          if (navigator.vibrate) { try { navigator.vibrate(10); } catch (e) {} }
+        }, HOLD_MS);
+      }
     }
 
     function onMove(ev) {
       if (!drag.on) return;
+      if (carry.on) { carryTrack(ev); return; }
       var dx = ev.clientX - drag.x;
-      if (mode !== 'box') { if (Math.abs(dx) > 4) drag.moved = true; drag.x = ev.clientX; return; }
-      if (Math.abs(dx) > 4) drag.moved = true;
+      var dy = ev.clientY - drag.y;
+      // Vertical on touch: a stack you thumb through wants the axis your thumb
+      // travels. Horizontal on a mouse, which is what the deck was built for.
+      var d = drag.touch ? dy : dx;
+      if (Math.abs(d) > 4) {
+        drag.moved = true;
+        // Movement this early is a swipe, not a hold — let the record go.
+        if (carry.timer) { clearTimeout(carry.timer); carry.timer = null; }
+      }
+      if (mode !== 'box') { drag.x = ev.clientX; drag.y = ev.clientY; return; }
       // Same coupling the crate used for its spin, retargeted at the flip so
       // the momentum feel carries over rather than being re-invented.
-      drag.vel = -dx * 0.010;
-      flip += -dx * 0.020;
+      drag.vel = -d * 0.010;
+      flip += -d * 0.020;
       clampFlip();
       drag.x = ev.clientX;
       drag.y = ev.clientY;
     }
 
-    function onUp() {
+    function onUp(ev) {
       if (!drag.on) return;
       drag.on = false;
+      if (carry.timer) { clearTimeout(carry.timer); carry.timer = null; }
+
+      if (carry.on) {
+        var rec = carry.rec;
+        var over = ev && castAt(ev, [tt.group]).length;
+        carry.rec = null;
+        carry.on = false;
+        // Dropped on the deck it plays; dropped anywhere else it goes back,
+        // which the returning path already animates.
+        if (over) playRecord(rec);
+        else { rec.userData.returning = true; setHint(); }
+        return;
+      }
+
       if (drag.moved || !drag.hit) return;
       if (mode === 'heart') {
         if (drag.hit.kind === 'record' && opts.onInspect) opts.onInspect(drag.hit.record.userData.src);
         return;
       }
       if (drag.hit.kind === 'player') { stopRecord(); return; }
+      // On touch a record is played by carrying it, so a tap on one is only
+      // ever a request to look at it once it is already on the deck.
+      if (drag.touch && drag.hit.kind === 'record' && drag.hit.record !== seated) return;
       playRecord(drag.hit.record);
     }
 
@@ -487,10 +660,17 @@
     var hint = document.getElementById('crateHint');
     function setHint() {
       if (!hint) return;
-      if (mode === 'heart') hint.textContent = 'twenty-nine of them · tap any one to see it';
+      // The hint has to teach the gesture the device in hand actually has,
+      // otherwise it is telling her to do something that will not work.
+      var touch = coarsePointer();
+      if (mode === 'heart') hint.textContent = 'every one of them · tap any one to see it';
+      else if (carry.on) hint.textContent = 'drop it on the deck to play it';
       else if (seated) hint.textContent = 'tap it again to see it · tap the deck to stop';
-      else if (playedCount === 0) hint.textContent = 'drag to flip through · tap one to play it';
-      else hint.textContent = playedCount + ' of ' + records.length + ' played';
+      else if (playedCount === 0) {
+        hint.textContent = touch
+          ? 'swipe up and down to flip through · hold one and carry it to the deck'
+          : 'drag to flip through · tap one to play it';
+      } else hint.textContent = playedCount + ' of ' + records.length + ' played';
     }
     setHint();
 
@@ -505,7 +685,7 @@
     container.appendChild(next);
 
     // An escape hatch to the finale, so the heart is not locked behind
-    // twenty-nine taps. A gift should never hold someone hostage to its own
+    // one tap per record. A gift should never hold someone hostage to its own
     // completion state.
     var heartBtn = document.createElement('button');
     heartBtn.className = 'letter-next crate-heart-btn';
@@ -556,6 +736,17 @@
           tmpQ.setFromAxisAngle(Z_AXIS, u.tilt);
           r.quaternion.slerp(tmpQ, reduce ? 1 : decay(3.2, dt));
           if (!reduce) r.position.y = u.home.y + Math.sin(t * 0.9 + u.bob) * 0.045;
+          return;
+        }
+
+        // A record being carried tracks the finger, and has to be tested before
+        // the platter: it may well be over the deck on its way there, and it is
+        // not seated until it is let go.
+        if (carry.on && r === carry.rec) {
+          r.position.lerp(carry.pos, reduce ? 1 : decay(14, dt));
+          r.scale.lerp(tmpV.setScalar(CARRY_SCALE), reduce ? 1 : decay(10, dt));
+          tmpQ.setFromAxisAngle(X_AXIS, 0);
+          r.quaternion.slerp(tmpQ, reduce ? 1 : decay(10, dt));
           return;
         }
 
@@ -648,9 +839,29 @@
           seated: seated ? seated.userData.index : -1,
           platter: tt.platter.rotation.y,
           playing: tt.isPlaying(),
+          touch: coarsePointer(),
+          carrying: carry.on ? carry.rec.userData.index : -1,
           atHome: records.filter(function (r) {
             return r.position.distanceTo(r.userData.home) < 0.4;
           }).length
+        };
+      },
+      /** Client coordinates of a record in the stack, and of the deck, so the
+          walkthrough can press, carry and drop the real things. */
+      recordScreen: function (i) {
+        var rect = renderer.domElement.getBoundingClientRect();
+        var p = records[i].getWorldPosition(new THREE.Vector3()).project(camera);
+        return {
+          x: rect.left + (p.x * 0.5 + 0.5) * rect.width,
+          y: rect.top + (-p.y * 0.5 + 0.5) * rect.height
+        };
+      },
+      deckScreen: function () {
+        var rect = renderer.domElement.getBoundingClientRect();
+        var p = tt.seatWorld(new THREE.Vector3()).project(camera);
+        return {
+          x: rect.left + (p.x * 0.5 + 0.5) * rect.width,
+          y: rect.top + (-p.y * 0.5 + 0.5) * rect.height
         };
       }
     };
@@ -815,6 +1026,9 @@
       c.addEventListener('click', function (e) {
         e.stopPropagation();
         if (mode !== 'bin') { if (opts.onInspect) opts.onInspect(src); return; }
+        // On touch a record reaches the deck by being carried there, so the
+        // click that ends a carry — or a flick — must not also play it.
+        if (coarsePointer()) return;
         play(i);
       });
     });
@@ -822,9 +1036,12 @@
     function paint() {
       if (mode === 'heart') return;
       cards.forEach(function (c, i) {
+        // A card being carried is following the finger; the stack does not get
+        // to put it back while she is still holding it.
+        if (c.classList.contains('carrying')) return;
         var d = i - flip;
-        // Only the near neighbours are drawn. Twenty-nine overlapping circles
-        // is a blob, not a stack.
+        // Only the near neighbours are drawn. Thirty overlapping circles is a
+        // blob, not a stack.
         if (d < -2.5 || d > 9) { c.style.display = 'none'; return; }
         c.style.display = '';
         var up, scale, dim;
@@ -882,15 +1099,18 @@
       carton.style.display = 'none';
       // The deck's gone, so the bin gets the room it was leaving for it.
       wrap.classList.add('is-heart');
-      var MASK2 = [[0,1,2,4,5,6],[0,1,2,3,4,5,6],[0,1,2,3,4,5,6],[1,2,3,4,5],[2,3,4],[3]];
-      var slots = [];
-      MASK2.forEach(function (cols, r) { cols.forEach(function (c) { slots.push({ r: r, c: c }); }); });
+      // The same mask the WebGL path flies to, rather than a second copy of it
+      // that has to be remembered whenever the first one changes.
+      var mask = heartMask(cards.length) || { cells: [], cols: 1, rows: 1 };
+      bin.style.setProperty('--flat-cols', mask.cols);
+      bin.style.setProperty('--flat-rows', mask.rows);
       cards.forEach(function (c, i) {
-        var s = slots[i % slots.length];
+        var s = mask.cells[i];
+        if (!s) { c.style.display = 'none'; return; }
         c.style.display = '';
         c.className = 'flat-card in-heart';
-        c.style.left = (s.c * (100 / 7) + 1.2) + '%';
-        c.style.top = (s.r * (100 / 6) + 1.2) + '%';
+        c.style.left = (s.c * (100 / mask.cols) + 1.2) + '%';
+        c.style.top = (s.r * (100 / mask.rows) + 1.2) + '%';
         c.style.transitionDelay = (i * 34) + 'ms';
         c.style.transform = 'none';
         c.style.opacity = '1';
@@ -902,22 +1122,82 @@
       setHint();
     }
 
-    // Drag to flip, with the same 4px threshold the rest of the piece uses.
+    /* Drag to flip, and — on touch — hold to carry a record to the deck. The
+       flat build offers the same two gestures as the WebGL one, because it is
+       what someone gets when their phone will not give us a canvas, and a
+       fallback that behaves differently is a second thing to learn. */
+    var HOLD_MS = 200;
     var d = null;
+    var carry = null;
+
+    function carryAt(e) {
+      var r = bin.getBoundingClientRect();
+      carry.card.style.left = (e.clientX - r.left - carry.w / 2) + 'px';
+      carry.card.style.top = (e.clientY - r.top - carry.w / 2) + 'px';
+    }
+
+    function carryStop() {
+      if (!carry) return;
+      var c = carry.card;
+      c.classList.remove('carrying');
+      c.style.left = ''; c.style.top = '';
+      carry = null;
+      paint();
+    }
+
     bin.addEventListener('pointerdown', function (e) {
-      d = { x: e.clientX, moved: false };
+      d = { x: e.clientX, y: e.clientY, moved: false, touch: coarsePointer(), timer: null };
       try { bin.setPointerCapture(e.pointerId); } catch (err) {}
+      if (!d.touch || mode !== 'bin') return;
+      // Whichever card is under the finger, which is the one the stack is
+      // showing at the front unless she reached past it.
+      var el = document.elementFromPoint(e.clientX, e.clientY);
+      while (el && el !== bin && !el.classList.contains('flat-card')) el = el.parentElement;
+      if (!el || !el.classList.contains('flat-card')) return;
+      var idx = cards.indexOf(el);
+      if (idx < 0) return;
+      d.timer = setTimeout(function () {
+        d.timer = null;
+        var r = el.getBoundingClientRect();
+        carry = { card: el, index: idx, w: r.width };
+        el.classList.add('carrying');
+        carryAt(e);
+        setHint();
+        if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) {} }
+      }, HOLD_MS);
     });
+
     bin.addEventListener('pointermove', function (e) {
       if (!d || mode !== 'bin') return;
+      if (carry) { carryAt(e); return; }
       var dx = e.clientX - d.x;
-      if (Math.abs(dx) > 4) d.moved = true;
-      flip = Math.max(0, Math.min(cards.length - 1, flip - dx * 0.055));
+      var dy = e.clientY - d.y;
+      // Vertical on touch, horizontal on a mouse — the same split the WebGL
+      // path makes, so the two builds feel like one piece.
+      var delta = d.touch ? dy : dx;
+      if (Math.abs(delta) > 4) {
+        d.moved = true;
+        if (d.timer) { clearTimeout(d.timer); d.timer = null; }
+      }
+      flip = Math.max(0, Math.min(cards.length - 1, flip - delta * 0.055));
       d.x = e.clientX;
+      d.y = e.clientY;
       paint();
     });
-    function end() {
+
+    function end(e) {
       if (!d) return;
+      if (d.timer) { clearTimeout(d.timer); d.timer = null; }
+      if (carry) {
+        var idx = carry.index;
+        var r = deck.getBoundingClientRect();
+        var over = e && e.clientX >= r.left && e.clientX <= r.right &&
+                   e.clientY >= r.top && e.clientY <= r.bottom;
+        carryStop();
+        d = null;
+        if (over) play(idx);
+        return;
+      }
       if (d.moved) flip = Math.round(flip);
       d = null;
       paint();
@@ -928,10 +1208,15 @@
     var hint = document.getElementById('crateHint');
     function setHint() {
       if (!hint) return;
-      if (mode === 'heart') hint.textContent = 'twenty-nine of them · tap any one to see it';
+      var touch = coarsePointer();
+      if (mode === 'heart') hint.textContent = 'every one of them · tap any one to see it';
+      else if (carry) hint.textContent = 'drop it on the deck to play it';
       else if (playing > -1) hint.textContent = 'tap the record to see it · tap the deck to stop';
-      else if (playedCount === 0) hint.textContent = 'drag to flip through · tap one to play it';
-      else hint.textContent = playedCount + ' of ' + cards.length + ' played';
+      else if (playedCount === 0) {
+        hint.textContent = touch
+          ? 'swipe up and down to flip through · hold one and carry it to the deck'
+          : 'drag to flip through · tap one to play it';
+      } else hint.textContent = playedCount + ' of ' + cards.length + ' played';
     }
 
     var next = document.createElement('button');
@@ -962,8 +1247,18 @@
         });
         return {
           mode: mode, flip: flip, played: playedCount, seated: playing,
-          playing: playing > -1, flat: true, atHome: placed
+          playing: playing > -1, flat: true, atHome: placed,
+          touch: coarsePointer(),
+          carrying: carry ? carry.index : -1
         };
+      },
+      recordScreen: function (i) {
+        var r = cards[i].getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      },
+      deckScreen: function () {
+        var r = deck.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
       }
     };
     return ctx;
