@@ -456,10 +456,12 @@
       var dW = (size.x / 2) / Math.tan(hHalf);
       var d = Math.max(dH, dW) * MARGIN + size.z / 2;
 
-      // Drop the frame by half the reserved slice: the heart rises by the same
-      // amount, and all the slack ends up underneath it where the hint is.
+      // Only shift when height is what the framing is actually up against. On a
+      // portrait phone a wide heart is limited by the width instead, and there
+      // is already slack below it — shifting then would strand it near the top
+      // of a mostly empty screen.
       var visH = 2 * (d - size.z / 2) * Math.tan(vFov / 2);
-      var look = mid.y - (reserve / 2) * visH;
+      var look = dH >= dW ? mid.y - (reserve / 2) * visH : mid.y;
 
       camera.position.set(0, look, d);
       camera.lookAt(0, look, 0);
