@@ -885,3 +885,174 @@ body {
 
 :root[data-calm='true'] .pet-chosen { animation: none; }
 @media (prefers-reduced-motion: reduce) { .pet-chosen { animation: none; } }
+
+/* ---- cycle ---------------------------------------------------------------- */
+
+.cycle-summary {
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+}
+
+.cycle-summary-lead {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  line-height: var(--line-tight);
+}
+
+.cycle-summary-sub {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.cycle-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.cycle-facts dt { font-size: var(--text-xs); color: var(--color-text-muted); }
+.cycle-facts dd { margin-top: 2px; font-size: var(--text-sm); }
+
+/* Set in smaller type than the numbers above it, but never hidden behind a
+   disclosure: an estimate that reads as a fact is the failure mode here. */
+.cycle-disclaimer {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--color-border);
+  font-size: var(--text-xs);
+  line-height: var(--line-body);
+  color: var(--color-text-muted);
+}
+
+/* Day states. Logged bleeding is a fill; everything predicted is an outline,
+   so what happened never looks the same as what is expected. */
+.cal-day[data-flow='true'] {
+  background: var(--color-danger);
+  color: var(--color-accent-text);
+}
+
+.cal-day[data-predicted='true'] {
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-danger);
+}
+
+.cal-day[data-fertile='true'] { background: var(--color-surface-muted); }
+
+.cal-day[data-ovulation='true'] {
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+}
+
+.cycle-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+
+.cal-day[data-selected='true'] .cycle-dot { background: var(--color-accent-text); }
+
+.cycle-legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.cycle-legend li { display: flex; align-items: center; gap: 6px; }
+
+.cycle-key {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  flex: none;
+}
+
+.cycle-key-flow { background: var(--color-danger); }
+.cycle-key-predicted { box-shadow: inset 0 0 0 var(--border-width) var(--color-danger); }
+.cycle-key-fertile { background: var(--color-surface-muted); }
+.cycle-key-logged { background: var(--color-text-muted); }
+
+.cycle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.cycle-group {
+  margin-top: var(--space-4);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.cycle-hint { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+.cycle-note {
+  width: 100%;
+  margin-top: var(--space-3);
+  resize: vertical;
+  font: inherit;
+}
+
+.cycle-readout {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.cycle-readout strong {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.cal-sheet-day { font-family: var(--font-display); font-size: var(--text-lg); }
+
+.cycle-choice { display: flex; flex-direction: column; gap: var(--space-3); }
+
+.spread { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+
+/* ---- the lock ------------------------------------------------------------- */
+
+.cycle-lock, .cycle-lock-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.cycle-lock-label { font-size: var(--text-xs); color: var(--color-text-muted); }
+.cycle-pin { width: 100%; max-width: 12rem; letter-spacing: 0.35em; }
+.cycle-unlock:disabled { opacity: 0.45; }
+.cycle-lock-error { font-size: var(--text-sm); color: var(--color-danger); }
+.cycle-lock-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
+
+.cycle-lock-settings {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  /* The chat pill floats up out of the shell's bottom padding and would sit
+     squarely on this row's button, which is the last thing on the page. */
+  padding-bottom: 64px;
+  border-top: var(--border-width) solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

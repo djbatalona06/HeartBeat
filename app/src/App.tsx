@@ -7,6 +7,7 @@ import { MoodPage } from './features/mood/MoodPage';
 import { WorkPage } from './features/work/WorkPage';
 import { TasksPage } from './features/tasks/TasksPage';
 import { PartyPage } from './features/party/PartyPage';
+import { CyclePage } from './features/cycle/CyclePage';
 import { ChatPanel } from './features/chat/ChatPanel';
 import { useSync } from './pwa/useSync';
 
@@ -37,6 +38,10 @@ export function App() {
             {/* Not a tab. Six across the bottom is already the ceiling on a
                 phone, and the party is somewhere you go from the sheet. */}
             <Route path="/party" element={<PartyPage />} />
+            {/* Not a tab either, and for a second reason: a seventh label is
+                one too many, and a page that can be locked should not announce
+                itself along the bottom of every other screen. */}
+            <Route path="/cycle" element={<CyclePage />} />
             <Route path="/mood" element={<MoodPage />} />
             <Route path="/exercise" element={<ExercisePage />} />
             <Route path="/work" element={<WorkPage />} />

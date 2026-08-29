@@ -116,26 +116,51 @@ people side by side, and columns compare more readably than stacked bars.
 
 ## Cycle
 
-Ported from [lunara](https://github.com/djbatalona06/lunara), which is the
-highest-value reuse available: its engine is pure, dependency-free and heavily
-tested, including a seeded fuzz audit.
+Built, in `app/src/domain/cycle/` and `app/src/features/cycle/`.
 
-Take:
+This was originally planned as a port from
+[lunara](https://github.com/djbatalona06/lunara). It is not one. lunara is
+AGPL-3.0 and other people's work, and this repository is MIT — copying its
+engine in would have made the licence a false statement about the contents. So
+the engine here is written from the method rather than from the source, and
+`NOTICE.md` records the distinction.
 
-- `engine/cycle.ts` — `predict()`, fertile window, and `uncertaintyDays` clamped
-  to 2–9 days. The clamp matters: a confident-looking single-day prediction from
-  three cycles of history is a lie.
-- `engine/cycleForecast.ts` — median/MAD forecast with data-quality exclusions.
-- The `DailyLog` shape from `db/schema.ts`, narrowed to what this app collects.
-  **Keep `checkInComplete`** — without it there is no way to distinguish a
-  symptom-free day from a day nobody opened the app, and every downstream
-  average is then wrong in a way nobody notices.
-- `db/taxonomy.ts` for symptom and mood vocabularies.
-- `components/CalendarScreen.tsx` for the month grid and the period-edit mode.
+What survived the change of approach is the shape, because the shape was the
+valuable part:
 
-Cycle entries are authored by whichever member has `tracksCycle` and are
-readable by both. Prediction stays advisory: lunara's standing disclaimer that
-fertility estimates are not contraception carries over verbatim.
+- `predict()` returns the next period start, an ovulation estimate, a fertile
+  window, and `uncertaintyDays` **clamped to 2–9**. The clamp is the point: a
+  confident-looking single-day prediction from three cycles of history is a lie,
+  so the floor holds even when the observed spread is genuinely zero.
+- A median with a median absolute deviation, not a mean with a standard
+  deviation — one illness or one mistyped date should not move the estimate.
+- Luteal anchoring where there is ovulation evidence inside the current cycle,
+  calendar projection otherwise.
+- **`checkInComplete` is stored**, which is what distinguishes a symptom-free day
+  from a day nobody opened the app. Without it every downstream average is wrong
+  in a way nobody notices.
+- Cycles outside 15–90 days are excluded as data entry rather than biology, and
+  a history that stopped more than 90 days ago stops forecasting rather than
+  extrapolating.
+
+`periodStartsFrom()` reads starts out of the log rather than requiring them to
+be flagged, tolerating a one-day gap so an unlogged light day does not split one
+period into two and halve the cycle length that gets averaged.
+
+Whether this device's owner logs or reads is `Settings.tracksCycle` — identity
+in this app is a device with a `memberId` in settings, and the `members` table
+has never been written to. Entries reach the other phone through the ordinary
+entry sync, so they are readable by both halves of the couple and by nobody
+else.
+
+The page carries a PIN lock, stretched with PBKDF2 rather than hashed once: a
+four-digit space is ten thousand guesses. It re-locks whenever the app leaves
+the foreground, and the salt and hash live in settings — the one table sync does
+not carry — so the lock is per-device and unlocking here does not unlock the
+other phone.
+
+Prediction stays advisory, and says so on the page: a fertile window is not
+contraception.
 
 ## Themes
 
@@ -316,9 +341,11 @@ would serve it an hour late for the eight months Pacific is on daylight time.
 
 1. Settings: pairing UI, theme picker, partner display — nothing else works
    until two phones are joined
-2. Sync client: push local entries, pull the couple's, reconcile last-write-wins
-3. Mood screen — the smallest complete feature, and the one used most often
-4. Exercise, with camera capture
-5. Cycle: port the lunara engine and calendar
-6. Work: calendar file import
+2. ~~Sync client: push local entries, pull the couple's, reconcile
+   last-write-wins~~ — done
+3. ~~Work: the shared calendar~~ — done
+4. ~~Cycle: the engine, the calendar and the lock~~ — done, though written
+   rather than ported; see above
+5. Mood screen — the smallest complete feature, and the one used most often
+6. Exercise, with camera capture
 7. Quests, achievements, and push delivery

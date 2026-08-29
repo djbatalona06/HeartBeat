@@ -187,10 +187,11 @@ such as `https://*.heartbeat.pages.dev` for preview deploys.
 | Repo, build, CI, deploy | Done |
 | Theme engine, 5 packs, contrast tests | Done |
 | Data model, Dexie schema, D1 schema | Done |
-| Pairing (invite link), entry sync | Worker done, client next |
+| Pairing (invite link), entry sync | Done |
 | Dashboard grid and pet XP bar | Done |
-| Mood / Exercise / Work screens | Next |
-| Cycle tracking (ported from lunara) | Next |
+| Work screen | Done |
+| Cycle screen, forecast and PIN lock | Done |
+| Mood / Exercise screens | Next |
 | Quests, achievements, push reminders | After that |
 
 [`docs/DESIGN.md`](docs/DESIGN.md) is the spec for what remains, and explains why

@@ -161,6 +161,16 @@ export interface Settings {
   /** Set when the cycle page is locked; see features/cycle/lock.ts. */
   cyclePinSalt?: string;
   cyclePinHash?: string;
+  /**
+   * Whether this device's owner logs a cycle, rather than reading their
+   * partner's. Undefined until asked — which is different from "no", because
+   * "no" is an answer and undefined is a question not yet put.
+   *
+   * It lives here rather than on Member because identity in this app is a
+   * device with a memberId in settings; the members table has never been
+   * written to.
+   */
+  tracksCycle?: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
