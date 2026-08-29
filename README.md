@@ -124,7 +124,7 @@ index.html  landing page                     ->  GitHub Pages
 app/        Vite + React + TypeScript PWA    ->  Cloudflare Pages
 worker/     Cloudflare Worker + D1           ->  pairing, sync, push
 gift/       the birthday piece               ->  one self-contained HTML file
-docs/       design spec
+docs/       design spec + deploy guide
 ```
 
 ## Local development
@@ -144,41 +144,22 @@ Every write goes through `app/src/db/repository.ts`; components call those
 functions and let the Dexie live query re-render. Nothing in `features/` touches
 the database directly.
 
-## Deploying the app
+## Deploying
 
-Cloudflare Pages, via `.github/workflows/deploy.yml`, on pushes to `main`.
+The app splits across three independent deploy targets — Cloudflare Pages
+(`app/`, automated via `.github/workflows/deploy.yml` on push to `main`), a
+Cloudflare Worker (`worker/`, manual — no workflow deploys it), and GitHub
+Pages (this landing page and `gift/`, automated via
+`.github/workflows/static.yml`). Both Cloudflare pieces bind the same D1
+database.
 
-Create an API token at **Cloudflare → My Profile → API Tokens** with the
-**Cloudflare Pages: Edit** permission, then add two repository secrets under
-**Settings → Secrets and variables → Actions**:
-
-| Secret | Where to find it |
-|---|---|
-| `CLOUDFLARE_API_TOKEN` | the token you just created |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare dashboard sidebar, or `npx wrangler whoami` |
+[`docs/DEPLOY.md`](docs/DEPLOY.md) is the full walkthrough: creating the D1
+database, applying migrations, setting Worker secrets, the GitHub Actions
+secrets Pages needs, and a troubleshooting section for the usual failure
+modes.
 
 CI (`.github/workflows/ci.yml`) is separate, runs on every pull request, and
 involves no deploy credentials.
-
-## Deploying the Worker
-
-Needed for pairing and notifications.
-
-```bash
-cd worker
-npx wrangler d1 create heartbeat      # paste the id into wrangler.toml
-npm run db:remote                     # apply migrations
-
-npx wrangler secret put VAPID_PUBLIC_KEY
-npx wrangler secret put VAPID_PRIVATE_KEY
-
-npm run deploy
-```
-
-If you host the app anywhere other than `heartbeat.pages.dev`, update
-`ALLOWED_ORIGIN` in `worker/wrangler.toml` or the browser will block every
-request. It takes a comma-separated list and accepts a single-label wildcard
-such as `https://*.heartbeat.pages.dev` for preview deploys.
 
 ## Status
 
