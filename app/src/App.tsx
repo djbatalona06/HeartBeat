@@ -8,6 +8,7 @@ import { WorkPage } from './features/work/WorkPage';
 import { TasksPage } from './features/tasks/TasksPage';
 import { PartyPage } from './features/party/PartyPage';
 import { ChatPanel } from './features/chat/ChatPanel';
+import { useSync } from './pwa/useSync';
 
 const TABS = [
   { to: '/', label: 'Home', glyph: '♥' },
@@ -19,6 +20,10 @@ const TABS = [
 ];
 
 export function App() {
+  // Reconciles the day log with the other phone. Mounted here rather than in a
+  // page so it keeps running whichever tab is open.
+  useSync();
+
   return (
     <ThemeProvider>
       <ThemeBackdrop />

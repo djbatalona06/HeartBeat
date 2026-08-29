@@ -147,6 +147,20 @@ export interface Settings {
   vapidPublicKey?: string;
   pushEndpoint?: string;
   onboarded: boolean;
+  /**
+   * Sync watermarks.
+   *
+   * `syncPushedAt` is a local clock reading: rows edited after it have not been
+   * sent. `syncPulledAt` is the server's own cursor, echoed back from the rows
+   * it served — never a local timestamp, because a phone whose clock is a
+   * minute fast would otherwise ask for changes since a future moment and skip
+   * everything the other phone wrote in between.
+   */
+  syncPushedAt?: number;
+  syncPulledAt?: number;
+  /** Set when the cycle page is locked; see features/cycle/lock.ts. */
+  cyclePinSalt?: string;
+  cyclePinHash?: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
