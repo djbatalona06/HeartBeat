@@ -2,6 +2,9 @@ name = "heartbeat-api"
 main = "src/index.ts"
 compatibility_date = "2024-12-30"
 
+[observability.traces]
+enabled = true
+
 # Every minute: the finest granularity Cron Triggers offer, and what keeps a
 # 07:00 reminder landing at 07:00 rather than up to an hour late.
 [triggers]
