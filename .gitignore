@@ -2,6 +2,7 @@ node_modules/
 dist/
 .wrangler/
 .shots/
+.claude/worktrees/
 *.local
 .DS_Store
 .dev.vars
