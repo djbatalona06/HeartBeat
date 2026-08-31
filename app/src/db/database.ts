@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type {
   Achievement, ChatMessage, CycleEntry, ExerciseEntry, Member, MoodEntry, Pet, Quest, Settings,
-  WorkEvent,
+  WorkEvent, WorkoutPhoto,
 } from '../domain/types';
 import { DEFAULT_SETTINGS } from '../domain/types';
 import type { Avatar, LifeEvent, Redemption, Reward, Task } from '../domain/rpg/types';
@@ -34,6 +34,9 @@ export class HeartBeatDB extends Dexie {
 
   // v3 — companions.
   pets!: Table<PetInstance, string>;
+
+  // v5 — camera proof.
+  workoutPhotos!: Table<WorkoutPhoto, string>;
 
   constructor() {
     super('heartbeat');
@@ -76,6 +79,12 @@ export class HeartBeatDB extends Dexie {
       // Read one way only — this couple's thread, oldest first — so createdAt
       // is the index that matters. It doubles as the sync cursor.
       messages: 'id, coupleId, createdAt, [coupleId+createdAt]',
+    });
+
+    // v5 adds workout photos. Kept out of the entry rows on purpose: the sync
+    // payload cap is measured in kilobytes and a photograph is not.
+    this.version(5).stores({
+      workoutPhotos: 'id, memberId, day, [memberId+day]',
     });
   }
 }

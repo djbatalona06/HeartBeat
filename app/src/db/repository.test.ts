@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db, loadSettings, saveSettings } from './database';
 import {
   addXp, confirmMessage, draftMessage, mergeMessages, putCycle, putExercise, putMood,
-  putWorkEvent, removeWorkEvent,
+  putWorkEvent, putWorkoutPhoto, removeWorkEvent, removeWorkoutPhoto,
 } from './repository';
 import type { ChatMessage } from '../domain/types';
 
@@ -22,6 +22,7 @@ beforeEach(async () => {
   await Promise.all([
     db.moods.clear(), db.exercises.clear(), db.cycles.clear(),
     db.work.clear(), db.messages.clear(), db.pet.clear(), db.settings.clear(),
+    db.workoutPhotos.clear(),
   ]);
 });
 
