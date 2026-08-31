@@ -102,14 +102,64 @@ privacy claim in the README true, and avoids R2 entirely.
 
 ## Dashboard
 
-Four tiles in a 2×2 grid, plus the pet's XP bar above them.
+The mascot in the centre, six circular doors evenly spaced around it, and the
+pet's XP bar underneath. It replaced a 2×2 grid that had grown to five tiles
+and left the fifth one a half-width orphan.
 
-| Tile | Contents |
+| Door | Contents |
 |---|---|
-| Settings | Pairing state, theme picker, partner name and photo, calendar |
-| Exercise | Workout log; camera proof front and back |
 | Mood | Vertical 1–10 meters for hunger, joy, moody — both partners |
+| Move | Workout log; camera proof front and back |
 | Work | Shared calendar, populated by file import |
+| Cycle | Period tracking, optionally behind a PIN |
+| Party | Party sheet: gear, pets, the boss fight |
+| Settings | Pairing state, theme picker, partner name and photo, calendar |
+
+Six is the ceiling — past that the bubbles crowd the pet and the ring stops
+reading as a ring. The right-hand arc is what you did today, the left-hand arc
+is everything else, and Party takes the sixth slot because it is the only route
+with neither a tab nor another door on this screen.
+
+**The geometry is `features/dashboard/layout.ts`, and it is pure.** The page
+measures its own box with a `ResizeObserver` and hands the numbers over;
+`ringLayout` gives back a centre, a radius, a mascot diameter and one slot per
+door, and reports `fits: false` rather than quietly overlapping when the box is
+too small. That split is the only reason the spacing can be tested at all —
+Vitest runs in `environment: 'node'` and never sees a `.tsx` file. Bubble size
+is `--tap` plus `--space-5`, read off the document rather than typed in, so the
+48px tap floor holds wherever the tokens move.
+
+**The mascot follows the theme, not the couple.** Theme already lives in
+`localStorage` per device, so the two phones show different pets by
+construction — which is what was asked for. `features/pet/mascots/` is a
+registry keyed by `Theme.id` with the same fallback `getTheme` uses, kept
+beside the theme engine rather than as a field on `Theme`: a theme is a
+palette, a mascot is a drawing only one screen shows, and hanging one off the
+other would put a React component in every pack.
+
+| Theme | Mascot |
+|---|---|
+| kitty | **Mochi**, a cream ribbon cat |
+| sponge | **Marigold**, a yellow sea sponge |
+| shinobi | **Foxglove**, an ink fox |
+| avatar | **Cirrus**, a cloud serpent |
+| pony | **Wishbell**, a lilac unicorn |
+
+Every one is an original: original geometry, drawn as inline SVG from ellipses,
+triangles and computed star paths, coloured entirely from `var(--color-*)` so
+each follows its own palette. Each belongs to its theme's *spirit* and to
+nothing more specific than that, and `mascots/roster.test.ts` guards the names
+the same way `pets.test.ts` guards the sixteen collectibles. Canvas was not an
+option: `themes/useCanvasLoop.ts` is wired to `window.innerWidth/innerHeight`,
+so a canvas inside a card would render at full window size and clip.
+
+`Pet.mood` had been written by `addXp` since the beginning and read by nothing.
+It is what picks the pose — four moods, four faces — so the pose costs no new
+state. The idle breathing stops under calm mode and under reduced motion.
+
+The level shown is always `levelProgress(pet.xp).level`. `Pet.level` is carried
+forward by whoever last wrote the row and never recomputed, so rendering it
+would eventually show a number the XP disagrees with.
 
 Meters are vertical rather than horizontal because the point is comparing two
 people side by side, and columns compare more readably than stacked bars.
