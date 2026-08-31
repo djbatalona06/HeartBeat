@@ -12,11 +12,23 @@ export const DEFAULT_TIMEZONE = 'America/Los_Angeles';
 export type MemberId = string;
 export type CoupleId = string;
 
+/**
+ * One half of the couple: a name, a face, and which of the two they are.
+ *
+ * Both rows live on both phones — mine written when I edit it, theirs written
+ * from whatever /api/profile served — so the partner's name and photo render
+ * offline like everything else. Newer `updatedAt` wins, the same rule sync uses
+ * for every other row.
+ */
 export interface Member {
   id: MemberId;
   coupleId: CoupleId;
   displayName: string;
-  /** Set by whoever installed first; decides who sees the cycle inputs. */
+  /**
+   * Mirrors `Settings.tracksCycle`, which is the one that decides anything.
+   * Cycle ownership is a property of a device — the phone holding the PIN —
+   * so it is answered in settings and only copied here for display.
+   */
   tracksCycle: boolean;
   photoDataUri?: string;
   updatedAt: number;
@@ -140,7 +152,14 @@ export interface Settings {
   coupleId?: CoupleId;
   memberId?: MemberId;
   timeZone: string;
+  /**
+   * The durable copy of the theme choice. ThemeProvider reads and writes
+   * `localStorage['heartbeat.theme']` so the first paint needs no async read;
+   * this row is what survives that being cleared, and the two are reconciled
+   * on the Settings screen — see features/settings/theme.ts.
+   */
   themeId: string;
+  /** Same arrangement: the picker holds it in React state, this outlives it. */
   calmMode: boolean;
   workerUrl?: string;
   workerSecret?: string;
@@ -167,10 +186,17 @@ export interface Settings {
    * "no" is an answer and undefined is a question not yet put.
    *
    * It lives here rather than on Member because identity in this app is a
-   * device with a memberId in settings; the members table has never been
-   * written to.
+   * device with a memberId in settings. `Member.tracksCycle` mirrors this
+   * value and is never read for a decision; this field is the answer.
    */
   tracksCycle?: boolean;
+  /**
+   * The invite this phone last issued, kept so a reload does not lose a code
+   * that is still good — the countdown on the Settings screen is drawn from
+   * `pendingInviteExpiresAt`, not from when the component happened to mount.
+   */
+  pendingInvite?: string;
+  pendingInviteExpiresAt?: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
