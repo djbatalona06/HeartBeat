@@ -52,6 +52,18 @@ function clampSide(value: number): number {
 }
 
 /**
+ * Like `clampSide`, but never rounds up.
+ *
+ * Scaling to exactly the pixel ceiling and then rounding each side to nearest
+ * can land the product back above it — a 48 MP frame comes out 541 pixels over.
+ * That is the one outcome this budget exists to prevent, since Safari answers an
+ * oversized canvas with a silently blank one, so the area path floors instead.
+ */
+function floorSide(value: number): number {
+  return Math.max(1, Math.floor(value));
+}
+
+/**
  * Scales a size so neither side exceeds `longEdge`, keeping the aspect ratio.
  * An image already smaller than the target is left alone rather than blown up:
  * upscaling costs bytes and adds nothing.
@@ -78,7 +90,7 @@ export function fitPixelBudget(size: Size, maxPixels: number = MAX_CANVAS_PIXELS
     return { width: clampSide(size.width), height: clampSide(size.height) };
   }
   const scale = Math.sqrt(maxPixels / (size.width * size.height));
-  return { width: clampSide(size.width * scale), height: clampSide(size.height * scale) };
+  return { width: floorSide(size.width * scale), height: floorSide(size.height * scale) };
 }
 
 /**
