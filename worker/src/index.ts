@@ -8,6 +8,7 @@ import {
   readySlots,
   type BossState,
 } from './boss';
+import { drainNudges, prepareVapid } from './push';
 
 export interface Env {
   DB: D1Database;
@@ -405,8 +406,7 @@ export default {
   },
 
   async scheduled(_event: ScheduledController, env: Env): Promise<void> {
-    // Delivery is the next piece of work; see docs/DESIGN.md. Until Web Push is
-    // wired up, expire stale invites so a leaked link cannot be redeemed late.
+    // Expire stale invites so a leaked link cannot be redeemed late.
     const now = Date.now();
     await env.DB.prepare('DELETE FROM invites WHERE expires_at < ? AND consumed_at IS NULL')
       .bind(now)
@@ -419,5 +419,25 @@ export default {
       `UPDATE boss_fights SET state = 'lost', ended_at = ?, updated_at = ?
         WHERE state = 'fighting' AND deadline_at IS NOT NULL AND deadline_at < ?`,
     ).bind(now, now, now).run();
+
+    // Deliver whatever is due. Without VAPID keys configured the Worker still
+    // runs — pairing, sync and the boss fight do not need push — so a missing
+    // key is a quiet no-op rather than a crashing cron, and `/health` already
+    // reports `push: false` so the omission is visible.
+    const vapid = await prepareVapid({
+      subject: env.VAPID_SUBJECT,
+      publicKey: env.VAPID_PUBLIC_KEY,
+      privateKey: env.VAPID_PRIVATE_KEY,
+    }).catch((error) => {
+      console.error('VAPID keys are set but unusable', error);
+      return null;
+    });
+    if (!vapid) return;
+
+    const summary = await drainNudges(env.DB, vapid, {
+      nowMs: now,
+      onError: (message, error) => console.error(message, error),
+    });
+    if (summary.claimed > 0) console.log('push drain', summary);
   },
 };
