@@ -1056,3 +1056,183 @@ body {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
+
+/* ---- mood ------------------------------------------------------------------
+   Two columns of three meters, and one way to fill them in. The columns get the
+   room and the weight; the sliders below them are deliberately the only other
+   thing on the page. Nothing here is coloured as a warning — an unsaved day and
+   an unlogged one are both only sentences not finished yet. */
+
+.mood-summary {
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+}
+
+.mood-day {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.mood-lead {
+  margin-top: var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: var(--line-tight);
+}
+
+.mood-sub {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+  color: var(--color-text-muted);
+}
+
+.mood-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+/* Before pairing there is no second column to fill, so the invitation takes the
+   room rather than an empty set of tracks standing in for a person. */
+.mood-compare[data-paired='false'] { grid-template-columns: auto 1fr; }
+
+.mood-column {
+  padding: var(--space-4) var(--space-3);
+  text-align: center;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+}
+
+/* Mid-edit the column shows a draft rather than what is stored. Marked in the
+   accent rather than a warning colour: unsaved is not a mistake. */
+.mood-column[data-unsaved='true'] { border-color: var(--color-accent); }
+.mood-column[data-unsaved='true'] .mood-state { color: var(--color-accent); }
+
+.mood-who {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  line-height: var(--line-tight);
+}
+
+.mood-meters {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.mood-state {
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.mood-invite {
+  align-self: center;
+  padding: var(--space-4);
+  border: var(--border-width) dashed var(--color-border);
+  border-radius: var(--radius-large);
+}
+
+.mood-invite-lead { font-size: var(--text-sm); line-height: var(--line-tight); }
+
+.mood-invite-sub {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  line-height: var(--line-body);
+  color: var(--color-text-muted);
+}
+
+.mood-invite a { color: var(--color-accent); }
+
+.mood-set { margin-top: var(--space-4); }
+
+.mood-set-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.mood-set-label { display: block; font-size: var(--text-sm); }
+
+.mood-set-word {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  color: var(--color-accent);
+}
+
+/* Before a slider is touched there is no word to say, and a neutral one would
+   be inventing an answer. */
+.mood-set-word[data-set='false'] { font-family: var(--font-body); color: var(--color-text-muted); }
+
+.mood-set-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* The only control on the page, so it gets the whole width of it and a thumb
+   big enough to land on without looking. */
+.mood-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: var(--tap);
+  margin: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.mood-slider::-webkit-slider-runnable-track {
+  height: 12px;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+}
+
+.mood-slider::-moz-range-track {
+  height: 12px;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+}
+
+.mood-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -8px;
+  border-radius: 50%;
+  border: var(--border-width) solid var(--color-surface);
+  background: var(--color-accent);
+}
+
+.mood-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: var(--border-width) solid var(--color-surface);
+  background: var(--color-accent);
+}
+
+.mood-slider:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.mood-note { margin-top: var(--space-2); resize: vertical; line-height: var(--line-body); }
+
+/* Calm mode stills the columns. Reduced motion is already handled globally. */
+:root[data-calm='true'] .mood-meters .meter-fill { transition: none; }
