@@ -31,14 +31,18 @@ without the Home Screen step.
 
 ## What's on it
 
-The home screen is a grid of four, plus your pet.
+The home screen is your pet, in the middle, with six doors evenly spaced in a
+ring around it. A door wears a dot when there is something logged behind it
+today, and says nothing otherwise.
 
-| Tile | What it holds |
+| Door | What it holds |
 |---|---|
-| **Settings** | Pairing, the theme picker, your partner's name and photo, calendar |
-| **Exercise** | A workout log, and camera proof — front and back — that you did it |
 | **Mood** | Three sliders, 1–10: hunger, joy, moody. Both of you, side by side |
+| **Move** | A workout log, and camera proof — front and back — that you did it |
 | **Work** | A shared calendar, filled from a file you export from your own |
+| **Cycle** | Period tracking, behind its own PIN if you want one |
+| **Party** | The two of you as a party: gear, pets, and the boss you are fighting |
+| **Settings** | Pairing, the theme picker, your partner's name and photo, calendar |
 
 The **pet** is the point. It gains XP when either of you logs something, and
 levels up on quests that get set from a few questions during setup. Rep ranges,
