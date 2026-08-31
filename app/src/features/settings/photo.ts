@@ -49,8 +49,10 @@ export interface CoverBox {
 export function coverBox(width: number, height: number, max = PHOTO_MAX_PX): CoverBox {
   const edge = Math.max(1, Math.min(width, height));
   return {
-    sx: Math.floor((width - edge) / 2),
-    sy: Math.floor((height - edge) / 2),
+    // Clamped at zero: a degenerate size makes `edge` larger than the image, and
+    // a negative offset asks drawImage to sample from outside it.
+    sx: Math.max(0, Math.floor((width - edge) / 2)),
+    sy: Math.max(0, Math.floor((height - edge) / 2)),
     edge,
     // Never upscaled — enlarging a small photo costs bytes and adds nothing.
     target: Math.max(1, Math.min(max, edge)),

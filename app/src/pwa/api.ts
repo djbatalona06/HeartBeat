@@ -113,3 +113,42 @@ export async function health(): Promise<{ ok: boolean; db: boolean; ai: boolean 
     return null;
   }
 }
+
+/** One half of the couple, as /api/profile serves it. */
+export interface WireMember {
+  id: string;
+  coupleId: string;
+  displayName: string;
+  tracksCycle: boolean;
+  photoDataUri?: string;
+  updatedAt: number;
+  mine: boolean;
+}
+
+/** Both members of the caller's couple, newest server copy. */
+export async function fetchProfiles(token: string): Promise<WireMember[]> {
+  const res = await fetch('/api/profile', { headers: authHeaders(token) });
+  if (!res.ok) throw await errorFrom(res);
+  return ((await res.json()) as { members: WireMember[] }).members;
+}
+
+/**
+ * Updates my own row and returns both, so the caller never has to fetch again
+ * to find out what the other side looks like now.
+ *
+ * `photoDataUri: null` clears the photo; omitting it leaves whatever is there.
+ * The two cases are different on purpose — saving a new name must not quietly
+ * delete a face.
+ */
+export async function putProfile(
+  token: string,
+  patch: { displayName?: string; photoDataUri?: string | null },
+): Promise<WireMember[]> {
+  const res = await fetch('/api/profile', {
+    method: 'PUT',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw await errorFrom(res);
+  return ((await res.json()) as { members: WireMember[] }).members;
+}
