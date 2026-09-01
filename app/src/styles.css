@@ -48,29 +48,34 @@ body {
   z-index: 1;
   min-height: 100%;
   padding:
-    calc(env(safe-area-inset-top) + 20px)
-    calc(env(safe-area-inset-right) + 18px)
-    calc(env(safe-area-inset-bottom) + 92px)
-    calc(env(safe-area-inset-left) + 18px);
-  max-width: 560px;
+    calc(env(safe-area-inset-top) + var(--shell-top))
+    calc(env(safe-area-inset-right) + var(--shell-gutter))
+    calc(env(safe-area-inset-bottom) + var(--shell-bottom))
+    calc(env(safe-area-inset-left) + var(--shell-gutter));
+  max-width: var(--shell-max);
   margin: 0 auto;
 }
 
-.page-head { margin-bottom: 22px; }
+/* The rhythm between stacked cards, set once here rather than as a margin each
+   section remembers for itself. */
+.page > * + * { margin-top: var(--stack); }
+
+.page-head { margin-bottom: var(--space-5); }
 
 .page-title {
   font-family: var(--font-display);
   font-weight: var(--font-display-weight, 400);
   letter-spacing: var(--font-display-tracking, 0);
   text-transform: var(--font-display-transform, none);
-  font-size: clamp(28px, 7vw, 38px);
-  line-height: 1.1;
+  font-size: var(--text-2xl);
+  line-height: var(--line-tight);
 }
 
 .page-sub {
-  margin-top: 6px;
+  margin-top: var(--space-2);
   color: var(--color-text-muted);
-  font-size: 14px;
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
 }
 
 /* ---- the home ring --------------------------------------------------------
@@ -399,7 +404,10 @@ body {
   z-index: 2;
   display: flex;
   justify-content: space-around;
-  padding: 8px 8px calc(env(safe-area-inset-bottom) + 8px);
+  align-items: stretch;
+  /* Height is a token because `.shell` has to leave exactly this much clear. */
+  min-height: var(--tabbar-height);
+  padding: 0 var(--space-2) env(safe-area-inset-bottom);
   background: color-mix(in srgb, var(--color-base) 88%, transparent);
   backdrop-filter: blur(14px);
   border-top: var(--border-width) solid var(--color-border);
@@ -407,10 +415,15 @@ body {
 
 .tab {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 6px 12px;
+  justify-content: center;
+  gap: var(--space-1);
+  /* A real tap target rather than one that happens to be about the right size:
+     six of these are the only way between screens. */
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-1);
   border-radius: var(--radius);
   text-decoration: none;
   color: var(--color-text-muted);
@@ -418,8 +431,9 @@ body {
 }
 
 .tab.active { color: var(--color-accent); }
-.tab-glyph { font-size: 17px; line-height: 1; }
-.tab-label { font-size: 10.5px; }
+.tab-glyph { font-size: var(--text-lg); line-height: 1; }
+/* 12px is the floor the type scale promises, and a tab label carries meaning. */
+.tab-label { font-size: var(--text-xs); line-height: var(--line-tight); }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
@@ -1486,6 +1500,59 @@ body {
   align-items: center;
   gap: var(--space-3);
   min-height: var(--tap);
+/* ---- exercise --------------------------------------------------------------
+   The day stepper, the set grid and the two proof slots.
+
+   The one rule doing real work here is `max-width: 100%` on the shot. A phone
+   photograph is a couple of thousand pixels wide, and without it the image sets
+   the width of the whole document rather than the width of its card — the page
+   scrolls sideways and every other screen inherits the damage. */
+
+.ex-days {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.ex-day {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  letter-spacing: var(--font-display-tracking);
+  min-width: 9ch;
+  text-align: center;
+}
+
+.ex-day-step {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: var(--text-base);
+}
+
+.ex-day-step:disabled { opacity: 0.4; }
+
+/* ---- the sets ---- */
+
+.set-list {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.set-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'name remove' 'numbers numbers';
+  align-items: center;
+  gap: var(--space-2);
   padding: var(--space-3);
   border-radius: var(--radius);
   border: var(--border-width) solid var(--color-border);
@@ -1558,6 +1625,96 @@ body {
 
 /* The picker is opened from the buttons above; the control itself never shows. */
 .who-input {
+}
+
+.set-name { grid-area: name; }
+
+.set-remove {
+  grid-area: remove;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+.set-remove:hover, .set-remove:focus-visible { color: var(--color-danger); }
+
+.set-numbers {
+  grid-area: numbers;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.set-num { display: block; }
+
+.set-num-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.set-total {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.ex-caption { margin-top: var(--space-2); resize: vertical; line-height: var(--line-body); }
+
+/* ---- the proof ---- */
+
+.proof-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.proof { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+
+.proof-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* Without this the photograph, not the card, decides how wide the page is. */
+.proof-shot {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.proof-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius);
+  border: var(--border-width) dashed var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--space-2);
+}
+
+.proof-plus { font-size: var(--text-2xl); line-height: 1; }
+.proof-slot-text { font-size: var(--text-xs); }
+
+/* The native control is never shown; the slot and the actions stand in for it. */
+.proof-input {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1574,3 +1731,26 @@ body {
    default blue, which belongs to no palette here and fails contrast on the
    darker packs. */
 .set-block a { color: var(--color-accent); }
+.proof-actions { display: flex; gap: var(--space-2); }
+
+.proof-action {
+  flex: 1;
+  min-height: var(--tap);
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+}
+
+.proof-action:disabled { opacity: 0.5; }
+
+.proof-size { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+.proof-error {
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+  line-height: var(--line-tight);
+}
+
+.proof[data-busy='true'] { opacity: 0.7; }

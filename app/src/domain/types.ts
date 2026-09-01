@@ -57,9 +57,32 @@ export interface ExerciseEntry {
   memberId: MemberId;
   day: DayKey;
   sets: ExerciseSet[];
+  /** A line about the session, in the person's own words. */
+  caption?: string;
   /** Camera proof, front and back, stored as data URIs on-device. */
   proofFront?: string;
   proofBack?: string;
+  updatedAt: number;
+}
+
+/**
+ * A workout photograph, kept in its own table rather than on the entry row.
+ *
+ * The entry row is what `pwa/sync.ts` sends, and the endpoint refuses a payload
+ * over 64 KiB. A photograph riding along on it would fail the push, and because
+ * the watermark only advances on success it would take mood, cycle and the
+ * calendar down with it — silently. So the photograph lives somewhere sync does
+ * not look.
+ */
+export interface WorkoutPhoto {
+  id: string;
+  memberId: MemberId;
+  day: DayKey;
+  /** Which camera it came from. */
+  facing: 'front' | 'back';
+  /** A downscaled JPEG as a data URI. */
+  dataUri: string;
+  bytes: number;
   updatedAt: number;
 }
 
