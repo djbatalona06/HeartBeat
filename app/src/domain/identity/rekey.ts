@@ -52,8 +52,7 @@ export interface TableRekey {
  *
  * `quests` and `achievements` carry a coupleId but have never been written to,
  * and `settings` holds the identity rather than referring to it, so neither
- * belongs here. `workoutPhotos` is not in `db/database.ts` on this branch; when
- * it lands it wants a line here too.
+ * belongs here.
  */
 export const REKEY_TABLES: readonly TableRekey[] = [
   { table: 'members', primaryKey: 'id', memberFields: ['id'], coupleFields: ['coupleId'] },
@@ -79,6 +78,9 @@ export const REKEY_TABLES: readonly TableRekey[] = [
     oneRowPerDay: true,
   },
   { table: 'work', primaryKey: 'id', memberFields: ['memberId'], coupleFields: [] },
+  // Not `oneRowPerDay`: a day holds up to two proofs, one per camera, and
+  // collapsing them to one would throw away whichever arrived second.
+  { table: 'workoutPhotos', primaryKey: 'id', memberFields: ['memberId'], coupleFields: [] },
   { table: 'tasks', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   { table: 'avatars', primaryKey: 'memberId', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   { table: 'pets', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
