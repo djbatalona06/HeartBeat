@@ -1438,3 +1438,63 @@ body {
 
 /* Calm mode stills the columns. Reduced motion is already handled globally. */
 :root[data-calm='true'] .mood-meters .meter-fill { transition: none; }
+
+/* ---- pair gate ------------------------------------------------------------
+   The first screen on a fresh install, so it is allowed to be the whole page:
+   one mark, one sentence, one action, and everything after the action quieter
+   than the action. No red, no warning, nothing counted against anyone -- it is
+   a door being pointed at, not a rule being explained. */
+.gate {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 62vh;
+  padding: var(--space-5) 0;
+  text-align: center;
+}
+
+/* Two hearts, the second waiting: the whole of the screen's argument, before a
+   word of it is read. */
+.gate-mark {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  font-size: var(--text-2xl);
+  line-height: 1;
+  color: var(--color-accent);
+}
+.gate-mark span:last-child { opacity: 0.35; }
+
+.gate-title {
+  font-family: var(--font-display);
+  font-weight: var(--font-display-weight, 400);
+  letter-spacing: var(--font-display-tracking, 0);
+  text-transform: var(--font-display-transform, none);
+  font-size: var(--text-2xl);
+  line-height: var(--line-tight);
+}
+
+.gate-body {
+  font-size: var(--text-base);
+  line-height: var(--line-body);
+}
+
+/* .primary is written for a button; as a link it has to centre its own text. */
+.gate-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--space-4);
+  text-decoration: none;
+}
+
+.gate-note {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+
+/* A tab that leads to the gate rather than to itself. Dimmed, never disabled:
+   tapping it is how you get back to the invitation from Settings. */
+.tab[data-locked='true'] { opacity: 0.4; }

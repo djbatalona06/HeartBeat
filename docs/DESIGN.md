@@ -338,13 +338,19 @@ is character, not inconsistency. Finch's own density is deliberately not copied;
 its screens are fairly criticised as cluttered, so what is taken is the breathing
 room, not the number of things on a page.
 
-### Known loose end: provisional identity
+### Provisional identity, and the re-key that ends it
 
 The app mints a local `memberId`/`coupleId` on first use so it works before
 there is a partner to pair with. Pairing later replaces both with the ids the
-Worker issues, and rows written before that point keep the provisional ones and
-would need re-keying. Recorded here rather than papered over; it wants fixing
-when onboarding is built.
+Worker issues, and rows written before that point keep the provisional ones —
+which used to mean they never synced and never appeared in a "mine" view again.
+
+`domain/identity/rekey.ts` is the description of the repair (which fields on
+which tables carry an id, which rows have to move rather than be updated in
+place, and who wins when two rows want the same day), and `rekeyIdentity` in
+`db/repository.ts` walks it inside one transaction.
+`features/pairing/usePairing.ts` notices the identity change and runs it — on
+the first pairing, and again if the couple ever re-pairs.
 
 ## Reminders
 
