@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PAGES_PROJECT: heartbeat
+  PAGES_PROJECT: heartbeat-eop
 
 jobs:
   deploy:
