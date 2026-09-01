@@ -1453,6 +1453,53 @@ body {
 /* Calm mode stills the columns. Reduced motion is already handled globally. */
 :root[data-calm='true'] .mood-meters .meter-fill { transition: none; }
 
+/* ---- settings: pairing, theme picker, the two of you -----------------------
+   The existing settings block above styles the sections; these are the parts
+   that did not exist before — the countdown, the theme swatches, and the two
+   faces. */
+
+.pair-lead {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: var(--line-tight);
+  letter-spacing: var(--font-display-tracking);
+}
+
+.pair-join {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.pair-note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+  color: var(--color-accent);
+}
+
+.invite-left {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ---- theme picker ---- */
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}
+
+.theme-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap);
 /* ---- exercise --------------------------------------------------------------
    The day stepper, the set grid and the two proof slots.
 
@@ -1510,6 +1557,74 @@ body {
   border-radius: var(--radius);
   border: var(--border-width) solid var(--color-border);
   background: var(--color-surface-muted);
+  color: var(--color-text);
+  text-align: left;
+}
+
+.theme-card[data-on='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-surface);
+}
+
+/* Three stops of the palette, so the picker shows the theme instead of naming it. */
+.theme-swatch {
+  display: flex;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 24px;
+  border-radius: calc(var(--radius) / 2);
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-border);
+}
+
+.theme-swatch > span { flex: 1; }
+
+.theme-name { font-size: var(--text-sm); line-height: var(--line-tight); }
+
+/* ---- the two of you ---- */
+
+.who-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+.who-row + .who-row { border-top: var(--border-width) solid var(--color-border); }
+
+.who-face {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: var(--border-width) solid var(--color-border);
+}
+
+.who-face-blank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+
+.who-fields { flex: 1; min-width: 0; }
+
+.who-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.who-actions { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.who-actions button { flex: 1; }
+
+/* The picker is opened from the buttons above; the control itself never shows. */
+.who-input {
 }
 
 .set-name { grid-area: name; }
@@ -1612,6 +1727,10 @@ body {
   border: 0;
 }
 
+/* Prose links inside a settings block follow the theme rather than the browser's
+   default blue, which belongs to no palette here and fails contrast on the
+   darker packs. */
+.set-block a { color: var(--color-accent); }
 .proof-actions { display: flex; gap: var(--space-2); }
 
 .proof-action {
