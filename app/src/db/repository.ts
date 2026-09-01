@@ -625,7 +625,9 @@ export async function ensureIdentity(): Promise<{ memberId: MemberId; coupleId: 
 // than at the top of a file three other screens are editing this week.
 import {
   REKEY_TABLES,
+  carriesIdentity,
   isUsableIdentity,
+  needsWholeTable,
   planRekey,
   sameIdentity,
   type Identity,
@@ -669,7 +671,12 @@ export async function rekeyIdentity(from: Identity, to: Identity): Promise<numbe
     let touched = 0;
     for (const plan of plans) {
       const table = db.table<RekeyRow, unknown>(plan.table);
-      const rows = await table.toArray();
+      // Only the tables whose plan can collide are read whole. `workoutPhotos`
+      // holds a data URI per row, and pulling every one into memory to decide
+      // nothing is how a re-pair after a year of proofs runs a phone out of it.
+      const rows = needsWholeTable(plan)
+        ? await table.toArray()
+        : await table.filter((row) => carriesIdentity(row, plan, from)).toArray();
       for (const action of planRekey(plan, rows, from, to)) {
         if (action.verb === 'put') {
           await table.put(action.row);
@@ -747,7 +754,13 @@ export interface IncomingMember {
   id: MemberId;
   coupleId: string;
   displayName: string;
-  tracksCycle: boolean;
+  /**
+   * Optional because /api/profile deliberately does not serve it: cycle
+   * ownership is answered on the device, and the endpoint says so in as many
+   * words. Declaring it required only made TypeScript agree with a field that
+   * never arrives.
+   */
+  tracksCycle?: boolean;
   photoDataUri?: string;
   updatedAt: number;
 }
@@ -856,7 +869,9 @@ export async function saveMembersFromServer(rows: IncomingMember[]): Promise<num
       id: row.id,
       coupleId: row.coupleId,
       displayName: row.displayName,
-      tracksCycle: row.tracksCycle,
+      // The server does not serve this one, so a served row must not erase the
+      // copy `setTracksCycle` mirrors here — otherwise saving a name blanks it.
+      tracksCycle: row.tracksCycle ?? existing?.tracksCycle ?? false,
       photoDataUri: row.photoDataUri,
       updatedAt: row.updatedAt,
     });
