@@ -97,6 +97,35 @@ describe('the shared shape layer', () => {
     expect(Number.parseFloat(SHARED_TOKENS['--tap'])).toBeGreaterThanOrEqual(44);
   });
 
+  /**
+   * The shell publishes its own measurements so a screen can read how much room
+   * it has. The home screen places a ring of bubbles inside whatever is left,
+   * and the alternative — copying `92px` into a second file — drifts the first
+   * time this changes and clips the bottom row on somebody's phone.
+   */
+  const LAYOUT = ['--shell-max', '--shell-gutter', '--shell-top', '--tabbar-height',
+                  '--shell-bottom', '--stack'];
+
+  it('publishes the shell measurements to every theme, identically', () => {
+    const first = themeToCssVars(THEMES[0]);
+    for (const theme of THEMES) {
+      const vars = themeToCssVars(theme);
+      for (const key of LAYOUT) {
+        expect(vars[key], `${theme.id} ${key}`).toBeTruthy();
+        expect(vars[key], `${theme.id} ${key}`).toBe(first[key]);
+      }
+    }
+  });
+
+  it('leaves more room at the bottom than the bar itself occupies', () => {
+    // --shell-bottom is a calc over --tabbar-height, so the guarantee is
+    // structural rather than arithmetic: it cannot be smaller by construction.
+    expect(SHARED_TOKENS['--shell-bottom']).toContain('var(--tabbar-height)');
+    expect(Number.parseFloat(SHARED_TOKENS['--tabbar-height'])).toBeGreaterThanOrEqual(
+      Number.parseFloat(SHARED_TOKENS['--tap']),
+    );
+  });
+
   /** Radii are character, not inconsistency: sharp shinobi, round pony. */
   it('leaves each pack its own radius', () => {
     expect(SHARED_TOKENS['--radius']).toBeUndefined();

@@ -1,6 +1,6 @@
 import { db, loadSettings, saveSettings } from './database';
 import type {
-  ChatMessage, CycleEntry, DayKey, ExerciseEntry, MemberId, MoodEntry, WorkEvent,
+  ChatMessage, CycleEntry, DayKey, ExerciseEntry, MemberId, MoodEntry, WorkEvent, WorkoutPhoto,
 } from '../domain/types';
 import { addDays } from '../domain/day';
 import {
