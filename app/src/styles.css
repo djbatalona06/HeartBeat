@@ -1438,3 +1438,186 @@ body {
 
 /* Calm mode stills the columns. Reduced motion is already handled globally. */
 :root[data-calm='true'] .mood-meters .meter-fill { transition: none; }
+
+/* ---- exercise --------------------------------------------------------------
+   The day stepper, the set grid and the two proof slots.
+
+   The one rule doing real work here is `max-width: 100%` on the shot. A phone
+   photograph is a couple of thousand pixels wide, and without it the image sets
+   the width of the whole document rather than the width of its card — the page
+   scrolls sideways and every other screen inherits the damage. */
+
+.ex-days {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.ex-day {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  letter-spacing: var(--font-display-tracking);
+  min-width: 9ch;
+  text-align: center;
+}
+
+.ex-day-step {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: var(--text-base);
+}
+
+.ex-day-step:disabled { opacity: 0.4; }
+
+/* ---- the sets ---- */
+
+.set-list {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.set-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'name remove' 'numbers numbers';
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface-muted);
+}
+
+.set-name { grid-area: name; }
+
+.set-remove {
+  grid-area: remove;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+.set-remove:hover, .set-remove:focus-visible { color: var(--color-danger); }
+
+.set-numbers {
+  grid-area: numbers;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.set-num { display: block; }
+
+.set-num-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.set-total {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.ex-caption { margin-top: var(--space-2); resize: vertical; line-height: var(--line-body); }
+
+/* ---- the proof ---- */
+
+.proof-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.proof { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+
+.proof-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* Without this the photograph, not the card, decides how wide the page is. */
+.proof-shot {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.proof-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius);
+  border: var(--border-width) dashed var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--space-2);
+}
+
+.proof-plus { font-size: var(--text-2xl); line-height: 1; }
+.proof-slot-text { font-size: var(--text-xs); }
+
+/* The native control is never shown; the slot and the actions stand in for it. */
+.proof-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.proof-actions { display: flex; gap: var(--space-2); }
+
+.proof-action {
+  flex: 1;
+  min-height: var(--tap);
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+}
+
+.proof-action:disabled { opacity: 0.5; }
+
+.proof-size { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+.proof-error {
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+  line-height: var(--line-tight);
+}
+
+.proof[data-busy='true'] { opacity: 0.7; }

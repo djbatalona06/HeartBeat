@@ -1,6 +1,6 @@
 import { db, loadSettings, saveSettings } from './database';
 import type {
-  ChatMessage, CycleEntry, DayKey, ExerciseEntry, MemberId, MoodEntry, WorkEvent,
+  ChatMessage, CycleEntry, DayKey, ExerciseEntry, MemberId, MoodEntry, WorkEvent, WorkoutPhoto,
 } from '../domain/types';
 import { addDays } from '../domain/day';
 import {
@@ -617,4 +617,46 @@ export async function ensureIdentity(): Promise<{ memberId: MemberId; coupleId: 
   const coupleId = settings.coupleId ?? id();
   await saveSettings({ memberId, coupleId });
   return { memberId, coupleId };
+}
+
+/* ---- workout photos ------------------------------------------------------- */
+
+/**
+ * Camera proof for a day's workout: one row per member, per day, per camera.
+ *
+ * Upserted on `[memberId+day]` the way mood and exercise are, with `facing`
+ * narrowing it further — retaking the back-camera shot replaces the back-camera
+ * shot and leaves the front one where it was.
+ *
+ * The row is deliberately not part of the exercise entry. `pwa/sync.ts` sends
+ * an entry row whole and the endpoint refuses a payload over 64 KiB, so a
+ * photograph riding along on that row would fail the push; and because the
+ * watermark only advances on success, it would take mood, cycle and the
+ * calendar down with it. Nothing in this table is read by the sync client.
+ */
+export async function putWorkoutPhoto(
+  memberId: MemberId,
+  day: DayKey,
+  values: Omit<WorkoutPhoto, 'id' | 'memberId' | 'day' | 'updatedAt'>,
+): Promise<void> {
+  const sameDay = await db.workoutPhotos.where('[memberId+day]').equals([memberId, day]).toArray();
+  const existing = sameDay.find((row) => row.facing === values.facing);
+  await db.workoutPhotos.put({
+    id: existing?.id ?? id(),
+    memberId,
+    day,
+    ...values,
+    updatedAt: now(),
+  });
+}
+
+/** Deleting one camera's shot leaves the other one where it is. */
+export async function removeWorkoutPhoto(
+  memberId: MemberId,
+  day: DayKey,
+  facing: WorkoutPhoto['facing'],
+): Promise<void> {
+  const sameDay = await db.workoutPhotos.where('[memberId+day]').equals([memberId, day]).toArray();
+  const doomed = sameDay.find((row) => row.facing === facing);
+  if (doomed) await db.workoutPhotos.delete(doomed.id);
 }
