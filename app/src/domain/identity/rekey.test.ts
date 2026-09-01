@@ -4,10 +4,12 @@ import { db } from '../../db/database';
 import {
   REKEY_TABLES,
   isUsableIdentity,
+  needsWholeTable,
   planRekey,
   rehomes,
   rekeyRow,
   sameIdentity,
+  slotOf,
   type TableRekey,
 } from './rekey';
 
@@ -64,6 +66,36 @@ describe('REKEY_TABLES', () => {
     expect(rehomes(planFor('members'))).toBe(true);
     expect(rehomes(planFor('moods'))).toBe(false);
     expect(rehomes(planFor('messages'))).toBe(false);
+  });
+});
+
+/**
+ * The repository reads the whole table only when `needsWholeTable` says so, and
+ * feeds `planRekey` nothing but the moving rows otherwise. That is only safe
+ * while the plans with no slot are exactly the plans it filters: a plan that
+ * `slotOf` gives a slot but this waves through would have `planRekey` deciding
+ * collisions against an empty set, and quietly overwrite the row already there.
+ * Nothing else pins the two together, so this does.
+ */
+describe('needsWholeTable', () => {
+  it('reads whole exactly the plans whose rows occupy a slot', () => {
+    for (const plan of REKEY_TABLES) {
+      const row = { [plan.primaryKey]: 'k', memberId: 'm', coupleId: 'c', day: DAY };
+      expect([plan.table, needsWholeTable(plan)])
+        .toEqual([plan.table, slotOf(row, plan) !== undefined]);
+    }
+  });
+
+  it('stops at the moving rows for a table that is neither re-homed nor daily', () => {
+    expect(needsWholeTable(planFor('workoutPhotos'))).toBe(false);
+    expect(needsWholeTable(planFor('work'))).toBe(false);
+    expect(needsWholeTable(planFor('messages'))).toBe(false);
+  });
+
+  it('reads whole where a landing place can already be taken', () => {
+    expect(needsWholeTable(planFor('moods'))).toBe(true);
+    expect(needsWholeTable(planFor('members'))).toBe(true);
+    expect(needsWholeTable(planFor('avatars'))).toBe(true);
   });
 });
 

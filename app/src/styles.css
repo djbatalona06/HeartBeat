@@ -1780,7 +1780,10 @@ body {
   padding: var(--space-3) 0;
 }
 
-.who-row + .who-row { border-top: var(--border-width) solid var(--color-border); }
+/* `~` rather than `+`: the hidden file input sits between the two rows in the
+   DOM, so the adjacent-sibling form matches nothing and the divider between
+   you and your partner never draws. */
+.who-row ~ .who-row { border-top: var(--border-width) solid var(--color-border); }
 
 .who-face {
   flex: 0 0 auto;
