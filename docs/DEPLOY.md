@@ -63,10 +63,10 @@ Generate a VAPID keypair first if you don't have one (`npx web-push
 generate-vapid-keys` or any P-256 keypair, base64url-encoded).
 
 `worker/wrangler.toml` hardcodes `ALLOWED_ORIGIN` to
-`https://heartbeat.pages.dev,https://*.heartbeat.pages.dev`. **If your Pages
-project uses a different name or a custom domain, edit this before
-deploying** — the Worker CORS-rejects any other origin
-(`worker/src/cors.ts`).
+`https://heartbeat-eop.pages.dev,https://*.heartbeat-eop.pages.dev`, matching
+the live Pages project. **If your Pages project uses a different name or a
+custom domain, edit this before deploying** — the Worker CORS-rejects any
+other origin (`worker/src/cors.ts`).
 
 ## 3. Deploy the Pages app
 
@@ -85,7 +85,7 @@ deploying** — the Worker CORS-rejects any other origin
    - `CLOUDFLARE_API_TOKEN` — the token above
    - `CLOUDFLARE_ACCOUNT_ID` — dashboard sidebar, or `npx wrangler whoami`
 3. Push to `main`. The workflow: `npm ci` → `npm run build` (with
-   `APP_BASE=/`) → creates the `heartbeat` Pages project if missing →
+   `APP_BASE=/`) → creates the `heartbeat-eop` Pages project if missing →
    `wrangler pages deploy` from inside `app/` (so it picks up
    `app/wrangler.toml`'s bindings).
 
@@ -94,8 +94,8 @@ deploying** — the Worker CORS-rejects any other origin
 ```bash
 npm run build          # from repo root, APP_BASE=/ if not already default
 cd app
-npx wrangler pages project create heartbeat --production-branch=main   # first time only
-npx wrangler pages deploy --project-name=heartbeat --branch=main
+npx wrangler pages project create heartbeat-eop --production-branch=main   # first time only
+npx wrangler pages deploy --project-name=heartbeat-eop --branch=main
 ```
 
 Must be run from `app/` (not repo root) — `wrangler` reads
@@ -105,7 +105,8 @@ bindings.
 
 ## 4. Verify
 
-- `https://<your-pages-domain>/api/health` → `{"ok":true,"db":true,"ai":true}`.
+- `https://heartbeat-eop.pages.dev/api/health` →
+  `{"ok":true,"db":true,"ai":true}`.
   If `db`/`ai` come back `false`, the binding in `app/wrangler.toml` didn't
   take — redeploy from `app/`.
 - Open the app on a phone, pair two devices via the invite link, confirm a

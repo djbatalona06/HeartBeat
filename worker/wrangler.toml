@@ -19,7 +19,7 @@ database_id = "dcfde6ff-f415-427a-bfc4-c08bd6911699"
 [vars]
 # Origins allowed to call this Worker: the Pages production URL plus its preview
 # subdomains, so pairing and push can be tested from a preview deploy.
-ALLOWED_ORIGIN = "https://heartbeat.pages.dev,https://*.heartbeat.pages.dev"
+ALLOWED_ORIGIN = "https://heartbeat-eop.pages.dev,https://*.heartbeat-eop.pages.dev"
 VAPID_SUBJECT = "mailto:batalona06@gmail.com"
 
 # Secrets are set with `wrangler secret put`, never committed:
