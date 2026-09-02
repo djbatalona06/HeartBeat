@@ -6,6 +6,7 @@ import type { Member, Settings } from '../../domain/types';
 import { useTheme } from '../../themes/ThemeProvider';
 import { THEMES } from '../../themes';
 import { fetchProfiles, health, pairJoin, pairStart, putProfile } from '../../pwa/api';
+import { NotificationsBlock } from './NotificationsBlock';
 import {
   clearPendingInvite,
   putMyProfile,
@@ -139,6 +140,8 @@ export function SettingsPage() {
           <span>Still backdrops, no drifting, no pulsing.</span>
         </label>
       </section>
+
+      <NotificationsBlock />
     </div>
   );
 }

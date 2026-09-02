@@ -200,9 +200,21 @@ export interface Settings {
   themeId: string;
   /** Same arrangement: the picker holds it in React state, this outlives it. */
   calmMode: boolean;
+  /**
+   * Reminders. Both are absent until notifications are turned on from a tap,
+   * which is the only way they can be turned on at all.
+   */
+  notifyHour?: number;
+  notifyOn?: boolean;
   workerUrl?: string;
   workerSecret?: string;
+  /** Cached from /api/health so the switch can render before the network answers. */
   vapidPublicKey?: string;
+  /**
+   * What the browser's push service handed out. Kept because a subscription is
+   * addressed by endpoint, and there is no other way to name the one this
+   * phone registered when the time comes to unsubscribe it.
+   */
   pushEndpoint?: string;
   onboarded: boolean;
   /**

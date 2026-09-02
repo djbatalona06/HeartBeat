@@ -103,12 +103,25 @@ export async function pairJoin(invite: string): Promise<PairJoined> {
   return (await res.json()) as PairJoined;
 }
 
+export interface Health {
+  ok: boolean;
+  db: boolean;
+  ai: boolean;
+  /** Whether the deploy has a VAPID key at all. */
+  push?: boolean;
+  /**
+   * The application server key `pushManager.subscribe` needs. Public by
+   * construction — it reaches every browser that ever enables notifications.
+   */
+  vapidPublicKey?: string | null;
+}
+
 /** Never throws: "is the backend up" must not itself fail loudly. */
-export async function health(): Promise<{ ok: boolean; db: boolean; ai: boolean } | null> {
+export async function health(): Promise<Health | null> {
   try {
     const res = await fetch('/api/health');
     if (!res.ok) return null;
-    return (await res.json()) as { ok: boolean; db: boolean; ai: boolean };
+    return (await res.json()) as Health;
   } catch {
     return null;
   }
@@ -155,4 +168,71 @@ export async function putProfile(
   });
   if (!res.ok) throw await errorFrom(res);
   return ((await res.json()) as { members: WireMember[] }).members;
+}
+
+/* ---- notifications -------------------------------------------------------- */
+
+/**
+ * Register this device for delivery.
+ *
+ * The subscription came from the browser's own push service; all this does is
+ * tell the server where to send. Throws on a real failure so the Settings block
+ * can say what went wrong rather than showing a switch that silently did not
+ * take.
+ */
+export async function subscribePush(
+  token: string,
+  subscription: { endpoint: string; p256dh: string; auth: string },
+): Promise<void> {
+  const res = await fetch('/api/subscribe', {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify(subscription),
+  });
+  if (!res.ok) throw await errorFrom(res);
+}
+
+/** Stop delivering to this device. */
+export async function unsubscribePush(token: string, endpoint: string): Promise<void> {
+  const res = await fetch('/api/subscribe', {
+    method: 'DELETE',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify({ endpoint }),
+  });
+  if (!res.ok) throw await errorFrom(res);
+}
+
+export interface WireNudge {
+  key: string;
+  fireAt: number;
+  title: string;
+  body: string;
+  path: string;
+}
+
+/**
+ * Replace this member's queued reminders with the ones computed here.
+ *
+ * A replace rather than an append, all the way down: the endpoint deletes what
+ * is undelivered in the same batch. That is what lets a phone that has been off
+ * for a week recompute instead of coming back to a stack of notifications about
+ * days it has since dealt with.
+ */
+export async function putNudges(token: string, nudges: WireNudge[]): Promise<number> {
+  const res = await fetch('/api/nudges', {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify({ nudges }),
+  });
+  if (!res.ok) throw await errorFrom(res);
+  return ((await res.json()) as { scheduled?: number }).scheduled ?? 0;
+}
+
+/** Drop everything queued and not yet sent. */
+export async function clearNudges(token: string): Promise<void> {
+  const res = await fetch('/api/nudges', {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw await errorFrom(res);
 }

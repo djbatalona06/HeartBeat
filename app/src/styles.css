@@ -1966,6 +1966,25 @@ body {
    darker packs. */
 .set-block a { color: var(--color-accent); }
 
+/* ---- reminders ------------------------------------------------------------
+   The notifications block on Settings. Every state it can be in is a sentence
+   rather than a disabled control: a browser that cannot do push, a permission
+   already refused, and a server that is not answering are three different
+   problems, and one greyed-out switch for all three tells the reader nothing.
+
+   Nothing here is red. Not being able to send reminders is not an error the
+   person made. */
+
+/* The chat pill floats above the tab bar at the bottom right, and Reminders is
+   the last block on Settings — so without room to scroll past, the time control
+   sits underneath it. The padding is the pill's offset plus its own height. */
+.notify {
+  margin-top: var(--space-6);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 78px + var(--tap));
+}
+
+.notify-title {
+  margin: 0 0 var(--space-2);
 /* ---- quests ---------------------------------------------------------------
    One quest at a time, so this is a card and not a list. The whole section is
    arranged around the fact that nothing here can go wrong for the person
@@ -2031,6 +2050,9 @@ body {
   color: var(--color-text);
 }
 
+.notify-lead,
+.notify-blocked,
+.notify-note {
 /* Tabular, so a count ticking over does not shift the title beside it. */
 .quest-count,
 .quest-worth,
@@ -2051,6 +2073,55 @@ body {
   color: var(--color-text-muted);
 }
 
+.notify-blocked,
+.notify-note {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+
+.notify-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.notify-state {
+  font-family: var(--font-display);
+  letter-spacing: var(--font-display-tracking);
+  color: var(--color-text);
+}
+
+.notify-switch {
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.notify-switch:disabled { opacity: 0.6; cursor: default; }
+
+/* Stacked rather than a label-and-control row: a select pushed to the right
+   edge is the one thing the floating pill can cover, and a full-width control
+   stays tappable wherever the pill happens to sit. */
+.notify-hour {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.notify-hour select {
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
 .quest-bar {
 .shelf-bar {
   height: var(--space-2);
@@ -2142,6 +2213,8 @@ body {
   background: var(--color-surface-muted);
   color: var(--color-text);
   font: inherit;
+  font-variant-numeric: tabular-nums;
+}
   text-align: left;
   cursor: pointer;
 }
