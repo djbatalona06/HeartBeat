@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { QuestBoard } from '../quests/QuestBoard';
 import { db, loadSettings } from '../../db/database';
 import { VoiceInput } from '../../components/VoiceInput';
 import { parseTask } from '../../domain/voice/parseTask';
@@ -110,6 +111,8 @@ export function TasksPage() {
       </header>
 
       {avatar ? <CharacterCard avatar={avatar} /> : null}
+
+      {identity ? <QuestBoard coupleId={identity.coupleId} day={day} /> : null}
 
       {SECTIONS.map((section) => (
         <Section
