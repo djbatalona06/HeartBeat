@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db, loadSettings, saveSettings } from './database';
 import {
   addXp, confirmMessage, draftMessage, mergeMessages, putCycle, putExercise, putMood,
-  putWorkEvent, removeWorkEvent,
+  putWorkEvent, putWorkoutPhoto, removeWorkEvent, removeWorkoutPhoto,
 } from './repository';
 import type { ChatMessage } from '../domain/types';
 
@@ -22,6 +22,7 @@ beforeEach(async () => {
   await Promise.all([
     db.moods.clear(), db.exercises.clear(), db.cycles.clear(),
     db.work.clear(), db.messages.clear(), db.pet.clear(), db.settings.clear(),
+    db.workoutPhotos.clear(),
   ]);
 });
 
@@ -293,5 +294,93 @@ describe('the message thread', () => {
       .between([COUPLE, 0], [COUPLE, Infinity])
       .toArray();
     expect(thread.map((m) => m.body)).toEqual(['first', 'second', 'third']);
+  });
+});
+
+/**
+ * Camera proof is keyed three ways — member, day, and which camera — because a
+ * workout has a front shot and a back shot and retaking one must not silently
+ * take the other with it. The rows also live in their own table rather than on
+ * the exercise entry, and nothing here may quietly move them back: an entry
+ * payload is capped at 64 KiB and a photograph is not, so a photo on that row
+ * would fail the push and, because the watermark only advances on success,
+ * stop mood, cycle and calendar sync on that phone as well.
+ */
+describe('putWorkoutPhoto', () => {
+  const FRONT = { facing: 'front' as const, dataUri: 'data:image/jpeg;base64,AAA', bytes: 3 };
+  const BACK = { facing: 'back' as const, dataUri: 'data:image/jpeg;base64,BBB', bytes: 3 };
+
+  it('writes one row per camera for a day', async () => {
+    await putWorkoutPhoto(ME, DAY, FRONT);
+    await putWorkoutPhoto(ME, DAY, BACK);
+
+    const rows = await db.workoutPhotos.where('[memberId+day]').equals([ME, DAY]).toArray();
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.facing).sort()).toEqual(['back', 'front']);
+  });
+
+  it('replaces the same camera in place rather than stacking a second row', async () => {
+    await putWorkoutPhoto(ME, DAY, FRONT);
+    const first = await db.workoutPhotos.where('[memberId+day]').equals([ME, DAY]).first();
+
+    await putWorkoutPhoto(ME, DAY, { ...FRONT, dataUri: 'data:image/jpeg;base64,CCC', bytes: 3 });
+
+    const rows = await db.workoutPhotos.where('[memberId+day]').equals([ME, DAY]).toArray();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe(first!.id);
+    expect(rows[0].dataUri).toBe('data:image/jpeg;base64,CCC');
+  });
+
+  it('leaves the other camera alone when one is retaken', async () => {
+    await putWorkoutPhoto(ME, DAY, FRONT);
+    await putWorkoutPhoto(ME, DAY, BACK);
+    await putWorkoutPhoto(ME, DAY, { ...FRONT, dataUri: 'data:image/jpeg;base64,CCC', bytes: 3 });
+
+    const rows = await db.workoutPhotos.where('[memberId+day]').equals([ME, DAY]).toArray();
+    expect(rows).toHaveLength(2);
+    expect(rows.find((r) => r.facing === 'back')!.dataUri).toBe(BACK.dataUri);
+  });
+
+  it('keeps each day and each person apart', async () => {
+    await putWorkoutPhoto(ME, DAY, FRONT);
+    await putWorkoutPhoto(ME, '2026-09-26', FRONT);
+    await putWorkoutPhoto(THEM, DAY, FRONT);
+
+    expect(await db.workoutPhotos.count()).toBe(3);
+    expect(await db.workoutPhotos.where('[memberId+day]').equals([ME, DAY]).count()).toBe(1);
+  });
+
+  it('stays out of the exercise entry, which is what sync actually sends', async () => {
+    await putExercise(ME, DAY, { sets: [{ name: 'Squat', reps: 5 }] });
+    await putWorkoutPhoto(ME, DAY, FRONT);
+
+    const entry = await db.exercises.where('[memberId+day]').equals([ME, DAY]).first();
+    expect(JSON.stringify(entry)).not.toContain('base64');
+  });
+});
+
+describe('removeWorkoutPhoto', () => {
+  const FRONT = { facing: 'front' as const, dataUri: 'data:image/jpeg;base64,AAA', bytes: 3 };
+  const BACK = { facing: 'back' as const, dataUri: 'data:image/jpeg;base64,BBB', bytes: 3 };
+
+  it('takes one camera off and leaves the other', async () => {
+    await putWorkoutPhoto(ME, DAY, FRONT);
+    await putWorkoutPhoto(ME, DAY, BACK);
+
+    await removeWorkoutPhoto(ME, DAY, 'front');
+
+    const rows = await db.workoutPhotos.where('[memberId+day]').equals([ME, DAY]).toArray();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].facing).toBe('back');
+  });
+
+  it('is quiet about a photo that was never there', async () => {
+    await expect(removeWorkoutPhoto(ME, DAY, 'front')).resolves.toBeUndefined();
+  });
+
+  it('does not reach into another day', async () => {
+    await putWorkoutPhoto(ME, DAY, FRONT);
+    await removeWorkoutPhoto(ME, '2026-09-26', 'front');
+    expect(await db.workoutPhotos.count()).toBe(1);
   });
 });

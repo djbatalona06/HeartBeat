@@ -1,0 +1,11 @@
+-- The members table has had display_name since 0001 and nothing ever wrote to
+-- it; the Settings screen is its first writer, and it also carries a face.
+--
+-- A plain ADD COLUMN rather than the table rebuild 0002_rpg.sql had to do:
+-- nothing here changes a CHECK constraint, and rebuilding a table that other
+-- tables reference by foreign key is a great deal of risk for one column.
+--
+-- The photo is a data URI, capped at 64 KiB by app/functions/api/profile.ts
+-- before it is ever bound. That ceiling is deliberately small: this is a face
+-- at 256px, and it is read on every profile fetch by both phones.
+ALTER TABLE members ADD COLUMN photo_data_uri TEXT;
