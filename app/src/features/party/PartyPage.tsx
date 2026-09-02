@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
 import {
+  awardBossVictory,
+  bossVictoryXp,
   ensureIdentity,
   getOrCreateAvatar,
   equipItem,
@@ -14,6 +16,7 @@ import {
   startAdventure,
   unequipSlot,
 } from '../../db/repository';
+import { flushPetXp } from '../../pwa/petSync';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import { RARITY_NAMES, canEquip, gearBonus, gearForSlot, type Rarity } from '../../domain/rpg/gear';
 import { adventureCost } from '../../domain/rpg/stage';
@@ -373,8 +376,17 @@ function Boss({ avatar, pets, workerUrl, token, onSpendMp, onSpendPetMp, onMessa
       if (next) {
         setBoss(next);
         if (next.state === 'won') {
+          // Both of you were in it, so the shared pet is what it pays. The
+          // award is keyed on the tier, so the other phone reporting the same
+          // victory is the same award rather than a second one; the flush is
+          // best-effort because the award is already queued in IndexedDB and
+          // the next foreground will carry it.
+          const gained = bossVictoryXp(next.tier);
+          await awardBossVictory(avatar.coupleId, next.tier);
+          void flushPetXp().catch(() => {});
           onMessage(
-            `Down. Drops run ${Math.round(victoryDropBonus(next.tier) * 100)}% richer now.`,
+            `Down. +${gained} XP to the pet, and drops run `
+            + `${Math.round(victoryDropBonus(next.tier) * 100)}% richer now.`,
           );
         }
       }

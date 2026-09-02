@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './database';
 import {
+  addXp,
   archiveTask,
   bondPet,
   completeTask,
@@ -416,6 +417,7 @@ describe('the ruling, at the storage layer', () => {
     );
     await completeTask(walk, '2026-09-02');
     const rich = (await db.avatars.get(HER))!;
+    const richPet = (await db.pet.get(COUPLE))!;
 
     for (let i = 0; i < 5; i += 1) await logHabitDown(scroll);
     await settleTasks(HER, DAY);
@@ -426,5 +428,19 @@ describe('the ruling, at the storage layer', () => {
     expect(after.energy).toBeGreaterThanOrEqual(rich.energy);
     expect(after.mp).toBeGreaterThanOrEqual(rich.mp);
     expect(levelOf(after)).toBeGreaterThanOrEqual(levelOf(rich));
+
+    // The couple's pet is held to the same ruling. It is the one pool both
+    // people can see, so a bad day showing up on it would be the loudest
+    // version of the mistake — and it is now shared, which is a second way to
+    // lose XP if a merge ever writes a smaller number over a larger one.
+    const afterPet = (await db.pet.get(COUPLE))!;
+    expect(afterPet.xp).toBeGreaterThanOrEqual(richPet.xp);
+  });
+
+  it('cannot be talked into a smaller pet by a negative award', async () => {
+    await addXp(COUPLE, 40);
+    const before = (await db.pet.get(COUPLE))!.xp;
+    await addXp(COUPLE, -1000);
+    expect((await db.pet.get(COUPLE))!.xp).toBe(before);
   });
 });

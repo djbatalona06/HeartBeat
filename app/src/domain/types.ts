@@ -120,7 +120,30 @@ export interface WorkEvent {
   updatedAt: number;
 }
 
+/**
+ * One XP gain, carrying the id the server counts it under.
+ *
+ * XP is additive, so an award that is delivered twice is worth twice as much
+ * unless something says it is the same award. The id is that something: the
+ * server records it once and ignores the replay. For a boss victory the id is
+ * derived from the fight, so the two phones reporting the same victory report
+ * one award rather than two.
+ */
+export interface PetXpAward {
+  id: string;
+  amount: number;
+  awardedAt: number;
+}
+
 /** The shared pet. Levels from XP earned by both partners. */
+/**
+ * The most one award may carry, and the longest its id may be. Mirrored by
+ * MAX_AWARD_XP / MAX_AWARD_ID in functions/api/pet.ts, which is the authority —
+ * these exist so the phone never builds an award the endpoint will refuse.
+ */
+export const MAX_AWARD_XP = 5000;
+export const MAX_AWARD_ID = 100;
+
 export interface Pet {
   coupleId: CoupleId;
   level: number;
@@ -128,6 +151,23 @@ export interface Pet {
   /** Derived from recent activity; drives which sprite pose shows. */
   mood: 'happy' | 'content' | 'sleepy' | 'sulking';
   fedAt: number;
+  /**
+   * Awards made on this phone that the server has not counted yet. They are
+   * already in `xp`, so the bar moves offline; they stay here until a flush
+   * comes back with them settled.
+   */
+  pendingXp?: PetXpAward[];
+  /**
+   * The couple-wide total the server last confirmed — both partners' gains.
+   * `xp` never falls below it.
+   */
+  sharedXp?: number;
+  /**
+   * Award ids already counted into `xp` here, newest last and bounded. It stops
+   * a re-reported victory from being added to the local bar a second time; the
+   * server's own key stops it being added to the shared total.
+   */
+  awardedXpIds?: string[];
 }
 
 export type QuestDifficulty = 'easy' | 'steady' | 'hard';
