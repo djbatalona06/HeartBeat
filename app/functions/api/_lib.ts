@@ -14,6 +14,15 @@
 export interface Env {
   DB: D1Database;
   AI: Ai;
+  /**
+   * The VAPID *public* key, served to the browser by /api/health.
+   *
+   * Optional because a deploy without push configured must still start; the
+   * client treats its absence as "notifications are not available here" rather
+   * than as an error. The private half is never in this interface, and never
+   * leaves the Worker.
+   */
+  VAPID_PUBLIC_KEY?: string;
 }
 
 export interface Caller {
