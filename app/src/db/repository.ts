@@ -147,6 +147,28 @@ export async function putWorkEvent(
   return rowId;
 }
 
+/**
+ * A whole calendar import in one write.
+ *
+ * A year of somebody's calendar is a thousand rows, and a thousand awaited
+ * `put`s is a thousand transactions — seconds of blocked screen on a phone,
+ * and a half-written calendar if the browser drops the connection part way
+ * through. One `bulkPut` is one transaction: it lands completely or not at
+ * all. Ids come from the caller, so a re-import overwrites rather than doubles.
+ */
+export async function putWorkEvents(
+  memberId: MemberId,
+  events: readonly (Omit<WorkEvent, 'memberId' | 'updatedAt'>)[],
+): Promise<void> {
+  const at = now();
+  const rows = events.map((event) => {
+    const title = event.title.trim();
+    if (!title) throw new Error('a calendar event needs a title');
+    return { ...event, title, memberId, updatedAt: at };
+  });
+  await db.work.bulkPut(rows);
+}
+
 export async function removeWorkEvent(eventId: string): Promise<void> {
   await db.work.delete(eventId);
 }
