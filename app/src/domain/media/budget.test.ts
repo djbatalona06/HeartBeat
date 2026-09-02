@@ -4,6 +4,7 @@ import {
   ENTRY_KINDS,
   PHOTO_PAYLOAD_BYTES,
   PULL_BYTE_BUDGET,
+  pageWithinBudget,
   payloadLimit,
   takeWithinBudget,
   utf8Bytes,
@@ -90,5 +91,54 @@ describe('takeWithinBudget', () => {
   it('defaults to the pull budget', () => {
     const rows = [row(PULL_BYTE_BUDGET, 'a'), row(1, 'b')];
     expect(takeWithinBudget(rows).map((r) => r.id)).toEqual(['a']);
+  });
+});
+
+describe('pageWithinBudget', () => {
+  const row = (bytes: number, updatedAt: number) => ({ bytes, updatedAt });
+
+  it('serves everything when it all fits', () => {
+    expect(pageWithinBudget([row(10, 1), row(10, 2), row(10, 3)], 100)).toBe(3);
+  });
+
+  it('stops where the next row would overrun', () => {
+    expect(pageWithinBudget([row(60, 1), row(60, 2), row(1, 3)], 100)).toBe(1);
+  });
+
+  it('always serves one row, so an oversize row cannot wedge the cursor', () => {
+    expect(pageWithinBudget([row(400, 1), row(1, 2)], 100)).toBe(1);
+  });
+
+  it('is empty only when there is nothing waiting', () => {
+    expect(pageWithinBudget([], 100)).toBe(0);
+  });
+
+  /**
+   * The silent-loss case. The cursor is the last served row's timestamp and the
+   * next pull asks for strictly greater, so cutting between two rows that share
+   * one means the second is never requested again by anybody.
+   */
+  it('does not cut between rows sharing a timestamp', () => {
+    // Budget stops after the first, but rows 2 and 3 carry the same stamp as it.
+    const rows = [row(60, 100), row(60, 100), row(60, 100), row(1, 200)];
+    expect(pageWithinBudget(rows, 100)).toBe(3);
+  });
+
+  it('cuts freely once the timestamp changes', () => {
+    const rows = [row(60, 100), row(60, 100), row(1, 200)];
+    expect(pageWithinBudget(rows, 100)).toBe(2);
+  });
+
+  it('accepts going over budget rather than losing a row', () => {
+    // One run, all of it past the budget: served whole, because the
+    // alternative is dropping rows nothing will ask for again.
+    const rows = [row(500, 7), row(500, 7), row(500, 7)];
+    expect(pageWithinBudget(rows, 100)).toBe(3);
+  });
+
+  it('leaves a tie alone when the cut already falls after it', () => {
+    const rows = [row(10, 1), row(10, 1), row(90, 2), row(10, 3)];
+    // Fits the first three exactly; the run at stamp 1 is already whole.
+    expect(pageWithinBudget(rows, 110)).toBe(3);
   });
 });

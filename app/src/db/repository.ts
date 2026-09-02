@@ -703,11 +703,12 @@ export async function rekeyIdentity(from: Identity, to: Identity): Promise<numbe
  * narrowing it further — retaking the back-camera shot replaces the back-camera
  * shot and leaves the front one where it was.
  *
- * The row is deliberately not part of the exercise entry. `pwa/sync.ts` sends
- * an entry row whole and the endpoint refuses a payload over 64 KiB, so a
- * photograph riding along on that row would fail the push; and because the
- * watermark only advances on success, it would take mood, cycle and the
- * calendar down with it. Nothing in this table is read by the sync client.
+ * The row is deliberately not part of the exercise entry: an exercise payload
+ * is held to 64 KiB and a photograph is not. `pwa/sync.ts` now carries these
+ * rows as their own entry kind, `photo`, which has its own 512 KiB ceiling —
+ * so a day of proof travels without a mood or a cycle row riding on its size.
+ * A day travels whole, both cameras in one payload, because the server's unique
+ * index is (member, kind, day).
  */
 export async function putWorkoutPhoto(
   memberId: MemberId,
@@ -725,7 +726,15 @@ export async function putWorkoutPhoto(
   });
 }
 
-/** Deleting one camera's shot leaves the other one where it is. */
+/**
+ * Deleting one camera's shot leaves the other one where it is.
+ *
+ * The shot that stays has its `updatedAt` bumped, which looks redundant and is
+ * not: sync dates a day of proof by the newest shot still in it, so a delete
+ * that touched nothing would leave the day's timestamp below the watermark and
+ * the removal would never be offered to the server — the partner's phone would
+ * go on showing a photograph that no longer exists here.
+ */
 export async function removeWorkoutPhoto(
   memberId: MemberId,
   day: DayKey,
@@ -733,7 +742,13 @@ export async function removeWorkoutPhoto(
 ): Promise<void> {
   const sameDay = await db.workoutPhotos.where('[memberId+day]').equals([memberId, day]).toArray();
   const doomed = sameDay.find((row) => row.facing === facing);
-  if (doomed) await db.workoutPhotos.delete(doomed.id);
+  if (!doomed) return;
+  await db.workoutPhotos.delete(doomed.id);
+
+  const at = now();
+  await db.workoutPhotos.bulkPut(
+    sameDay.filter((row) => row.id !== doomed.id).map((row) => ({ ...row, updatedAt: at })),
+  );
 }
 
 /* ---- members ------------------------------------------------------------- */

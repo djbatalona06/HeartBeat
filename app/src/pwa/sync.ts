@@ -115,14 +115,39 @@ export function photoDayUpdatedAt(photos: WorkoutPhoto[]): number {
   return photos.reduce((max, p) => Math.max(max, p.updatedAt), 0);
 }
 
+/**
+ * The days of proof that changed since the watermark, each one whole.
+ *
+ * Read in two passes on purpose. A day travels whole — both cameras — so the
+ * payload cannot be built from the changed shots alone: sending only the
+ * retaken one would delete the other from the partner's phone. But holding
+ * every photograph the member has ever taken in memory to find the two that
+ * moved is how a phone with a year of proofs runs out of it; `rekey.ts` makes
+ * exactly this trade, for exactly this table, for the same reason. The first
+ * pass streams the rows and keeps only day keys, the second reads back the
+ * handful of days those keys name.
+ */
+async function pendingPhotoDays(memberId: MemberId, since: number): Promise<Map<DayKey, WorkoutPhoto[]>> {
+  const days = new Set<DayKey>();
+  await db.workoutPhotos.where('memberId').equals(memberId).each((shot) => {
+    if (shot.updatedAt > since) days.add(shot.day);
+  });
+
+  const shots: WorkoutPhoto[] = [];
+  for (const day of days) {
+    shots.push(...await db.workoutPhotos.where('[memberId+day]').equals([memberId, day]).toArray());
+  }
+  return groupPhotos(shots);
+}
+
 /** Everything this member has changed since the watermark, ready for the wire. */
 export async function collectPending(memberId: MemberId, since: number): Promise<WireEntry[]> {
-  const [moods, exercises, cycles, work, photos] = await Promise.all([
+  const [moods, exercises, cycles, work, photoDays] = await Promise.all([
     db.moods.where('memberId').equals(memberId).toArray(),
     db.exercises.where('memberId').equals(memberId).toArray(),
     db.cycles.where('memberId').equals(memberId).toArray(),
     db.work.where('memberId').equals(memberId).toArray(),
-    db.workoutPhotos.where('memberId').equals(memberId).toArray(),
+    pendingPhotoDays(memberId, since),
   ]);
 
   const out: WireEntry[] = [];
@@ -144,7 +169,7 @@ export async function collectPending(memberId: MemberId, since: number): Promise
     out.push({ id: `${memberId}-work-${day}`, kind: 'work', day, payload: events, updatedAt });
   }
 
-  for (const [day, shots] of groupPhotos(photos)) {
+  for (const [day, shots] of photoDays) {
     const updatedAt = photoDayUpdatedAt(shots);
     if (updatedAt <= since) continue;
     out.push({ id: `${memberId}-photo-${day}`, kind: 'photo', day, payload: shots, updatedAt });

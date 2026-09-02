@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db, loadSettings, saveSettings } from '../db/database';
-import { putCycle, putWorkEvent } from '../db/repository';
+import { putCycle, putWorkEvent, removeWorkoutPhoto } from '../db/repository';
 import {
   applyPulled,
   chunkForPush,
@@ -486,4 +486,83 @@ describe('sync() past a row the server refuses', () => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+/**
+ * Deleting a proof, and how far that travels.
+ *
+ * A day of proof is dated by the newest shot still in it, so a delete that
+ * touches nothing leaves the day's timestamp below the watermark and the
+ * removal is never offered — the partner goes on showing a photograph that is
+ * gone here.
+ */
+describe('a deleted proof reaches the other phone', () => {
+  const shot = (over: Partial<WorkoutPhoto> = {}): WorkoutPhoto => ({
+    id: 'p1', memberId: ME, day: '2026-03-01', facing: 'front',
+    dataUri: 'data:image/jpeg;base64,AAAA', bytes: 4, updatedAt: 10, ...over,
+  });
+
+  beforeEach(async () => { await db.workoutPhotos.clear(); });
+
+  it('offers the day again after one of two shots is removed', async () => {
+    await db.workoutPhotos.bulkPut([
+      shot({ id: 'front', facing: 'front', updatedAt: 10 }),
+      shot({ id: 'back', facing: 'back', updatedAt: 10 }),
+    ]);
+    // Everything up to now is already on the server.
+    expect(await collectPending(ME, 20)).toHaveLength(0);
+
+    await removeWorkoutPhoto(ME, '2026-03-01', 'back');
+
+    const pending = await collectPending(ME, 20);
+    expect(pending).toHaveLength(1);
+    // The day travels whole, carrying only the shot that survived — which is
+    // what makes the partner drop the other one.
+    expect((pending[0].payload as WorkoutPhoto[]).map((s) => s.facing)).toEqual(['front']);
+  });
+
+  /**
+   * The gap this fix does not close, pinned so it is a known shape rather than
+   * a surprise. With no shot left there is nothing to re-date, so the day falls
+   * out of the table and `collectPending` cannot see it. Closing it needs a
+   * tombstone row, which is a schema change and its own unit of work.
+   *
+   * `removeWorkEvent` has had exactly this gap since the calendar shipped.
+   */
+  it('does not yet propagate removing the last proof of a day', async () => {
+    await db.workoutPhotos.put(shot({ id: 'only', updatedAt: 10 }));
+    await removeWorkoutPhoto(ME, '2026-03-01', 'front');
+    expect(await collectPending(ME, 20)).toHaveLength(0);
+  });
+});
+
+describe('collectPending reads only the days that moved', () => {
+  beforeEach(async () => { await db.workoutPhotos.clear(); });
+
+  it('leaves days already on the server alone', async () => {
+    await db.workoutPhotos.bulkPut([
+      { id: 'old', memberId: ME, day: '2026-02-01', facing: 'front',
+        dataUri: 'data:image/jpeg;base64,AAAA', bytes: 4, updatedAt: 5 },
+      { id: 'new', memberId: ME, day: '2026-03-01', facing: 'front',
+        dataUri: 'data:image/jpeg;base64,BBBB', bytes: 4, updatedAt: 30 },
+    ]);
+    const pending = await collectPending(ME, 20);
+    const photos = pending.filter((e) => e.kind === 'photo');
+    expect(photos.map((e) => e.day)).toEqual(['2026-03-01']);
+  });
+
+  it('carries the untouched camera along with the retaken one', async () => {
+    await db.workoutPhotos.bulkPut([
+      { id: 'front', memberId: ME, day: '2026-03-01', facing: 'front',
+        dataUri: 'data:image/jpeg;base64,AAAA', bytes: 4, updatedAt: 5 },
+      { id: 'back', memberId: ME, day: '2026-03-01', facing: 'back',
+        dataUri: 'data:image/jpeg;base64,BBBB', bytes: 4, updatedAt: 30 },
+    ]);
+    const pending = await collectPending(ME, 20);
+    const photos = pending.filter((e) => e.kind === 'photo');
+    expect(photos).toHaveLength(1);
+    // Both, though only one moved: sending the retaken shot alone would delete
+    // the other one from the partner's phone.
+    expect((photos[0].payload as WorkoutPhoto[]).map((s) => s.id).sort()).toEqual(['back', 'front']);
+  });
 });

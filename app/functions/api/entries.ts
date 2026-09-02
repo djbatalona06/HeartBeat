@@ -94,28 +94,65 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
   // Both members, because the point of the couple is that each can see the
   // other's day. Scoped to the couple, which is the only scope there is.
-  const rows = await env.DB.prepare(
-    `SELECT id, member_id, kind, day, payload, updated_at
-       FROM entries WHERE couple_id = ? AND updated_at > ?
-      ORDER BY updated_at ASC LIMIT ?`,
+  //
+  // `id` breaks the tie so the two statements below walk the rows in the same
+  // order; without it SQLite is free to return rows sharing an `updated_at` in
+  // different orders, and the sizes measured in the first pass would belong to
+  // different rows than the second pass returns.
+  const ordered = `FROM entries WHERE couple_id = ? AND updated_at > ?
+                    ORDER BY updated_at ASC, id ASC`;
+
+  // The page is sized before it is fetched. Trimming an already-loaded result
+  // set bounds only the response: `LIMIT 500` on a table holding photographs is
+  // a quarter of a gigabyte handed to a Worker that has 128 MB, and it is D1
+  // and the runtime that fail, not this loop. Asking for lengths first costs
+  // one extra round trip and is the only thing that actually bounds memory.
+  // `CAST(payload AS BLOB)` is what makes `length` count bytes rather than
+  // characters — the same UTF-8 bytes the write path measures.
+  const sized = await env.DB.prepare(
+    `SELECT updated_at, length(CAST(payload AS BLOB)) AS bytes ${ordered} LIMIT ?`,
   )
     .bind(caller.coupleId, since, MAX_ROWS)
-    .all<Row>();
+    .all<{ updated_at: number; bytes: number }>();
 
-  const all = rows.results ?? [];
+  const sizes = sized.results ?? [];
 
   // Bounded by bytes, not only by count. The first row is always taken even
   // when it is over budget on its own: a page that comes back empty while rows
   // are waiting leaves the cursor where it is, and the client asks for the same
   // page forever without ever making progress.
-  const page: Row[] = [];
+  let take = 0;
   let bytes = 0;
-  for (const r of all) {
-    const size = utf8Bytes(r.payload);
-    if (page.length && bytes + size > MAX_PULL_BYTES) break;
-    page.push(r);
-    bytes += size;
+  for (const s of sizes) {
+    if (take && bytes + s.bytes > MAX_PULL_BYTES) break;
+    take += 1;
+    bytes += s.bytes;
   }
+
+  // Never cut in the middle of rows sharing one `updated_at`. The cursor is
+  // that timestamp and the next pull asks for `> cursor`, so a row left behind
+  // on this side of the cut is a row no request will ever ask for again — it is
+  // skipped silently, and forever.
+  //
+  // This can carry the page past the budget, and that is the intended trade:
+  // a tie means rows written inside the same millisecond, which is a handful
+  // here, and going a little over is recoverable where losing a day is not.
+  // Mirrors `pageWithinBudget` in `src/domain/media/budget.ts`, which is where
+  // the rule is tested.
+  while (take && take < sizes.length && sizes[take].updated_at === sizes[take - 1].updated_at) {
+    bytes += sizes[take].bytes;
+    take += 1;
+  }
+
+  const page = take
+    ? ((
+        await env.DB.prepare(
+          `SELECT id, member_id, kind, day, payload, updated_at ${ordered} LIMIT ?`,
+        )
+          .bind(caller.coupleId, since, take)
+          .all<Row>()
+      ).results ?? [])
+    : [];
 
   const entries = page.map((r) => ({
     id: r.id,
@@ -134,7 +171,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     cursor: entries.length ? entries[entries.length - 1].updatedAt : since,
     // More is now either bound: a full page by count, or a page cut short
     // because the next row would not fit in the byte budget.
-    more: all.length === MAX_ROWS || page.length < all.length,
+    more: sizes.length === MAX_ROWS || take < sizes.length,
   });
 };
 

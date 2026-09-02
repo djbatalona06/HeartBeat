@@ -89,6 +89,12 @@ export interface Measured {
   bytes: number;
 }
 
+/** A row the pull is deciding whether to include: its size and its cursor. */
+export interface Pageable extends Measured {
+  /** The value the cursor is taken from. Rows sharing one cannot be split. */
+  updatedAt: number;
+}
+
 /**
  * Take rows until the next one would not fit.
  *
@@ -110,4 +116,41 @@ export function takeWithinBudget<T extends Measured>(
     total += row.bytes;
   }
   return out;
+}
+
+/**
+ * How many rows one pull may serve, given each row's size and timestamp.
+ *
+ * Two rules, and the second is not an optimisation.
+ *
+ * The budget stops the page where the next row would overrun it, with the
+ * always-take-one rule of `takeWithinBudget` — a page that comes back empty
+ * while rows are waiting never advances the cursor.
+ *
+ * Then the cut is pushed forward off any tie. The cursor handed back to the
+ * client is the last served row's `updatedAt`, and the next pull asks for
+ * `updated_at > cursor`, so a row sharing that timestamp but left behind is a
+ * row no request will ever ask for again — it is skipped silently and forever.
+ * Serving the whole run is the only way the cursor can move without losing it.
+ *
+ * That extension can carry the page past the budget. It is the lesser evil: in
+ * this data a tie means rows written within the same millisecond, which is a
+ * handful, and going a little over is recoverable where dropping a day's entry
+ * is not.
+ */
+export function pageWithinBudget(
+  rows: readonly Pageable[],
+  budget: number = PULL_BYTE_BUDGET,
+): number {
+  let take = 0;
+  let total = 0;
+  for (const row of rows) {
+    if (take && total + row.bytes > budget) break;
+    take += 1;
+    total += row.bytes;
+  }
+  while (take && take < rows.length && rows[take].updatedAt === rows[take - 1].updatedAt) {
+    take += 1;
+  }
+  return take;
 }
