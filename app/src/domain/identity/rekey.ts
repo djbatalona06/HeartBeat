@@ -52,8 +52,7 @@ export interface TableRekey {
  *
  * `quests` and `achievements` carry a coupleId but have never been written to,
  * and `settings` holds the identity rather than referring to it, so neither
- * belongs here. `workoutPhotos` is not in `db/database.ts` on this branch; when
- * it lands it wants a line here too.
+ * belongs here.
  */
 export const REKEY_TABLES: readonly TableRekey[] = [
   { table: 'members', primaryKey: 'id', memberFields: ['id'], coupleFields: ['coupleId'] },
@@ -79,6 +78,9 @@ export const REKEY_TABLES: readonly TableRekey[] = [
     oneRowPerDay: true,
   },
   { table: 'work', primaryKey: 'id', memberFields: ['memberId'], coupleFields: [] },
+  // Not `oneRowPerDay`: a day holds up to two proofs, one per camera, and
+  // collapsing them to one would throw away whichever arrived second.
+  { table: 'workoutPhotos', primaryKey: 'id', memberFields: ['memberId'], coupleFields: [] },
   { table: 'tasks', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   { table: 'avatars', primaryKey: 'memberId', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   { table: 'pets', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
@@ -117,6 +119,21 @@ export function isUsableIdentity(id: Partial<Identity> | undefined | null): id i
 /** True when a re-key moves the primary key rather than only fields on the row. */
 export function rehomes(plan: TableRekey): boolean {
   return plan.memberFields.includes(plan.primaryKey) || plan.coupleFields.includes(plan.primaryKey);
+}
+
+/**
+ * Whether `planRekey` needs the rows that are staying put, or only the ones
+ * that are moving.
+ *
+ * The rest of the table is read for one reason: to find the slots already
+ * occupied. A plan with no slots — one that neither re-homes its primary key
+ * nor holds a member to a single row a day — has none to find, so the reader
+ * can stop at the rows carrying the old identity. That is the difference, on
+ * `workoutPhotos`, between holding two photographs in memory and holding every
+ * one the couple has ever taken.
+ */
+export function needsWholeTable(plan: TableRekey): boolean {
+  return rehomes(plan) || plan.oneRowPerDay === true;
 }
 
 /** True when any of the row's id fields still names the identity being left. */

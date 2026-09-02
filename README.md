@@ -65,9 +65,16 @@ it, and that is the whole reason it exists — a shared tracker that shares noth
 is just two separate apps.
 
 Concretely: mood, exercise, cycle and calendar entries are stored on the server,
-readable only by the two devices paired to your couple. Photos and camera proof
-stay on your own phone and are never uploaded. There are no accounts, no email
-addresses, no analytics, and no third parties.
+readable only by the two devices paired to your couple.
+
+**Images are stored on the server too.** Workout proof and your profile photo
+are synced, because a shared tracker whose photographs only one person can see
+is not shared. Both are downscaled on the phone before they are sent — proof to
+roughly 180 KB, a profile photo to 64 KB — and both are readable only by the two
+devices paired to your couple, exactly like every other entry. If you would
+rather a photograph stayed on your phone, do not take it in the app.
+
+There are no accounts, no email addresses, no analytics, and no third parties.
 
 Invite links expire after fifteen minutes and work exactly once. A couple is two
 people; a third join is refused.

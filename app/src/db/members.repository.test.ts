@@ -163,6 +163,17 @@ describe('saveMembersFromServer', () => {
     expect((await db.members.get(MINE))?.displayName).toBe('Sam');
   });
 
+  // /api/profile does not serve tracks_cycle, so every served row arrives
+  // without it. Saving a name must not blank the mirror setTracksCycle keeps.
+  it('keeps the cycle answer a row that does not carry one would erase', async () => {
+    await saveSettings({ tracksCycle: true });
+    const mine = await putMyProfile({ displayName: 'Sam' });
+    await saveMembersFromServer([
+      { id: MINE, coupleId: COUPLE, displayName: 'Sam', updatedAt: mine.updatedAt + 1 },
+    ]);
+    expect((await db.members.get(MINE))?.tracksCycle).toBe(true);
+  });
+
   it('treats an equal timestamp as the same row and leaves it alone', async () => {
     await db.members.put({
       id: THEIRS, coupleId: COUPLE, displayName: 'Alex', tracksCycle: false, updatedAt: 100,

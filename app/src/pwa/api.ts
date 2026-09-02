@@ -119,7 +119,11 @@ export interface WireMember {
   id: string;
   coupleId: string;
   displayName: string;
-  tracksCycle: boolean;
+  /**
+   * Absent in practice: /api/profile does not serve `tracks_cycle`, because
+   * cycle ownership is answered on the device rather than on the server.
+   */
+  tracksCycle?: boolean;
   photoDataUri?: string;
   updatedAt: number;
   mine: boolean;
