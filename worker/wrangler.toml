@@ -2,6 +2,13 @@ name = "heartbeat-api"
 main = "src/index.ts"
 compatibility_date = "2024-12-30"
 
+# Both keys are required together by wrangler: it refuses the whole config with
+# "observability.enabled or observability.logs.enabled is required" if only the
+# traces table is present, which takes db:local, db:remote, dev and deploy down
+# with it.
+[observability]
+enabled = true
+
 [observability.traces]
 enabled = true
 
@@ -19,7 +26,7 @@ database_id = "dcfde6ff-f415-427a-bfc4-c08bd6911699"
 [vars]
 # Origins allowed to call this Worker: the Pages production URL plus its preview
 # subdomains, so pairing and push can be tested from a preview deploy.
-ALLOWED_ORIGIN = "https://heartbeat.pages.dev,https://*.heartbeat.pages.dev"
+ALLOWED_ORIGIN = "https://heartbeat-eop.pages.dev,https://*.heartbeat-eop.pages.dev"
 VAPID_SUBJECT = "mailto:batalona06@gmail.com"
 
 # Secrets are set with `wrangler secret put`, never committed:

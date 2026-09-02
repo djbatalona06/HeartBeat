@@ -87,8 +87,8 @@ entries (id, couple_id, member_id, kind, day, payload, updated_at)
 UNIQUE (member_id, kind, day)
 ```
 
-`kind` is one of `mood | exercise | cycle | work`. The payload is opaque JSON, so
-adding a field on the client needs no migration here.
+`kind` is one of `mood | exercise | cycle | work | photo`. The payload is opaque
+JSON, so adding a field on the client needs no migration here.
 
 - **One row per member per kind per day.** Logging twice edits; it does not
   stack. A day always has a single answer.
@@ -96,9 +96,37 @@ adding a field on the client needs no migration here.
   slow device replaying an old entry cannot clobber a newer one.
 - Pull is `GET /entries?since=<ms>`, indexed on `(couple_id, updated_at)`.
 
-**Photographs never leave the phone.** Camera proof and partner photos are data
-URIs in IndexedDB. The server stores no image, which keeps it cheap, keeps the
-privacy claim in the README true, and avoids R2 entirely.
+**Photographs sync.** They did not always, and the sentence that used to sit
+here said so — but a proof only its own author can see is not proof to anyone,
+and the couple is the point. Two kinds of image reach the server:
+
+- **Workout proof**, as entries of kind `photo`, one row per member per day
+  holding both cameras' shots. Grouped that way because the unique index is
+  `(member_id, kind, day)`, so front and back cannot be two rows.
+- **Profile photos**, on `members.photo_data_uri` since `0006_member_profile.sql`.
+
+Both are base64 data URIs, downscaled on the phone first — proof to
+`PHOTO_BUDGET_BYTES` (180 KiB), a face to 64 KiB. Still no R2: a data URI in a
+`TEXT` column is one fewer binding, one fewer credential, and one fewer thing to
+get wrong, and at these sizes the cost of doing it properly is not worth paying.
+
+Sizes are what makes this safe to put in the same table as a mood, and it is not
+safe by default:
+
+- Each kind has its own payload ceiling — 64 KiB as before, 512 KiB for `photo`
+  (`domain/media/budget.ts`, mirrored in `functions/api/entries.ts`).
+- The pull is bounded by **bytes**, not only by a row count. 500 rows was a fine
+  bound for JSON and is 250 MB of photographs on a Worker with 128 MB of memory.
+- The push is bounded by bytes as well as count, for the same reason.
+- A payload the server will never accept is **named**, not thrown. The endpoint
+  returns `rejected: [{ id, reason }]` and writes the rest of the batch; the
+  client skips those rows and lets the watermark move past them.
+
+That last one is not a nicety. The client throws on any non-2xx and only
+advances its watermark after a clean push, so before this, a single oversize row
+at the head of the queue stopped mood, cycle and the calendar from syncing on
+that device — permanently, and invisibly, because `useSync.ts` swallows the
+error. Giving up on one photograph is the smaller loss.
 
 ## Dashboard
 
@@ -338,13 +366,19 @@ is character, not inconsistency. Finch's own density is deliberately not copied;
 its screens are fairly criticised as cluttered, so what is taken is the breathing
 room, not the number of things on a page.
 
-### Known loose end: provisional identity
+### Provisional identity, and the re-key that ends it
 
 The app mints a local `memberId`/`coupleId` on first use so it works before
 there is a partner to pair with. Pairing later replaces both with the ids the
-Worker issues, and rows written before that point keep the provisional ones and
-would need re-keying. Recorded here rather than papered over; it wants fixing
-when onboarding is built.
+Worker issues, and rows written before that point keep the provisional ones —
+which used to mean they never synced and never appeared in a "mine" view again.
+
+`domain/identity/rekey.ts` is the description of the repair (which fields on
+which tables carry an id, which rows have to move rather than be updated in
+place, and who wins when two rows want the same day), and `rekeyIdentity` in
+`db/repository.ts` walks it inside one transaction.
+`features/pairing/usePairing.ts` notices the identity change and runs it — on
+the first pairing, and again if the couple ever re-pairs.
 
 ## Reminders
 
@@ -372,8 +406,8 @@ would serve it an hour late for the eight months Pacific is on daylight time.
 - Bearer token per device, compared against a stored SHA-256 hash.
 - Origin-restricted CORS in `worker/src/cors.ts`, which **parses URLs rather
   than calling `endsWith`** — `endsWith` would happily accept
-  `https://heartbeat.pages.dev.attacker.com`. There is a test for exactly that.
-- Wildcards match a single label only, so `a.b.heartbeat.pages.dev` is refused.
+  `https://heartbeat-eop.pages.dev.attacker.com`. There is a test for exactly that.
+- Wildcards match a single label only, so `a.b.heartbeat-eop.pages.dev` is refused.
 - Secrets are set with `wrangler secret put` and never committed.
 
 ## Risks

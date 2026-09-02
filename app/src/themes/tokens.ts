@@ -45,6 +45,22 @@ export const SHARED_TOKENS: Record<string, string> = {
   // what makes a bar filling read as a reward rather than a progress report.
   '--ease-soft': 'cubic-bezier(0.34, 1.4, 0.5, 1)',
   '--motion-slow': '520ms',
+
+  // The shell's own measurements, as tokens rather than numbers buried in one
+  // rule. A screen that needs to know how much room it actually has — the home
+  // screen places its ring inside whatever is left — should be able to read it
+  // instead of copying `92px` and drifting the next time this changes.
+  '--shell-max': '560px',
+  '--shell-gutter': '18px',
+  '--shell-top': 'var(--space-5)',
+  /** The bar's own height, before the phone's safe area is added underneath. */
+  '--tabbar-height': '60px',
+  /** What a page must leave clear at the bottom: the bar, plus room to breathe. */
+  '--shell-bottom': 'calc(var(--tabbar-height) + var(--space-5))',
+
+  // The gap between stacked cards. Finch's breathing room is mostly this one
+  // number, and it is the first thing to raise when a screen feels crowded.
+  '--stack': '18px',
 };
 
 /**

@@ -610,8 +610,8 @@ export async function startAdventure(
  * partner to pair with, so a solo identity is minted locally on first use.
  *
  * Pairing later replaces both ids with the ones the Worker issues. Rows written
- * before that point keep the provisional ids and would need re-keying — a real
- * loose end, recorded in docs/DESIGN.md rather than papered over here.
+ * before that point keep the provisional ids; `rekeyIdentity` below carries
+ * them over the moment that happens.
  */
 export async function ensureIdentity(): Promise<{ memberId: MemberId; coupleId: string }> {
   const settings = await loadSettings();
@@ -800,4 +800,278 @@ export async function settlePetXp(
     });
     return next;
   });
+/* ---- identity repair ---- */
+
+// Imports are hoisted, so this one sits with the section it belongs to rather
+// than at the top of a file three other screens are editing this week.
+import {
+  REKEY_TABLES,
+  carriesIdentity,
+  isUsableIdentity,
+  needsWholeTable,
+  planRekey,
+  sameIdentity,
+  type Identity,
+  type RekeyRow,
+} from '../domain/identity/rekey';
+
+/**
+ * Carry this device's rows over when its identity changes.
+ *
+ * `ensureIdentity` above mints a provisional pair on first use and pairing
+ * replaces both, which left everything logged before pairing wearing ids nobody
+ * has: never synced, never in a "mine" view again. This is the repair for that,
+ * and for the same thing happening again if the couple ever re-pairs.
+ *
+ * What moves where is `domain/identity/rekey.ts` — it is pure, so the awkward
+ * parts (a primary key that is itself an id, a day that already has an answer)
+ * are decided somewhere they can be tested. This walks the plan inside one
+ * transaction so a phone that dies halfway does not wake up half re-keyed.
+ *
+ * Idempotent: a second run finds no row still carrying `from` and writes
+ * nothing. Returns how many rows it touched.
+ */
+export async function rekeyIdentity(from: Identity, to: Identity): Promise<number> {
+  if (!isUsableIdentity(from) || !isUsableIdentity(to)) return 0;
+  if (sameIdentity(from, to)) return 0;
+
+  // The sync watermarks belonged to the identity being left, so they go with
+  // it. `syncPushedAt` especially: a re-keyed row keeps the `updatedAt` it was
+  // written with, which on a re-pair is older than the watermark, so the row
+  // would sit below it and never be offered to the server — the same silence
+  // this repair exists to end. Starting both from zero is safe in both
+  // directions, because push and pull each settle on the newer `updatedAt`.
+  await saveSettings({ syncPushedAt: 0, syncPulledAt: 0 });
+
+  // A planned table the schema does not have yet — one arriving with a later
+  // version — is skipped rather than thrown over.
+  const present = new Set(db.tables.map((table) => table.name));
+  const plans = REKEY_TABLES.filter((plan) => present.has(plan.table));
+
+  return db.transaction('rw', plans.map((plan) => plan.table), async () => {
+    let touched = 0;
+    for (const plan of plans) {
+      const table = db.table<RekeyRow, unknown>(plan.table);
+      // Only the tables whose plan can collide are read whole. `workoutPhotos`
+      // holds a data URI per row, and pulling every one into memory to decide
+      // nothing is how a re-pair after a year of proofs runs a phone out of it.
+      const rows = needsWholeTable(plan)
+        ? await table.toArray()
+        : await table.filter((row) => carriesIdentity(row, plan, from)).toArray();
+      for (const action of planRekey(plan, rows, from, to)) {
+        if (action.verb === 'put') {
+          await table.put(action.row);
+        } else if (action.verb === 'move') {
+          // The key is the id, so the row cannot be updated where it lies.
+          await table.delete(action.oldKey);
+          await table.put(action.row);
+        } else {
+          await table.delete(action.oldKey);
+        }
+        touched += 1;
+      }
+    }
+    return touched;
+  });
+}
+
+/* ---- workout photos ------------------------------------------------------- */
+
+/**
+ * Camera proof for a day's workout: one row per member, per day, per camera.
+ *
+ * Upserted on `[memberId+day]` the way mood and exercise are, with `facing`
+ * narrowing it further — retaking the back-camera shot replaces the back-camera
+ * shot and leaves the front one where it was.
+ *
+ * The row is deliberately not part of the exercise entry: an exercise payload
+ * is held to 64 KiB and a photograph is not. `pwa/sync.ts` now carries these
+ * rows as their own entry kind, `photo`, which has its own 512 KiB ceiling —
+ * so a day of proof travels without a mood or a cycle row riding on its size.
+ * A day travels whole, both cameras in one payload, because the server's unique
+ * index is (member, kind, day).
+ */
+export async function putWorkoutPhoto(
+  memberId: MemberId,
+  day: DayKey,
+  values: Omit<WorkoutPhoto, 'id' | 'memberId' | 'day' | 'updatedAt'>,
+): Promise<void> {
+  const sameDay = await db.workoutPhotos.where('[memberId+day]').equals([memberId, day]).toArray();
+  const existing = sameDay.find((row) => row.facing === values.facing);
+  await db.workoutPhotos.put({
+    id: existing?.id ?? id(),
+    memberId,
+    day,
+    ...values,
+    updatedAt: now(),
+  });
+}
+
+/**
+ * Deleting one camera's shot leaves the other one where it is.
+ *
+ * The shot that stays has its `updatedAt` bumped, which looks redundant and is
+ * not: sync dates a day of proof by the newest shot still in it, so a delete
+ * that touched nothing would leave the day's timestamp below the watermark and
+ * the removal would never be offered to the server — the partner's phone would
+ * go on showing a photograph that no longer exists here.
+ */
+export async function removeWorkoutPhoto(
+  memberId: MemberId,
+  day: DayKey,
+  facing: WorkoutPhoto['facing'],
+): Promise<void> {
+  const sameDay = await db.workoutPhotos.where('[memberId+day]').equals([memberId, day]).toArray();
+  const doomed = sameDay.find((row) => row.facing === facing);
+  if (!doomed) return;
+  await db.workoutPhotos.delete(doomed.id);
+
+  const at = now();
+  await db.workoutPhotos.bulkPut(
+    sameDay.filter((row) => row.id !== doomed.id).map((row) => ({ ...row, updatedAt: at })),
+  );
+}
+
+/* ---- members ------------------------------------------------------------- */
+
+/**
+ * The two people, and the handful of settings the Settings screen owns.
+ *
+ * The members table has existed since v1 of the schema and nothing had ever
+ * written to it, so a paired couple had two ids and no names. These are its
+ * first writers. Both rows live on both phones: mine because I edited it,
+ * theirs because /api/profile served it — which is what lets a partner's name
+ * and face render with the network off, like everything else here.
+ *
+ * The wire shape is spelled out locally rather than imported so this section
+ * stays self-contained; it is the JSON /api/profile returns, not the Dexie row.
+ */
+export interface IncomingMember {
+  id: MemberId;
+  coupleId: string;
+  displayName: string;
+  /**
+   * Optional because /api/profile deliberately does not serve it: cycle
+   * ownership is answered on the device, and the endpoint says so in as many
+   * words. Declaring it required only made TypeScript agree with a field that
+   * never arrives.
+   */
+  tracksCycle?: boolean;
+  photoDataUri?: string;
+  updatedAt: number;
+}
+
+/** Longer than anyone's name, short enough that it cannot be used as a note. */
+export const MAX_DISPLAY_NAME = 40;
+
+/**
+ * What pairing hands back, written in one place so no screen has to remember
+ * that three of these four fields are what "paired" means.
+ *
+ * The invite is kept because a reload should not lose a code that is still
+ * good — the person reading it out has walked into the next room by then.
+ */
+export async function savePairing(result: {
+  coupleId: string;
+  memberId: MemberId;
+  token: string;
+  invite?: string;
+  expiresAt?: number;
+}): Promise<void> {
+  await saveSettings({
+    coupleId: result.coupleId,
+    memberId: result.memberId,
+    workerSecret: result.token,
+    pendingInvite: result.invite,
+    pendingInviteExpiresAt: result.expiresAt,
+  });
+}
+
+/** Both halves of the couple are together; the code has done its job. */
+export async function clearPendingInvite(): Promise<void> {
+  await saveSettings({ pendingInvite: undefined, pendingInviteExpiresAt: undefined });
+}
+
+/**
+ * The durable half of the theme choice. ThemeProvider writes localStorage for
+ * the first paint; this is the copy that outlives site data being cleared.
+ */
+export async function setThemeChoice(themeId: string): Promise<void> {
+  await saveSettings({ themeId });
+}
+
+export async function setCalmMode(calmMode: boolean): Promise<void> {
+  await saveSettings({ calmMode });
+}
+
+/**
+ * Cycle ownership has one answer, and it is this one. `Member.tracksCycle` is
+ * copied from it so the couple's rows are complete, and is never read back to
+ * decide anything — see the note on Settings.tracksCycle.
+ */
+export async function setTracksCycle(tracksCycle: boolean): Promise<void> {
+  await saveSettings({ tracksCycle });
+  const { memberId, coupleId } = await ensureIdentity();
+  const existing = await db.members.get(memberId);
+  await db.members.put({
+    id: memberId,
+    coupleId,
+    displayName: existing?.displayName ?? '',
+    photoDataUri: existing?.photoDataUri,
+    tracksCycle,
+    updatedAt: now(),
+  });
+}
+
+/**
+ * My own name and face.
+ *
+ * `photoDataUri: null` means "take it off", which is different from leaving it
+ * out — a patch that omits the photo must not silently delete one.
+ */
+export async function putMyProfile(patch: {
+  displayName?: string;
+  photoDataUri?: string | null;
+}): Promise<IncomingMember> {
+  const { memberId, coupleId } = await ensureIdentity();
+  const settings = await loadSettings();
+  const existing = await db.members.get(memberId);
+  const photo = patch.photoDataUri === undefined ? existing?.photoDataUri : patch.photoDataUri;
+  const row = {
+    id: memberId,
+    coupleId,
+    displayName: (patch.displayName ?? existing?.displayName ?? '')
+      .trim()
+      .slice(0, MAX_DISPLAY_NAME),
+    tracksCycle: settings.tracksCycle === true,
+    photoDataUri: photo ?? undefined,
+    updatedAt: now(),
+  };
+  await db.members.put(row);
+  return row;
+}
+
+/**
+ * Rows the server served. Newer wins, decided by the row's own `updatedAt` on
+ * both sides — the same rule pwa/sync.ts uses, so an edit made on this phone
+ * while it was offline is not undone by an older copy coming back.
+ */
+export async function saveMembersFromServer(rows: IncomingMember[]): Promise<number> {
+  let applied = 0;
+  for (const row of rows) {
+    const existing = await db.members.get(row.id);
+    if (existing && existing.updatedAt >= row.updatedAt) continue;
+    await db.members.put({
+      id: row.id,
+      coupleId: row.coupleId,
+      displayName: row.displayName,
+      // The server does not serve this one, so a served row must not erase the
+      // copy `setTracksCycle` mirrors here — otherwise saving a name blanks it.
+      tracksCycle: row.tracksCycle ?? existing?.tracksCycle ?? false,
+      photoDataUri: row.photoDataUri,
+      updatedAt: row.updatedAt,
+    });
+    applied += 1;
+  }
+  return applied;
 }
