@@ -147,6 +147,28 @@ export async function putWorkEvent(
   return rowId;
 }
 
+/**
+ * A whole calendar import in one write.
+ *
+ * A year of somebody's calendar is a thousand rows, and a thousand awaited
+ * `put`s is a thousand transactions — seconds of blocked screen on a phone,
+ * and a half-written calendar if the browser drops the connection part way
+ * through. One `bulkPut` is one transaction: it lands completely or not at
+ * all. Ids come from the caller, so a re-import overwrites rather than doubles.
+ */
+export async function putWorkEvents(
+  memberId: MemberId,
+  events: readonly (Omit<WorkEvent, 'memberId' | 'updatedAt'>)[],
+): Promise<void> {
+  const at = now();
+  const rows = events.map((event) => {
+    const title = event.title.trim();
+    if (!title) throw new Error('a calendar event needs a title');
+    return { ...event, title, memberId, updatedAt: at };
+  });
+  await db.work.bulkPut(rows);
+}
+
 export async function removeWorkEvent(eventId: string): Promise<void> {
   await db.work.delete(eventId);
 }
@@ -703,11 +725,12 @@ export async function rekeyIdentity(from: Identity, to: Identity): Promise<numbe
  * narrowing it further — retaking the back-camera shot replaces the back-camera
  * shot and leaves the front one where it was.
  *
- * The row is deliberately not part of the exercise entry. `pwa/sync.ts` sends
- * an entry row whole and the endpoint refuses a payload over 64 KiB, so a
- * photograph riding along on that row would fail the push; and because the
- * watermark only advances on success, it would take mood, cycle and the
- * calendar down with it. Nothing in this table is read by the sync client.
+ * The row is deliberately not part of the exercise entry: an exercise payload
+ * is held to 64 KiB and a photograph is not. `pwa/sync.ts` now carries these
+ * rows as their own entry kind, `photo`, which has its own 512 KiB ceiling —
+ * so a day of proof travels without a mood or a cycle row riding on its size.
+ * A day travels whole, both cameras in one payload, because the server's unique
+ * index is (member, kind, day).
  */
 export async function putWorkoutPhoto(
   memberId: MemberId,
@@ -725,7 +748,15 @@ export async function putWorkoutPhoto(
   });
 }
 
-/** Deleting one camera's shot leaves the other one where it is. */
+/**
+ * Deleting one camera's shot leaves the other one where it is.
+ *
+ * The shot that stays has its `updatedAt` bumped, which looks redundant and is
+ * not: sync dates a day of proof by the newest shot still in it, so a delete
+ * that touched nothing would leave the day's timestamp below the watermark and
+ * the removal would never be offered to the server — the partner's phone would
+ * go on showing a photograph that no longer exists here.
+ */
 export async function removeWorkoutPhoto(
   memberId: MemberId,
   day: DayKey,
@@ -733,7 +764,13 @@ export async function removeWorkoutPhoto(
 ): Promise<void> {
   const sameDay = await db.workoutPhotos.where('[memberId+day]').equals([memberId, day]).toArray();
   const doomed = sameDay.find((row) => row.facing === facing);
-  if (doomed) await db.workoutPhotos.delete(doomed.id);
+  if (!doomed) return;
+  await db.workoutPhotos.delete(doomed.id);
+
+  const at = now();
+  await db.workoutPhotos.bulkPut(
+    sameDay.filter((row) => row.id !== doomed.id).map((row) => ({ ...row, updatedAt: at })),
+  );
 }
 
 /* ---- members ------------------------------------------------------------- */
@@ -1133,3 +1170,144 @@ export async function reconcileQuests(coupleId: string, today: DayKey): Promise<
 
 /** The templates, for a picker that wants to show what is on offer. */
 export { QUEST_TEMPLATES };
+/* ---- achievements --------------------------------------------------------- */
+
+/**
+ * The shelf's one writer.
+ *
+ * `achievements` has existed since v1 of the schema and nothing had ever put a
+ * row in it. This is its first writer, and the only one: everything else about
+ * achievements is pure, in `domain/achievements/`.
+ *
+ * Two things about the shape below are load-bearing.
+ *
+ * The stored codes are read *inside* the transaction that writes them. The
+ * caller is a live query, which re-fires whenever a table it watches changes —
+ * including the writes this function is making. Taking "what is already
+ * unlocked" as an argument, or reading it before the transaction opened, means
+ * a second call that overlaps the first sees a shelf that is already out of
+ * date and pays the same rung again. Dexie serialises transactions touching the
+ * same table, so reading within is what makes the second call find nothing.
+ *
+ * The counters are gathered before the transaction, and deliberately: holding a
+ * write lock across a dozen tables to read numbers off them is a great deal of
+ * blocking for no guarantee. A counter that is a moment stale can only ever
+ * under-award, and the next call — which any of these writes will trigger —
+ * picks it up. Over-awarding is the failure that matters, and that is the one
+ * the transaction prevents.
+ *
+ * The XP is added through `addXp`, so the shared pet stays the only place
+ * achievement XP can land. There is no second arithmetic here to disagree with
+ * the one every other payout uses.
+ *
+ * The imports sit here rather than at the top of the file on purpose: this
+ * section is one clean append, and imports hoist, so it costs nothing.
+ */
+import { ACHIEVEMENTS, type AchievementDef } from '../domain/achievements/catalogue';
+import { countGear, newlyEarned, payoutFor, stateFrom } from '../domain/achievements/unlock';
+import { levelForXp } from '../domain/xp';
+import type { Achievement } from '../domain/types';
+
+/** What a claim did, so a screen can say so without re-deriving it. */
+export interface ClaimResult {
+  unlocked: AchievementDef[];
+  xp: number;
+}
+
+/**
+ * Count the days that have proof on them.
+ *
+ * A day holds up to two photographs, one per camera, so counting rows would
+ * count a two-camera day twice and hand out the track at half the work.
+ */
+function proofDayCount(photos: ReadonlyArray<{ memberId: string; day: string }>): number {
+  return new Set(photos.map((p) => `${p.memberId} ${p.day}`)).size;
+}
+
+/**
+ * Everything the rungs are measured against.
+ *
+ * Every table read here holds one couple's rows and no one else's, so a count
+ * is the couple's count. Achievements are the couple's rather than one
+ * person's: the row carries a coupleId and no memberId, and the shelf is
+ * shared.
+ */
+async function achievementState(coupleId: string) {
+  const [
+    moodDays, exerciseDays, photos, events, cycleDays, notes,
+    vibesSent, tasks, avatars, pets, pet,
+  ] = await Promise.all([
+    db.moods.count(),
+    db.exercises.count(),
+    db.workoutPhotos.toArray(),
+    db.work.count(),
+    db.cycles.count(),
+    db.messages.count(),
+    // `kind` is not an index on this table, so this is a scan rather than a
+    // lookup. It is a handful of rows and adding an index would mean a Dexie
+    // version bump for a counter.
+    db.lifeEvents.filter((e) => e.kind === 'good-vibes').count(),
+    db.tasks.toArray(),
+    db.avatars.toArray(),
+    db.pets.count(),
+    db.pet.get(coupleId),
+  ]);
+
+  return stateFrom({
+    moodDays,
+    exerciseDays,
+    proofDays: proofDayCount(photos),
+    events,
+    cycleDays,
+    notes,
+    vibesSent,
+    pets,
+    tasks,
+    // The fullest either sheet has been dressed, not the sum: "every slot
+    // filled" is a thing one character does, not a total across two.
+    gear: avatars.reduce<Record<string, string | undefined>>(
+      (best, a) => (countGear(a.gear) > countGear(best) ? a.gear : best),
+      {},
+    ),
+    petLevel: pet ? levelForXp(pet.xp) : 0,
+  });
+}
+
+/**
+ * Award every rung the couple has reached and not yet been given.
+ *
+ * Safe to call as often as anything likes: with nothing new it reads, finds no
+ * codes, and writes nothing at all — not even the XP.
+ */
+export async function claimAchievements(coupleId: string): Promise<ClaimResult> {
+  const state = await achievementState(coupleId);
+
+  return db.transaction('rw', [db.achievements, db.pet], async () => {
+    const stored = await db.achievements.where('coupleId').equals(coupleId).toArray();
+    const fresh = newlyEarned(state, stored.map((row) => row.code));
+    if (fresh.length === 0) return { unlocked: [], xp: 0 };
+
+    const at = now();
+    const rows: Achievement[] = fresh.map((def) => ({
+      id: id(),
+      coupleId,
+      code: def.code,
+      xp: payoutFor([def]),
+      unlockedAt: at,
+    }));
+    await db.achievements.bulkPut(rows);
+
+    const xp = payoutFor(fresh);
+    await addXp(coupleId, xp);
+    return { unlocked: fresh, xp };
+  });
+}
+
+/** Everything the couple has been given, newest first. */
+export async function listAchievements(coupleId: string): Promise<Achievement[]> {
+  const rows = await db.achievements.where('coupleId').equals(coupleId).toArray();
+  return rows.sort((a, b) => b.unlockedAt - a.unlockedAt);
+}
+
+/** The catalogue, so a screen can show what is still ahead. */
+export { ACHIEVEMENTS };

@@ -1453,6 +1453,137 @@ body {
 /* Calm mode stills the columns. Reduced motion is already handled globally. */
 :root[data-calm='true'] .mood-meters .meter-fill { transition: none; }
 
+/* ---- calendar import ------------------------------------------------------
+   Two things, both belonging only to the Work calendar: the day cells graded
+   by how much is on them, and the panel underneath where a CSV comes in and
+   goes back out.
+
+   Everything here is scoped under `.cal-grid-work` or `.cal-file` on purpose.
+   The plain calendar classes above are shared with the cycle calendar, and a
+   bare `.cal-day[data-load]` would quietly tint a screen that has no events to
+   count. */
+
+/* The grade is the theme's own accent mixed into the theme's own surface, so
+   all five packs follow for free and no step is ever a hex. It stops at 35%:
+   past that the day number falls under 4.5:1 against the lightest of the five
+   accents, and a theme cannot ship with text you can't read. The selected day
+   keeps its solid fill — being the day you are looking at outranks being a
+   busy one. */
+.cal-grid-work .cal-day[data-load='1']:not([data-selected='true']) {
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+}
+
+.cal-grid-work .cal-day[data-load='2']:not([data-selected='true']) {
+  background: color-mix(in srgb, var(--color-accent) 22%, var(--color-surface));
+}
+
+.cal-grid-work .cal-day[data-load='3']:not([data-selected='true']) {
+  background: color-mix(in srgb, var(--color-accent) 35%, var(--color-surface));
+}
+
+/* A full day carries a little more weight in the number too, so the grade is
+   not resting on colour alone. */
+.cal-grid-work .cal-day[data-load='3'] .cal-num { font-weight: 500; }
+
+/* The count only ever shows on the deepest tint, which is where the accent it
+   is normally drawn in has nearly become the background behind it. */
+.cal-grid-work .cal-day[data-load='3']:not([data-selected='true']) .cal-count {
+  color: var(--color-text);
+}
+
+.cal-file { margin-top: var(--space-6); }
+
+.cal-file-actions { margin-top: var(--space-3); }
+
+/* A label doing a button's job: a file input cannot be styled, and left as it
+   comes it looks like nothing else on the screen. */
+.cal-file-pick {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-large);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  cursor: pointer;
+}
+.cal-file-pick:active { transform: scale(0.985); }
+.cal-file-pick[data-busy='true'] { opacity: 0.5; }
+.cal-file-pick:focus-within { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+/* Hidden by size rather than by display, so it still takes focus and the label
+   still works from a keyboard. */
+.cal-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.cal-preview {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+}
+.cal-preview[data-empty='true'] {
+  border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-border));
+}
+
+.cal-preview-name {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.cal-preview-count {
+  margin-top: var(--space-1);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+
+.cal-preview-note {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
+
+.cal-problems {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.cal-problem {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+  overflow-wrap: anywhere;
+}
+
+.cal-problem-line {
+  flex: none;
+  color: var(--color-danger);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-file-note {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
 /* ---- pair gate ------------------------------------------------------------
    The first screen on a fresh install, so it is allowed to be the whole page:
    one mark, one sentence, one action, and everything after the action quieter
@@ -1863,6 +1994,29 @@ body {
 }
 
 .quest-head {
+/* ---- the shelf ------------------------------------------------------------
+   Achievements. One rung per track, so the page shows what is next rather than
+   a wall of locked doors — Habitica's structure read in Finch's manner. There
+   is no locked state and no greying out: a rung not yet reached is simply a bar
+   that is partly full, which is the same thing said kindly.
+
+   Everything sizes off the shared spacing scale, so the shelf breathes at the
+   same rate as the panels above it. */
+
+.shelf {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.shelf-row {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.shelf-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -1870,6 +2024,7 @@ body {
 }
 
 .quest-name {
+.shelf-name {
   font-family: var(--font-display);
   letter-spacing: var(--font-display-tracking);
   line-height: var(--line-tight);
@@ -1880,6 +2035,9 @@ body {
 .quest-count,
 .quest-worth,
 .quest-offer-worth {
+/* Tabular figures so a count changing from 9/15 to 10/15 does not shift the
+   name beside it. */
+.shelf-count {
   font-variant-numeric: tabular-nums;
   color: var(--color-text-muted);
   white-space: nowrap;
@@ -1887,12 +2045,14 @@ body {
 
 .quest-blurb,
 .quest-lead {
+.shelf-blurb {
   margin: 0;
   line-height: var(--line-body);
   color: var(--color-text-muted);
 }
 
 .quest-bar {
+.shelf-bar {
   height: var(--space-2);
   border-radius: var(--radius);
   background: var(--color-surface-muted);
@@ -1900,6 +2060,7 @@ body {
 }
 
 .quest-fill {
+.shelf-fill {
   display: block;
   height: 100%;
   border-radius: inherit;
@@ -1992,12 +2153,29 @@ body {
 }
 
 .quest-past summary {
+/* A finished track keeps its place rather than disappearing, so the shelf grows
+   as the couple get further instead of shrinking. */
+.shelf-row.is-done .shelf-fill { background: var(--color-success); }
+.shelf-row.is-done .shelf-count { color: var(--color-success); }
+
+@media (prefers-reduced-motion: reduce) {
+  .shelf-fill { transition: none; }
+}
+
+.shelf-past {
+  margin-top: var(--space-5);
+  border-top: var(--border-width) solid var(--color-border);
+  padding-top: var(--space-4);
+}
+
+.shelf-past summary {
   cursor: pointer;
   color: var(--color-text-muted);
   line-height: var(--line-body);
 }
 
 .quest-past-list {
+.shelf-list {
   list-style: none;
   margin: var(--space-3) 0 0;
   padding: 0;
@@ -2006,6 +2184,7 @@ body {
 }
 
 .quest-past-row {
+.shelf-past-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -2015,6 +2194,9 @@ body {
 .quest-past-name { color: var(--color-text); }
 
 .quest-past-mark {
+.shelf-past-name { color: var(--color-text); }
+
+.shelf-past-xp {
   font-variant-numeric: tabular-nums;
   color: var(--color-text-muted);
   white-space: nowrap;
