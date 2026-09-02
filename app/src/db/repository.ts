@@ -916,3 +916,145 @@ export async function saveMembersFromServer(rows: IncomingMember[]): Promise<num
   }
   return applied;
 }
+
+/* ---- achievements --------------------------------------------------------- */
+
+/**
+ * The shelf's one writer.
+ *
+ * `achievements` has existed since v1 of the schema and nothing had ever put a
+ * row in it. This is its first writer, and the only one: everything else about
+ * achievements is pure, in `domain/achievements/`.
+ *
+ * Two things about the shape below are load-bearing.
+ *
+ * The stored codes are read *inside* the transaction that writes them. The
+ * caller is a live query, which re-fires whenever a table it watches changes —
+ * including the writes this function is making. Taking "what is already
+ * unlocked" as an argument, or reading it before the transaction opened, means
+ * a second call that overlaps the first sees a shelf that is already out of
+ * date and pays the same rung again. Dexie serialises transactions touching the
+ * same table, so reading within is what makes the second call find nothing.
+ *
+ * The counters are gathered before the transaction, and deliberately: holding a
+ * write lock across a dozen tables to read numbers off them is a great deal of
+ * blocking for no guarantee. A counter that is a moment stale can only ever
+ * under-award, and the next call — which any of these writes will trigger —
+ * picks it up. Over-awarding is the failure that matters, and that is the one
+ * the transaction prevents.
+ *
+ * The XP is added through `addXp`, so the shared pet stays the only place
+ * achievement XP can land. There is no second arithmetic here to disagree with
+ * the one every other payout uses.
+ *
+ * The imports sit here rather than at the top of the file on purpose: this
+ * section is one clean append, and imports hoist, so it costs nothing.
+ */
+import { ACHIEVEMENTS, type AchievementDef } from '../domain/achievements/catalogue';
+import { countGear, newlyEarned, payoutFor, stateFrom } from '../domain/achievements/unlock';
+import { levelForXp } from '../domain/xp';
+import type { Achievement } from '../domain/types';
+
+/** What a claim did, so a screen can say so without re-deriving it. */
+export interface ClaimResult {
+  unlocked: AchievementDef[];
+  xp: number;
+}
+
+/**
+ * Count the days that have proof on them.
+ *
+ * A day holds up to two photographs, one per camera, so counting rows would
+ * count a two-camera day twice and hand out the track at half the work.
+ */
+function proofDayCount(photos: ReadonlyArray<{ memberId: string; day: string }>): number {
+  return new Set(photos.map((p) => `${p.memberId} ${p.day}`)).size;
+}
+
+/**
+ * Everything the rungs are measured against.
+ *
+ * Every table read here holds one couple's rows and no one else's, so a count
+ * is the couple's count. Achievements are the couple's rather than one
+ * person's: the row carries a coupleId and no memberId, and the shelf is
+ * shared.
+ */
+async function achievementState(coupleId: string) {
+  const [
+    moodDays, exerciseDays, photos, events, cycleDays, notes,
+    vibesSent, tasks, avatars, pets, pet,
+  ] = await Promise.all([
+    db.moods.count(),
+    db.exercises.count(),
+    db.workoutPhotos.toArray(),
+    db.work.count(),
+    db.cycles.count(),
+    db.messages.count(),
+    // `kind` is not an index on this table, so this is a scan rather than a
+    // lookup. It is a handful of rows and adding an index would mean a Dexie
+    // version bump for a counter.
+    db.lifeEvents.filter((e) => e.kind === 'good-vibes').count(),
+    db.tasks.toArray(),
+    db.avatars.toArray(),
+    db.pets.count(),
+    db.pet.get(coupleId),
+  ]);
+
+  return stateFrom({
+    moodDays,
+    exerciseDays,
+    proofDays: proofDayCount(photos),
+    events,
+    cycleDays,
+    notes,
+    vibesSent,
+    pets,
+    tasks,
+    // The fullest either sheet has been dressed, not the sum: "every slot
+    // filled" is a thing one character does, not a total across two.
+    gear: avatars.reduce<Record<string, string | undefined>>(
+      (best, a) => (countGear(a.gear) > countGear(best) ? a.gear : best),
+      {},
+    ),
+    petLevel: pet ? levelForXp(pet.xp) : 0,
+  });
+}
+
+/**
+ * Award every rung the couple has reached and not yet been given.
+ *
+ * Safe to call as often as anything likes: with nothing new it reads, finds no
+ * codes, and writes nothing at all — not even the XP.
+ */
+export async function claimAchievements(coupleId: string): Promise<ClaimResult> {
+  const state = await achievementState(coupleId);
+
+  return db.transaction('rw', [db.achievements, db.pet], async () => {
+    const stored = await db.achievements.where('coupleId').equals(coupleId).toArray();
+    const fresh = newlyEarned(state, stored.map((row) => row.code));
+    if (fresh.length === 0) return { unlocked: [], xp: 0 };
+
+    const at = now();
+    const rows: Achievement[] = fresh.map((def) => ({
+      id: id(),
+      coupleId,
+      code: def.code,
+      xp: payoutFor([def]),
+      unlockedAt: at,
+    }));
+    await db.achievements.bulkPut(rows);
+
+    const xp = payoutFor(fresh);
+    await addXp(coupleId, xp);
+    return { unlocked: fresh, xp };
+  });
+}
+
+/** Everything the couple has been given, newest first. */
+export async function listAchievements(coupleId: string): Promise<Achievement[]> {
+  const rows = await db.achievements.where('coupleId').equals(coupleId).toArray();
+  return rows.sort((a, b) => b.unlockedAt - a.unlockedAt);
+}
+
+/** The catalogue, so a screen can show what is still ahead. */
+export { ACHIEVEMENTS };

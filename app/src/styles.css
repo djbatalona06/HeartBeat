@@ -1965,3 +1965,112 @@ body {
    default blue, which belongs to no palette here and fails contrast on the
    darker packs. */
 .set-block a { color: var(--color-accent); }
+
+/* ---- the shelf ------------------------------------------------------------
+   Achievements. One rung per track, so the page shows what is next rather than
+   a wall of locked doors — Habitica's structure read in Finch's manner. There
+   is no locked state and no greying out: a rung not yet reached is simply a bar
+   that is partly full, which is the same thing said kindly.
+
+   Everything sizes off the shared spacing scale, so the shelf breathes at the
+   same rate as the panels above it. */
+
+.shelf {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.shelf-row {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.shelf-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.shelf-name {
+  font-family: var(--font-display);
+  letter-spacing: var(--font-display-tracking);
+  line-height: var(--line-tight);
+  color: var(--color-text);
+}
+
+/* Tabular figures so a count changing from 9/15 to 10/15 does not shift the
+   name beside it. */
+.shelf-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.shelf-blurb {
+  margin: 0;
+  line-height: var(--line-body);
+  color: var(--color-text-muted);
+}
+
+.shelf-bar {
+  height: var(--space-2);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+
+.shelf-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent);
+  transition: width var(--motion-medium) var(--motion-easing);
+}
+
+/* A finished track keeps its place rather than disappearing, so the shelf grows
+   as the couple get further instead of shrinking. */
+.shelf-row.is-done .shelf-fill { background: var(--color-success); }
+.shelf-row.is-done .shelf-count { color: var(--color-success); }
+
+@media (prefers-reduced-motion: reduce) {
+  .shelf-fill { transition: none; }
+}
+
+.shelf-past {
+  margin-top: var(--space-5);
+  border-top: var(--border-width) solid var(--color-border);
+  padding-top: var(--space-4);
+}
+
+.shelf-past summary {
+  cursor: pointer;
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
+
+.shelf-list {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.shelf-past-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.shelf-past-name { color: var(--color-text); }
+
+.shelf-past-xp {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
