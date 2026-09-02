@@ -142,6 +142,22 @@ export interface Quest {
   progress: number;
   xp: number;
   expiresAt: number;
+  /**
+   * The window, as days rather than instants, because that is how a quest is
+   * described and how its progress is counted. `endsOn` is inclusive: seven
+   * days means seven days of chances.
+   */
+  startedOn?: DayKey;
+  endsOn?: DayKey;
+  /**
+   * When the target was reached. This is the guard that makes a quest pay once
+   * — `reckon` refuses to award anything to a quest that carries it, so
+   * progress arriving after the fact, or a second reconcile, finds nothing to
+   * hand out.
+   */
+  completedAt?: number;
+  /** When the week ran out with the target unmet. Nothing is taken; it stops. */
+  retiredAt?: number;
 }
 
 export interface Achievement {

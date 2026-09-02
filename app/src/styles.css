@@ -1966,6 +1966,34 @@ body {
    darker packs. */
 .set-block a { color: var(--color-accent); }
 
+/* ---- quests ---------------------------------------------------------------
+   One quest at a time, so this is a card and not a list. The whole section is
+   arranged around the fact that nothing here can go wrong for the person
+   reading it: there is no red, no warning, and the button that abandons a quest
+   says what it costs in as many words, because in most apps it would cost
+   something. */
+
+.quest { margin-bottom: var(--space-6); }
+
+.quest-title {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  letter-spacing: var(--font-display-tracking);
+  line-height: var(--line-tight);
+  color: var(--color-text);
+}
+
+.quest-card,
+.quest-pick {
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.quest-head {
 /* ---- the shelf ------------------------------------------------------------
    Achievements. One rung per track, so the page shows what is next rather than
    a wall of locked doors — Habitica's structure read in Finch's manner. There
@@ -1995,6 +2023,7 @@ body {
   gap: var(--space-3);
 }
 
+.quest-name {
 .shelf-name {
   font-family: var(--font-display);
   letter-spacing: var(--font-display-tracking);
@@ -2002,6 +2031,10 @@ body {
   color: var(--color-text);
 }
 
+/* Tabular, so a count ticking over does not shift the title beside it. */
+.quest-count,
+.quest-worth,
+.quest-offer-worth {
 /* Tabular figures so a count changing from 9/15 to 10/15 does not shift the
    name beside it. */
 .shelf-count {
@@ -2010,12 +2043,15 @@ body {
   white-space: nowrap;
 }
 
+.quest-blurb,
+.quest-lead {
 .shelf-blurb {
   margin: 0;
   line-height: var(--line-body);
   color: var(--color-text-muted);
 }
 
+.quest-bar {
 .shelf-bar {
   height: var(--space-2);
   border-radius: var(--radius);
@@ -2023,6 +2059,7 @@ body {
   overflow: hidden;
 }
 
+.quest-fill {
 .shelf-fill {
   display: block;
   height: 100%;
@@ -2031,6 +2068,91 @@ body {
   transition: width var(--motion-medium) var(--motion-easing);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .quest-fill { transition: none; }
+}
+
+.quest-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* Muted rather than warning-coloured: running out of days is not a failure
+   here, it is just the week ending. */
+.quest-left { color: var(--color-text-muted); }
+
+.quest-drop {
+  justify-self: start;
+  background: none;
+  border: 0;
+  padding: var(--space-2) 0 0;
+  font: inherit;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.quest-dial {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.quest-level {
+  flex: 1 1 0;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font: inherit;
+  text-transform: capitalize;
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--motion-easing);
+}
+
+.quest-level.is-on {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quest-level { transition: none; }
+}
+
+.quest-offers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.quest-offer {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.quest-offer:disabled { opacity: 0.6; cursor: default; }
+
+.quest-past {
+  margin-top: var(--space-4);
+}
+
+.quest-past summary {
 /* A finished track keeps its place rather than disappearing, so the shelf grows
    as the couple get further instead of shrinking. */
 .shelf-row.is-done .shelf-fill { background: var(--color-success); }
@@ -2052,6 +2174,7 @@ body {
   line-height: var(--line-body);
 }
 
+.quest-past-list {
 .shelf-list {
   list-style: none;
   margin: var(--space-3) 0 0;
@@ -2060,6 +2183,7 @@ body {
   gap: var(--space-2);
 }
 
+.quest-past-row {
 .shelf-past-row {
   display: flex;
   align-items: baseline;
@@ -2067,6 +2191,9 @@ body {
   gap: var(--space-3);
 }
 
+.quest-past-name { color: var(--color-text); }
+
+.quest-past-mark {
 .shelf-past-name { color: var(--color-text); }
 
 .shelf-past-xp {
@@ -2074,3 +2201,5 @@ body {
   color: var(--color-text-muted);
   white-space: nowrap;
 }
+
+.quest-past-mark.is-done { color: var(--color-success); }
