@@ -2,6 +2,13 @@ name = "heartbeat-api"
 main = "src/index.ts"
 compatibility_date = "2024-12-30"
 
+# Both keys are required together by wrangler: it refuses the whole config with
+# "observability.enabled or observability.logs.enabled is required" if only the
+# traces table is present, which takes db:local, db:remote, dev and deploy down
+# with it.
+[observability]
+enabled = true
+
 [observability.traces]
 enabled = true
 

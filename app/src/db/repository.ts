@@ -147,6 +147,28 @@ export async function putWorkEvent(
   return rowId;
 }
 
+/**
+ * A whole calendar import in one write.
+ *
+ * A year of somebody's calendar is a thousand rows, and a thousand awaited
+ * `put`s is a thousand transactions — seconds of blocked screen on a phone,
+ * and a half-written calendar if the browser drops the connection part way
+ * through. One `bulkPut` is one transaction: it lands completely or not at
+ * all. Ids come from the caller, so a re-import overwrites rather than doubles.
+ */
+export async function putWorkEvents(
+  memberId: MemberId,
+  events: readonly (Omit<WorkEvent, 'memberId' | 'updatedAt'>)[],
+): Promise<void> {
+  const at = now();
+  const rows = events.map((event) => {
+    const title = event.title.trim();
+    if (!title) throw new Error('a calendar event needs a title');
+    return { ...event, title, memberId, updatedAt: at };
+  });
+  await db.work.bulkPut(rows);
+}
+
 export async function removeWorkEvent(eventId: string): Promise<void> {
   await db.work.delete(eventId);
 }
@@ -703,11 +725,12 @@ export async function rekeyIdentity(from: Identity, to: Identity): Promise<numbe
  * narrowing it further — retaking the back-camera shot replaces the back-camera
  * shot and leaves the front one where it was.
  *
- * The row is deliberately not part of the exercise entry. `pwa/sync.ts` sends
- * an entry row whole and the endpoint refuses a payload over 64 KiB, so a
- * photograph riding along on that row would fail the push; and because the
- * watermark only advances on success, it would take mood, cycle and the
- * calendar down with it. Nothing in this table is read by the sync client.
+ * The row is deliberately not part of the exercise entry: an exercise payload
+ * is held to 64 KiB and a photograph is not. `pwa/sync.ts` now carries these
+ * rows as their own entry kind, `photo`, which has its own 512 KiB ceiling —
+ * so a day of proof travels without a mood or a cycle row riding on its size.
+ * A day travels whole, both cameras in one payload, because the server's unique
+ * index is (member, kind, day).
  */
 export async function putWorkoutPhoto(
   memberId: MemberId,
@@ -725,7 +748,15 @@ export async function putWorkoutPhoto(
   });
 }
 
-/** Deleting one camera's shot leaves the other one where it is. */
+/**
+ * Deleting one camera's shot leaves the other one where it is.
+ *
+ * The shot that stays has its `updatedAt` bumped, which looks redundant and is
+ * not: sync dates a day of proof by the newest shot still in it, so a delete
+ * that touched nothing would leave the day's timestamp below the watermark and
+ * the removal would never be offered to the server — the partner's phone would
+ * go on showing a photograph that no longer exists here.
+ */
 export async function removeWorkoutPhoto(
   memberId: MemberId,
   day: DayKey,
@@ -733,7 +764,13 @@ export async function removeWorkoutPhoto(
 ): Promise<void> {
   const sameDay = await db.workoutPhotos.where('[memberId+day]').equals([memberId, day]).toArray();
   const doomed = sameDay.find((row) => row.facing === facing);
-  if (doomed) await db.workoutPhotos.delete(doomed.id);
+  if (!doomed) return;
+  await db.workoutPhotos.delete(doomed.id);
+
+  const at = now();
+  await db.workoutPhotos.bulkPut(
+    sameDay.filter((row) => row.id !== doomed.id).map((row) => ({ ...row, updatedAt: at })),
+  );
 }
 
 /* ---- members ------------------------------------------------------------- */
@@ -879,3 +916,398 @@ export async function saveMembersFromServer(rows: IncomingMember[]): Promise<num
   }
   return applied;
 }
+
+/* ---- quests --------------------------------------------------------------- */
+
+/**
+ * The couple's quest, and the one place it is paid for.
+ *
+ * `quests` is the other table that has been in the schema since v1 with nothing
+ * writing to it. `domain/quests/` decides; this composes it with one write, and
+ * `domain/xp.ts`'s `questComplete`/`awardFor` — which have been sitting there
+ * without a caller since the repository began — do the arithmetic.
+ *
+ * The rule everything below serves: **a quest pays out once, on the transition
+ * to complete.** `completedAt` records the transition and `reckon` refuses to
+ * award a quest carrying it, so the danger is not the rule but the gap between
+ * reading a quest and writing it back. `reconcileQuests` therefore re-reads the
+ * row inside the transaction it writes in: two overlapping reconciles — which a
+ * live query firing on this function's own writes will produce — cannot both
+ * see an unpaid quest.
+ *
+ * Progress is measured rather than incremented. Counting the days a quest's
+ * measure names, every time, means a workout logged while the app was closed,
+ * or a row that arrived by sync, lands in the quest anyway; an increment hung
+ * off `completeTask` would simply have been missed.
+ */
+import {
+  advance,
+  markComplete,
+  markRetired,
+  newQuest,
+  reckon,
+  seedFrom,
+  suggestDifficulty,
+  type RecentDays,
+} from '../domain/quests/engine';
+import {
+  QUEST_TEMPLATES,
+  shapeFor,
+  shapesAt,
+  templateById,
+  type QuestMeasure,
+  type QuestShape,
+} from '../domain/quests/templates';
+import type { Quest, QuestDifficulty } from '../domain/types';
+
+/** How far back `suggest` looks when guessing what to offer. */
+const SEED_WINDOW_DAYS = 14;
+
+/** The instant a day is over, so `expiresAt` keeps meaning what it always did. */
+function endOfDay(day: DayKey): number {
+  return Date.parse(`${day}T23:59:59.999Z`);
+}
+
+/**
+ * Days, not rows.
+ *
+ * Every quest measure counts days the couple did something, so two workouts on
+ * one day is one day and two photographs on one day is one day. Counting rows
+ * would hand out a quest at half the work.
+ */
+function distinctDays(rows: ReadonlyArray<{ day: DayKey }>, from?: DayKey, to?: DayKey): number {
+  const days = new Set<DayKey>();
+  for (const row of rows) {
+    if (from && row.day < from) continue;
+    if (to && row.day > to) continue;
+    days.add(row.day);
+  }
+  return days.size;
+}
+
+/**
+ * How many days of each measure fall inside a window.
+ *
+ * Every table here holds one couple's rows and no one else's, so both people's
+ * days count towards the quest — it belongs to the couple, like the pet it
+ * feeds and unlike a task.
+ */
+async function daysByMeasure(from?: DayKey, to?: DayKey): Promise<Record<QuestMeasure, number>> {
+  const [moods, exercises, photos, cycles, work, tasks, messages] = await Promise.all([
+    db.moods.toArray(),
+    db.exercises.toArray(),
+    db.workoutPhotos.toArray(),
+    db.cycles.toArray(),
+    db.work.toArray(),
+    db.tasks.toArray(),
+    db.messages.toArray(),
+  ]);
+
+  const inWindow = (day: DayKey | undefined) =>
+    Boolean(day) && (!from || day! >= from) && (!to || day! <= to);
+
+  return {
+    moodDays: distinctDays(moods, from, to),
+    exerciseDays: distinctDays(exercises, from, to),
+    proofDays: distinctDays(photos, from, to),
+    cycleDays: distinctDays(cycles, from, to),
+    planDays: distinctDays(work, from, to),
+    // A task carries only its most recent completion, so this counts the days
+    // on which something was last ticked off rather than every day one was.
+    // It is the honest reading of what the table stores.
+    taskDays: new Set(
+      tasks.map((t) => t.lastCompletedOn).filter((d): d is DayKey => inWindow(d)),
+    ).size,
+    noteDays: new Set(
+      messages
+        .map((m) => new Date(m.createdAt).toISOString().slice(0, 10) as DayKey)
+        .filter((d) => inWindow(d)),
+    ).size,
+  };
+}
+
+/** The couple's quest, if they have one running. */
+export async function activeQuest(coupleId: string): Promise<Quest | undefined> {
+  const rows = await db.quests.where('coupleId').equals(coupleId).toArray();
+  return rows.find((q) => !q.completedAt && !q.retiredAt);
+}
+
+/** Everything they have finished or let go, newest first. */
+export async function pastQuests(coupleId: string): Promise<Quest[]> {
+  const rows = await db.quests.where('coupleId').equals(coupleId).toArray();
+  return rows
+    .filter((q) => q.completedAt || q.retiredAt)
+    .sort((a, b) => (b.completedAt ?? b.retiredAt ?? 0) - (a.completedAt ?? a.retiredAt ?? 0));
+}
+
+export interface QuestSuggestion {
+  difficulty: QuestDifficulty;
+  shapes: QuestShape[];
+}
+
+/**
+ * What to offer, ordered by what they already do.
+ *
+ * The difficulty is a starting point rather than a decision — the picker shows
+ * all three, and this only says which one it opens on.
+ */
+export async function suggestQuests(today: DayKey): Promise<QuestSuggestion> {
+  const from = addDays(today, -SEED_WINDOW_DAYS);
+  const recent = (await daysByMeasure(from, today)) as RecentDays;
+  const difficulty = suggestDifficulty(recent);
+  return { difficulty, shapes: seedFrom(shapesAt(difficulty), recent) };
+}
+
+/**
+ * Take one on.
+ *
+ * One at a time, on purpose: a list of quests is a backlog, and the point of a
+ * quest is that it is the thing you are doing this week. Starting a new one
+ * while another runs is refused rather than silently retiring the old one,
+ * because losing a week's progress to a mis-tap is not recoverable.
+ */
+export async function startQuest(
+  coupleId: string,
+  templateId: string,
+  difficulty: QuestDifficulty,
+  today: DayKey,
+): Promise<Quest | null> {
+  const template = templateById(templateId);
+  if (!template) return null;
+
+  return db.transaction('rw', [db.quests], async () => {
+    const rows = await db.quests.where('coupleId').equals(coupleId).toArray();
+    if (rows.some((q) => !q.completedAt && !q.retiredAt)) return null;
+
+    const quest = newQuest(shapeFor(template, difficulty), coupleId, today, id(), endOfDay);
+    await db.quests.put(quest);
+    return quest;
+  });
+}
+
+/** Let one go early. Nothing is taken — the row is stamped and stops counting. */
+export async function retireQuest(questId: string): Promise<void> {
+  await db.transaction('rw', [db.quests], async () => {
+    const quest = await db.quests.get(questId);
+    if (!quest || quest.completedAt || quest.retiredAt) return;
+    await db.quests.put(markRetired(quest, now()));
+  });
+}
+
+export interface QuestReading {
+  quest?: Quest;
+  /** Days counted for that quest's measure, inside its own window. */
+  measured: number;
+}
+
+/**
+ * The running quest and how far along it actually is.
+ *
+ * A read, so a screen can put it in a live query — and it must, because the
+ * tables this touches are the ones a quest counts. A live query watching only
+ * `quests` would never re-fire when a workout is logged, so the quest would sit
+ * unreconciled until something else happened to write to it. Reading moods,
+ * exercises and the rest *here* is what subscribes the caller to them.
+ */
+export async function measureQuest(coupleId: string): Promise<QuestReading> {
+  const rows = await db.quests.where('coupleId').equals(coupleId).toArray();
+  const quest = rows.find((q) => !q.completedAt && !q.retiredAt);
+  if (!quest) return { measured: 0 };
+
+  const template = templateById(quest.templateId);
+  if (!template) return { quest, measured: quest.progress };
+
+  const counted = await daysByMeasure(quest.startedOn, quest.endsOn);
+  return { quest, measured: counted[template.measure] ?? 0 };
+}
+
+export interface QuestReckoning {
+  quest?: Quest;
+  /** Non-zero only on the reconcile that saw the transition to complete. */
+  awarded: number;
+  finished: boolean;
+  expired: boolean;
+}
+
+/**
+ * Bring the running quest up to date with what has actually happened.
+ *
+ * Safe to call as often as anything likes. With no quest, nothing new, or a
+ * quest already settled, it writes nothing at all.
+ */
+export async function reconcileQuests(coupleId: string, today: DayKey): Promise<QuestReckoning> {
+  const { quest: running, measured } = await measureQuest(coupleId);
+  if (!running) return { awarded: 0, finished: false, expired: false };
+  if (!templateById(running.templateId)) {
+    return { quest: running, awarded: 0, finished: false, expired: false };
+  }
+
+  return db.transaction('rw', [db.quests, db.pet], async () => {
+    // Re-read inside the transaction. The value fetched above is only a count;
+    // whether this quest has already been paid is decided here, where a second
+    // overlapping call cannot see a stale answer.
+    const fresh = await db.quests.get(running.id);
+    if (!fresh) return { awarded: 0, finished: false, expired: false };
+
+    const step = reckon(advance(fresh, measured), today);
+
+    if (step.verb === 'complete') {
+      await db.quests.put(markComplete(step.quest, now()));
+      await addXp(coupleId, step.award);
+      return { quest: step.quest, awarded: step.award, finished: true, expired: false };
+    }
+
+    if (step.verb === 'expired') {
+      await db.quests.put(markRetired(step.quest, now()));
+      return { quest: step.quest, awarded: 0, finished: false, expired: true };
+    }
+
+    // Running, or already settled by whoever got here first.
+    if (step.verb === 'running' && step.quest !== fresh) await db.quests.put(step.quest);
+    return { quest: step.quest, awarded: 0, finished: false, expired: false };
+  });
+}
+
+/** The templates, for a picker that wants to show what is on offer. */
+export { QUEST_TEMPLATES };
+/* ---- achievements --------------------------------------------------------- */
+
+/**
+ * The shelf's one writer.
+ *
+ * `achievements` has existed since v1 of the schema and nothing had ever put a
+ * row in it. This is its first writer, and the only one: everything else about
+ * achievements is pure, in `domain/achievements/`.
+ *
+ * Two things about the shape below are load-bearing.
+ *
+ * The stored codes are read *inside* the transaction that writes them. The
+ * caller is a live query, which re-fires whenever a table it watches changes —
+ * including the writes this function is making. Taking "what is already
+ * unlocked" as an argument, or reading it before the transaction opened, means
+ * a second call that overlaps the first sees a shelf that is already out of
+ * date and pays the same rung again. Dexie serialises transactions touching the
+ * same table, so reading within is what makes the second call find nothing.
+ *
+ * The counters are gathered before the transaction, and deliberately: holding a
+ * write lock across a dozen tables to read numbers off them is a great deal of
+ * blocking for no guarantee. A counter that is a moment stale can only ever
+ * under-award, and the next call — which any of these writes will trigger —
+ * picks it up. Over-awarding is the failure that matters, and that is the one
+ * the transaction prevents.
+ *
+ * The XP is added through `addXp`, so the shared pet stays the only place
+ * achievement XP can land. There is no second arithmetic here to disagree with
+ * the one every other payout uses.
+ *
+ * The imports sit here rather than at the top of the file on purpose: this
+ * section is one clean append, and imports hoist, so it costs nothing.
+ */
+import { ACHIEVEMENTS, type AchievementDef } from '../domain/achievements/catalogue';
+import { countGear, newlyEarned, payoutFor, stateFrom } from '../domain/achievements/unlock';
+import { levelForXp } from '../domain/xp';
+import type { Achievement } from '../domain/types';
+
+/** What a claim did, so a screen can say so without re-deriving it. */
+export interface ClaimResult {
+  unlocked: AchievementDef[];
+  xp: number;
+}
+
+/**
+ * Count the days that have proof on them.
+ *
+ * A day holds up to two photographs, one per camera, so counting rows would
+ * count a two-camera day twice and hand out the track at half the work.
+ */
+function proofDayCount(photos: ReadonlyArray<{ memberId: string; day: string }>): number {
+  return new Set(photos.map((p) => `${p.memberId} ${p.day}`)).size;
+}
+
+/**
+ * Everything the rungs are measured against.
+ *
+ * Every table read here holds one couple's rows and no one else's, so a count
+ * is the couple's count. Achievements are the couple's rather than one
+ * person's: the row carries a coupleId and no memberId, and the shelf is
+ * shared.
+ */
+async function achievementState(coupleId: string) {
+  const [
+    moodDays, exerciseDays, photos, events, cycleDays, notes,
+    vibesSent, tasks, avatars, pets, pet,
+  ] = await Promise.all([
+    db.moods.count(),
+    db.exercises.count(),
+    db.workoutPhotos.toArray(),
+    db.work.count(),
+    db.cycles.count(),
+    db.messages.count(),
+    // `kind` is not an index on this table, so this is a scan rather than a
+    // lookup. It is a handful of rows and adding an index would mean a Dexie
+    // version bump for a counter.
+    db.lifeEvents.filter((e) => e.kind === 'good-vibes').count(),
+    db.tasks.toArray(),
+    db.avatars.toArray(),
+    db.pets.count(),
+    db.pet.get(coupleId),
+  ]);
+
+  return stateFrom({
+    moodDays,
+    exerciseDays,
+    proofDays: proofDayCount(photos),
+    events,
+    cycleDays,
+    notes,
+    vibesSent,
+    pets,
+    tasks,
+    // The fullest either sheet has been dressed, not the sum: "every slot
+    // filled" is a thing one character does, not a total across two.
+    gear: avatars.reduce<Record<string, string | undefined>>(
+      (best, a) => (countGear(a.gear) > countGear(best) ? a.gear : best),
+      {},
+    ),
+    petLevel: pet ? levelForXp(pet.xp) : 0,
+  });
+}
+
+/**
+ * Award every rung the couple has reached and not yet been given.
+ *
+ * Safe to call as often as anything likes: with nothing new it reads, finds no
+ * codes, and writes nothing at all — not even the XP.
+ */
+export async function claimAchievements(coupleId: string): Promise<ClaimResult> {
+  const state = await achievementState(coupleId);
+
+  return db.transaction('rw', [db.achievements, db.pet], async () => {
+    const stored = await db.achievements.where('coupleId').equals(coupleId).toArray();
+    const fresh = newlyEarned(state, stored.map((row) => row.code));
+    if (fresh.length === 0) return { unlocked: [], xp: 0 };
+
+    const at = now();
+    const rows: Achievement[] = fresh.map((def) => ({
+      id: id(),
+      coupleId,
+      code: def.code,
+      xp: payoutFor([def]),
+      unlockedAt: at,
+    }));
+    await db.achievements.bulkPut(rows);
+
+    const xp = payoutFor(fresh);
+    await addXp(coupleId, xp);
+    return { unlocked: fresh, xp };
+  });
+}
+
+/** Everything the couple has been given, newest first. */
+export async function listAchievements(coupleId: string): Promise<Achievement[]> {
+  const rows = await db.achievements.where('coupleId').equals(coupleId).toArray();
+  return rows.sort((a, b) => b.unlockedAt - a.unlockedAt);
+}
+
+/** The catalogue, so a screen can show what is still ahead. */
+export { ACHIEVEMENTS };

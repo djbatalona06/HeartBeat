@@ -22,6 +22,7 @@ import { SKILLS, castBlockedBecause, skillById } from '../../domain/rpg/skills';
 import { hpFraction, resolveBlow, victoryDropBonus, waitingOn, type BossState } from '../../domain/rpg/boss';
 import { GEAR_SLOTS, type Avatar, type GearSlot } from '../../domain/rpg/types';
 import { BorderGlow } from '../../components/BorderGlow';
+import { AchievementShelf } from '../achievements/AchievementShelf';
 
 /**
  * How brightly a companion's card is lit, by how rare it is.
@@ -147,6 +148,8 @@ export function PartyPage() {
             onSpendPetMp={spendPetMp}
             onMessage={setMessage}
           />
+
+          <AchievementShelf coupleId={identity.coupleId} />
         </>
       ) : null}
 

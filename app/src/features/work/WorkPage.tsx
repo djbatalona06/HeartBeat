@@ -3,6 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
 import { ensureIdentity, putWorkEvent, removeWorkEvent } from '../../db/repository';
 import { VoiceInput } from '../../components/VoiceInput';
+import { CalendarFile } from './CalendarFile';
+import { loadGrade } from '../../domain/calendar/csv';
 import { parseEvent } from '../../domain/voice/parseEvent';
 import { addDays, todayKey } from '../../domain/day';
 import { DEFAULT_TIMEZONE, type DayKey, type MinuteOfDay, type WorkEvent } from '../../domain/types';
@@ -145,7 +147,9 @@ export function WorkPage() {
         </button>
       </div>
 
-      <div className="cal-grid" role="grid" aria-label="Month">
+      {/* `cal-grid-work` scopes the load grading: the same calendar classes
+          draw the cycle calendar, which has nothing to grade. */}
+      <div className="cal-grid cal-grid-work" role="grid" aria-label="Month">
         {WEEKDAY_INITIALS.map((initial, i) => (
           <span key={i} className="cal-weekday" aria-hidden="true">{initial}</span>
         ))}
@@ -154,11 +158,13 @@ export function WorkPage() {
         ))}
         {days.map((day) => {
           const count = byDay.get(day)?.length ?? 0;
+          const grade = loadGrade(count);
           return (
             <button
               key={day}
               type="button"
               className="cal-day"
+              data-load={grade > 0 ? String(grade) : undefined}
               data-today={day === today ? 'true' : undefined}
               data-selected={day === selected ? 'true' : undefined}
               aria-pressed={day === selected}
@@ -191,6 +197,8 @@ export function WorkPage() {
           setSelected(next);
         }}
       />
+
+      <CalendarFile memberId={identity?.memberId ?? null} timeZone={timeZone} />
     </div>
   );
 }
