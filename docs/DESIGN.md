@@ -406,8 +406,8 @@ would serve it an hour late for the eight months Pacific is on daylight time.
 - Bearer token per device, compared against a stored SHA-256 hash.
 - Origin-restricted CORS in `worker/src/cors.ts`, which **parses URLs rather
   than calling `endsWith`** — `endsWith` would happily accept
-  `https://heartbeat.pages.dev.attacker.com`. There is a test for exactly that.
-- Wildcards match a single label only, so `a.b.heartbeat.pages.dev` is refused.
+  `https://heartbeat-eop.pages.dev.attacker.com`. There is a test for exactly that.
+- Wildcards match a single label only, so `a.b.heartbeat-eop.pages.dev` is refused.
 - Secrets are set with `wrangler secret put` and never committed.
 
 ## Risks
