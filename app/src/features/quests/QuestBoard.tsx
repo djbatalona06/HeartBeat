@@ -25,7 +25,9 @@ import type { Quest, QuestDifficulty } from '../../domain/types';
  * a list of quests is a backlog, and the point of a quest is that it is the
  * thing you are doing this week.
  */
-export function QuestBoard({ coupleId, day }: { coupleId: string; day: string }) {
+export function QuestBoard(
+  { coupleId, day, timeZone }: { coupleId: string; day: string; timeZone: string },
+) {
   const quests = useLiveQuery(
     async () => db.quests.where('coupleId').equals(coupleId).toArray(),
     [coupleId],
@@ -38,7 +40,10 @@ export function QuestBoard({ coupleId, day }: { coupleId: string; day: string })
    * mean the quest sat still until something else wrote to it — which, since
    * the reconcile is the only thing that does, is never.
    */
-  const reading = useLiveQuery(async () => measureQuest(coupleId), [coupleId]);
+  const reading = useLiveQuery(
+    async () => measureQuest(coupleId, timeZone),
+    [coupleId, timeZone],
+  );
 
   const running = quests?.find((q) => !q.completedAt && !q.retiredAt);
   const done = (quests ?? []).filter((q) => q.completedAt || q.retiredAt);
@@ -50,8 +55,8 @@ export function QuestBoard({ coupleId, day }: { coupleId: string; day: string })
    */
   useEffect(() => {
     if (!coupleId || !reading) return;
-    void reconcileQuests(coupleId, day);
-  }, [coupleId, day, reading?.measured, reading?.quest?.id]);
+    void reconcileQuests(coupleId, day, timeZone);
+  }, [coupleId, day, timeZone, reading?.measured, reading?.quest?.id]);
 
   if (!quests) return null;
 

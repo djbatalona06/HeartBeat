@@ -1,9 +1,11 @@
 import { db, loadSettings, saveSettings } from './database';
 import type {
-  ChatMessage, CycleEntry, DayKey, ExerciseEntry, MemberId, MoodEntry, Pet, PetXpAward, WorkEvent,
+  ChatMessage, CycleEntry, DayKey, ExerciseEntry, MemberId, MoodEntry, Pet, PetXpAward,
+  WorkEvent, WorkoutPhoto,
 } from '../domain/types';
 import { MAX_AWARD_XP } from '../domain/types';
-import { addDays } from '../domain/day';
+import { addDays, dayKey } from '../domain/day';
+import { instantAt } from '../domain/notify/schedule';
 import {
   newAvatar,
   type Avatar,
@@ -822,6 +824,8 @@ export async function settlePetXp(
     });
     return next;
   });
+}
+
 /* ---- identity repair ---- */
 
 // Imports are hoisted, so this one sits with the section it belongs to rather
@@ -1145,26 +1149,14 @@ import type { Quest, QuestDifficulty } from '../domain/types';
 const SEED_WINDOW_DAYS = 14;
 
 /** The instant a day is over, so `expiresAt` keeps meaning what it always did. */
-function endOfDay(day: DayKey): number {
-  return Date.parse(`${day}T23:59:59.999Z`);
+function endOfDay(day: DayKey, timeZone: string): number {
+  // The day key is derived in the member's zone, so its end has to be too:
+  // ending a London quest at midnight UTC cuts an hour off its last day in
+  // summer, and a Los Angeles one loses most of an afternoon.
+  const midnight = instantAt(day, 0, timeZone);
+  return instantAt(addDays(day, 1), 0, timeZone) - 1 || midnight;
 }
 
-/**
- * Days, not rows.
- *
- * Every quest measure counts days the couple did something, so two workouts on
- * one day is one day and two photographs on one day is one day. Counting rows
- * would hand out a quest at half the work.
- */
-function distinctDays(rows: ReadonlyArray<{ day: DayKey }>, from?: DayKey, to?: DayKey): number {
-  const days = new Set<DayKey>();
-  for (const row of rows) {
-    if (from && row.day < from) continue;
-    if (to && row.day > to) continue;
-    days.add(row.day);
-  }
-  return days.size;
-}
 
 /**
  * How many days of each measure fall inside a window.
@@ -1173,37 +1165,71 @@ function distinctDays(rows: ReadonlyArray<{ day: DayKey }>, from?: DayKey, to?: 
  * days count towards the quest — it belongs to the couple, like the pet it
  * feeds and unlike a task.
  */
-async function daysByMeasure(from?: DayKey, to?: DayKey): Promise<Record<QuestMeasure, number>> {
-  const [moods, exercises, photos, cycles, work, tasks, messages] = await Promise.all([
-    db.moods.toArray(),
-    db.exercises.toArray(),
-    db.workoutPhotos.toArray(),
-    db.cycles.toArray(),
-    db.work.toArray(),
-    db.tasks.toArray(),
-    db.messages.toArray(),
-  ]);
-
-  const inWindow = (day: DayKey | undefined) =>
+async function daysByMeasure(
+  timeZone: string,
+  from?: DayKey,
+  to?: DayKey,
+): Promise<Record<QuestMeasure, number>> {
+  const inWindow = (day: DayKey | undefined): day is DayKey =>
     Boolean(day) && (!from || day! >= from) && (!to || day! <= to);
 
+  /**
+   * Distinct days a table has rows on, streamed.
+   *
+   * `workoutPhotos` carries a base64 JPEG per row, so reading the table into an
+   * array to look at each `day` is how a phone with a year of proof runs out of
+   * memory — and this runs on every reconcile and every live-query re-fire.
+   */
+  const daysOf = async (
+    table: { each(fn: (row: { day?: string }) => void): Promise<unknown> },
+  ): Promise<number> => {
+    const days = new Set<DayKey>();
+    await table.each((row) => { if (inWindow(row.day)) days.add(row.day as DayKey); });
+    return days.size;
+  };
+
+  const [moodDays, exerciseDays, proofDays, cycleDays, planDays, tasks, notes] = await Promise.all([
+    daysOf(db.moods),
+    daysOf(db.exercises),
+    daysOf(db.workoutPhotos),
+    daysOf(db.cycles),
+    // The day the entry was *written*, not the day it is for. A calendar holds
+    // next week's dentist appointment; counting by the day it happens meant two
+    // things already in the diary finished the quest on its first reconcile and
+    // paid out for work nobody did during the week.
+    (async () => {
+      const days = new Set<DayKey>();
+      await db.work.each((row) => {
+        const on = dayKey(new Date(row.updatedAt), timeZone);
+        if (inWindow(on)) days.add(on);
+      });
+      return days.size;
+    })(),
+    db.tasks.toArray(),
+    (async () => {
+      const days = new Set<DayKey>();
+      // In the member's zone, like every other day key here. Deriving this one
+      // in UTC put an evening note on the following day for anyone west of
+      // Greenwich, so a note written on the quest's last evening never counted.
+      await db.messages.each((m) => {
+        const on = dayKey(new Date(m.createdAt), timeZone);
+        if (inWindow(on)) days.add(on);
+      });
+      return days.size;
+    })(),
+  ]);
+
   return {
-    moodDays: distinctDays(moods, from, to),
-    exerciseDays: distinctDays(exercises, from, to),
-    proofDays: distinctDays(photos, from, to),
-    cycleDays: distinctDays(cycles, from, to),
-    planDays: distinctDays(work, from, to),
-    // A task carries only its most recent completion, so this counts the days
-    // on which something was last ticked off rather than every day one was.
-    // It is the honest reading of what the table stores.
-    taskDays: new Set(
-      tasks.map((t) => t.lastCompletedOn).filter((d): d is DayKey => inWindow(d)),
-    ).size,
-    noteDays: new Set(
-      messages
-        .map((m) => new Date(m.createdAt).toISOString().slice(0, 10) as DayKey)
-        .filter((d) => inWindow(d)),
-    ).size,
+    moodDays,
+    exerciseDays,
+    proofDays,
+    cycleDays,
+    planDays,
+    // Distinct tasks whose most recent completion falls in the window. A task
+    // records only that one date, so this cannot be a count of days — see the
+    // note on the `finish` template, which is worded to match.
+    tasksFinished: tasks.filter((t) => inWindow(t.lastCompletedOn)).length,
+    noteDays: notes,
   };
 }
 
@@ -1234,9 +1260,10 @@ export interface QuestSuggestion {
  */
 export async function suggestQuests(today: DayKey): Promise<QuestSuggestion> {
   const from = addDays(today, -SEED_WINDOW_DAYS);
-  const recent = (await daysByMeasure(from, today)) as RecentDays;
+  const { timeZone } = await loadSettings();
+  const recent = (await daysByMeasure(timeZone, from, today)) as RecentDays;
   const difficulty = suggestDifficulty(recent);
-  return { difficulty, shapes: seedFrom(shapesAt(difficulty), recent) };
+  return { difficulty, shapes: seedFrom(shapesAt(difficulty), recent, SEED_WINDOW_DAYS) };
 }
 
 /**
@@ -1256,11 +1283,14 @@ export async function startQuest(
   const template = templateById(templateId);
   if (!template) return null;
 
+  const { timeZone } = await loadSettings();
+
   return db.transaction('rw', [db.quests], async () => {
     const rows = await db.quests.where('coupleId').equals(coupleId).toArray();
     if (rows.some((q) => !q.completedAt && !q.retiredAt)) return null;
 
-    const quest = newQuest(shapeFor(template, difficulty), coupleId, today, id(), endOfDay);
+    const quest = newQuest(shapeFor(template, difficulty), coupleId, today, id(),
+      (day) => endOfDay(day, timeZone));
     await db.quests.put(quest);
     return quest;
   });
@@ -1275,6 +1305,15 @@ export async function retireQuest(questId: string): Promise<void> {
   });
 }
 
+/**
+ * The zone is a parameter rather than something read from `settings` here, and
+ * that is not tidiness. `QuestBoard` calls this inside a `useLiveQuery`, and a
+ * Dexie live query subscribes to every table its body touches — `sync()`
+ * rewrites the settings row at the end of every round, up to twenty rounds per
+ * foreground, and each rewrite would re-stream `moods`, `exercises`,
+ * `workoutPhotos`, `cycles`, `work`, `tasks` and `messages`. That is exactly
+ * the cost `daysOf` streams to avoid, paid twenty times over.
+ */
 export interface QuestReading {
   quest?: Quest;
   /** Days counted for that quest's measure, inside its own window. */
@@ -1290,7 +1329,7 @@ export interface QuestReading {
  * unreconciled until something else happened to write to it. Reading moods,
  * exercises and the rest *here* is what subscribes the caller to them.
  */
-export async function measureQuest(coupleId: string): Promise<QuestReading> {
+export async function measureQuest(coupleId: string, timeZone: string): Promise<QuestReading> {
   const rows = await db.quests.where('coupleId').equals(coupleId).toArray();
   const quest = rows.find((q) => !q.completedAt && !q.retiredAt);
   if (!quest) return { measured: 0 };
@@ -1298,7 +1337,7 @@ export async function measureQuest(coupleId: string): Promise<QuestReading> {
   const template = templateById(quest.templateId);
   if (!template) return { quest, measured: quest.progress };
 
-  const counted = await daysByMeasure(quest.startedOn, quest.endsOn);
+  const counted = await daysByMeasure(timeZone, quest.startedOn, quest.endsOn);
   return { quest, measured: counted[template.measure] ?? 0 };
 }
 
@@ -1316,8 +1355,12 @@ export interface QuestReckoning {
  * Safe to call as often as anything likes. With no quest, nothing new, or a
  * quest already settled, it writes nothing at all.
  */
-export async function reconcileQuests(coupleId: string, today: DayKey): Promise<QuestReckoning> {
-  const { quest: running, measured } = await measureQuest(coupleId);
+export async function reconcileQuests(
+  coupleId: string,
+  today: DayKey,
+  timeZone: string,
+): Promise<QuestReckoning> {
+  const { quest: running, measured } = await measureQuest(coupleId, timeZone);
   if (!running) return { awarded: 0, finished: false, expired: false };
   if (!templateById(running.templateId)) {
     return { quest: running, awarded: 0, finished: false, expired: false };
@@ -1334,7 +1377,9 @@ export async function reconcileQuests(coupleId: string, today: DayKey): Promise<
 
     if (step.verb === 'complete') {
       await db.quests.put(markComplete(step.quest, now()));
-      await addXp(coupleId, step.award);
+      // Named after the quest for the same reason the rungs are: an award id
+      // the server has already seen is one it will not credit again.
+      await awardPetXp(coupleId, `quest-${step.quest.id}`, step.award);
       return { quest: step.quest, awarded: step.award, finished: true, expired: false };
     }
 
@@ -1396,13 +1441,23 @@ export interface ClaimResult {
 }
 
 /**
- * Count the days that have proof on them.
+ * Count the calendar days a table has rows on.
  *
- * A day holds up to two photographs, one per camera, so counting rows would
- * count a two-camera day twice and hand out the track at half the work.
+ * Days, not rows, and not member-days either. Every "days" blurb in the
+ * catalogue promises the calendar — "Sixty days of saying how it was" — and a
+ * couple where both people log produces two rows for one day, so counting rows
+ * hands the sixty-day rung over on the thirtieth. Counting member-days has the
+ * same fault. `daysByMeasure` in the quests section counts distinct days for
+ * exactly these measures; this is the same rule, said once more.
+ *
+ * Streamed rather than read into an array: `workoutPhotos` carries a base64
+ * JPEG per row, and pulling every one of them into memory to look at its `day`
+ * is how a phone with a year of proof runs out of it.
  */
-function proofDayCount(photos: ReadonlyArray<{ memberId: string; day: string }>): number {
-  return new Set(photos.map((p) => `${p.memberId} ${p.day}`)).size;
+async function daysOn(table: { each(fn: (row: { day?: string }) => void): Promise<unknown> }): Promise<number> {
+  const days = new Set<string>();
+  await table.each((row) => { if (row.day) days.add(row.day); });
+  return days.size;
 }
 
 /**
@@ -1413,16 +1468,23 @@ function proofDayCount(photos: ReadonlyArray<{ memberId: string; day: string }>)
  * person's: the row carries a coupleId and no memberId, and the shelf is
  * shared.
  */
-async function achievementState(coupleId: string) {
+export async function achievementState(coupleId: string) {
   const [
-    moodDays, exerciseDays, photos, events, cycleDays, notes,
+    moodDays, exerciseDays, proofDays, events, cycleDays, notes,
     vibesSent, tasks, avatars, pets, pet,
   ] = await Promise.all([
-    db.moods.count(),
-    db.exercises.count(),
-    db.workoutPhotos.toArray(),
+    daysOn(db.moods),
+    daysOn(db.exercises),
+    daysOn(db.workoutPhotos),
+    // Entries, not days: this track is blurbed "Twenty things planned" and
+    // "A hundred entries on the calendar", so three appointments on one
+    // Saturday are three. `messages` below is a row count for the same reason.
+    // The quest engine's `planDays` counts days because it asks a different
+    // question — how many days you *added* something to the calendar.
     db.work.count(),
-    db.cycles.count(),
+    daysOn(db.cycles),
+    // Notes carry a timestamp rather than a day, and "a hundred and fifty
+    // notes" is a count of notes, so this one stays a row count on purpose.
     db.messages.count(),
     // `kind` is not an index on this table, so this is a scan rather than a
     // lookup. It is a handful of rows and adding an index would mean a Dexie
@@ -1437,7 +1499,7 @@ async function achievementState(coupleId: string) {
   return stateFrom({
     moodDays,
     exerciseDays,
-    proofDays: proofDayCount(photos),
+    proofDays,
     events,
     cycleDays,
     notes,
@@ -1478,8 +1540,16 @@ export async function claimAchievements(coupleId: string): Promise<ClaimResult> 
     }));
     await db.achievements.bulkPut(rows);
 
+    // One award per rung, named after the rung rather than at random.
+    // Achievements are the couple's and both phones evaluate them off the same
+    // synced data, so both reach mood.2 and both report it. A random id makes
+    // those two reports two credits on the shared pet; a derived one makes them
+    // the same award, which is the shape `awardBossVictory` already uses and
+    // the reason `pet_xp_awards` is keyed the way it is. It also makes a
+    // re-claim on this phone a no-op, since `awardPetXp` knows the id already.
+    for (const def of fresh) await awardPetXp(coupleId, `ach-${def.code}`, payoutFor([def]));
+
     const xp = payoutFor(fresh);
-    await addXp(coupleId, xp);
     return { unlocked: fresh, xp };
   });
 }

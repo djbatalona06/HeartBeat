@@ -31,7 +31,7 @@ const PARTNER = 'partner-member';
 const DAY = '2026-08-31';
 
 /** Tables that carry a couple id but are deliberately left out of the re-key. */
-const NOT_RE_KEYED = ['quests', 'achievements', 'settings'];
+const NOT_RE_KEYED = ['settings'];
 
 function planFor(table: string): TableRekey {
   const plan = REKEY_TABLES.find((entry) => entry.table === table);
@@ -300,5 +300,26 @@ describe('planRekey', () => {
         },
       },
     ]);
+  });
+});
+
+/**
+ * The allowlist above is the dangerous kind of exemption: it was true when it
+ * was written and nothing re-checks it. `quests` and `achievements` were
+ * excused because nothing wrote to them; both have writers now.
+ */
+describe('tables that gained a writer after the allowlist was written', () => {
+  it('re-keys achievements, or pairing pays every rung a second time', () => {
+    expect(REKEY_TABLES.map((p) => p.table)).toContain('achievements');
+  });
+
+  it('re-keys quests, or pairing orphans the week in progress', () => {
+    expect(REKEY_TABLES.map((p) => p.table)).toContain('quests');
+  });
+
+  it('excuses only tables that genuinely have no writer', () => {
+    // `settings` holds the identity rather than referring to it. Anything else
+    // on this list needs a reason that is still true.
+    expect(NOT_RE_KEYED).toEqual(['settings']);
   });
 });

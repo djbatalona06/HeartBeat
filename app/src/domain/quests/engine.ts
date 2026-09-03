@@ -148,12 +148,22 @@ export type RecentDays = Partial<Record<QuestShape['measure'], number>>;
  * finished before starting. Neither is much of an offer, so the ordering puts
  * the middle first: things with some history, most-practised last.
  */
-export function seedFrom(shapes: readonly QuestShape[], recent: RecentDays): QuestShape[] {
+export function seedFrom(
+  shapes: readonly QuestShape[],
+  recent: RecentDays,
+  windowDays: number,
+): QuestShape[] {
   const score = (shape: QuestShape) => {
     const done = recent[shape.measure] ?? 0;
-    // Distance from "done about half of it", which is the shape of a quest
-    // that is worth taking and plausible to finish.
-    return Math.abs(done - shape.target / 2);
+    // Both sides on the quest's own timescale. `recent` is counted over a
+    // longer window than a quest runs for, and comparing it to the target
+    // directly made a fortnight's habit look like an unreachable one: something
+    // done twice a week scored worse than something never done at all, and the
+    // picker led with the measures the couple had never touched.
+    const perQuest = windowDays > 0 ? done * (shape.days / windowDays) : done;
+    // Distance from "already doing about half of it", which is the shape of a
+    // quest worth taking and plausible to finish.
+    return Math.abs(perQuest - shape.target / 2);
   };
   return [...shapes].sort((a, b) => score(a) - score(b) || a.templateId.localeCompare(b.templateId));
 }

@@ -50,9 +50,14 @@ export interface TableRekey {
  * deleted and the row written under the new one. `members` is that shape again,
  * its `id` being the member id itself.
  *
- * `quests` and `achievements` carry a coupleId but have never been written to,
- * and `settings` holds the identity rather than referring to it, so neither
- * belongs here.
+ * `settings` is the only table left out: it *holds* the identity rather than
+ * referring to it, so there is nothing in it to re-point.
+ *
+ * `quests` and `achievements` were once left out too, on the grounds that
+ * nothing wrote to them. That stopped being true and the exemption did not
+ * notice — pairing then re-paid every achievement, because the stored codes
+ * stayed under the identity being left and the claim found an empty shelf.
+ * An exemption whose reason can expire is worth writing down.
  */
 export const REKEY_TABLES: readonly TableRekey[] = [
   { table: 'members', primaryKey: 'id', memberFields: ['id'], coupleFields: ['coupleId'] },
@@ -95,6 +100,10 @@ export const REKEY_TABLES: readonly TableRekey[] = [
     coupleFields: ['coupleId'],
   },
   { table: 'pet', primaryKey: 'coupleId', memberFields: [], coupleFields: ['coupleId'] },
+  // Couple-level, both of them: no memberId to move, and no slot to collide on
+  // — pairing mints a fresh coupleId, so nothing is already sitting there.
+  { table: 'quests', primaryKey: 'id', memberFields: [], coupleFields: ['coupleId'] },
+  { table: 'achievements', primaryKey: 'id', memberFields: [], coupleFields: ['coupleId'] },
   { table: 'messages', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
 ];
 

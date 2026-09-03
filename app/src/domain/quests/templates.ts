@@ -22,7 +22,7 @@ export type QuestMeasure =
   | 'proofDays'
   | 'cycleDays'
   | 'planDays'
-  | 'taskDays'
+  | 'tasksFinished'
   | 'noteDays';
 
 export interface QuestTemplate {
@@ -102,10 +102,14 @@ export const QUEST_TEMPLATES: readonly QuestTemplate[] = [
   },
   {
     id: 'finish',
-    measure: 'taskDays',
+    measure: 'tasksFinished',
     base: 5,
-    title: (t) => `Finish something on ${days(t)}`,
-    blurb: 'A day you ticked at least one task off.',
+    // Different things, not different days. A task records only its most
+    // recent completion, so "finish something on five days" was a quest a
+    // person with one daily could tick every day for a week and never win.
+    // Counting distinct tasks is what the table can actually answer.
+    title: (t) => `Finish ${inWords(t)} different things`,
+    blurb: 'Each task counts once, the week it is ticked off.',
   },
   {
     id: 'talk',
