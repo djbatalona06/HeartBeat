@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from './database';
+import { db, saveSettings } from './database';
 import {
   activeQuest,
   pastQuests,
@@ -228,5 +228,77 @@ describe('suggestQuests', () => {
   it('offers something harder to a couple already at it', async () => {
     for (let i = 1; i <= 6; i += 1) await mood(ME, `2026-02-2${i}`);
     expect((await suggestQuests('2026-02-27')).difficulty).not.toBe('easy');
+  });
+});
+
+/**
+ * What the measures actually count.
+ *
+ * Two of these were wrong in a way no unit test could see: they only show up
+ * against real rows, and both handed out XP for work nobody did in the week.
+ */
+describe('what a quest counts', () => {
+  const TZ = 'America/Los_Angeles';
+
+  beforeEach(async () => {
+    await saveSettings({ timeZone: TZ });
+  });
+
+  /**
+   * A calendar holds next week's dentist appointment. Counting by the day an
+   * event *happens* meant two things already in the diary finished the quest
+   * on its first reconcile, before the couple had done anything at all.
+   */
+  it('does not finish a calendar quest on things already in the diary', async () => {
+    const shape = shapeFor(templateById('plan')!, 'easy');
+    // Events sitting in the coming week, written long before the quest began.
+    for (let i = 0; i < shape.target + 2; i += 1) {
+      await db.work.put({
+        id: `pre-${i}`,
+        memberId: ME,
+        day: `2026-03-0${i + 2}`,
+        title: 'Dentist',
+        source: 'manual',
+        updatedAt: Date.parse('2026-01-01T12:00:00Z'),
+      });
+    }
+
+    await startQuest(COUPLE, 'plan', 'easy', TODAY);
+    const result = await reconcileQuests(COUPLE, TODAY);
+
+    expect(result.finished).toBe(false);
+    expect(result.awarded).toBe(0);
+    expect(result.quest?.progress).toBe(0);
+  });
+
+  it('counts the day something was put in the diary', async () => {
+    await startQuest(COUPLE, 'plan', 'easy', TODAY);
+    await db.work.put({
+      id: 'today',
+      memberId: ME,
+      day: '2026-12-25',
+      title: 'Christmas',
+      // Written during the quest, for a day months away.
+      updatedAt: Date.parse(`${TODAY}T18:00:00Z`),
+      source: 'manual',
+    });
+
+    expect((await reconcileQuests(COUPLE, TODAY)).quest?.progress).toBe(1);
+  });
+
+  /**
+   * An evening note west of Greenwich lands on the next UTC day. Deriving the
+   * day in UTC therefore pushed it outside the window, so a note written on
+   * the quest's last evening never counted.
+   */
+  it('puts an evening note on the evening it was written', async () => {
+    const quest = await startQuest(COUPLE, 'talk', 'easy', TODAY);
+    // 20:00 in Los Angeles on the quest's last day is 04:00 UTC the next day.
+    const evening = Date.parse(`${quest!.endsOn!}T20:00:00-08:00`);
+    await db.messages.put({
+      id: 'n1', memberId: ME, coupleId: COUPLE, body: 'night', createdAt: evening, mine: true,
+    });
+
+    expect((await reconcileQuests(COUPLE, quest!.endsOn!)).quest?.progress).toBe(1);
   });
 });

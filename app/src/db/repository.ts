@@ -4,7 +4,8 @@ import type {
   WorkEvent, WorkoutPhoto,
 } from '../domain/types';
 import { MAX_AWARD_XP } from '../domain/types';
-import { addDays } from '../domain/day';
+import { addDays, dayKey } from '../domain/day';
+import { instantAt } from '../domain/notify/schedule';
 import {
   newAvatar,
   type Avatar,
@@ -1148,26 +1149,14 @@ import type { Quest, QuestDifficulty } from '../domain/types';
 const SEED_WINDOW_DAYS = 14;
 
 /** The instant a day is over, so `expiresAt` keeps meaning what it always did. */
-function endOfDay(day: DayKey): number {
-  return Date.parse(`${day}T23:59:59.999Z`);
+function endOfDay(day: DayKey, timeZone: string): number {
+  // The day key is derived in the member's zone, so its end has to be too:
+  // ending a London quest at midnight UTC cuts an hour off its last day in
+  // summer, and a Los Angeles one loses most of an afternoon.
+  const midnight = instantAt(day, 0, timeZone);
+  return instantAt(addDays(day, 1), 0, timeZone) - 1 || midnight;
 }
 
-/**
- * Days, not rows.
- *
- * Every quest measure counts days the couple did something, so two workouts on
- * one day is one day and two photographs on one day is one day. Counting rows
- * would hand out a quest at half the work.
- */
-function distinctDays(rows: ReadonlyArray<{ day: DayKey }>, from?: DayKey, to?: DayKey): number {
-  const days = new Set<DayKey>();
-  for (const row of rows) {
-    if (from && row.day < from) continue;
-    if (to && row.day > to) continue;
-    days.add(row.day);
-  }
-  return days.size;
-}
 
 /**
  * How many days of each measure fall inside a window.
@@ -1176,37 +1165,71 @@ function distinctDays(rows: ReadonlyArray<{ day: DayKey }>, from?: DayKey, to?: 
  * days count towards the quest — it belongs to the couple, like the pet it
  * feeds and unlike a task.
  */
-async function daysByMeasure(from?: DayKey, to?: DayKey): Promise<Record<QuestMeasure, number>> {
-  const [moods, exercises, photos, cycles, work, tasks, messages] = await Promise.all([
-    db.moods.toArray(),
-    db.exercises.toArray(),
-    db.workoutPhotos.toArray(),
-    db.cycles.toArray(),
-    db.work.toArray(),
-    db.tasks.toArray(),
-    db.messages.toArray(),
-  ]);
-
-  const inWindow = (day: DayKey | undefined) =>
+async function daysByMeasure(
+  timeZone: string,
+  from?: DayKey,
+  to?: DayKey,
+): Promise<Record<QuestMeasure, number>> {
+  const inWindow = (day: DayKey | undefined): day is DayKey =>
     Boolean(day) && (!from || day! >= from) && (!to || day! <= to);
 
+  /**
+   * Distinct days a table has rows on, streamed.
+   *
+   * `workoutPhotos` carries a base64 JPEG per row, so reading the table into an
+   * array to look at each `day` is how a phone with a year of proof runs out of
+   * memory — and this runs on every reconcile and every live-query re-fire.
+   */
+  const daysOf = async (
+    table: { each(fn: (row: { day?: string }) => void): Promise<unknown> },
+  ): Promise<number> => {
+    const days = new Set<DayKey>();
+    await table.each((row) => { if (inWindow(row.day)) days.add(row.day as DayKey); });
+    return days.size;
+  };
+
+  const [moodDays, exerciseDays, proofDays, cycleDays, planDays, tasks, notes] = await Promise.all([
+    daysOf(db.moods),
+    daysOf(db.exercises),
+    daysOf(db.workoutPhotos),
+    daysOf(db.cycles),
+    // The day the entry was *written*, not the day it is for. A calendar holds
+    // next week's dentist appointment; counting by the day it happens meant two
+    // things already in the diary finished the quest on its first reconcile and
+    // paid out for work nobody did during the week.
+    (async () => {
+      const days = new Set<DayKey>();
+      await db.work.each((row) => {
+        const on = dayKey(new Date(row.updatedAt), timeZone);
+        if (inWindow(on)) days.add(on);
+      });
+      return days.size;
+    })(),
+    db.tasks.toArray(),
+    (async () => {
+      const days = new Set<DayKey>();
+      // In the member's zone, like every other day key here. Deriving this one
+      // in UTC put an evening note on the following day for anyone west of
+      // Greenwich, so a note written on the quest's last evening never counted.
+      await db.messages.each((m) => {
+        const on = dayKey(new Date(m.createdAt), timeZone);
+        if (inWindow(on)) days.add(on);
+      });
+      return days.size;
+    })(),
+  ]);
+
   return {
-    moodDays: distinctDays(moods, from, to),
-    exerciseDays: distinctDays(exercises, from, to),
-    proofDays: distinctDays(photos, from, to),
-    cycleDays: distinctDays(cycles, from, to),
-    planDays: distinctDays(work, from, to),
-    // A task carries only its most recent completion, so this counts the days
-    // on which something was last ticked off rather than every day one was.
-    // It is the honest reading of what the table stores.
-    taskDays: new Set(
-      tasks.map((t) => t.lastCompletedOn).filter((d): d is DayKey => inWindow(d)),
-    ).size,
-    noteDays: new Set(
-      messages
-        .map((m) => new Date(m.createdAt).toISOString().slice(0, 10) as DayKey)
-        .filter((d) => inWindow(d)),
-    ).size,
+    moodDays,
+    exerciseDays,
+    proofDays,
+    cycleDays,
+    planDays,
+    // Distinct tasks whose most recent completion falls in the window. A task
+    // records only that one date, so this cannot be a count of days — see the
+    // note on the `finish` template, which is worded to match.
+    tasksFinished: tasks.filter((t) => inWindow(t.lastCompletedOn)).length,
+    noteDays: notes,
   };
 }
 
@@ -1237,9 +1260,10 @@ export interface QuestSuggestion {
  */
 export async function suggestQuests(today: DayKey): Promise<QuestSuggestion> {
   const from = addDays(today, -SEED_WINDOW_DAYS);
-  const recent = (await daysByMeasure(from, today)) as RecentDays;
+  const { timeZone } = await loadSettings();
+  const recent = (await daysByMeasure(timeZone, from, today)) as RecentDays;
   const difficulty = suggestDifficulty(recent);
-  return { difficulty, shapes: seedFrom(shapesAt(difficulty), recent) };
+  return { difficulty, shapes: seedFrom(shapesAt(difficulty), recent, SEED_WINDOW_DAYS) };
 }
 
 /**
@@ -1259,11 +1283,14 @@ export async function startQuest(
   const template = templateById(templateId);
   if (!template) return null;
 
+  const { timeZone } = await loadSettings();
+
   return db.transaction('rw', [db.quests], async () => {
     const rows = await db.quests.where('coupleId').equals(coupleId).toArray();
     if (rows.some((q) => !q.completedAt && !q.retiredAt)) return null;
 
-    const quest = newQuest(shapeFor(template, difficulty), coupleId, today, id(), endOfDay);
+    const quest = newQuest(shapeFor(template, difficulty), coupleId, today, id(),
+      (day) => endOfDay(day, timeZone));
     await db.quests.put(quest);
     return quest;
   });
@@ -1301,7 +1328,8 @@ export async function measureQuest(coupleId: string): Promise<QuestReading> {
   const template = templateById(quest.templateId);
   if (!template) return { quest, measured: quest.progress };
 
-  const counted = await daysByMeasure(quest.startedOn, quest.endsOn);
+  const { timeZone } = await loadSettings();
+  const counted = await daysByMeasure(timeZone, quest.startedOn, quest.endsOn);
   return { quest, measured: counted[template.measure] ?? 0 };
 }
 

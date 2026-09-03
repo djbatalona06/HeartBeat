@@ -159,7 +159,7 @@ describe('markComplete', () => {
 describe('seedFrom', () => {
   it('offers every shape, just in a different order', () => {
     const shapes = shapesAt('steady');
-    const seeded = seedFrom(shapes, { exerciseDays: 2 });
+    const seeded = seedFrom(shapes, { exerciseDays: 2 }, 7);
     expect(seeded).toHaveLength(shapes.length);
     expect(new Set(seeded.map((s) => s.templateId)))
       .toEqual(new Set(shapes.map((s) => s.templateId)));
@@ -168,20 +168,20 @@ describe('seedFrom', () => {
   it('puts something half-done ahead of something never touched', () => {
     const shapes = shapesAt('steady');
     const move = shapes.find((s) => s.templateId === 'move')!;
-    const seeded = seedFrom(shapes, { exerciseDays: Math.round(move.target / 2) });
+    const seeded = seedFrom(shapes, { exerciseDays: Math.round(move.target / 2) }, 7);
     expect(seeded[0].templateId).toBe('move');
   });
 
   it('does not lead with what they already do every day', () => {
     // Half-finished before starting is not much of an offer either.
     const shapes = shapesAt('steady');
-    const seeded = seedFrom(shapes, { exerciseDays: 99 });
+    const seeded = seedFrom(shapes, { exerciseDays: 99 }, 7);
     expect(seeded[seeded.length - 1].templateId).toBe('move');
   });
 
   it('is stable with no history at all', () => {
-    const a = seedFrom(shapesAt('easy'), {}).map((s) => s.templateId);
-    const b = seedFrom(shapesAt('easy'), {}).map((s) => s.templateId);
+    const a = seedFrom(shapesAt('easy'), {}, 7).map((s) => s.templateId);
+    const b = seedFrom(shapesAt('easy'), {}, 7).map((s) => s.templateId);
     expect(a).toEqual(b);
   });
 });
@@ -245,5 +245,30 @@ describe('daysLeft', () => {
 
   it('has nothing to say about a row with no window stored', () => {
     expect(daysLeft({ ...mint(), endsOn: undefined }, '2026-03-01')).toBeNull();
+  });
+});
+
+describe('seedFrom on a longer window than the quest', () => {
+  const shapes = shapesAt('steady');
+
+  /**
+   * `recent` is counted over a fortnight and the target is for a week, so the
+   * two have to be put on the same footing before they are compared. They were
+   * not, and the picker led with the things the couple had never done.
+   */
+  it('prefers a habit they already have to one they have never had', () => {
+    const move = shapes.find((s) => s.templateId === 'move')!;
+    // Twice a week over the fortnight: half of a four-day target.
+    const seeded = seedFrom(shapes, { exerciseDays: move.target }, 14);
+    expect(seeded[0].templateId).toBe('move');
+  });
+
+  it('still puts what they do every single day last', () => {
+    const seeded = seedFrom(shapes, { exerciseDays: 14 }, 14);
+    expect(seeded[seeded.length - 1].templateId).toBe('move');
+  });
+
+  it('treats a zero-length window as already on the right scale', () => {
+    expect(() => seedFrom(shapes, { exerciseDays: 3 }, 0)).not.toThrow();
   });
 });
