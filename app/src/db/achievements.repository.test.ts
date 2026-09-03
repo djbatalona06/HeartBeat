@@ -1,7 +1,13 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './database';
-import { claimAchievements, listAchievements, putMood, putWorkoutPhoto } from './repository';
+import {
+  achievementState,
+  claimAchievements,
+  listAchievements,
+  putMood,
+  putWorkoutPhoto,
+} from './repository';
 import { TIER_PAYOUT, achievementByCode } from '../domain/achievements/catalogue';
 
 /**
@@ -253,5 +259,42 @@ describe('a day is a day, not a row', () => {
     // Four days, eight rows. The second rung wants fifteen days.
     const codes = (await claimAchievements(COUPLE)).unlocked.map((d) => d.code);
     expect(codes).toEqual(['mood.1']);
+  });
+});
+
+/**
+ * Not every measure is a count of days, and converting one that is not is how
+ * a fix for one bug becomes another. The calendar track is blurbed "Twenty
+ * things planned" and "A hundred entries on the calendar" — entries.
+ */
+describe('measures that count things rather than days', () => {
+  it('counts three appointments on one Saturday as three', async () => {
+    const day = '2026-03-07';
+    for (let i = 0; i < 3; i += 1) {
+      await db.work.put({
+        id: `w-${i}`, memberId: ME, day, title: `Thing ${i}`,
+        source: 'manual', updatedAt: Date.now(),
+      });
+    }
+    const state = await achievementState(COUPLE);
+    expect(state.events).toBe(3);
+  });
+
+  it('counts notes, not the days they were written on', async () => {
+    const at = Date.parse('2026-03-07T09:00:00Z');
+    for (let i = 0; i < 3; i += 1) {
+      await db.messages.put({
+        id: `m-${i}`, memberId: ME, coupleId: COUPLE, body: `hi ${i}`,
+        createdAt: at + i, mine: true,
+      });
+    }
+    expect((await achievementState(COUPLE)).notes).toBe(3);
+  });
+
+  it('still counts days for the measures whose blurbs promise days', async () => {
+    const day = '2026-03-08';
+    await putMood(ME, day, { hunger: 5, joy: 5, moody: 3 });
+    await putMood(THEM, day, { hunger: 5, joy: 5, moody: 3 });
+    expect((await achievementState(COUPLE)).moodDays).toBe(1);
   });
 });

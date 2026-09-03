@@ -22,6 +22,7 @@ const COUPLE = 'couple-1';
 const ME = 'member-a';
 const THEM = 'member-b';
 const TODAY = '2026-03-01';
+const TZONE = 'America/Los_Angeles';
 
 const CHECK_IN = shapeFor(templateById('check-in')!, 'easy');
 
@@ -78,7 +79,7 @@ describe('startQuest', () => {
 
 describe('reconcileQuests', () => {
   it('does nothing at all when there is no quest', async () => {
-    const result = await reconcileQuests(COUPLE, TODAY);
+    const result = await reconcileQuests(COUPLE, TODAY, TZONE);
     expect(result).toEqual({ awarded: 0, finished: false, expired: false });
     expect(await db.pet.get(COUPLE)).toBeUndefined();
   });
@@ -88,7 +89,7 @@ describe('reconcileQuests', () => {
     await mood(ME, TODAY);
     await mood(ME, '2026-03-02');
 
-    const result = await reconcileQuests(COUPLE, '2026-03-02');
+    const result = await reconcileQuests(COUPLE, '2026-03-02', TZONE);
     expect(result.quest?.progress).toBe(2);
     expect(result.finished).toBe(false);
     expect(result.awarded).toBe(0);
@@ -99,14 +100,14 @@ describe('reconcileQuests', () => {
     // Both people, same day. One day.
     await mood(ME, TODAY);
     await mood(THEM, TODAY);
-    expect((await reconcileQuests(COUPLE, TODAY)).quest?.progress).toBe(1);
+    expect((await reconcileQuests(COUPLE, TODAY, TZONE)).quest?.progress).toBe(1);
   });
 
   it('counts both people, because the quest belongs to the couple', async () => {
     await startQuest(COUPLE, 'check-in', 'easy', TODAY);
     await mood(ME, TODAY);
     await mood(THEM, '2026-03-02');
-    expect((await reconcileQuests(COUPLE, '2026-03-02')).quest?.progress).toBe(2);
+    expect((await reconcileQuests(COUPLE, '2026-03-02', TZONE)).quest?.progress).toBe(2);
   });
 
   it('ignores days outside the quest’s own window', async () => {
@@ -114,7 +115,7 @@ describe('reconcileQuests', () => {
     await mood(ME, '2026-02-20');       // before it started
     await mood(ME, '2026-03-20');       // after it ended
     await mood(ME, TODAY);
-    expect((await reconcileQuests(COUPLE, TODAY)).quest?.progress).toBe(1);
+    expect((await reconcileQuests(COUPLE, TODAY, TZONE)).quest?.progress).toBe(1);
   });
 
   it('pays out on the transition to complete', async () => {
@@ -123,7 +124,7 @@ describe('reconcileQuests', () => {
       await mood(ME, `2026-03-0${i + 1}`);
     }
 
-    const result = await reconcileQuests(COUPLE, '2026-03-05');
+    const result = await reconcileQuests(COUPLE, '2026-03-05', TZONE);
     expect(result.finished).toBe(true);
     expect(result.awarded).toBe(QUEST_DIAL.easy.xp);
     expect((await db.pet.get(COUPLE))?.xp).toBe(QUEST_DIAL.easy.xp);
@@ -134,9 +135,9 @@ describe('reconcileQuests', () => {
     await startQuest(COUPLE, 'check-in', 'easy', TODAY);
     for (let i = 0; i < CHECK_IN.target; i += 1) await mood(ME, `2026-03-0${i + 1}`);
 
-    const first = await reconcileQuests(COUPLE, '2026-03-05');
-    const second = await reconcileQuests(COUPLE, '2026-03-05');
-    const third = await reconcileQuests(COUPLE, '2026-03-06');
+    const first = await reconcileQuests(COUPLE, '2026-03-05', TZONE);
+    const second = await reconcileQuests(COUPLE, '2026-03-05', TZONE);
+    const third = await reconcileQuests(COUPLE, '2026-03-06', TZONE);
 
     expect(first.awarded).toBe(QUEST_DIAL.easy.xp);
     expect(second.awarded).toBe(0);
@@ -150,8 +151,8 @@ describe('reconcileQuests', () => {
 
     // What a live query firing on this function's own write looks like.
     await Promise.all([
-      reconcileQuests(COUPLE, '2026-03-05'),
-      reconcileQuests(COUPLE, '2026-03-05'),
+      reconcileQuests(COUPLE, '2026-03-05', TZONE),
+      reconcileQuests(COUPLE, '2026-03-05', TZONE),
     ]);
 
     expect((await db.pet.get(COUPLE))?.xp).toBe(QUEST_DIAL.easy.xp);
@@ -160,11 +161,11 @@ describe('reconcileQuests', () => {
   it('pays nothing more when the days keep coming after it finished', async () => {
     await startQuest(COUPLE, 'check-in', 'easy', TODAY);
     for (let i = 0; i < CHECK_IN.target; i += 1) await mood(ME, `2026-03-0${i + 1}`);
-    await reconcileQuests(COUPLE, '2026-03-05');
+    await reconcileQuests(COUPLE, '2026-03-05', TZONE);
 
     await mood(ME, '2026-03-06');
     await mood(ME, '2026-03-07');
-    const after = await reconcileQuests(COUPLE, '2026-03-07');
+    const after = await reconcileQuests(COUPLE, '2026-03-07', TZONE);
 
     expect(after.awarded).toBe(0);
     expect((await db.pet.get(COUPLE))?.xp).toBe(QUEST_DIAL.easy.xp);
@@ -174,7 +175,7 @@ describe('reconcileQuests', () => {
     await startQuest(COUPLE, 'check-in', 'easy', TODAY);
     await mood(ME, TODAY);
 
-    const result = await reconcileQuests(COUPLE, '2026-03-20');
+    const result = await reconcileQuests(COUPLE, '2026-03-20', TZONE);
     expect(result.expired).toBe(true);
     expect(result.awarded).toBe(0);
     // No pet row at all: nothing was added and nothing was taken away.
@@ -186,7 +187,7 @@ describe('reconcileQuests', () => {
     const quest = await startQuest(COUPLE, 'check-in', 'easy', TODAY);
     for (let i = 0; i < CHECK_IN.target; i += 1) await mood(ME, `2026-03-0${i + 1}`);
 
-    const result = await reconcileQuests(COUPLE, quest!.endsOn!);
+    const result = await reconcileQuests(COUPLE, quest!.endsOn!, TZONE);
     expect(result.finished).toBe(true);
     expect(result.expired).toBe(false);
   });
@@ -194,7 +195,7 @@ describe('reconcileQuests', () => {
   it('survives a stored quest whose template has been renamed away', async () => {
     const quest = await startQuest(COUPLE, 'check-in', 'easy', TODAY);
     await db.quests.put({ ...quest!, templateId: 'retired' });
-    const result = await reconcileQuests(COUPLE, TODAY);
+    const result = await reconcileQuests(COUPLE, TODAY, TZONE);
     expect(result.awarded).toBe(0);
   });
 });
@@ -238,10 +239,8 @@ describe('suggestQuests', () => {
  * against real rows, and both handed out XP for work nobody did in the week.
  */
 describe('what a quest counts', () => {
-  const TZ = 'America/Los_Angeles';
-
   beforeEach(async () => {
-    await saveSettings({ timeZone: TZ });
+    await saveSettings({ timeZone: TZONE });
   });
 
   /**
@@ -264,7 +263,7 @@ describe('what a quest counts', () => {
     }
 
     await startQuest(COUPLE, 'plan', 'easy', TODAY);
-    const result = await reconcileQuests(COUPLE, TODAY);
+    const result = await reconcileQuests(COUPLE, TODAY, TZONE);
 
     expect(result.finished).toBe(false);
     expect(result.awarded).toBe(0);
@@ -283,7 +282,7 @@ describe('what a quest counts', () => {
       source: 'manual',
     });
 
-    expect((await reconcileQuests(COUPLE, TODAY)).quest?.progress).toBe(1);
+    expect((await reconcileQuests(COUPLE, TODAY, TZONE)).quest?.progress).toBe(1);
   });
 
   /**
@@ -299,6 +298,6 @@ describe('what a quest counts', () => {
       id: 'n1', memberId: ME, coupleId: COUPLE, body: 'night', createdAt: evening, mine: true,
     });
 
-    expect((await reconcileQuests(COUPLE, quest!.endsOn!)).quest?.progress).toBe(1);
+    expect((await reconcileQuests(COUPLE, quest!.endsOn!, TZONE)).quest?.progress).toBe(1);
   });
 });

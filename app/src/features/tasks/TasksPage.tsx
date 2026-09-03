@@ -112,7 +112,7 @@ export function TasksPage() {
 
       {avatar ? <CharacterCard avatar={avatar} /> : null}
 
-      {identity ? <QuestBoard coupleId={identity.coupleId} day={day} /> : null}
+      {identity ? <QuestBoard coupleId={identity.coupleId} day={day} timeZone={timeZone} /> : null}
 
       {SECTIONS.map((section) => (
         <Section

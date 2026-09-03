@@ -1305,6 +1305,15 @@ export async function retireQuest(questId: string): Promise<void> {
   });
 }
 
+/**
+ * The zone is a parameter rather than something read from `settings` here, and
+ * that is not tidiness. `QuestBoard` calls this inside a `useLiveQuery`, and a
+ * Dexie live query subscribes to every table its body touches — `sync()`
+ * rewrites the settings row at the end of every round, up to twenty rounds per
+ * foreground, and each rewrite would re-stream `moods`, `exercises`,
+ * `workoutPhotos`, `cycles`, `work`, `tasks` and `messages`. That is exactly
+ * the cost `daysOf` streams to avoid, paid twenty times over.
+ */
 export interface QuestReading {
   quest?: Quest;
   /** Days counted for that quest's measure, inside its own window. */
@@ -1320,7 +1329,7 @@ export interface QuestReading {
  * unreconciled until something else happened to write to it. Reading moods,
  * exercises and the rest *here* is what subscribes the caller to them.
  */
-export async function measureQuest(coupleId: string): Promise<QuestReading> {
+export async function measureQuest(coupleId: string, timeZone: string): Promise<QuestReading> {
   const rows = await db.quests.where('coupleId').equals(coupleId).toArray();
   const quest = rows.find((q) => !q.completedAt && !q.retiredAt);
   if (!quest) return { measured: 0 };
@@ -1328,7 +1337,6 @@ export async function measureQuest(coupleId: string): Promise<QuestReading> {
   const template = templateById(quest.templateId);
   if (!template) return { quest, measured: quest.progress };
 
-  const { timeZone } = await loadSettings();
   const counted = await daysByMeasure(timeZone, quest.startedOn, quest.endsOn);
   return { quest, measured: counted[template.measure] ?? 0 };
 }
@@ -1347,8 +1355,12 @@ export interface QuestReckoning {
  * Safe to call as often as anything likes. With no quest, nothing new, or a
  * quest already settled, it writes nothing at all.
  */
-export async function reconcileQuests(coupleId: string, today: DayKey): Promise<QuestReckoning> {
-  const { quest: running, measured } = await measureQuest(coupleId);
+export async function reconcileQuests(
+  coupleId: string,
+  today: DayKey,
+  timeZone: string,
+): Promise<QuestReckoning> {
+  const { quest: running, measured } = await measureQuest(coupleId, timeZone);
   if (!running) return { awarded: 0, finished: false, expired: false };
   if (!templateById(running.templateId)) {
     return { quest: running, awarded: 0, finished: false, expired: false };
@@ -1464,7 +1476,12 @@ export async function achievementState(coupleId: string) {
     daysOn(db.moods),
     daysOn(db.exercises),
     daysOn(db.workoutPhotos),
-    daysOn(db.work),
+    // Entries, not days: this track is blurbed "Twenty things planned" and
+    // "A hundred entries on the calendar", so three appointments on one
+    // Saturday are three. `messages` below is a row count for the same reason.
+    // The quest engine's `planDays` counts days because it asks a different
+    // question — how many days you *added* something to the calendar.
+    db.work.count(),
     daysOn(db.cycles),
     // Notes carry a timestamp rather than a day, and "a hundred and fifty
     // notes" is a count of notes, so this one stays a row count on purpose.
