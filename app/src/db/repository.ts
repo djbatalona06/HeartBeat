@@ -1,6 +1,7 @@
 import { db, loadSettings, saveSettings } from './database';
 import type {
-  ChatMessage, CycleEntry, DayKey, ExerciseEntry, MemberId, MoodEntry, Pet, PetXpAward, WorkEvent,
+  ChatMessage, CycleEntry, DayKey, ExerciseEntry, MemberId, MoodEntry, Pet, PetXpAward,
+  WorkEvent, WorkoutPhoto,
 } from '../domain/types';
 import { MAX_AWARD_XP } from '../domain/types';
 import { addDays } from '../domain/day';
@@ -822,6 +823,8 @@ export async function settlePetXp(
     });
     return next;
   });
+}
+
 /* ---- identity repair ---- */
 
 // Imports are hoisted, so this one sits with the section it belongs to rather
