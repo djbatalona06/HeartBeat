@@ -190,3 +190,68 @@ describe('the pet-level loop', () => {
     expect((await db.pet.get(COUPLE))?.xp).toBe(awarded);
   });
 });
+
+/**
+ * Both phones evaluate the shelf independently off the same synced data, so
+ * both reach the same rung and both report it. The award id is what decides
+ * whether the server treats those as one credit or two — `awardBossVictory`
+ * derives `boss-<tier>` for exactly this reason.
+ */
+describe('what the shared pet is told', () => {
+  it('names an achievement award after the rung, not at random', async () => {
+    await putMood(ME, '2026-03-01', { hunger: 5, joy: 7, moody: 3 });
+    await claimAchievements(COUPLE);
+
+    const pet = await db.pet.get(COUPLE);
+    const pending = pet?.pendingXp ?? [];
+    expect(pending).toHaveLength(1);
+    // Derived from the code, so the other phone's report is the same award.
+    expect(pending[0].id).toBe('ach-mood.1');
+  });
+
+  it('gives two rungs two award ids', async () => {
+    const second = achievementByCode('mood.2')!;
+    for (let i = 0; i < second.need; i += 1) {
+      await putMood(ME, `2026-03-${String(i + 1).padStart(2, '0')}`, { hunger: 5, joy: 5, moody: 3 });
+    }
+    await claimAchievements(COUPLE);
+
+    const ids = ((await db.pet.get(COUPLE))?.pendingXp ?? []).map((a) => a.id).sort();
+    expect(ids).toEqual(['ach-mood.1', 'ach-mood.2']);
+  });
+});
+
+/**
+ * The blurbs promise days: "Sixty days of saying how it was". Counting rows
+ * instead counts each person separately, so a couple who both log on the same
+ * day get two — and reach the sixty-day rung on their thirtieth. The quest
+ * code in the same file counts distinct days deliberately; this must agree.
+ */
+describe('a day is a day, not a row', () => {
+  const bothLog = async (days: number, month: string) => {
+    for (let i = 0; i < days; i += 1) {
+      const day = `2026-${month}-${String(i + 1).padStart(2, '0')}`;
+      await putMood(ME, day, { hunger: 5, joy: 5, moody: 3 });
+      await putMood(THEM, day, { hunger: 5, joy: 5, moody: 3 });
+    }
+  };
+
+  it('does not hand over a sixty-day rung on the thirtieth day', async () => {
+    const third = achievementByCode('mood.3')!;
+    expect(third.need).toBe(60);
+    // Thirty calendar days, both of them: sixty rows, thirty days.
+    await bothLog(30, '03');
+
+    const codes = (await claimAchievements(COUPLE)).unlocked.map((d) => d.code);
+    expect(codes).toContain('mood.1');
+    expect(codes).toContain('mood.2');
+    expect(codes).not.toContain('mood.3');
+  });
+
+  it('agrees with what the quest engine counts for the same measure', async () => {
+    await bothLog(4, '05');
+    // Four days, eight rows. The second rung wants fifteen days.
+    const codes = (await claimAchievements(COUPLE)).unlocked.map((d) => d.code);
+    expect(codes).toEqual(['mood.1']);
+  });
+});

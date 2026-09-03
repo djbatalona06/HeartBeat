@@ -1,11 +1,9 @@
 import { useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
-import { claimAchievements } from '../../db/repository';
+import { achievementState, claimAchievements } from '../../db/repository';
 import { achievementByCode } from '../../domain/achievements/catalogue';
-import { countGear, shelfRows, stateFrom } from '../../domain/achievements/unlock';
-import { levelForXp } from '../../domain/xp';
-import type { WorkoutPhoto } from '../../domain/types';
+import { shelfRows } from '../../domain/achievements/unlock';
 
 /**
  * The shelf.
@@ -25,40 +23,16 @@ export function AchievementShelf({ coupleId }: { coupleId: string }) {
     [coupleId],
   );
 
-  const state = useLiveQuery(async () => {
-    const [
-      moodDays, exerciseDays, photos, events, cycleDays, notes,
-      lifeEvents, tasks, avatars, pets, pet,
-    ] = await Promise.all([
-      db.moods.count(),
-      db.exercises.count(),
-      db.workoutPhotos.toArray(),
-      db.work.count(),
-      db.cycles.count(),
-      db.messages.count(),
-      db.lifeEvents.toArray(),
-      db.tasks.toArray(),
-      db.avatars.toArray(),
-      db.pets.count(),
-      db.pet.get(coupleId),
-    ]);
-    return stateFrom({
-      moodDays,
-      exerciseDays,
-      proofDays: new Set(photos.map((p: WorkoutPhoto) => `${p.memberId} ${p.day}`)).size,
-      events,
-      cycleDays,
-      notes,
-      vibesSent: lifeEvents.filter((e) => e.kind === 'good-vibes').length,
-      pets,
-      tasks,
-      gear: avatars.reduce<Record<string, string | undefined>>(
-        (best, a) => (countGear(a.gear) > countGear(best) ? a.gear : best),
-        {},
-      ),
-      petLevel: pet ? levelForXp(pet.xp) : 0,
-    });
-  }, [coupleId]);
+  /**
+   * The same reader the writer uses, rather than a second copy of it.
+   *
+   * These were two independent transcriptions of the same dozen queries, which
+   * is two chances to drift: the bars would show one thing and the claim would
+   * pay from another. Reading through `achievementState` also keeps the live
+   * query subscribed to every table it touches, which is what makes the shelf
+   * refresh when a workout is logged elsewhere.
+   */
+  const state = useLiveQuery(async () => achievementState(coupleId), [coupleId]);
 
   /**
    * Claiming is a side effect of looking, which is the calm version: nothing

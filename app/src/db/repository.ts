@@ -1337,7 +1337,9 @@ export async function reconcileQuests(coupleId: string, today: DayKey): Promise<
 
     if (step.verb === 'complete') {
       await db.quests.put(markComplete(step.quest, now()));
-      await addXp(coupleId, step.award);
+      // Named after the quest for the same reason the rungs are: an award id
+      // the server has already seen is one it will not credit again.
+      await awardPetXp(coupleId, `quest-${step.quest.id}`, step.award);
       return { quest: step.quest, awarded: step.award, finished: true, expired: false };
     }
 
@@ -1399,13 +1401,23 @@ export interface ClaimResult {
 }
 
 /**
- * Count the days that have proof on them.
+ * Count the calendar days a table has rows on.
  *
- * A day holds up to two photographs, one per camera, so counting rows would
- * count a two-camera day twice and hand out the track at half the work.
+ * Days, not rows, and not member-days either. Every "days" blurb in the
+ * catalogue promises the calendar — "Sixty days of saying how it was" — and a
+ * couple where both people log produces two rows for one day, so counting rows
+ * hands the sixty-day rung over on the thirtieth. Counting member-days has the
+ * same fault. `daysByMeasure` in the quests section counts distinct days for
+ * exactly these measures; this is the same rule, said once more.
+ *
+ * Streamed rather than read into an array: `workoutPhotos` carries a base64
+ * JPEG per row, and pulling every one of them into memory to look at its `day`
+ * is how a phone with a year of proof runs out of it.
  */
-function proofDayCount(photos: ReadonlyArray<{ memberId: string; day: string }>): number {
-  return new Set(photos.map((p) => `${p.memberId} ${p.day}`)).size;
+async function daysOn(table: { each(fn: (row: { day?: string }) => void): Promise<unknown> }): Promise<number> {
+  const days = new Set<string>();
+  await table.each((row) => { if (row.day) days.add(row.day); });
+  return days.size;
 }
 
 /**
@@ -1416,16 +1428,18 @@ function proofDayCount(photos: ReadonlyArray<{ memberId: string; day: string }>)
  * person's: the row carries a coupleId and no memberId, and the shelf is
  * shared.
  */
-async function achievementState(coupleId: string) {
+export async function achievementState(coupleId: string) {
   const [
-    moodDays, exerciseDays, photos, events, cycleDays, notes,
+    moodDays, exerciseDays, proofDays, events, cycleDays, notes,
     vibesSent, tasks, avatars, pets, pet,
   ] = await Promise.all([
-    db.moods.count(),
-    db.exercises.count(),
-    db.workoutPhotos.toArray(),
-    db.work.count(),
-    db.cycles.count(),
+    daysOn(db.moods),
+    daysOn(db.exercises),
+    daysOn(db.workoutPhotos),
+    daysOn(db.work),
+    daysOn(db.cycles),
+    // Notes carry a timestamp rather than a day, and "a hundred and fifty
+    // notes" is a count of notes, so this one stays a row count on purpose.
     db.messages.count(),
     // `kind` is not an index on this table, so this is a scan rather than a
     // lookup. It is a handful of rows and adding an index would mean a Dexie
@@ -1440,7 +1454,7 @@ async function achievementState(coupleId: string) {
   return stateFrom({
     moodDays,
     exerciseDays,
-    proofDays: proofDayCount(photos),
+    proofDays,
     events,
     cycleDays,
     notes,
@@ -1481,8 +1495,16 @@ export async function claimAchievements(coupleId: string): Promise<ClaimResult> 
     }));
     await db.achievements.bulkPut(rows);
 
+    // One award per rung, named after the rung rather than at random.
+    // Achievements are the couple's and both phones evaluate them off the same
+    // synced data, so both reach mood.2 and both report it. A random id makes
+    // those two reports two credits on the shared pet; a derived one makes them
+    // the same award, which is the shape `awardBossVictory` already uses and
+    // the reason `pet_xp_awards` is keyed the way it is. It also makes a
+    // re-claim on this phone a no-op, since `awardPetXp` knows the id already.
+    for (const def of fresh) await awardPetXp(coupleId, `ach-${def.code}`, payoutFor([def]));
+
     const xp = payoutFor(fresh);
-    await addXp(coupleId, xp);
     return { unlocked: fresh, xp };
   });
 }
