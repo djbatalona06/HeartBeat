@@ -21,7 +21,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PAGES_PROJECT: heartbeat-eop
+  # The project is named heartbeat-app; heartbeat-eop.pages.dev is its
+  # subdomain. Those being different is why the old grep-based check and the
+  # deploy could disagree — one matched the domain, the other asked for the
+  # project. The two are not interchangeable, so nothing here derives one from
+  # the other.
+  PAGES_PROJECT: heartbeat-app
   # Photographs live here rather than in D1. See app/functions/api/media.ts.
   MEDIA_BUCKET: heartbeat
 

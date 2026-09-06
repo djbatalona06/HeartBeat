@@ -36,8 +36,8 @@ This is a **PWA for two people** (couples tracker: mood, workouts, cycle, calend
 
 | Directory | What it is | Deploy target |
 |-----------|-----------|--------------|
-| `app/` | Vite + React + TypeScript SPA/PWA | Cloudflare Pages (`heartbeat-eop`) |
-| `worker/` | Cloudflare Worker (pairing, sync, push) | Cloudflare Worker (manual deploy) |
+| `app/` | Vite + React + TypeScript SPA/PWA | Cloudflare Pages — project `heartbeat-app`, served at `heartbeat-eop.pages.dev` |
+| `worker/` | Cloudflare Worker (pairing, sync, push) | Cloudflare Worker via `worker-deploy.yml` (migrations, then deploy) |
 | `index.html` + `gift/` | Landing page + birthday piece | GitHub Pages |
 
 Both Cloudflare pieces bind the **same D1 database**.

@@ -85,6 +85,12 @@ npm run deploy         # wrangler deploy
 Generate a VAPID keypair first if you don't have one (`npx web-push
 generate-vapid-keys` or any P-256 keypair, base64url-encoded).
 
+> **The project name and the domain are not the same.** The Pages project is
+> **`heartbeat-app`**; it serves at **`heartbeat-eop.pages.dev`**. `PAGES_PROJECT`
+> in `deploy.yml` must be the *project*, and `ALLOWED_ORIGIN` in
+> `worker/wrangler.toml` must be the *domain*. Using one where the other belongs
+> is what made the old deploy check disagree with the deploy itself.
+
 `worker/wrangler.toml` hardcodes `ALLOWED_ORIGIN` to
 `https://heartbeat-eop.pages.dev,https://*.heartbeat-eop.pages.dev`, matching
 the live Pages project. **If your Pages project uses a different name or a
@@ -112,7 +118,7 @@ other origin (`worker/src/cors.ts`).
    - `CLOUDFLARE_ACCOUNT_ID` — dashboard sidebar, or `npx wrangler whoami`
 3. Push to `main`. The workflow: `npm ci` → `npm run build` (with
    `APP_BASE=/`) → verifies the token can see the account and creates the
-   `heartbeat-eop` Pages project if missing →
+   `heartbeat-app` Pages project if missing →
    `wrangler pages deploy` from inside `app/` (so it picks up
    `app/wrangler.toml`'s bindings).
 
@@ -121,8 +127,8 @@ other origin (`worker/src/cors.ts`).
 ```bash
 npm run build          # from repo root, APP_BASE=/ if not already default
 cd app
-npx wrangler pages project create heartbeat-eop --production-branch=main   # first time only
-npx wrangler pages deploy --project-name=heartbeat-eop --branch=main
+npx wrangler pages project create heartbeat-app --production-branch=main   # first time only
+npx wrangler pages deploy --project-name=heartbeat-app --branch=main
 ```
 
 Must be run from `app/` (not repo root) — `wrangler` reads
