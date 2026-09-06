@@ -192,7 +192,7 @@ Workout proof and profile faces used to be base64 inside D1 — `entries.payload
 and `members.photo_data_uri`. D1 has a row-size ceiling and is not a blob store,
 so months of gym photographs walk towards it while slowing unrelated queries.
 
-The bytes now live in an R2 bucket called **`heartbeat-media`**, bound as
+The bytes now live in an R2 bucket called **`heartbeat`**, bound as
 `MEDIA` in both `app/wrangler.toml` and `worker/wrangler.toml`. D1 keeps a
 content-addressed key (`media/<coupleId>/<memberId>/<sha256>.<ext>`).
 
@@ -201,7 +201,7 @@ hand is add **R2: Edit** to the API token (step 3). To create it yourself
 instead:
 
 ```bash
-npx wrangler r2 bucket create heartbeat-media
+npx wrangler r2 bucket create heartbeat
 ```
 
 **The bucket is never public.** `app/functions/api/media.ts` authenticates every

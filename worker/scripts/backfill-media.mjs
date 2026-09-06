@@ -29,7 +29,7 @@ import { createHash } from 'node:crypto';
 const ACCOUNT = process.env.CLOUDFLARE_ACCOUNT_ID;
 const TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 const DATABASE = process.env.HEARTBEAT_D1_ID ?? 'dcfde6ff-f415-427a-bfc4-c08bd6911699';
-const BUCKET = process.env.HEARTBEAT_R2_BUCKET ?? 'heartbeat-media';
+const BUCKET = process.env.HEARTBEAT_R2_BUCKET ?? 'heartbeat';
 const COMMIT = process.argv.includes('--commit');
 
 if (!ACCOUNT || !TOKEN) {

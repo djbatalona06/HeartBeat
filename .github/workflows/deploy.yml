@@ -23,7 +23,7 @@ concurrency:
 env:
   PAGES_PROJECT: heartbeat-eop
   # Photographs live here rather than in D1. See app/functions/api/media.ts.
-  MEDIA_BUCKET: heartbeat-media
+  MEDIA_BUCKET: heartbeat
 
 jobs:
   deploy:
