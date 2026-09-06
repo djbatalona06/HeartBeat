@@ -24,6 +24,10 @@ database_id = "dcfde6ff-f415-427a-bfc4-c08bd6911699"
 # couple accumulating months of gym photos walks towards it while making every
 # unrelated query slower. D1 now keeps a content-addressed key; see
 # app/functions/api/media.ts and app/src/domain/media/objectKey.ts.
+# Named to match the D1 database rather than something of its own: the account
+# already keys everything for this app on "heartbeat", and a binding pointing at
+# a bucket that does not exist fails the Pages deploy at publish rather than at
+# runtime — which is how this was found.
 [[r2_buckets]]
 binding = "MEDIA"
-bucket_name = "heartbeat-media"
+bucket_name = "heartbeat"
