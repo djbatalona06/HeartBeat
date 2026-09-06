@@ -1,0 +1,12 @@
+-- Faces follow workout proof out of D1.
+--
+-- 0006 added `photo_data_uri` and capped it at 64 KiB, which was the right
+-- ceiling for a base64 face but still puts an image in a row that is read on
+-- every profile fetch by both phones. The bytes now live in R2 and this column
+-- holds the key; see app/functions/api/media.ts.
+--
+-- `photo_data_uri` is deliberately NOT dropped here. The backfill in
+-- worker/scripts/backfill-media.mjs reads it, and a phone that has not updated
+-- yet still sends and expects it. Two migrations, not one: this one adds the
+-- new column, and the old one goes only once nothing reads it.
+ALTER TABLE members ADD COLUMN photo_key TEXT;

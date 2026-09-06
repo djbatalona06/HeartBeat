@@ -15,6 +15,12 @@ export interface Env {
   DB: D1Database;
   AI: Ai;
   /**
+   * Photographs. Optional so a deploy that predates the bucket still starts and
+   * serves everything else; /api/media answers 503 rather than throwing, and
+   * the legacy data-URI path still renders whatever is already in D1.
+   */
+  MEDIA?: R2Bucket;
+  /**
    * The VAPID *public* key, served to the browser by /api/health.
    *
    * Optional because a deploy without push configured must still start; the

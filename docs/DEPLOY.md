@@ -102,6 +102,7 @@ other origin (`worker/src/cors.ts`).
    - **D1: Edit**
    - **Workers AI: Read**
    - **Workers Scripts: Edit** — for `worker-deploy.yml` (step 2)
+   - **R2: Edit** — photographs live in an R2 bucket, not in D1
 
    (the Pages Functions in `app/functions/` bind D1 and Workers AI, per the
    comment at the top of `deploy.yml`; the fourth is what lets the Worker
@@ -183,3 +184,44 @@ redeploy the Worker — Pages redeploys don't touch the Worker.
 **Summary of one-time setup, in order:** create D1 → apply migrations → set
 Worker secrets (VAPID keys) → `wrangler deploy` the Worker → set the two
 GitHub Actions secrets → push to `main` (Pages deploys itself from there on).
+
+
+## 7. Photographs (R2)
+
+Workout proof and profile faces used to be base64 inside D1 — `entries.payload`
+and `members.photo_data_uri`. D1 has a row-size ceiling and is not a blob store,
+so months of gym photographs walk towards it while slowing unrelated queries.
+
+The bytes now live in an R2 bucket called **`heartbeat-media`**, bound as
+`MEDIA` in both `app/wrangler.toml` and `worker/wrangler.toml`. D1 keeps a
+content-addressed key (`media/<coupleId>/<memberId>/<sha256>.<ext>`).
+
+`deploy.yml` creates the bucket if it is missing, so the only thing to do by
+hand is add **R2: Edit** to the API token (step 3). To create it yourself
+instead:
+
+```bash
+npx wrangler r2 bucket create heartbeat-media
+```
+
+**The bucket is never public.** `app/functions/api/media.ts` authenticates every
+read and write and compares the couple segment of the key against the caller, so
+one couple cannot read another's photograph even holding a valid token. Making
+it public would be a wider hole than the pairing perimeter the app is built on.
+
+### Carrying the existing photographs over
+
+New captures go straight to R2. Anything already in D1 stays there until the
+backfill is run — which is the part that actually relieves the row-size problem:
+
+```bash
+export CLOUDFLARE_ACCOUNT_ID=... CLOUDFLARE_API_TOKEN=...
+node worker/scripts/backfill-media.mjs            # dry run: reports what would move
+node worker/scripts/backfill-media.mjs --commit   # do it
+```
+
+It is safe to run twice: keys are the SHA-256 of the bytes, so re-uploading
+writes the same object to the same name, and a row that already has a key is
+skipped. It deletes nothing — `photo_data_uri` and the base64 in old payloads
+stay put so a phone that has not updated keeps working. A later migration drops
+them once nothing reads them.

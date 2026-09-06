@@ -236,3 +236,65 @@ export async function clearNudges(token: string): Promise<void> {
   });
   if (!res.ok) throw await errorFrom(res);
 }
+
+/**
+ * Photographs, to and from R2 via /api/media.
+ *
+ * They used to travel inside the sync payload as base64 and land in D1. These
+ * two calls are what replaced that: the bytes go up once, and what syncs after
+ * is a key. See `domain/media/objectKey.ts` for how the key is shaped and
+ * `domain/media/photoWire.ts` for what still travels.
+ */
+
+export interface StoredMedia {
+  key: string;
+  hash: string;
+  bytes: number;
+}
+
+/**
+ * A data URI is what the capture ladder in `features/exercise/photo.ts`
+ * produces, and decoding it here keeps that component free of upload concerns.
+ * Throws on a malformed URI rather than uploading something unreadable.
+ */
+export function blobFromDataUri(dataUri: string): Blob {
+  const comma = dataUri.indexOf(',');
+  const header = dataUri.slice(0, comma);
+  if (comma < 0 || !header.startsWith('data:')) throw new Error('not a data URI');
+  const type = header.slice(5).split(';')[0] || 'application/octet-stream';
+  const binary = atob(dataUri.slice(comma + 1));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type });
+}
+
+/** Send one photograph. The key comes back; the server derives it from the bytes. */
+export async function uploadMedia(blob: Blob, token: string): Promise<StoredMedia> {
+  const res = await fetch('/api/media', {
+    method: 'PUT',
+    headers: { ...authHeaders(token), 'content-type': blob.type || 'image/jpeg' },
+    body: blob,
+  });
+  if (!res.ok) throw await errorFrom(res);
+  return (await res.json()) as StoredMedia;
+}
+
+/**
+ * Fetch one back as a data URI, which is what the rows and the `<img>` want.
+ *
+ * Returns null rather than throwing on a miss: a photograph that will not load
+ * should leave a placeholder on the screen, not take the page down with it.
+ */
+export async function fetchMedia(key: string, token: string): Promise<string | null> {
+  const res = await fetch(`/api/media?key=${encodeURIComponent(key)}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) return null;
+  const blob = await res.blob();
+  return await new Promise<string | null>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(blob);
+  });
+}

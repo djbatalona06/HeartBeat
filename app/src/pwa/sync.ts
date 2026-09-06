@@ -20,6 +20,9 @@ import type {
   CycleEntry, DayKey, ExerciseEntry, MemberId, MoodEntry, WorkEvent, WorkoutPhoto,
 } from '../domain/types';
 import { ENTRY_KINDS, takeWithinBudget, utf8Bytes, withinPayloadLimit } from '../domain/media/budget';
+import { fromWire, toWire, type WirePhoto } from '../domain/media/photoWire';
+import { blobFromDataUri, uploadMedia } from './api';
+import { markPhotoUploaded, pendingPhotoUploads } from '../db/repository';
 
 export const KINDS = ENTRY_KINDS;
 export type EntryKind = (typeof KINDS)[number];
@@ -172,7 +175,15 @@ export async function collectPending(memberId: MemberId, since: number): Promise
   for (const [day, shots] of photoDays) {
     const updatedAt = photoDayUpdatedAt(shots);
     if (updatedAt <= since) continue;
-    out.push({ id: `${memberId}-photo-${day}`, kind: 'photo', day, payload: shots, updatedAt });
+    // Keys, not bytes. A day of proof used to be around 360 KiB of base64 on
+    // the wire; it is now a few hundred bytes like every other kind.
+    out.push({
+      id: `${memberId}-photo-${day}`,
+      kind: 'photo',
+      day,
+      payload: shots.map(toWire),
+      updatedAt,
+    });
   }
 
   return out.sort((a, b) => a.updatedAt - b.updatedAt);
@@ -183,13 +194,27 @@ async function applyEntry(entry: PulledEntry): Promise<boolean> {
   const { memberId, day, updatedAt } = entry;
 
   if (entry.kind === 'photo') {
-    const shots = Array.isArray(entry.payload) ? (entry.payload as WorkoutPhoto[]) : [];
+    const shots = Array.isArray(entry.payload) ? (entry.payload as WirePhoto[]) : [];
     const existing = await db.workoutPhotos.where('[memberId+day]').equals([memberId, day]).toArray();
     if (existing.length && !wins(entry, { updatedAt: photoDayUpdatedAt(existing) })) return false;
+
+    // Bytes already held for a key that is coming back unchanged are kept, so
+    // looking at a day twice does not re-download it — and so a shot this phone
+    // took keeps rendering instantly after the partner's copy syncs back round.
+    const bytesByKey = new Map(
+      existing.filter((s) => s.key && s.dataUri).map((s) => [s.key as string, s.dataUri as string]),
+    );
+
     // The day travels whole, like the calendar does, so a proof deleted on the
     // other phone stays deleted rather than being resurrected on the next sync.
     await db.workoutPhotos.bulkDelete(existing.map((s) => s.id));
-    await db.workoutPhotos.bulkPut(shots.map((s) => ({ ...s, memberId, day })));
+    await db.workoutPhotos.bulkPut(
+      shots.map((wire, i) => {
+        const row = fromWire(wire, `${entry.id}-${i}`, memberId, day);
+        if (!row.dataUri && row.key) row.dataUri = bytesByKey.get(row.key);
+        return row;
+      }),
+    );
     return true;
   }
 
@@ -368,11 +393,42 @@ async function pull(token: string, since: number): Promise<{
  * One round trip. Returns null when the device is not paired yet, which is not
  * an error — it is the state every device starts in.
  */
+/**
+ * Get any photograph still holding its own bytes into R2.
+ *
+ * Uploads happen here rather than at capture time on purpose: a gym is a place
+ * with no signal, the shot has to appear the instant it is taken, and this is
+ * where every other retry in the app already lives. A failure is left alone —
+ * the row stays pending, still renders locally, still travels as base64, and is
+ * tried again on the next sync.
+ *
+ * Sequential rather than parallel: two photographs a day is the whole volume,
+ * and a phone on a bad connection should not open several uploads at once.
+ */
+export async function uploadPendingPhotos(memberId: string, token: string): Promise<number> {
+  const waiting = await pendingPhotoUploads(memberId);
+  let uploaded = 0;
+  for (const photo of waiting) {
+    try {
+      const stored = await uploadMedia(blobFromDataUri(photo.dataUri as string), token);
+      if (await markPhotoUploaded(photo.id, stored.hash, stored.key)) uploaded += 1;
+    } catch {
+      // Offline, refused, or the bucket is not configured on this deploy. The
+      // row keeps its bytes and is offered again next time.
+    }
+  }
+  return uploaded;
+}
+
 export async function sync(): Promise<SyncResult | null> {
   const settings = await loadSettings();
   const token = settings.workerSecret;
   const memberId = settings.memberId;
   if (!token || !memberId) return null;
+
+  // Before anything is collected: a shot still holding its bytes travels as
+  // base64, so getting it into R2 first is what keeps the payload small.
+  await uploadPendingPhotos(memberId, token);
 
   const pushedAt = settings.syncPushedAt ?? 0;
   const pending = await collectPending(memberId, pushedAt);

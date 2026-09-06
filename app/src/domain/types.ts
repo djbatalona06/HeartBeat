@@ -80,8 +80,29 @@ export interface WorkoutPhoto {
   day: DayKey;
   /** Which camera it came from. */
   facing: 'front' | 'back';
-  /** A downscaled JPEG as a data URI. */
-  dataUri: string;
+  /**
+   * The R2 object holding the bytes, content-addressed by their SHA-256.
+   *
+   * Optional for two reasons, both temporary and both real: rows written before
+   * photographs moved out of D1 have no key, and a shot taken offline has no
+   * key until its upload lands. `dataUri` covers both cases.
+   */
+  key?: string;
+  /** The SHA-256 the key is named by, so a cached copy can be trusted. */
+  hash?: string;
+  /**
+   * The bytes, held locally.
+   *
+   * This is what the screen actually renders, which is why it survived the move
+   * to R2: a proof taken on this phone should appear instantly and keep
+   * appearing on a train with no signal. On the partner's phone it starts
+   * absent and is filled in the first time the shot is looked at.
+   *
+   * It is no longer what travels. The sync payload carries the key.
+   */
+  dataUri?: string;
+  /** True until the bytes have reached R2. The sync loop retries these. */
+  pendingUpload?: boolean;
   bytes: number;
   updatedAt: number;
 }

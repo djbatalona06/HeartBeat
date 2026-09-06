@@ -22,6 +22,8 @@ concurrency:
 
 env:
   PAGES_PROJECT: heartbeat-eop
+  # Photographs live here rather than in D1. See app/functions/api/media.ts.
+  MEDIA_BUCKET: heartbeat-media
 
 jobs:
   deploy:
@@ -76,6 +78,31 @@ jobs:
             npx wrangler pages project create "$PAGES_PROJECT" --production-branch=main
           fi
           rm -f projects.json
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Ensure the R2 bucket for photographs exists
+        # app/wrangler.toml binds MEDIA, and a deploy naming a bucket that does
+        # not exist fails at publish. Written the same way as the Pages check
+        # above and for the same reasons: exact match, no pipeline to swallow an
+        # error, and a token that cannot see the account fails right here.
+        #
+        # Needs **R2: Edit** on CLOUDFLARE_API_TOKEN, which is newer than the
+        # three permissions the Pages deploy alone required.
+        run: |
+          set -euo pipefail
+          r2="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          curl -sfS -H "$auth" "$r2?per_page=100" > buckets.json
+          if jq -e --arg n "$MEDIA_BUCKET" '.result.buckets[] | select(.name == $n)' buckets.json > /dev/null; then
+            echo "Bucket $MEDIA_BUCKET already exists."
+          else
+            echo "Creating bucket $MEDIA_BUCKET."
+            curl -sfS -X POST -H "$auth" -H 'content-type: application/json' \
+              --data "{\"name\":\"$MEDIA_BUCKET\"}" "$r2" > /dev/null
+          fi
+          rm -f buckets.json
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
