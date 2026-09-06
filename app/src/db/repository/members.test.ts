@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db, loadSettings, saveSettings } from './database';
+import { db, loadSettings, saveSettings } from '../database';
 import {
   MAX_DISPLAY_NAME,
   clearPendingInvite,
@@ -10,7 +10,7 @@ import {
   setCalmMode,
   setThemeChoice,
   setTracksCycle,
-} from './repository';
+} from './index';
 
 /**
  * The members table's first writers.

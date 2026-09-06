@@ -170,6 +170,9 @@ async function nudgePartner(
   ).run();
 }
 
+/** How long a crash report is kept before the cron sweeps it. */
+const CLIENT_ERROR_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const origin = resolveAllowedOrigin(request.headers.get('origin'), env.ALLOWED_ORIGIN);
@@ -405,7 +408,7 @@ export default {
     return json({ error: 'not found' }, 404, origin);
   },
 
-  async scheduled(_event: ScheduledController, env: Env): Promise<void> {
+  async scheduled(event: ScheduledController, env: Env): Promise<void> {
     // Expire stale invites so a leaked link cannot be redeemed late.
     const now = Date.now();
     await env.DB.prepare('DELETE FROM invites WHERE expires_at < ? AND consumed_at IS NULL')
@@ -419,6 +422,19 @@ export default {
       `UPDATE boss_fights SET state = 'lost', ended_at = ?, updated_at = ?
         WHERE state = 'fighting' AND deadline_at IS NOT NULL AND deadline_at < ?`,
     ).bind(now, now, now).run();
+
+    // Crash reports age out after a week: one that old is either fixed or has
+    // happened again since. Hourly rather than every minute — the cron fires 60
+    // times an hour and 59 of those would delete nothing.
+    //
+    // Deliberately above the VAPID check below, which returns early. A deploy
+    // with no push keys configured still has to sweep, or the table grows
+    // forever on exactly the setups least likely to be watched.
+    if (new Date(event.scheduledTime).getUTCMinutes() === 0) {
+      await env.DB.prepare('DELETE FROM client_errors WHERE received_at < ?')
+        .bind(now - CLIENT_ERROR_TTL_MS)
+        .run();
+    }
 
     // Deliver whatever is due. Without VAPID keys configured the Worker still
     // runs — pairing, sync and the boss fight do not need push — so a missing
