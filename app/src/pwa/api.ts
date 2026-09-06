@@ -298,3 +298,49 @@ export async function fetchMedia(key: string, token: string): Promise<string | n
     reader.readAsDataURL(blob);
   });
 }
+
+/**
+ * The link Jenny's study app uses to reach the pet.
+ *
+ * A token scoped to `/api/study/session` alone, minted from Settings on a
+ * paired phone. The study app has no accounts of its own, so it cannot
+ * authenticate as a member — and it must not be given a member's bearer, which
+ * reads and writes the couple's whole record to do one thing.
+ */
+
+export interface StudyLink {
+  fingerprint: string;
+  timeZone: string;
+  createdAt: number;
+  lastUsedAt: number | null;
+}
+
+export async function listStudyLinks(token: string): Promise<StudyLink[]> {
+  const res = await fetch('/api/study/link', { headers: authHeaders(token) });
+  if (!res.ok) throw await errorFrom(res);
+  return ((await res.json()) as { links: StudyLink[] }).links;
+}
+
+/**
+ * Mint one. The plaintext comes back exactly once and is never stored here —
+ * showing it again later would mean keeping a second copy of a credential.
+ *
+ * The timezone is captured at this moment because it is the only moment
+ * anything server-side can learn it: this phone knows, and the study app has no
+ * idea whose day it is measuring.
+ */
+export async function createStudyLink(token: string): Promise<{ token: string; timeZone: string }> {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const res = await fetch('/api/study/link', {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify({ timeZone }),
+  });
+  if (!res.ok) throw await errorFrom(res);
+  return (await res.json()) as { token: string; timeZone: string };
+}
+
+export async function revokeStudyLink(token: string): Promise<void> {
+  const res = await fetch('/api/study/link', { method: 'DELETE', headers: authHeaders(token) });
+  if (!res.ok) throw await errorFrom(res);
+}

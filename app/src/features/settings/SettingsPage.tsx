@@ -7,6 +7,7 @@ import { useTheme } from '../../themes/ThemeProvider';
 import { THEMES } from '../../themes';
 import { fetchProfiles, health, pairJoin, pairStart, putProfile } from '../../pwa/api';
 import { NotificationsBlock } from './NotificationsBlock';
+import { StudyLinkBlock } from './StudyLinkBlock';
 import {
   clearPendingInvite,
   putMyProfile,
@@ -142,6 +143,7 @@ export function SettingsPage() {
       </section>
 
       <NotificationsBlock />
+      <StudyLinkBlock token={settings?.workerSecret} />
     </div>
   );
 }
