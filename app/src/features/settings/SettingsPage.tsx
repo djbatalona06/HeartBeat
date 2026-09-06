@@ -8,6 +8,7 @@ import { THEMES } from '../../themes';
 import { fetchProfiles, health, pairJoin, pairStart, putProfile } from '../../pwa/api';
 import { NotificationsBlock } from './NotificationsBlock';
 import { StudyLinkBlock } from './StudyLinkBlock';
+import { ComplimentBlock } from './ComplimentBlock';
 import {
   clearPendingInvite,
   putMyProfile,
@@ -144,6 +145,7 @@ export function SettingsPage() {
 
       <NotificationsBlock />
       <StudyLinkBlock token={settings?.workerSecret} />
+      {paired ? <ComplimentBlock /> : null}
     </div>
   );
 }

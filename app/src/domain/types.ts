@@ -277,6 +277,19 @@ export interface Settings {
    * phone registered when the time comes to unsubscribe it.
    */
   pushEndpoint?: string;
+  /**
+   * How a generated compliment should sound, and what it must never say.
+   *
+   * The sender's, not the couple's: these are the words *this* person would
+   * use, and two people in one relationship do not talk the same way. All
+   * optional, so they spread under DEFAULT_SETTINGS and need no migration.
+   */
+  complimentTone?: 'tender' | 'playful' | 'funny' | 'proud';
+  /** What the sender calls them. Blank means the model uses no name. */
+  complimentPetName?: string;
+  /** Words this couple does not want to see. A candidate carrying one is
+   *  dropped rather than shown, because seeing it at all is the harm. */
+  complimentBlocked?: string[];
   onboarded: boolean;
   /**
    * Sync watermarks.

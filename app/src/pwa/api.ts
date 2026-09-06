@@ -344,3 +344,87 @@ export async function revokeStudyLink(token: string): Promise<void> {
   const res = await fetch('/api/study/link', { method: 'DELETE', headers: authHeaders(token) });
   if (!res.ok) throw await errorFrom(res);
 }
+
+/**
+ * Compliments: asking for suggestions, sending one, and reading what arrived.
+ *
+ * `suggest` only ever returns candidates. Sending is a separate call the person
+ * makes after choosing — a generated message delivered without anyone picking
+ * it is a bot texting your partner.
+ */
+
+export interface ComplimentContext {
+  tone: string;
+  petName?: string;
+  blocked?: string[];
+  workoutStreak?: number;
+  questName?: string;
+  moodTrend?: 'up' | 'steady' | 'down';
+  day: string;
+}
+
+export interface ReceivedCompliment {
+  id: string;
+  body: string;
+  mine: boolean;
+  deliverAt: number;
+  readAt: number | null;
+}
+
+export async function suggestCompliments(
+  context: ComplimentContext,
+  token: string,
+): Promise<string[]> {
+  const res = await fetch('/api/compliment', {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify(context),
+  });
+  if (!res.ok) throw await errorFrom(res);
+  return ((await res.json()) as { candidates: string[] }).candidates;
+}
+
+export async function sendCompliment(
+  input: { body: string; deliverAt?: number; generated: boolean; day: string },
+  token: string,
+): Promise<void> {
+  const res = await fetch('/api/compliments', {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw await errorFrom(res);
+}
+
+export async function listCompliments(token: string): Promise<ReceivedCompliment[]> {
+  const res = await fetch('/api/compliments', { headers: authHeaders(token) });
+  if (!res.ok) throw await errorFrom(res);
+  return ((await res.json()) as { compliments: ReceivedCompliment[] }).compliments;
+}
+
+export async function markComplimentRead(id: string, token: string): Promise<void> {
+  await fetch('/api/compliments', {
+    method: 'PUT',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify({ id }),
+  }).catch(() => {
+    // Marking one read is housekeeping. Failing it should not surface anything.
+  });
+}
+
+/**
+ * Ask a question about the couple's own record.
+ *
+ * What the command menu falls back to when nothing matches a route. The answer
+ * is assembled server-side from counts and dates — see functions/api/ask.ts,
+ * which never reads what anyone wrote.
+ */
+export async function askAbout(question: string, token: string): Promise<string> {
+  const res = await fetch('/api/ask', {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify({ question }),
+  });
+  if (!res.ok) throw await errorFrom(res);
+  return ((await res.json()) as { answer: string }).answer;
+}
