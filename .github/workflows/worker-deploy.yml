@@ -60,13 +60,20 @@ jobs:
 
       - name: Verify the token can see this account
         # Fail here, with a readable message, rather than four steps later with
-        # whatever wrangler says when it cannot authenticate.
+        # whatever wrangler says when it cannot authenticate. The body is
+        # printed rather than swallowed: `curl -f` alone gives an exit code, and
+        # an exit code is the thing you cannot act on.
         run: |
           set -euo pipefail
-          curl -sfS \
+          code=$(curl -sS -o account.json -w '%{http_code}' \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID" \
-            > /dev/null
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID")
+          if [ "$code" != "200" ]; then
+            echo "::error::Cloudflare answered $code for this account. If it is 403, the token is missing a permission — this workflow needs 'Workers Scripts: Edit' and 'D1: Edit'. See docs/DEPLOY.md."
+            cat account.json
+            exit 1
+          fi
+          rm -f account.json
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
