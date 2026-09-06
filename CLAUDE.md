@@ -60,9 +60,9 @@ All writes go through `app/src/db/repository/`. Components call repository funct
 
 ### Deploy secrets (GitHub Actions)
 
-The `deploy.yml` workflow (triggers on push to `main`) requires two repo secrets:
+Two workflows deploy: `deploy.yml` (Pages, every push to `main`) and `worker-deploy.yml` (the Worker, on pushes touching `worker/**` — it applies D1 migrations before deploying). Both need the same two repo secrets:
 
-- `CLOUDFLARE_API_TOKEN` — must have **Cloudflare Pages: Edit** + **D1: Edit** + **Workers AI: Read**
+- `CLOUDFLARE_API_TOKEN` — must have **Cloudflare Pages: Edit** + **D1: Edit** + **Workers AI: Read** + **Workers Scripts: Edit** (the last one for `worker-deploy.yml`)
 - `CLOUDFLARE_ACCOUNT_ID` — from the Cloudflare dashboard sidebar
 
 The deploy step runs from `app/` so wrangler reads `app/wrangler.toml` for D1/Workers AI bindings. Deploying from the repo root would leave functions unbound and every `/api` call would 500.

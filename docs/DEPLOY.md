@@ -6,7 +6,7 @@ is automated:
 | Piece | Where it deploys | Automated? |
 |---|---|---|
 | `app/` (React PWA + Pages Functions) | Cloudflare **Pages** | ✅ `.github/workflows/deploy.yml`, on push to `main` |
-| `worker/` (pairing, sync, push, cron) | Cloudflare **Workers** | ❌ manual only — no workflow deploys it |
+| `worker/` (pairing, sync, push, cron) | Cloudflare **Workers** | ✅ `.github/workflows/worker-deploy.yml` on push to `main` touching `worker/**` |
 | `index.html` + `gift/` (landing page) | **GitHub Pages**, not Cloudflare | ✅ `.github/workflows/static.yml` |
 
 Both the Pages app and the Worker bind the **same D1 database**, so the
@@ -46,16 +46,39 @@ npm run db:remote     # from worker/ — applies worker/migrations/0001..0004 to
 `app/` has no migrations of its own — its Pages Functions bind the same `DB`,
 so this one step covers both surfaces.
 
-## 2. Deploy the Worker (manual — not in CI)
+## 2. Deploy the Worker
 
 The Worker owns pairing endpoints, sync, and the every-minute cron for the
-boss fight/reminders (`worker/wrangler.toml`). Nothing deploys it
-automatically, so do this by hand whenever `worker/` changes:
+boss fight/reminders (`worker/wrangler.toml`).
+
+### Automatic (the normal path)
+
+`.github/workflows/worker-deploy.yml` runs on every push to `main` that touches
+`worker/**`. It typechecks, tests, verifies the API token can see the account,
+**applies D1 migrations, and only then deploys** — new code must never meet an
+old schema. It uses the same two repository secrets as the Pages workflow, but
+the token needs **Workers Scripts: Edit** on top of what Pages required (step 3).
+
+This used to be a manual `wrangler deploy` from one particular laptop, which
+meant a push fix or a schema change depended on that machine and on whoever
+remembered the sequence.
+
+### The secrets, once
+
+Push notifications need a VAPID keypair, and secrets are not in the repo, so
+these are still set by hand — once, not per deploy:
 
 ```bash
 cd worker
 npx wrangler secret put VAPID_PUBLIC_KEY
 npx wrangler secret put VAPID_PRIVATE_KEY
+```
+
+### By hand, if you need to
+
+```bash
+cd worker
+npm run db:remote      # migrations first, always
 npm run deploy         # wrangler deploy
 ```
 
@@ -78,14 +101,17 @@ other origin (`worker/src/cors.ts`).
    - **Cloudflare Pages: Edit**
    - **D1: Edit**
    - **Workers AI: Read**
+   - **Workers Scripts: Edit** — for `worker-deploy.yml` (step 2)
 
-   (all three — the Pages Functions in `app/functions/` bind D1 and Workers
-   AI, per the comment at the top of `deploy.yml`.)
+   (the Pages Functions in `app/functions/` bind D1 and Workers AI, per the
+   comment at the top of `deploy.yml`; the fourth is what lets the Worker
+   workflow publish.)
 2. In the GitHub repo: **Settings → Secrets and variables → Actions**, add:
    - `CLOUDFLARE_API_TOKEN` — the token above
    - `CLOUDFLARE_ACCOUNT_ID` — dashboard sidebar, or `npx wrangler whoami`
 3. Push to `main`. The workflow: `npm ci` → `npm run build` (with
-   `APP_BASE=/`) → creates the `heartbeat-eop` Pages project if missing →
+   `APP_BASE=/`) → verifies the token can see the account and creates the
+   `heartbeat-eop` Pages project if missing →
    `wrangler pages deploy` from inside `app/` (so it picks up
    `app/wrangler.toml`'s bindings).
 
