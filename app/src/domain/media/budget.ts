@@ -39,6 +39,13 @@ export const DEFAULT_PAYLOAD_BYTES = 64 * 1024;
  * 512 KiB clears that with room to spare and still refuses anything that could
  * only have come from a bug — a full-resolution capture that skipped the
  * downscale ladder is several times this.
+ *
+ * **This is now a legacy allowance.** Photographs moved to R2 and a `photo`
+ * entry carries object keys, so a day of proof is a few hundred bytes — see
+ * `domain/media/photoWire.ts`. The ceiling stays high because the two phones do
+ * not update at the same moment: one can still be on a build that sends base64,
+ * and lowering this would have the server refuse its photographs while it
+ * caught up. It can come down to DEFAULT_PAYLOAD_BYTES once both are on keys.
  */
 export const PHOTO_PAYLOAD_BYTES = 512 * 1024;
 

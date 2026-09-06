@@ -6,7 +6,7 @@ is automated:
 | Piece | Where it deploys | Automated? |
 |---|---|---|
 | `app/` (React PWA + Pages Functions) | Cloudflare **Pages** | ✅ `.github/workflows/deploy.yml`, on push to `main` |
-| `worker/` (pairing, sync, push, cron) | Cloudflare **Workers** | ❌ manual only — no workflow deploys it |
+| `worker/` (pairing, sync, push, cron) | Cloudflare **Workers** | ✅ `.github/workflows/worker-deploy.yml` on push to `main` touching `worker/**` |
 | `index.html` + `gift/` (landing page) | **GitHub Pages**, not Cloudflare | ✅ `.github/workflows/static.yml` |
 
 Both the Pages app and the Worker bind the **same D1 database**, so the
@@ -46,16 +46,39 @@ npm run db:remote     # from worker/ — applies worker/migrations/0001..0004 to
 `app/` has no migrations of its own — its Pages Functions bind the same `DB`,
 so this one step covers both surfaces.
 
-## 2. Deploy the Worker (manual — not in CI)
+## 2. Deploy the Worker
 
 The Worker owns pairing endpoints, sync, and the every-minute cron for the
-boss fight/reminders (`worker/wrangler.toml`). Nothing deploys it
-automatically, so do this by hand whenever `worker/` changes:
+boss fight/reminders (`worker/wrangler.toml`).
+
+### Automatic (the normal path)
+
+`.github/workflows/worker-deploy.yml` runs on every push to `main` that touches
+`worker/**`. It typechecks, tests, verifies the API token can see the account,
+**applies D1 migrations, and only then deploys** — new code must never meet an
+old schema. It uses the same two repository secrets as the Pages workflow, but
+the token needs **Workers Scripts: Edit** on top of what Pages required (step 3).
+
+This used to be a manual `wrangler deploy` from one particular laptop, which
+meant a push fix or a schema change depended on that machine and on whoever
+remembered the sequence.
+
+### The secrets, once
+
+Push notifications need a VAPID keypair, and secrets are not in the repo, so
+these are still set by hand — once, not per deploy:
 
 ```bash
 cd worker
 npx wrangler secret put VAPID_PUBLIC_KEY
 npx wrangler secret put VAPID_PRIVATE_KEY
+```
+
+### By hand, if you need to
+
+```bash
+cd worker
+npm run db:remote      # migrations first, always
 npm run deploy         # wrangler deploy
 ```
 
@@ -78,14 +101,18 @@ other origin (`worker/src/cors.ts`).
    - **Cloudflare Pages: Edit**
    - **D1: Edit**
    - **Workers AI: Read**
+   - **Workers Scripts: Edit** — for `worker-deploy.yml` (step 2)
+   - **R2: Edit** — photographs live in an R2 bucket, not in D1
 
-   (all three — the Pages Functions in `app/functions/` bind D1 and Workers
-   AI, per the comment at the top of `deploy.yml`.)
+   (the Pages Functions in `app/functions/` bind D1 and Workers AI, per the
+   comment at the top of `deploy.yml`; the fourth is what lets the Worker
+   workflow publish.)
 2. In the GitHub repo: **Settings → Secrets and variables → Actions**, add:
    - `CLOUDFLARE_API_TOKEN` — the token above
    - `CLOUDFLARE_ACCOUNT_ID` — dashboard sidebar, or `npx wrangler whoami`
 3. Push to `main`. The workflow: `npm ci` → `npm run build` (with
-   `APP_BASE=/`) → creates the `heartbeat-eop` Pages project if missing →
+   `APP_BASE=/`) → verifies the token can see the account and creates the
+   `heartbeat-eop` Pages project if missing →
    `wrangler pages deploy` from inside `app/` (so it picks up
    `app/wrangler.toml`'s bindings).
 
@@ -157,3 +184,44 @@ redeploy the Worker — Pages redeploys don't touch the Worker.
 **Summary of one-time setup, in order:** create D1 → apply migrations → set
 Worker secrets (VAPID keys) → `wrangler deploy` the Worker → set the two
 GitHub Actions secrets → push to `main` (Pages deploys itself from there on).
+
+
+## 7. Photographs (R2)
+
+Workout proof and profile faces used to be base64 inside D1 — `entries.payload`
+and `members.photo_data_uri`. D1 has a row-size ceiling and is not a blob store,
+so months of gym photographs walk towards it while slowing unrelated queries.
+
+The bytes now live in an R2 bucket called **`heartbeat-media`**, bound as
+`MEDIA` in both `app/wrangler.toml` and `worker/wrangler.toml`. D1 keeps a
+content-addressed key (`media/<coupleId>/<memberId>/<sha256>.<ext>`).
+
+`deploy.yml` creates the bucket if it is missing, so the only thing to do by
+hand is add **R2: Edit** to the API token (step 3). To create it yourself
+instead:
+
+```bash
+npx wrangler r2 bucket create heartbeat-media
+```
+
+**The bucket is never public.** `app/functions/api/media.ts` authenticates every
+read and write and compares the couple segment of the key against the caller, so
+one couple cannot read another's photograph even holding a valid token. Making
+it public would be a wider hole than the pairing perimeter the app is built on.
+
+### Carrying the existing photographs over
+
+New captures go straight to R2. Anything already in D1 stays there until the
+backfill is run — which is the part that actually relieves the row-size problem:
+
+```bash
+export CLOUDFLARE_ACCOUNT_ID=... CLOUDFLARE_API_TOKEN=...
+node worker/scripts/backfill-media.mjs            # dry run: reports what would move
+node worker/scripts/backfill-media.mjs --commit   # do it
+```
+
+It is safe to run twice: keys are the SHA-256 of the bytes, so re-uploading
+writes the same object to the same name, and a row that already has a key is
+skipped. It deletes nothing — `photo_data_uri` and the base64 in old payloads
+stay put so a phone that has not updated keeps working. A later migration drops
+them once nothing reads them.

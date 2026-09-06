@@ -6,6 +6,7 @@ import { ensureIdentity, putMood } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { DEFAULT_TIMEZONE, type MoodEntry } from '../../domain/types';
 import { Meter } from '../../components/Meter';
+import { ComplimentComposer } from './ComplimentComposer';
 import {
   MOOD_MAX,
   MOOD_METERS,
@@ -149,6 +150,21 @@ export function MoodPage() {
           </div>
         )}
       </section>
+
+      {/* Below the meters rather than above them: the day's own numbers are
+          what this page is for, and a compliment is what you do once you have
+          seen them. Only once there are two of you — there is nobody to send to
+          otherwise. */}
+      {paired ? (
+        <ComplimentComposer
+          token={settings?.workerSecret}
+          timeZone={timeZone}
+          today={day}
+          tone={settings?.complimentTone ?? 'tender'}
+          petName={settings?.complimentPetName}
+          blocked={settings?.complimentBlocked}
+        />
+      ) : null}
 
       <section className="panel">
         <h2 className="section-title">How is today?</h2>

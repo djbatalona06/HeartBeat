@@ -19,6 +19,7 @@ import {
   type WireEntry,
 } from './sync';
 import type { CycleEntry, WorkEvent, WorkoutPhoto } from '../domain/types';
+import type { WirePhoto } from '../domain/media/photoWire';
 
 /**
  * The reconcile rules, which are the part of sync that can be wrong quietly.
@@ -231,7 +232,9 @@ describe('photos on the wire', () => {
     const photos = pending.filter((e) => e.kind === 'photo');
     expect(photos).toHaveLength(1);
     expect(photos[0].updatedAt).toBe(12);
-    expect((photos[0].payload as WorkoutPhoto[]).map((s) => s.id)).toEqual(['a', 'b']);
+    // Identified by camera now, not by the sender's row id: the bytes live in
+    // R2 and the receiving phone keys its own rows.
+    expect((photos[0].payload as WirePhoto[]).map((s) => s.facing)).toEqual(['front', 'back']);
   });
 
   it('lands a partner day whole, so a deleted proof stays deleted', async () => {
@@ -251,7 +254,7 @@ describe('photos on the wire', () => {
     };
     expect(await applyPulled([entry])).toBe(1);
     const here = await db.workoutPhotos.where('memberId').equals(THEM).toArray();
-    expect(here.map((s) => s.id)).toEqual(['old-front']);
+    expect(here.map((s) => s.facing)).toEqual(['front']);
   });
 
   it('keeps the local day when the incoming one is older', async () => {
@@ -563,6 +566,6 @@ describe('collectPending reads only the days that moved', () => {
     expect(photos).toHaveLength(1);
     // Both, though only one moved: sending the retaken shot alone would delete
     // the other one from the partner's phone.
-    expect((photos[0].payload as WorkoutPhoto[]).map((s) => s.id).sort()).toEqual(['back', 'front']);
+    expect((photos[0].payload as WirePhoto[]).map((s) => s.facing).sort()).toEqual(['back', 'front']);
   });
 });

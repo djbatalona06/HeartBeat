@@ -236,3 +236,195 @@ export async function clearNudges(token: string): Promise<void> {
   });
   if (!res.ok) throw await errorFrom(res);
 }
+
+/**
+ * Photographs, to and from R2 via /api/media.
+ *
+ * They used to travel inside the sync payload as base64 and land in D1. These
+ * two calls are what replaced that: the bytes go up once, and what syncs after
+ * is a key. See `domain/media/objectKey.ts` for how the key is shaped and
+ * `domain/media/photoWire.ts` for what still travels.
+ */
+
+export interface StoredMedia {
+  key: string;
+  hash: string;
+  bytes: number;
+}
+
+/**
+ * A data URI is what the capture ladder in `features/exercise/photo.ts`
+ * produces, and decoding it here keeps that component free of upload concerns.
+ * Throws on a malformed URI rather than uploading something unreadable.
+ */
+export function blobFromDataUri(dataUri: string): Blob {
+  const comma = dataUri.indexOf(',');
+  const header = dataUri.slice(0, comma);
+  if (comma < 0 || !header.startsWith('data:')) throw new Error('not a data URI');
+  const type = header.slice(5).split(';')[0] || 'application/octet-stream';
+  const binary = atob(dataUri.slice(comma + 1));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type });
+}
+
+/** Send one photograph. The key comes back; the server derives it from the bytes. */
+export async function uploadMedia(blob: Blob, token: string): Promise<StoredMedia> {
+  const res = await fetch('/api/media', {
+    method: 'PUT',
+    headers: { ...authHeaders(token), 'content-type': blob.type || 'image/jpeg' },
+    body: blob,
+  });
+  if (!res.ok) throw await errorFrom(res);
+  return (await res.json()) as StoredMedia;
+}
+
+/**
+ * Fetch one back as a data URI, which is what the rows and the `<img>` want.
+ *
+ * Returns null rather than throwing on a miss: a photograph that will not load
+ * should leave a placeholder on the screen, not take the page down with it.
+ */
+export async function fetchMedia(key: string, token: string): Promise<string | null> {
+  const res = await fetch(`/api/media?key=${encodeURIComponent(key)}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) return null;
+  const blob = await res.blob();
+  return await new Promise<string | null>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * The link Jenny's study app uses to reach the pet.
+ *
+ * A token scoped to `/api/study/session` alone, minted from Settings on a
+ * paired phone. The study app has no accounts of its own, so it cannot
+ * authenticate as a member — and it must not be given a member's bearer, which
+ * reads and writes the couple's whole record to do one thing.
+ */
+
+export interface StudyLink {
+  fingerprint: string;
+  timeZone: string;
+  createdAt: number;
+  lastUsedAt: number | null;
+}
+
+export async function listStudyLinks(token: string): Promise<StudyLink[]> {
+  const res = await fetch('/api/study/link', { headers: authHeaders(token) });
+  if (!res.ok) throw await errorFrom(res);
+  return ((await res.json()) as { links: StudyLink[] }).links;
+}
+
+/**
+ * Mint one. The plaintext comes back exactly once and is never stored here —
+ * showing it again later would mean keeping a second copy of a credential.
+ *
+ * The timezone is captured at this moment because it is the only moment
+ * anything server-side can learn it: this phone knows, and the study app has no
+ * idea whose day it is measuring.
+ */
+export async function createStudyLink(token: string): Promise<{ token: string; timeZone: string }> {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const res = await fetch('/api/study/link', {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify({ timeZone }),
+  });
+  if (!res.ok) throw await errorFrom(res);
+  return (await res.json()) as { token: string; timeZone: string };
+}
+
+export async function revokeStudyLink(token: string): Promise<void> {
+  const res = await fetch('/api/study/link', { method: 'DELETE', headers: authHeaders(token) });
+  if (!res.ok) throw await errorFrom(res);
+}
+
+/**
+ * Compliments: asking for suggestions, sending one, and reading what arrived.
+ *
+ * `suggest` only ever returns candidates. Sending is a separate call the person
+ * makes after choosing — a generated message delivered without anyone picking
+ * it is a bot texting your partner.
+ */
+
+export interface ComplimentContext {
+  tone: string;
+  petName?: string;
+  blocked?: string[];
+  workoutStreak?: number;
+  questName?: string;
+  moodTrend?: 'up' | 'steady' | 'down';
+  day: string;
+}
+
+export interface ReceivedCompliment {
+  id: string;
+  body: string;
+  mine: boolean;
+  deliverAt: number;
+  readAt: number | null;
+}
+
+export async function suggestCompliments(
+  context: ComplimentContext,
+  token: string,
+): Promise<string[]> {
+  const res = await fetch('/api/compliment', {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify(context),
+  });
+  if (!res.ok) throw await errorFrom(res);
+  return ((await res.json()) as { candidates: string[] }).candidates;
+}
+
+export async function sendCompliment(
+  input: { body: string; deliverAt?: number; generated: boolean; day: string },
+  token: string,
+): Promise<void> {
+  const res = await fetch('/api/compliments', {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw await errorFrom(res);
+}
+
+export async function listCompliments(token: string): Promise<ReceivedCompliment[]> {
+  const res = await fetch('/api/compliments', { headers: authHeaders(token) });
+  if (!res.ok) throw await errorFrom(res);
+  return ((await res.json()) as { compliments: ReceivedCompliment[] }).compliments;
+}
+
+export async function markComplimentRead(id: string, token: string): Promise<void> {
+  await fetch('/api/compliments', {
+    method: 'PUT',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify({ id }),
+  }).catch(() => {
+    // Marking one read is housekeeping. Failing it should not surface anything.
+  });
+}
+
+/**
+ * Ask a question about the couple's own record.
+ *
+ * What the command menu falls back to when nothing matches a route. The answer
+ * is assembled server-side from counts and dates — see functions/api/ask.ts,
+ * which never reads what anyone wrote.
+ */
+export async function askAbout(question: string, token: string): Promise<string> {
+  const res = await fetch('/api/ask', {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify({ question }),
+  });
+  if (!res.ok) throw await errorFrom(res);
+  return ((await res.json()) as { answer: string }).answer;
+}

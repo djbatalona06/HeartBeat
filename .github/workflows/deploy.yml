@@ -22,6 +22,8 @@ concurrency:
 
 env:
   PAGES_PROJECT: heartbeat-eop
+  # Photographs live here rather than in D1. See app/functions/api/media.ts.
+  MEDIA_BUCKET: heartbeat-media
 
 jobs:
   deploy:
@@ -45,16 +47,62 @@ jobs:
         env:
           APP_BASE: /
 
-      - name: Create the Pages project if it does not exist
+      - name: Verify the account, then ensure the Pages project exists
         # `pages deploy` cannot create a project non-interactively, so a first
-        # deploy into a fresh account would otherwise fail. Checked explicitly
-        # rather than with `|| true`, which would swallow real errors too.
+        # deploy into a fresh account would otherwise fail.
+        #
+        # This used to grep the output of `wrangler pages project list`, which
+        # failed three separate ways and cost days of debugging a deploy that
+        # went to the wrong account:
+        #
+        #   1. No `pipefail`. A wrangler auth error printed to stderr, left
+        #      stdout empty, and grep's non-match sent the run on to `project
+        #      create` — against whatever account did answer.
+        #   2. `project list` renders a *table*, and long names are truncated
+        #      with an ellipsis, so an existing project could read as missing.
+        #   3. `grep -w` counts `-` as a word boundary, so `heartbeat-eop`
+        #      matched a different project named `heartbeat-eop-preview`.
+        #
+        # The API answers with JSON instead: an exact match on `.name`, and
+        # `curl -f` turns an unauthorised token into a failure here rather than
+        # a surprise three steps later.
         run: |
-          if npx wrangler pages project list | grep -qw "$PAGES_PROJECT"; then
-            echo "Project $PAGES_PROJECT already exists."
+          set -euo pipefail
+          projects="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
+          curl -sfS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "$projects?per_page=100" > projects.json
+          if jq -e --arg n "$PAGES_PROJECT" '.result[] | select(.name == $n)' projects.json > /dev/null; then
+            echo "Project $PAGES_PROJECT exists in account $CLOUDFLARE_ACCOUNT_ID."
           else
+            echo "Project $PAGES_PROJECT not found in account $CLOUDFLARE_ACCOUNT_ID; creating it."
             npx wrangler pages project create "$PAGES_PROJECT" --production-branch=main
           fi
+          rm -f projects.json
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Ensure the R2 bucket for photographs exists
+        # app/wrangler.toml binds MEDIA, and a deploy naming a bucket that does
+        # not exist fails at publish. Written the same way as the Pages check
+        # above and for the same reasons: exact match, no pipeline to swallow an
+        # error, and a token that cannot see the account fails right here.
+        #
+        # Needs **R2: Edit** on CLOUDFLARE_API_TOKEN, which is newer than the
+        # three permissions the Pages deploy alone required.
+        run: |
+          set -euo pipefail
+          r2="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/r2/buckets"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          curl -sfS -H "$auth" "$r2?per_page=100" > buckets.json
+          if jq -e --arg n "$MEDIA_BUCKET" '.result.buckets[] | select(.name == $n)' buckets.json > /dev/null; then
+            echo "Bucket $MEDIA_BUCKET already exists."
+          else
+            echo "Creating bucket $MEDIA_BUCKET."
+            curl -sfS -X POST -H "$auth" -H 'content-type: application/json' \
+              --data "{\"name\":\"$MEDIA_BUCKET\"}" "$r2" > /dev/null
+          fi
+          rm -f buckets.json
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -39,11 +39,12 @@ interface Row {
   couple_id: string;
   display_name: string;
   photo_data_uri: string | null;
+  photo_key: string | null;
   updated_at: number;
 }
 
 const SELECT_MEMBERS =
-  `SELECT id, couple_id, display_name, photo_data_uri, updated_at FROM members
+  `SELECT id, couple_id, display_name, photo_data_uri, photo_key, updated_at FROM members
     WHERE couple_id = ? ORDER BY created_at ASC`;
 
 function toMember(row: Row, callerId: string) {
@@ -51,6 +52,10 @@ function toMember(row: Row, callerId: string) {
     id: row.id,
     coupleId: row.couple_id,
     displayName: row.display_name ?? '',
+    // Both, for now. `photoKey` is where a face lives; `photoDataUri` is what
+    // rows written before the move to R2 still hold, and what a phone on the
+    // older build still understands. The client prefers the key when it has one.
+    photoKey: row.photo_key ?? undefined,
     photoDataUri: row.photo_data_uri ?? undefined,
     updatedAt: row.updated_at,
     // Whose card this is, resolved server-side for the same reason the message
@@ -75,6 +80,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env }) => {
   const parsed = (await request.json().catch(() => ({}))) as {
     displayName?: unknown;
     photoDataUri?: unknown;
+    photoKey?: unknown;
   };
 
   const sets: string[] = [];
@@ -103,6 +109,32 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env }) => {
     } else {
       sets.push('photo_data_uri = ?');
       binds.push(parsed.photoDataUri);
+    }
+  }
+
+  /**
+   * A face in R2, named by the SHA-256 of its bytes.
+   *
+   * Setting a key clears `photo_data_uri` in the same statement: leaving the
+   * base64 behind would defeat the point of moving it, and two sources for one
+   * face is a question about which one is current that nobody wants to answer.
+   *
+   * The key is not parsed for its shape here beyond its couple, because
+   * /api/media is what minted it and is the only thing that can — it derives
+   * the key from the bytes it was handed. What is checked is the one thing that
+   * matters: that it belongs to this caller's couple.
+   */
+  if (parsed.photoKey !== undefined) {
+    if (parsed.photoKey === null) {
+      sets.push('photo_key = ?', 'photo_data_uri = ?');
+      binds.push(null, null);
+    } else if (typeof parsed.photoKey !== 'string') {
+      return json({ error: 'photo key must be text' }, 400);
+    } else if (!parsed.photoKey.startsWith(`media/${caller.coupleId}/`)) {
+      return json({ error: 'that photo does not belong to this couple' }, 403);
+    } else {
+      sets.push('photo_key = ?', 'photo_data_uri = ?');
+      binds.push(parsed.photoKey, null);
     }
   }
 

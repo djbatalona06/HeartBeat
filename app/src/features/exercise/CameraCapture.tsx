@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from 'react';
 import type { DayKey, MemberId, WorkoutPhoto } from '../../domain/types';
 import { putWorkoutPhoto, removeWorkoutPhoto } from '../../db/repository';
+import { usePhotoBytes } from './usePhotoBytes';
 import {
   PHOTO_BUDGET_BYTES, QUALITY_LADDER,
   base64PayloadBytes, describeBytes, facingLabel, fitLongEdge, pickWithinBudget, scaleSteps,
@@ -144,6 +145,9 @@ export function CameraCapture({ memberId, day, facing, photo }: CameraCapturePro
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The bytes: already here for a shot taken on this phone, fetched once from
+  // R2 for one pulled from the partner. See usePhotoBytes.
+  const shown = usePhotoBytes(photo);
 
   async function onPicked(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -157,7 +161,16 @@ export function CameraCapture({ memberId, day, facing, photo }: CameraCapturePro
     setError(null);
     try {
       const proof = await renderProof(file);
-      await putWorkoutPhoto(memberId, day, { facing, dataUri: proof.dataUri, bytes: proof.bytes });
+      // Saved with the bytes and marked pending; the sync loop uploads it to R2
+      // and stamps the key. Deliberately not uploaded from here: the shot
+      // should appear the instant it is taken, a gym is a place with no signal,
+      // and a retry loop belongs where the other retries already live.
+      await putWorkoutPhoto(memberId, day, {
+        facing,
+        dataUri: proof.dataUri,
+        bytes: proof.bytes,
+        pendingUpload: true,
+      });
     } catch {
       setError('That photo would not open. Try another one.');
     } finally {
@@ -172,8 +185,14 @@ export function CameraCapture({ memberId, day, facing, photo }: CameraCapturePro
     <div className="proof" data-busy={busy}>
       <span className="proof-label">{label}</span>
 
-      {photo ? (
-        <img className="proof-shot" src={photo.dataUri} alt={`Workout proof: ${label.toLowerCase()}`} />
+      {photo && shown ? (
+        <img className="proof-shot" src={shown} alt={`Workout proof: ${label.toLowerCase()}`} />
+      ) : photo ? (
+        // The row is here and the bytes are on their way. A placeholder rather
+        // than an <img> with no src, which paints a broken-image icon.
+        <div className="proof-slot" aria-busy="true">
+          <span className="proof-slot-text">Loading the photo…</span>
+        </div>
       ) : (
         <label className="proof-slot" htmlFor={inputId}>
           <span className="proof-plus" aria-hidden="true">+</span>

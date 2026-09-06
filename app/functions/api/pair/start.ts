@@ -1,4 +1,12 @@
-import { INVITE_TTL_MS, hashToken, json, newInviteCode, newToken, type Env } from '../_lib';
+import {
+  INVITE_TTL_MS,
+  hashToken,
+  json,
+  newInviteCode,
+  newToken,
+  recordAuthEvent,
+  type Env,
+} from '../_lib';
 
 /**
  * Open a couple and mint the first device's token.
@@ -7,7 +15,7 @@ import { INVITE_TTL_MS, hashToken, json, newInviteCode, newToken, type Env } fro
  * push and the boss cron and has to be deployed separately, and chat is useless
  * until two devices are paired. Both write the same rows to the same database.
  */
-export const onRequestPost: PagesFunction<Env> = async ({ env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const now = Date.now();
   const coupleId = crypto.randomUUID();
   const memberId = crypto.randomUUID();
@@ -24,6 +32,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ env }) => {
     ).bind(invite, coupleId, now, now + INVITE_TTL_MS),
     env.DB.prepare('INSERT INTO pets (couple_id, fed_at) VALUES (?, ?)').bind(coupleId, now),
   ]);
+
+  await recordAuthEvent(env.DB, request, { kind: 'pair_start', coupleId, memberId }, now);
 
   return json({ coupleId, memberId, token, invite, expiresAt: now + INVITE_TTL_MS });
 };

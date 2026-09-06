@@ -32,3 +32,12 @@ VAPID_SUBJECT = "mailto:batalona06@gmail.com"
 # Secrets are set with `wrangler secret put`, never committed:
 #   VAPID_PUBLIC_KEY   — base64url P-256 public key
 #   VAPID_PRIVATE_KEY  — base64url P-256 private scalar
+
+# Photographs live here rather than in D1. Workout proof and profile faces were
+# base64 inside rows — D1 has a row-size ceiling and is not a blob store, and a
+# couple accumulating months of gym photos walks towards it while making every
+# unrelated query slower. D1 now keeps a content-addressed key; see
+# app/functions/api/media.ts and app/src/domain/media/objectKey.ts.
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "heartbeat-media"

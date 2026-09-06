@@ -13,6 +13,7 @@ import { PairGate } from './features/pairing/PairGate';
 import { usePairing } from './features/pairing/usePairing';
 import { useSync } from './pwa/useSync';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { CommandMenu } from './components/CommandMenu';
 
 const TABS = [
   { to: '/', label: 'Home', glyph: '♥' },
@@ -87,6 +88,10 @@ export function App() {
               reset because she looked at the calendar mid-sentence. A thread with
               one end is not a thread, so it waits for the pairing. */}
           {paired ? <ChatPanel /> : null}
+          {/* Inside the router, because every one of its entries is a route.
+              Outside <main> for the same reason the thread is: it should not
+              reset when the screen behind it changes. */}
+          {paired ? <CommandMenu /> : null}
           {/* Kept while unpaired rather than hidden: every locked tab leads to the
               gate, which is how you get back out of Settings, and a bar that
               disappears is harder to understand than one that is plainly waiting.
