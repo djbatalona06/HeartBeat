@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from './database';
+import { db } from '../database';
 import {
   addXp,
   archiveTask,
@@ -20,11 +20,11 @@ import {
   spendMp,
   startAdventure,
   unequipSlot,
-} from './repository';
-import { levelOf, sheetFor } from '../domain/rpg/avatar';
-import { payoutFor } from '../domain/rpg/task';
-import { maxPetMp, petKindById, rankOf } from '../domain/rpg/pets';
-import { xpForLevel } from '../domain/xp';
+} from './index';
+import { levelOf, sheetFor } from '../../domain/rpg/avatar';
+import { payoutFor } from '../../domain/rpg/task';
+import { maxPetMp, petKindById, rankOf } from '../../domain/rpg/pets';
+import { xpForLevel } from '../../domain/xp';
 
 /**
  * The repository is where the pure functions meet storage, and it is exactly
@@ -363,7 +363,7 @@ describe('companions', () => {
     await bondPet(pet.id, 25);
     await db.pets.update(pet.id, { mp: 5 });
 
-    const { spendPetMp } = await import('./repository');
+    const { spendPetMp } = await import('./index');
     expect(await spendPetMp(pet.id, 9)).toBe(false);
     expect(await spendPetMp(pet.id, 5)).toBe(true);
     expect((await db.pets.get(pet.id))!.mp).toBe(0);

@@ -12,6 +12,7 @@ import { ChatPanel } from './features/chat/ChatPanel';
 import { PairGate } from './features/pairing/PairGate';
 import { usePairing } from './features/pairing/usePairing';
 import { useSync } from './pwa/useSync';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const TABS = [
   { to: '/', label: 'Home', glyph: '♥' },
@@ -43,49 +44,59 @@ export function App() {
   const { ready, paired } = usePairing();
 
   return (
-    <ThemeProvider>
-      <ThemeBackdrop />
-      {/* HashRouter, not BrowserRouter: notification deep links and a cold
-          reload both have to resolve without a server-side rewrite rule. */}
-      <HashRouter>
-        <main className="shell">
-          {/* Inside the router, so the gate can leave the route it interrupted
-              standing: a deep link arriving unpaired waits here and opens for
-              real once the second phone joins, rather than being redirected
-              away and forgotten. */}
-          <PairGate ready={ready} paired={paired} open={OPEN_WHILE_UNPAIRED}>
-            <Routes>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/tasks" element={<TasksPage />} />
-              {/* Not a tab. Six across the bottom is already the ceiling on a
-                  phone, and the party is somewhere you go from the sheet. */}
-              <Route path="/party" element={<PartyPage />} />
-              {/* Not a tab either, and for a second reason: a seventh label is
-                  one too many, and a page that can be locked should not announce
-                  itself along the bottom of every other screen. */}
-              <Route path="/cycle" element={<CyclePage />} />
-              <Route path="/mood" element={<MoodPage />} />
-              <Route path="/exercise" element={<ExercisePage />} />
-              <Route path="/work" element={<WorkPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </PairGate>
-        </main>
-        {/* Inside the router so its "open Settings" link works, but outside
-            <main> so it survives every route change — the thread should not
-            reset because she looked at the calendar mid-sentence. A thread with
-            one end is not a thread, so it waits for the pairing. */}
-        {paired ? <ChatPanel /> : null}
-        {/* Kept while unpaired rather than hidden: every locked tab leads to the
-            gate, which is how you get back out of Settings, and a bar that
-            disappears is harder to understand than one that is plainly waiting.
-            Locked only once the answer is in, for the reason the gate waits:
-            otherwise a phone that paired months ago dims its whole bar for a
-            frame on every cold start. */}
-        <NavBar locked={ready && !paired} />
-      </HashRouter>
-    </ThemeProvider>
+    // Outside ThemeProvider on purpose: the theme engine writes every CSS
+    // custom property the app paints with, so it is one of the things this
+    // most needs to survive. The fallback carries its own literal colours.
+    <ErrorBoundary scope="app">
+      <ThemeProvider>
+        <ThemeBackdrop />
+        {/* HashRouter, not BrowserRouter: notification deep links and a cold
+            reload both have to resolve without a server-side rewrite rule. */}
+        <HashRouter>
+          <main className="shell">
+            {/* Inside the router, so the gate can leave the route it interrupted
+                standing: a deep link arriving unpaired waits here and opens for
+                real once the second phone joins, rather than being redirected
+                away and forgotten. */}
+            <PairGate ready={ready} paired={paired} open={OPEN_WHILE_UNPAIRED}>
+              {/* Around the routes only. A single page throwing should leave the
+                  nav bar and the thread standing, so there is still a way out of
+                  the broken screen without force-quitting the app. */}
+              <ErrorBoundary scope="route" recoverTo="#/">
+                <Routes>
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/tasks" element={<TasksPage />} />
+                  {/* Not a tab. Six across the bottom is already the ceiling on a
+                      phone, and the party is somewhere you go from the sheet. */}
+                  <Route path="/party" element={<PartyPage />} />
+                  {/* Not a tab either, and for a second reason: a seventh label is
+                      one too many, and a page that can be locked should not announce
+                      itself along the bottom of every other screen. */}
+                  <Route path="/cycle" element={<CyclePage />} />
+                  <Route path="/mood" element={<MoodPage />} />
+                  <Route path="/exercise" element={<ExercisePage />} />
+                  <Route path="/work" element={<WorkPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </ErrorBoundary>
+            </PairGate>
+          </main>
+          {/* Inside the router so its "open Settings" link works, but outside
+              <main> so it survives every route change — the thread should not
+              reset because she looked at the calendar mid-sentence. A thread with
+              one end is not a thread, so it waits for the pairing. */}
+          {paired ? <ChatPanel /> : null}
+          {/* Kept while unpaired rather than hidden: every locked tab leads to the
+              gate, which is how you get back out of Settings, and a bar that
+              disappears is harder to understand than one that is plainly waiting.
+              Locked only once the answer is in, for the reason the gate waits:
+              otherwise a phone that paired months ago dims its whole bar for a
+              frame on every cold start. */}
+          <NavBar locked={ready && !paired} />
+        </HashRouter>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

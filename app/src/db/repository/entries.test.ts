@@ -1,11 +1,11 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db, loadSettings, saveSettings } from './database';
+import { db, loadSettings, saveSettings } from '../database';
 import {
   addXp, confirmMessage, draftMessage, mergeMessages, putCycle, putExercise, putMood,
   putWorkEvent, putWorkoutPhoto, removeWorkEvent, removeWorkoutPhoto,
-} from './repository';
-import type { ChatMessage } from '../domain/types';
+} from './index';
+import type { ChatMessage } from '../../domain/types';
 
 /**
  * The repository is thin, but not trivial: each writer upserts on a composite

@@ -23,7 +23,7 @@ npm run test --workspace worker
 npm run typecheck    # both workspaces
 
 # Single test file
-cd app && npx vitest run src/db/repository.test.ts
+cd app && npx vitest run src/db/repository/entries.test.ts
 
 # Gift page
 npm run gift:build   # rebuild gift/birthday.html
@@ -44,7 +44,7 @@ Both Cloudflare pieces bind the **same D1 database**.
 
 ### Data flow
 
-All writes go through `app/src/db/repository.ts`. Components call repository functions; Dexie live queries drive re-renders. Nothing in `features/` touches the database directly.
+All writes go through `app/src/db/repository/`. Components call repository functions; Dexie live queries drive re-renders. Nothing in `features/` touches the database directly.
 
 - **Local DB**: Dexie (IndexedDB), schema in `app/src/db/database.ts`
 - **Remote sync**: Cloudflare Worker (`worker/src/`) reads/writes D1; the app POSTs to `/api/*` Pages Functions in `app/functions/`
@@ -56,7 +56,7 @@ All writes go through `app/src/db/repository.ts`. Components call repository fun
 - `domain/quests/` — quest definitions, progress tracking, completion logic
 - `domain/achievements/` — achievement state derived from synced data
 - `domain/rpg/` — boss fights, party stats
-- `db/repository.ts` — single source of truth for all DB operations (~1500 lines, seven banner sections)
+- `db/repository/` — single source of truth for all DB operations; one module per section behind a barrel
 
 ### Deploy secrets (GitHub Actions)
 
@@ -71,7 +71,7 @@ Full deploy walkthrough: `docs/DEPLOY.md`
 
 ## Known patterns and pitfalls
 
-- **`repository.ts` append convention**: multiple units have been appended to the end of this file. Three merge conflicts have been caused by two PRs touching the same last line. Consider splitting into `repository/quests.ts`, `repository/achievements.ts`, etc. before adding more sections.
+- **`db/repository/` is a directory, not a file.** It used to be one ~1500-line `repository.ts` that every unit appended to, and three PRs broke `main` conflicting on its last line. Each section is now its own module, re-exported by `repository/index.ts`. **Adding a section means adding a file plus one `export *` line in alphabetical order** — never appending to an existing section. `repository/index.test.ts` fails if a section file is missing from the barrel. Sections import each other directly (`./petXp`), never through `./index`, which would make the graph cyclic. `id()` and `now()` live in `repository/shared.ts`.
 - **`REKEY_TABLES` allowlist**: only `settings` should be in the exemption list — `quests` and `achievements` must be re-keyed on identity change.
 - **Day keys use member timezone**, not UTC — use the member's zone for `noteDays`, `endOfDay`, and any "days" count.
 - **Achievement dedup**: award IDs must be deterministic (e.g. `ach-<code>`, `quest-<id>`) so both devices don't double-credit the same event.

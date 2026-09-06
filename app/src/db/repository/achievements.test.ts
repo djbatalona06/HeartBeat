@@ -1,14 +1,14 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from './database';
+import { db } from '../database';
 import {
   achievementState,
   claimAchievements,
   listAchievements,
   putMood,
   putWorkoutPhoto,
-} from './repository';
-import { TIER_PAYOUT, achievementByCode } from '../domain/achievements/catalogue';
+} from './index';
+import { TIER_PAYOUT, achievementByCode } from '../../domain/achievements/catalogue';
 
 /**
  * The one writer the shelf has.

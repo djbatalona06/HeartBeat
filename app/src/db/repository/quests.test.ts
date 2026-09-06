@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db, saveSettings } from './database';
+import { db, saveSettings } from '../database';
 import {
   activeQuest,
   pastQuests,
@@ -9,8 +9,8 @@ import {
   retireQuest,
   startQuest,
   suggestQuests,
-} from './repository';
-import { QUEST_DIAL, shapeFor, templateById } from '../domain/quests/templates';
+} from './index';
+import { QUEST_DIAL, shapeFor, templateById } from '../../domain/quests/templates';
 
 /**
  * The one thing that must not go wrong: a quest paying twice.
