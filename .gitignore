@@ -4,6 +4,7 @@ dist/
 app/dist-standalone/
 .wrangler/
 .shots/
+.claude/worktrees/
 *.local
 .DS_Store
 .dev.vars

@@ -31,16 +31,19 @@ without the Home Screen step.
 
 ## What's on it
 
-The home screen is a grid of tiles, plus your pet.
+The home screen is your pet, in the middle, with six doors evenly spaced in a
+ring around it. A door wears a dot when there is something logged behind it
+today, and says nothing otherwise.
 
-| Tile | What it holds |
+| Door | What it holds |
 |---|---|
-| **Settings** | Pairing, the theme picker, your partner's name and photo, calendar |
-| **Exercise** | A workout log, and camera proof — front and back — that you did it |
 | **Mood** | Three sliders, 1–10: hunger, joy, moody. Both of you, side by side |
+| **Move** | A workout log, and camera proof — front and back — that you did it |
 | **Work** | A shared calendar, filled from a file you export from your own |
+| **Cycle** | Period tracking, behind its own PIN if you want one |
+| **Party** | The two of you as a party: gear, pets, and the boss you are fighting |
+| **Settings** | Pairing, the theme picker, your partner's name and photo, calendar |
 | **Study** | 226 flashcards on programming, spaced out so they stick, plus a timed quiz |
-| **Cycle** | Logging and a forecast, behind a PIN if you want one |
 
 The **pet** is the point. It gains XP when either of you logs something, and
 levels up on quests that get set from a few questions during setup. Rep ranges,
@@ -63,9 +66,16 @@ it, and that is the whole reason it exists — a shared tracker that shares noth
 is just two separate apps.
 
 Concretely: mood, exercise, cycle and calendar entries are stored on the server,
-readable only by the two devices paired to your couple. Photos and camera proof
-stay on your own phone and are never uploaded. There are no accounts, no email
-addresses, no analytics, and no third parties.
+readable only by the two devices paired to your couple.
+
+**Images are stored on the server too.** Workout proof and your profile photo
+are synced, because a shared tracker whose photographs only one person can see
+is not shared. Both are downscaled on the phone before they are sent — proof to
+roughly 180 KB, a profile photo to 64 KB — and both are readable only by the two
+devices paired to your couple, exactly like every other entry. If you would
+rather a photograph stayed on your phone, do not take it in the app.
+
+There are no accounts, no email addresses, no analytics, and no third parties.
 
 Invite links expire after fifteen minutes and work exactly once. A couple is two
 people; a third join is refused.
@@ -146,8 +156,7 @@ index.html  landing page                     ->  GitHub Pages
 app/        Vite + React + TypeScript PWA    ->  Cloudflare Pages
 worker/     Cloudflare Worker + D1           ->  pairing, sync, push
 gift/       the birthday piece               ->  one self-contained HTML file
-study/      the study page, built             ->  one self-contained HTML file
-docs/       design spec, deploy runbook
+docs/       design spec + deploy guide
 ```
 
 ## Local development
@@ -169,11 +178,21 @@ the database directly.
 
 ## Deploying
 
-Three independent targets — Cloudflare Pages (`app/`, automatic on push to
-`main`), a Cloudflare Worker (`worker/`, manual, owns pairing/sync/push/cron),
-and GitHub Pages (the landing page, automatic). They share one D1 database.
-Full step-by-step, including one-time Cloudflare account setup, GitHub Actions
-secrets, and the CORS gotcha: [`docs/DEPLOY.md`](docs/DEPLOY.md).
+The app splits across three independent deploy targets — Cloudflare Pages
+(`app/`, automated via `.github/workflows/deploy.yml` on push to `main`), a
+Cloudflare Worker (`worker/`, automated via
+`.github/workflows/worker-deploy.yml` when `worker/**` changes), and GitHub
+Pages (this landing page and `gift/`, automated via
+`.github/workflows/static.yml`). Both Cloudflare pieces bind the same D1
+database.
+
+[`docs/DEPLOY.md`](docs/DEPLOY.md) is the full walkthrough: creating the D1
+database, applying migrations, setting Worker secrets, the GitHub Actions
+secrets Pages needs, and a troubleshooting section for the usual failure
+modes.
+
+CI (`.github/workflows/ci.yml`) is separate, runs on every pull request, and
+involves no deploy credentials.
 
 ## Status
 

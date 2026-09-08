@@ -87,8 +87,8 @@ entries (id, couple_id, member_id, kind, day, payload, updated_at)
 UNIQUE (member_id, kind, day)
 ```
 
-`kind` is one of `mood | exercise | cycle | work`. The payload is opaque JSON, so
-adding a field on the client needs no migration here.
+`kind` is one of `mood | exercise | cycle | work | photo`. The payload is opaque
+JSON, so adding a field on the client needs no migration here.
 
 - **One row per member per kind per day.** Logging twice edits; it does not
   stack. A day always has a single answer.
@@ -96,20 +96,98 @@ adding a field on the client needs no migration here.
   slow device replaying an old entry cannot clobber a newer one.
 - Pull is `GET /entries?since=<ms>`, indexed on `(couple_id, updated_at)`.
 
-**Photographs never leave the phone.** Camera proof and partner photos are data
-URIs in IndexedDB. The server stores no image, which keeps it cheap, keeps the
-privacy claim in the README true, and avoids R2 entirely.
+**Photographs sync.** They did not always, and the sentence that used to sit
+here said so — but a proof only its own author can see is not proof to anyone,
+and the couple is the point. Two kinds of image reach the server:
+
+- **Workout proof**, as entries of kind `photo`, one row per member per day
+  holding both cameras' shots. Grouped that way because the unique index is
+  `(member_id, kind, day)`, so front and back cannot be two rows.
+- **Profile photos**, on `members.photo_data_uri` since `0006_member_profile.sql`.
+
+Both are base64 data URIs, downscaled on the phone first — proof to
+`PHOTO_BUDGET_BYTES` (180 KiB), a face to 64 KiB. Still no R2: a data URI in a
+`TEXT` column is one fewer binding, one fewer credential, and one fewer thing to
+get wrong, and at these sizes the cost of doing it properly is not worth paying.
+
+Sizes are what makes this safe to put in the same table as a mood, and it is not
+safe by default:
+
+- Each kind has its own payload ceiling — 64 KiB as before, 512 KiB for `photo`
+  (`domain/media/budget.ts`, mirrored in `functions/api/entries.ts`).
+- The pull is bounded by **bytes**, not only by a row count. 500 rows was a fine
+  bound for JSON and is 250 MB of photographs on a Worker with 128 MB of memory.
+- The push is bounded by bytes as well as count, for the same reason.
+- A payload the server will never accept is **named**, not thrown. The endpoint
+  returns `rejected: [{ id, reason }]` and writes the rest of the batch; the
+  client skips those rows and lets the watermark move past them.
+
+That last one is not a nicety. The client throws on any non-2xx and only
+advances its watermark after a clean push, so before this, a single oversize row
+at the head of the queue stopped mood, cycle and the calendar from syncing on
+that device — permanently, and invisibly, because `useSync.ts` swallows the
+error. Giving up on one photograph is the smaller loss.
 
 ## Dashboard
 
-Four tiles in a 2×2 grid, plus the pet's XP bar above them.
+The mascot in the centre, six circular doors evenly spaced around it, and the
+pet's XP bar underneath. It replaced a 2×2 grid that had grown to five tiles
+and left the fifth one a half-width orphan.
 
-| Tile | Contents |
+| Door | Contents |
 |---|---|
-| Settings | Pairing state, theme picker, partner name and photo, calendar |
-| Exercise | Workout log; camera proof front and back |
 | Mood | Vertical 1–10 meters for hunger, joy, moody — both partners |
+| Move | Workout log; camera proof front and back |
 | Work | Shared calendar, populated by file import |
+| Cycle | Period tracking, optionally behind a PIN |
+| Party | Party sheet: gear, pets, the boss fight |
+| Settings | Pairing state, theme picker, partner name and photo, calendar |
+
+Six is the ceiling — past that the bubbles crowd the pet and the ring stops
+reading as a ring. The right-hand arc is what you did today, the left-hand arc
+is everything else, and Party takes the sixth slot because it is the only route
+with neither a tab nor another door on this screen.
+
+**The geometry is `features/dashboard/layout.ts`, and it is pure.** The page
+measures its own box with a `ResizeObserver` and hands the numbers over;
+`ringLayout` gives back a centre, a radius, a mascot diameter and one slot per
+door, and reports `fits: false` rather than quietly overlapping when the box is
+too small. That split is the only reason the spacing can be tested at all —
+Vitest runs in `environment: 'node'` and never sees a `.tsx` file. Bubble size
+is `--tap` plus `--space-5`, read off the document rather than typed in, so the
+48px tap floor holds wherever the tokens move.
+
+**The mascot follows the theme, not the couple.** Theme already lives in
+`localStorage` per device, so the two phones show different pets by
+construction — which is what was asked for. `features/pet/mascots/` is a
+registry keyed by `Theme.id` with the same fallback `getTheme` uses, kept
+beside the theme engine rather than as a field on `Theme`: a theme is a
+palette, a mascot is a drawing only one screen shows, and hanging one off the
+other would put a React component in every pack.
+
+| Theme | Mascot |
+|---|---|
+| kitty | **Mochi**, a cream ribbon cat |
+| sponge | **Marigold**, a yellow sea sponge |
+| shinobi | **Foxglove**, an ink fox |
+| avatar | **Cirrus**, a cloud serpent |
+| pony | **Wishbell**, a lilac unicorn |
+
+Every one is an original: original geometry, drawn as inline SVG from ellipses,
+triangles and computed star paths, coloured entirely from `var(--color-*)` so
+each follows its own palette. Each belongs to its theme's *spirit* and to
+nothing more specific than that, and `mascots/roster.test.ts` guards the names
+the same way `pets.test.ts` guards the sixteen collectibles. Canvas was not an
+option: `themes/useCanvasLoop.ts` is wired to `window.innerWidth/innerHeight`,
+so a canvas inside a card would render at full window size and clip.
+
+`Pet.mood` had been written by `addXp` since the beginning and read by nothing.
+It is what picks the pose — four moods, four faces — so the pose costs no new
+state. The idle breathing stops under calm mode and under reduced motion.
+
+The level shown is always `levelProgress(pet.xp).level`. `Pet.level` is carried
+forward by whoever last wrote the row and never recomputed, so rendering it
+would eventually show a number the XP disagrees with.
 
 Meters are vertical rather than horizontal because the point is comparing two
 people side by side, and columns compare more readably than stacked bars.
@@ -288,13 +366,19 @@ is character, not inconsistency. Finch's own density is deliberately not copied;
 its screens are fairly criticised as cluttered, so what is taken is the breathing
 room, not the number of things on a page.
 
-### Known loose end: provisional identity
+### Provisional identity, and the re-key that ends it
 
 The app mints a local `memberId`/`coupleId` on first use so it works before
 there is a partner to pair with. Pairing later replaces both with the ids the
-Worker issues, and rows written before that point keep the provisional ones and
-would need re-keying. Recorded here rather than papered over; it wants fixing
-when onboarding is built.
+Worker issues, and rows written before that point keep the provisional ones —
+which used to mean they never synced and never appeared in a "mine" view again.
+
+`domain/identity/rekey.ts` is the description of the repair (which fields on
+which tables carry an id, which rows have to move rather than be updated in
+place, and who wins when two rows want the same day), and `rekeyIdentity` in
+`db/repository.ts` walks it inside one transaction.
+`features/pairing/usePairing.ts` notices the identity change and runs it — on
+the first pairing, and again if the couple ever re-pairs.
 
 ## Study
 
@@ -412,8 +496,8 @@ would serve it an hour late for the eight months Pacific is on daylight time.
 - Bearer token per device, compared against a stored SHA-256 hash.
 - Origin-restricted CORS in `worker/src/cors.ts`, which **parses URLs rather
   than calling `endsWith`** — `endsWith` would happily accept
-  `https://heartbeat.pages.dev.attacker.com`. There is a test for exactly that.
-- Wildcards match a single label only, so `a.b.heartbeat.pages.dev` is refused.
+  `https://heartbeat-eop.pages.dev.attacker.com`. There is a test for exactly that.
+- Wildcards match a single label only, so `a.b.heartbeat-eop.pages.dev` is refused.
 - Secrets are set with `wrangler secret put` and never committed.
 
 ## Risks

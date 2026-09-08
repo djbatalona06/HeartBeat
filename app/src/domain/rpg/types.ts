@@ -96,9 +96,17 @@ export interface Stats {
   luck: number;
 }
 
-export type GearSlot = 'head' | 'body' | 'weapon' | 'charm';
+/**
+ * Five worn slots, head to foot with the hand last.
+ *
+ * `head`, `body` and `charm` were the earlier names for `helmet`, `chestplate`
+ * and `amulet`; stored avatars still carry those keys, and `normalizeGear` in
+ * `gear.ts` is what makes an old row readable. Item ids were left alone through
+ * the rename precisely so nothing had to be re-keyed twice.
+ */
+export type GearSlot = 'helmet' | 'chestplate' | 'boots' | 'amulet' | 'weapon';
 
-export const GEAR_SLOTS: GearSlot[] = ['head', 'body', 'weapon', 'charm'];
+export const GEAR_SLOTS: GearSlot[] = ['helmet', 'chestplate', 'boots', 'amulet', 'weapon'];
 
 export interface Avatar {
   memberId: MemberId;

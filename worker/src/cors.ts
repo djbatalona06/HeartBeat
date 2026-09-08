@@ -1,10 +1,10 @@
 /**
  * ALLOWED_ORIGIN is a comma-separated list. Entries may use a single-label
- * wildcard (`https://*.heartbeat.pages.dev`) so Cloudflare preview deploys work
- * without listing each one.
+ * wildcard (`https://*.heartbeat-eop.pages.dev`) so Cloudflare preview
+ * deploys work without listing each one.
  *
  * Matching parses the URL rather than using endsWith, which would happily
- * accept `https://heartbeat.pages.dev.attacker.com`.
+ * accept `https://heartbeat-eop.pages.dev.attacker.com`.
  */
 export function resolveAllowedOrigin(origin: string | null, allowed: string): string | null {
   if (!origin) return null;

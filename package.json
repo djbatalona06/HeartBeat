@@ -23,12 +23,9 @@
   },
   "devDependencies": {
     "playwright": "^1.49.0",
-    "wrangler": "^4.127.1"
+    "wrangler": "^3.99.0"
   },
   "engines": {
     "node": ">=20"
-  },
-  "dependencies": {
-    "vitest": "4.1.11"
   }
 }

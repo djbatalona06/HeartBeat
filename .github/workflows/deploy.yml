@@ -21,7 +21,14 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PAGES_PROJECT: heartbeat
+  # The project is named heartbeat-app; heartbeat-eop.pages.dev is its
+  # subdomain. Those being different is why the old grep-based check and the
+  # deploy could disagree — one matched the domain, the other asked for the
+  # project. The two are not interchangeable, so nothing here derives one from
+  # the other.
+  PAGES_PROJECT: heartbeat-app
+  # Photographs live here rather than in D1. See app/functions/api/media.ts.
+  MEDIA_BUCKET: heartbeat
 
 jobs:
   deploy:
@@ -45,16 +52,104 @@ jobs:
         env:
           APP_BASE: /
 
-      - name: Create the Pages project if it does not exist
+      - name: Verify the account, then ensure the Pages project exists
         # `pages deploy` cannot create a project non-interactively, so a first
-        # deploy into a fresh account would otherwise fail. Checked explicitly
-        # rather than with `|| true`, which would swallow real errors too.
+        # deploy into a fresh account would otherwise fail.
+        #
+        # This has now been wrong twice, in two different ways, and both are
+        # worth remembering:
+        #
+        #   1. It used to grep the output of `wrangler pages project list`. That
+        #      printed "Project heartbeat-eop already exists." and the very next
+        #      step failed with "Project not found [code: 8000007]" — the grep
+        #      matched something in a *table* that was not the project name, and
+        #      the deploy asked the API, which disagreed. A check that can
+        #      disagree with the thing it is checking for is worse than no check.
+        #   2. Replacing it with a *list* call and matching `.name` still relied
+        #      on pagination and query parameters, and answered 400.
+        #
+        # So it no longer lists or matches anything: it asks for the one project
+        # by name. 200 is exists, 404 is missing, and everything else is an
+        # error printed in full rather than an exit code to guess at.
         run: |
-          if npx wrangler pages project list | grep -qw "$PAGES_PROJECT"; then
-            echo "Project $PAGES_PROJECT already exists."
-          else
-            npx wrangler pages project create "$PAGES_PROJECT" --production-branch=main
-          fi
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+
+          code=$(curl -sS -o project.json -w '%{http_code}' -H "$auth" \
+                   "$api/pages/projects/$PAGES_PROJECT")
+
+          case "$code" in
+            200)
+              echo "Pages project '$PAGES_PROJECT' exists in this account."
+              ;;
+            404)
+              # Missing. Whether that means "fresh account" or "the name drifted"
+              # decides what to do, and the two must not be confused: creating a
+              # project in an account that already has one under another name is
+              # how you end up with two half-configured projects and days of
+              # debugging. So the answer comes from what is actually there.
+              echo "Pages project '$PAGES_PROJECT' was not found. Listing what is:"
+              curl -sS -o projects.json -w '%{http_code}\n' -H "$auth" "$api/pages/projects" \
+                | grep -q '^200$' || { echo "::error::Could not list Pages projects."; cat projects.json; exit 1; }
+              names=$(jq -r '.result[].name' projects.json)
+              if [ -z "$names" ]; then
+                echo "None. Treating this as a fresh account and creating it."
+                npx wrangler pages project create "$PAGES_PROJECT" --production-branch=main
+              else
+                echo "$names" | sed 's/^/  - /'
+                echo "::error::PAGES_PROJECT is '$PAGES_PROJECT' but this account has the projects listed above. Set PAGES_PROJECT in this workflow to the right one rather than creating a second."
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::Cloudflare answered $code for the Pages project lookup."
+              cat project.json
+              exit 1
+              ;;
+          esac
+          rm -f project.json projects.json
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Ensure the R2 bucket for photographs exists
+        # app/wrangler.toml binds MEDIA, and a binding naming a bucket that does
+        # not exist fails the deploy at publish rather than at runtime.
+        #
+        # Asked for by name for the same reason as the Pages project above: a
+        # list call is pagination and query parameters between you and a yes/no,
+        # and each of those is a way to get the wrong answer.
+        #
+        # Needs **R2: Edit** on CLOUDFLARE_API_TOKEN, which is newer than the
+        # permissions the Pages deploy alone required. A 403 here says so in
+        # words rather than as an exit code.
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+
+          code=$(curl -sS -o bucket.json -w '%{http_code}' -H "$auth" \
+                   "$api/r2/buckets/$MEDIA_BUCKET")
+
+          case "$code" in
+            200) echo "R2 bucket '$MEDIA_BUCKET' exists." ;;
+            404)
+              echo "Creating R2 bucket '$MEDIA_BUCKET'."
+              curl -sS --fail-with-body -X POST -H "$auth" -H 'content-type: application/json' \
+                --data "{\"name\":\"$MEDIA_BUCKET\"}" "$api/r2/buckets" > /dev/null
+              ;;
+            403)
+              echo "::error::The API token cannot see R2 in this account. Add the 'R2: Edit' permission to CLOUDFLARE_API_TOKEN — see docs/DEPLOY.md."
+              exit 1
+              ;;
+            *)
+              echo "::error::Cloudflare answered $code for the R2 bucket lookup."
+              cat bucket.json
+              exit 1
+              ;;
+          esac
+          rm -f bucket.json
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

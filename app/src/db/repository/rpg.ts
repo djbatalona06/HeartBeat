@@ -1,8 +1,6 @@
-import { db, loadSettings, saveSettings } from './database';
-import type {
-  ChatMessage, CycleEntry, DayKey, ExerciseEntry, MemberId, MoodEntry, WorkEvent,
-} from '../domain/types';
-import { addDays } from '../domain/day';
+import { db } from '../database';
+import type { DayKey, MemberId } from '../../domain/types';
+import { addDays } from '../../domain/day';
 import {
   newAvatar,
   type Avatar,
@@ -12,207 +10,16 @@ import {
   type Reward,
   type TaskDifficulty,
   type TaskType,
-} from '../domain/rpg/types';
-import {
-  complete,
-  newTask,
-  pressDown,
-  settleMissed,
-  toneFor,
-} from '../domain/rpg/task';
-import { applyPayout, levelOf, sheetFor, spend } from '../domain/rpg/avatar';
-import { adventureCost } from '../domain/rpg/stage';
-import { GOOD_VIBES_SENDER_GRANT, checkGrant, grantFor } from '../domain/rpg/lifeEvents';
-import { equip, gearBonus, unequip } from '../domain/rpg/gear';
-import { maxPetMp, petKindById, rankOf, rollKind, type PetInstance } from '../domain/rpg/pets';
+} from '../../domain/rpg/types';
+import { complete, newTask, pressDown, settleMissed, toneFor } from '../../domain/rpg/task';
+import { applyPayout, levelOf, sheetFor, spend } from '../../domain/rpg/avatar';
+import { adventureCost } from '../../domain/rpg/stage';
+import { GOOD_VIBES_SENDER_GRANT, checkGrant, grantFor } from '../../domain/rpg/lifeEvents';
+import { equip, gearBonus, unequip } from '../../domain/rpg/gear';
+import { maxPetMp, petKindById, rankOf, rollKind, type PetInstance } from '../../domain/rpg/pets';
+import { id, now } from './shared';
+import { addXp } from './petXp';
 
-/**
- * Every write goes through here. Components call these and await them; the live
- * queries re-render on their own. Nothing in features/ touches Dexie directly.
- */
-
-function id(): string {
-  return crypto.randomUUID();
-}
-
-function now(): number {
-  return Date.now();
-}
-
-/**
- * One mood row per member per day: logging twice edits the same row rather than
- * stacking, so a day always has a single answer.
- */
-export async function putMood(
-  memberId: MemberId,
-  day: DayKey,
-  values: Pick<MoodEntry, 'hunger' | 'joy' | 'moody'> & { note?: string },
-): Promise<void> {
-  const existing = await db.moods.where('[memberId+day]').equals([memberId, day]).first();
-  await db.moods.put({
-    id: existing?.id ?? id(),
-    memberId,
-    day,
-    ...values,
-    updatedAt: now(),
-  });
-}
-
-export async function putExercise(
-  memberId: MemberId,
-  day: DayKey,
-  values: Omit<ExerciseEntry, 'id' | 'memberId' | 'day' | 'updatedAt'>,
-): Promise<void> {
-  const existing = await db.exercises.where('[memberId+day]').equals([memberId, day]).first();
-  await db.exercises.put({ id: existing?.id ?? id(), memberId, day, ...values, updatedAt: now() });
-}
-
-export async function putCycle(
-  memberId: MemberId,
-  day: DayKey,
-  values: Omit<CycleEntry, 'id' | 'memberId' | 'day' | 'updatedAt'>,
-): Promise<void> {
-  const existing = await db.cycles.where('[memberId+day]').equals([memberId, day]).first();
-  const row: CycleEntry = { id: existing?.id ?? id(), memberId, day, ...values, updatedAt: now() };
-  // An empty draft is deleted rather than stored, so "nothing logged" and
-  // "logged nothing" stay distinguishable via checkInComplete.
-  if (!row.checkInComplete && !row.flow && !row.periodStart && !row.symptoms?.length && !row.notes) {
-    if (existing) await db.cycles.delete(existing.id);
-    return;
-  }
-  await db.cycles.put(row);
-}
-
-/** One member's cycle log, ascending, for the calendar and the engine. */
-export async function listCycles(
-  memberId: MemberId,
-  from: DayKey,
-  to: DayKey,
-): Promise<CycleEntry[]> {
-  const rows = await db.cycles
-    .where('[memberId+day]')
-    .between([memberId, from], [memberId, to], true, true)
-    .toArray();
-  return rows.sort((a, b) => a.day.localeCompare(b.day));
-}
-
-/**
- * The whole log for one member.
- *
- * The engine needs every period start it can get — trimming to the visible
- * month would shorten the history the averages rest on, and the averages are
- * the whole estimate. One person's cycle log is a few hundred rows a year.
- */
-export async function allCycles(memberId: MemberId): Promise<CycleEntry[]> {
-  const rows = await db.cycles.where('memberId').equals(memberId).toArray();
-  return rows.sort((a, b) => a.day.localeCompare(b.day));
-}
-
-export async function getCycle(memberId: MemberId, day: DayKey): Promise<CycleEntry | undefined> {
-  return db.cycles.where('[memberId+day]').equals([memberId, day]).first();
-}
-
-/**
- * A calendar event.
- *
- * Unlike mood, exercise and cycle — one row per member per day, upserted — a
- * day holds many events, so these are separate rows keyed by their own id and
- * found through the [memberId+day] index. Passing `eventId` edits in place;
- * omitting it creates one.
- *
- * When the sync client lands, a day still travels as a single `entries` row
- * whose payload is the day's WorkEvent[], because the D1 unique index is
- * (member_id, kind, day). Keeping the local shape as one row per event and
- * doing the grouping at the boundary means the screen never has to rewrite an
- * array to move one appointment.
- */
-export async function putWorkEvent(
-  memberId: MemberId,
-  day: DayKey,
-  values: Omit<WorkEvent, 'id' | 'memberId' | 'day' | 'updatedAt'>,
-  eventId?: string,
-): Promise<string> {
-  const title = values.title.trim();
-  if (!title) throw new Error('a calendar event needs a title');
-
-  const rowId = eventId ?? id();
-  await db.work.put({
-    ...values,
-    title,
-    id: rowId,
-    memberId,
-    day,
-    updatedAt: now(),
-  });
-  return rowId;
-}
-
-export async function removeWorkEvent(eventId: string): Promise<void> {
-  await db.work.delete(eventId);
-}
-
-/**
- * Put a message in the thread before it has reached the server.
- *
- * It is written locally first and marked pending, so the thread shows what was
- * just said even on a train with no signal. `mine` is true by construction
- * here — you cannot optimistically send someone else's message.
- */
-export async function draftMessage(
-  coupleId: string,
-  memberId: MemberId,
-  body: string,
-): Promise<ChatMessage | null> {
-  const trimmed = body.trim();
-  if (!trimmed) return null;
-  const row: ChatMessage = {
-    id: id(),
-    coupleId,
-    memberId,
-    body: trimmed,
-    createdAt: now(),
-    mine: true,
-    pending: true,
-  };
-  await db.messages.put(row);
-  return row;
-}
-
-/**
- * Replace a pending message with the server's version of it.
- *
- * The server assigns the real id and timestamp, so the local row is deleted
- * rather than updated — leaving both would show the message twice, which is
- * exactly what an optimistic send is supposed to avoid.
- */
-export async function confirmMessage(localId: string, confirmed: ChatMessage): Promise<void> {
-  await db.transaction('rw', db.messages, async () => {
-    await db.messages.delete(localId);
-    await db.messages.put({ ...confirmed, pending: false });
-  });
-}
-
-/**
- * Fold a pull from the server into the local thread.
- *
- * Server ids win, so a message that arrives twice — a retried poll, a message
- * of our own coming back around — lands on the same row rather than stacking.
- */
-export async function mergeMessages(rows: ChatMessage[]): Promise<void> {
-  if (rows.length === 0) return;
-  await db.messages.bulkPut(rows.map((r) => ({ ...r, pending: false })));
-}
-
-export async function addXp(coupleId: string, amount: number): Promise<void> {
-  const pet = await db.pet.get(coupleId);
-  await db.pet.put({
-    coupleId,
-    level: pet?.level ?? 1,
-    xp: (pet?.xp ?? 0) + amount,
-    mood: pet?.mood ?? 'content',
-    fedAt: pet?.fedAt ?? now(),
-  });
-}
 
 /* -- the RPG layer ---------------------------------------------------------- */
 
@@ -598,23 +405,4 @@ export async function startAdventure(
   await db.avatars.put(paid);
   if (avatar.companionId) await bondPet(avatar.companionId, 2);
   return { ok: true, hours: cost.hours };
-}
-
-/**
- * The app has to work on the phone that installed it first, before there is a
- * partner to pair with, so a solo identity is minted locally on first use.
- *
- * Pairing later replaces both ids with the ones the Worker issues. Rows written
- * before that point keep the provisional ids and would need re-keying — a real
- * loose end, recorded in docs/DESIGN.md rather than papered over here.
- */
-export async function ensureIdentity(): Promise<{ memberId: MemberId; coupleId: string }> {
-  const settings = await loadSettings();
-  if (settings.memberId && settings.coupleId) {
-    return { memberId: settings.memberId, coupleId: settings.coupleId };
-  }
-  const memberId = settings.memberId ?? id();
-  const coupleId = settings.coupleId ?? id();
-  await saveSettings({ memberId, coupleId });
-  return { memberId, coupleId };
 }

@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type {
   Achievement, ChatMessage, CycleEntry, ExerciseEntry, Member, MoodEntry, Pet, Quest, Settings,
-  WorkEvent,
+  WorkEvent, WorkoutPhoto,
 } from '../domain/types';
 import { DEFAULT_SETTINGS } from '../domain/types';
 import type { Avatar, LifeEvent, Redemption, Reward, Task } from '../domain/rpg/types';
@@ -36,7 +36,10 @@ export class HeartBeatDB extends Dexie {
   // v3 — companions.
   pets!: Table<PetInstance, string>;
 
-  // v5 — the study layer. Decks ship with the build; only progress is stored.
+  // v5 — camera proof.
+  workoutPhotos!: Table<WorkoutPhoto, string>;
+
+  // v6 — the study layer. Decks ship with the build; only progress is stored.
   studyProgress!: Table<CardProgress, string>;
   studySessions!: Table<StudySession, string>;
 
@@ -83,11 +86,21 @@ export class HeartBeatDB extends Dexie {
       messages: 'id, coupleId, createdAt, [coupleId+createdAt]',
     });
 
-    // v5 adds the study layer, and adds nothing to the wire: these two stores
+    // v5 adds workout photos. Kept out of the entry rows on purpose: the sync
+    // payload cap is measured in kilobytes and a photograph is not.
+    this.version(5).stores({
+      workoutPhotos: 'id, memberId, day, [memberId+day]',
+    });
+
+    // v6 adds the study layer, and adds nothing to the wire: these two stores
     // are the first that are deliberately local-only. The couple's sync exists
     // so two people can read each other's day, and a flashcard queue is not
     // that — see the Study section of docs/DESIGN.md.
-    this.version(5).stores({
+    //
+    // Written against v5 while that number was free; v5 shipped to real phones
+    // as workout photos first, and a Dexie version that a device has already
+    // opened cannot be renumbered. So the study layer lands as v6.
+    this.version(6).stores({
       // Keyed by card, because progress is per card and a card belongs to
       // exactly one deck. [deckId+dueOn] is the hot path: every mount asks one
       // deck what is due today.

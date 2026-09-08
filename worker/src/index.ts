@@ -8,6 +8,9 @@ import {
   readySlots,
   type BossState,
 } from './boss';
+import { drainNudges, prepareVapid } from './push';
+import { REFUSAL_MESSAGE, REFUSAL_STATUS, joinCouple } from './pairing';
+import { recordAuthEvent } from './audit';
 
 export interface Env {
   DB: D1Database;
@@ -49,7 +52,11 @@ async function authenticate(request: Request, env: Env): Promise<Caller | null> 
   const header = request.headers.get('authorization') ?? '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
   if (!token) return null;
-  const row = await env.DB.prepare('SELECT id, couple_id FROM members WHERE token_hash = ?')
+  // `revoked_at IS NULL` is what makes revocation mean anything. Both surfaces
+  // read the same members table, so one flag turns a device off everywhere.
+  const row = await env.DB.prepare(
+    'SELECT id, couple_id FROM members WHERE token_hash = ? AND revoked_at IS NULL',
+  )
     .bind(await hashToken(token))
     .first<{ id: string; couple_id: string }>();
   return row ? { memberId: row.id, coupleId: row.couple_id } : null;
@@ -169,6 +176,9 @@ async function nudgePartner(
   ).run();
 }
 
+/** How long a crash report is kept before the cron sweeps it. */
+const CLIENT_ERROR_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const origin = resolveAllowedOrigin(request.headers.get('origin'), env.ALLOWED_ORIGIN);
@@ -202,45 +212,43 @@ export default {
         env.DB.prepare('INSERT INTO pets (couple_id, fed_at) VALUES (?, ?)').bind(coupleId, now),
       ]);
 
+      await recordAuthEvent(env.DB, request, { kind: 'pair_start', coupleId, memberId }, now);
       return json({ coupleId, memberId, token, invite }, 200, origin);
     }
 
     // Redeem an invite. The second device calls this and gets its own token.
+    // The admission check lives inside the INSERT — see worker/src/pairing.ts,
+    // which is tested against real SQLite, race included.
     if (url.pathname === '/pair/join' && request.method === 'POST') {
       const body = (await request.json().catch(() => ({}))) as { invite?: string };
       const code = (body.invite ?? '').trim().toUpperCase();
       if (!code) return json({ error: 'invite required' }, 400, origin);
 
       const now = Date.now();
-      const row = await env.DB.prepare(
-        'SELECT couple_id, expires_at, consumed_at FROM invites WHERE token = ?',
-      )
-        .bind(code)
-        .first<{ couple_id: string; expires_at: number; consumed_at: number | null }>();
-
-      if (!row) return json({ error: 'no such invite' }, 404, origin);
-      if (row.consumed_at) return json({ error: 'invite already used' }, 409, origin);
-      if (row.expires_at < now) return json({ error: 'invite expired' }, 410, origin);
-
-      const existing = await env.DB.prepare(
-        'SELECT COUNT(*) AS n FROM members WHERE couple_id = ?',
-      )
-        .bind(row.couple_id)
-        .first<{ n: number }>();
-      // Two people, by definition. A third join would silently widen who can
-      // read the couple's data.
-      if ((existing?.n ?? 0) >= 2) return json({ error: 'this couple is full' }, 409, origin);
-
       const memberId = crypto.randomUUID();
       const token = newToken();
-      await env.DB.batch([
-        env.DB.prepare(
-          'INSERT INTO members (id, couple_id, token_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-        ).bind(memberId, row.couple_id, await hashToken(token), now, now),
-        env.DB.prepare('UPDATE invites SET consumed_at = ? WHERE token = ?').bind(now, code),
-      ]);
+      const outcome = await joinCouple(env.DB, code, memberId, await hashToken(token), now);
 
-      return json({ coupleId: row.couple_id, memberId, token }, 200, origin);
+      if (!outcome.ok) {
+        const refusal = outcome.refusal!;
+        // The refusal is the event most worth keeping: a third device trying to
+        // get in leaves no other trace anywhere.
+        await recordAuthEvent(
+          env.DB,
+          request,
+          { kind: 'join_refused', coupleId: outcome.coupleId, detail: refusal },
+          now,
+        );
+        return json({ error: REFUSAL_MESSAGE[refusal] }, REFUSAL_STATUS[refusal], origin);
+      }
+
+      await recordAuthEvent(
+        env.DB,
+        request,
+        { kind: 'pair_join', coupleId: outcome.coupleId, memberId },
+        now,
+      );
+      return json({ coupleId: outcome.coupleId, memberId, token }, 200, origin);
     }
 
     const caller = await authenticate(request, env);
@@ -404,9 +412,8 @@ export default {
     return json({ error: 'not found' }, 404, origin);
   },
 
-  async scheduled(_event: ScheduledController, env: Env): Promise<void> {
-    // Delivery is the next piece of work; see docs/DESIGN.md. Until Web Push is
-    // wired up, expire stale invites so a leaked link cannot be redeemed late.
+  async scheduled(event: ScheduledController, env: Env): Promise<void> {
+    // Expire stale invites so a leaked link cannot be redeemed late.
     const now = Date.now();
     await env.DB.prepare('DELETE FROM invites WHERE expires_at < ? AND consumed_at IS NULL')
       .bind(now)
@@ -419,5 +426,38 @@ export default {
       `UPDATE boss_fights SET state = 'lost', ended_at = ?, updated_at = ?
         WHERE state = 'fighting' AND deadline_at IS NOT NULL AND deadline_at < ?`,
     ).bind(now, now, now).run();
+
+    // Crash reports age out after a week: one that old is either fixed or has
+    // happened again since. Hourly rather than every minute — the cron fires 60
+    // times an hour and 59 of those would delete nothing.
+    //
+    // Deliberately above the VAPID check below, which returns early. A deploy
+    // with no push keys configured still has to sweep, or the table grows
+    // forever on exactly the setups least likely to be watched.
+    if (new Date(event.scheduledTime).getUTCMinutes() === 0) {
+      await env.DB.prepare('DELETE FROM client_errors WHERE received_at < ?')
+        .bind(now - CLIENT_ERROR_TTL_MS)
+        .run();
+    }
+
+    // Deliver whatever is due. Without VAPID keys configured the Worker still
+    // runs — pairing, sync and the boss fight do not need push — so a missing
+    // key is a quiet no-op rather than a crashing cron, and `/health` already
+    // reports `push: false` so the omission is visible.
+    const vapid = await prepareVapid({
+      subject: env.VAPID_SUBJECT,
+      publicKey: env.VAPID_PUBLIC_KEY,
+      privateKey: env.VAPID_PRIVATE_KEY,
+    }).catch((error) => {
+      console.error('VAPID keys are set but unusable', error);
+      return null;
+    });
+    if (!vapid) return;
+
+    const summary = await drainNudges(env.DB, vapid, {
+      nowMs: now,
+      onError: (message, error) => console.error(message, error),
+    });
+    if (summary.claimed > 0) console.log('push drain', summary);
   },
 };

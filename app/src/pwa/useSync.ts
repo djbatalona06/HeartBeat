@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { sync } from './sync';
+import { flushPetXp } from './petSync';
 
 /**
  * Runs sync on the occasions that matter and no others.
@@ -21,6 +22,12 @@ export function useSync(): void {
       if (running || cancelled) return;
       running = true;
       try {
+        // The shared pet rides the same occasions but not the same endpoint:
+        // its XP is additive, so it is queued and summed server-side rather
+        // than pushed as a row. Not awaited, and off the entry sync's failure
+        // path: a pet flush that cannot reach the network hangs for as long as
+        // fetch lets it, and the day log must not wait behind it.
+        void flushPetXp().catch(() => {});
         // A page of history means there is more waiting; drain it rather than
         // leaving a device that has been off for a month permanently behind.
         for (let page = 0; page < 20; page++) {

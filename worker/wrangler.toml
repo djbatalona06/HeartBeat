@@ -2,6 +2,16 @@ name = "heartbeat-api"
 main = "src/index.ts"
 compatibility_date = "2024-12-30"
 
+# Both keys are required together by wrangler: it refuses the whole config with
+# "observability.enabled or observability.logs.enabled is required" if only the
+# traces table is present, which takes db:local, db:remote, dev and deploy down
+# with it.
+[observability]
+enabled = true
+
+[observability.traces]
+enabled = true
+
 # Every minute: the finest granularity Cron Triggers offer, and what keeps a
 # 07:00 reminder landing at 07:00 rather than up to an hour late.
 [triggers]
@@ -16,9 +26,22 @@ database_id = "dcfde6ff-f415-427a-bfc4-c08bd6911699"
 [vars]
 # Origins allowed to call this Worker: the Pages production URL plus its preview
 # subdomains, so pairing and push can be tested from a preview deploy.
-ALLOWED_ORIGIN = "https://heartbeat.pages.dev,https://*.heartbeat.pages.dev"
+ALLOWED_ORIGIN = "https://heartbeat-eop.pages.dev,https://*.heartbeat-eop.pages.dev"
 VAPID_SUBJECT = "mailto:batalona06@gmail.com"
 
 # Secrets are set with `wrangler secret put`, never committed:
 #   VAPID_PUBLIC_KEY   — base64url P-256 public key
 #   VAPID_PRIVATE_KEY  — base64url P-256 private scalar
+
+# Photographs live here rather than in D1. Workout proof and profile faces were
+# base64 inside rows — D1 has a row-size ceiling and is not a blob store, and a
+# couple accumulating months of gym photos walks towards it while making every
+# unrelated query slower. D1 now keeps a content-addressed key; see
+# app/functions/api/media.ts and app/src/domain/media/objectKey.ts.
+# Named to match the D1 database rather than something of its own: the account
+# already keys everything for this app on "heartbeat", and a binding pointing at
+# a bucket that does not exist fails the Pages deploy at publish rather than at
+# runtime — which is how this was found.
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "heartbeat"
