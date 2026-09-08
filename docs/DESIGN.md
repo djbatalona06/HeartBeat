@@ -296,6 +296,96 @@ Worker issues, and rows written before that point keep the provisional ones and
 would need re-keying. Recorded here rather than papered over; it wants fixing
 when onboarding is built.
 
+## Study
+
+A spaced-repetition deck of 226 cards on software development — JavaScript,
+TypeScript, React, Git, HTTP, SQL, data structures, the shell, and the craft
+itself. Flashcards with four grades, and a timed multiple-choice quiz over the
+same material.
+
+It is here rather than in an app of its own for one reason: HeartBeat already
+knows how to make a daily habit feel worth keeping, and that machinery — the
+pet, the avatar, the payout — is the expensive part. A study page bolted onto it
+inherits all of it for the cost of one screen.
+
+### It is local-only, and that is a decision
+
+`studyProgress` and `studySessions` are the first two stores that deliberately
+never reach the wire. The couple's sync exists so two people can read each
+other's day; a flashcard queue is not that. Keeping it local costs nothing and
+avoids a D1 migration, a CHECK-constraint rebuild and a CORS surface for data
+nobody else was going to read.
+
+The schema would have fought it anyway: `entries` is uniquely indexed on
+(member, kind, day), so per-card review state has no shape that fits.
+
+### The scheduler is SM-2 with the punishment removed
+
+`domain/study/srs.ts`. The arithmetic is SM-2's — an ease factor that drifts
+with how hard a card keeps being, intervals that multiply by it, the fixed 1-day
+and 6-day opening steps. Two things are changed.
+
+`again` is mapped to SM-2 quality 2 rather than 0. Quality 0 costs 0.8 of ease
+in a single press, two-thirds of the whole span between the floor and the start;
+at 2 it costs 0.32. One blank night should not undo a month of a card being
+easy. And a lapsed card is *not* reset to the beginning — it comes back today
+and keeps the ease it earned.
+
+That is the same ruling the RPG layer runs on, applied to forgetting: **nothing
+in daily life takes anything away.** A card you cannot recall has no cost field
+to charge. `srs.test.ts` pins it structurally — it asserts the exact set of keys
+a review returns, so a future edit cannot add a penalty without changing a test
+that says why it should not exist.
+
+### Payment is by cards seen, never by accuracy
+
+`domain/study/payout.ts`. A sitting is priced from the cards reviewed, weighted
+by the same `DIFFICULTY_WEIGHT` a task uses, and not at all by how many were got
+right. An economy that pays for accuracy pays you to review the deck you have
+already learnt, which is exactly the deck worth least.
+
+Rates sit below `task.ts` on purpose — twenty cards land near one medium task,
+not twenty times it. The guard against farming is a cap of 60 paid cards per
+day rather than one sitting per day, because two sittings in one evening is a
+good evening and the app should not have an opinion about it. Past the cap the
+page says so and keeps working.
+
+Stopping early still pays for what was done. Paying only a completed sitting
+would make the honest choice to stop at eight cards worth less than grinding
+through forty.
+
+### Not a tab
+
+Six along the bottom is already the ceiling on a phone. Study is a dashboard
+tile and a route, like `/cycle` and `/party`.
+
+### The same screen, built twice
+
+`features/study/StudyPage.tsx` is the only component mounted in two places: in
+the app against Dexie, and in `study/index.html` against localStorage. The seam
+is `db/studyStore.ts` — an interface the screen takes as a prop. It never
+imports `db`, because a single-file build that pulled in IndexedDB would be
+both large and broken.
+
+`scripts/build-study.mjs` inlines the bundle, the stylesheet and both typefaces
+into one file and then refuses to write it if any outward reference survives —
+the same assertion `gift/build.mjs` ends with, for the same reason. CI rebuilds
+it and fails if the committed artefact has drifted.
+
+**The trap it exists to handle:** opened as a `file://` page, Chrome treats the
+origin as opaque and `localStorage` *throws* rather than returning null. So the
+standalone store wraps every read and write and falls back to memory, the page
+says plainly that it cannot remember anything, and Save/Load progress writes the
+record to a JSON file. Served over https — which is how GitHub Pages publishes
+it — none of that comes up and persistence is ordinary.
+
+### Why there is no Supabase
+
+The plan this grew from called for Supabase auth and realtime for a battle mode.
+This repository's position is no accounts, no email addresses, no analytics and
+no third parties, and it already has a backend. A second one, for a
+single-player feature, would contradict the product to save nothing.
+
 ## Reminders
 
 Reuses the ADHD-helper delivery shape: the phone computes the next 72 hours of

@@ -75,6 +75,10 @@
     transition: transform 220ms cubic-bezier(0.16,1,0.3,1), border-color 220ms ease;
   }
   .gift:hover { transform: translateY(-2px); border-color: rgba(255,143,176,0.6); }
+  /* The present is the reason this page exists; the study page is a second
+     door, and should not compete with it for the eye. */
+  .gift-quiet { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); }
+  .gift-quiet:hover { border-color: rgba(255,143,176,0.4); }
   .gift:focus-visible { outline: 2px solid var(--pink); outline-offset: 3px; }
 
   .gift-eyebrow {
@@ -211,6 +215,18 @@
     <div class="gift-body">
       A letter, and every photograph, in a record crate.
       Works offline once it has loaded — about 4 MB, so give it a moment on data.
+    </div>
+    <div class="gift-go">Open it &rarr;</div>
+  </a>
+
+  <a class="gift gift-quiet" href="study/">
+    <div class="gift-eyebrow">One file</div>
+    <div class="gift-title">The study page</div>
+    <div class="gift-body">
+      226 flashcards on JavaScript, TypeScript, React, Git, HTTP, SQL, algorithms,
+      the shell and the craft &mdash; spaced repetition and a timed quiz.
+      The same screen that is in the app, built as a single self-contained page.
+      Save it and it works with no internet.
     </div>
     <div class="gift-go">Open it &rarr;</div>
   </a>

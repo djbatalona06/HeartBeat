@@ -6,6 +6,7 @@ import type {
 import { DEFAULT_SETTINGS } from '../domain/types';
 import type { Avatar, LifeEvent, Redemption, Reward, Task } from '../domain/rpg/types';
 import type { PetInstance } from '../domain/rpg/pets';
+import type { CardProgress, StudySession } from '../domain/study/types';
 
 /**
  * The phone holds the whole record. The Worker keeps a copy so the other half
@@ -34,6 +35,10 @@ export class HeartBeatDB extends Dexie {
 
   // v3 — companions.
   pets!: Table<PetInstance, string>;
+
+  // v5 — the study layer. Decks ship with the build; only progress is stored.
+  studyProgress!: Table<CardProgress, string>;
+  studySessions!: Table<StudySession, string>;
 
   constructor() {
     super('heartbeat');
@@ -76,6 +81,20 @@ export class HeartBeatDB extends Dexie {
       // Read one way only — this couple's thread, oldest first — so createdAt
       // is the index that matters. It doubles as the sync cursor.
       messages: 'id, coupleId, createdAt, [coupleId+createdAt]',
+    });
+
+    // v5 adds the study layer, and adds nothing to the wire: these two stores
+    // are the first that are deliberately local-only. The couple's sync exists
+    // so two people can read each other's day, and a flashcard queue is not
+    // that — see the Study section of docs/DESIGN.md.
+    this.version(5).stores({
+      // Keyed by card, because progress is per card and a card belongs to
+      // exactly one deck. [deckId+dueOn] is the hot path: every mount asks one
+      // deck what is due today.
+      studyProgress: 'cardId, deckId, dueOn, [deckId+dueOn]',
+      // Read one way — today's sittings, to price the next one against the
+      // daily cap — so `day` is the index that matters.
+      studySessions: 'id, day, deckId, [day+deckId]',
     });
   }
 }

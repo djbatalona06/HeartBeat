@@ -1056,3 +1056,168 @@ body {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
+
+/* -- study ------------------------------------------------------------------
+   Every value here is a token. That is what keeps the five theme packs working
+   without any of them knowing this screen exists, and it is why there is not a
+   single hex colour or raw pixel measurement below. */
+
+.deck-list { display: flex; flex-direction: column; gap: var(--space-3); }
+
+.deck {
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+}
+
+.deck-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.deck-title { font-family: var(--font-display); font-size: var(--text-lg); line-height: var(--line-tight); }
+.deck-count { font-size: var(--text-xs); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.deck-blurb { margin-top: var(--space-1); font-size: var(--text-sm); color: var(--color-text-muted); line-height: var(--line-body); }
+.deck-state { margin: var(--space-3) 0; font-size: var(--text-xs); color: var(--color-accent); }
+
+.session-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+
+.session-quit {
+  min-height: var(--tap);
+  padding: 0 var(--space-2);
+  background: none;
+  border: 0;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.session-head + .bar { margin-top: var(--space-3); }
+.session-head + .bar + .page-sub { margin-top: var(--space-2); font-variant-numeric: tabular-nums; }
+
+.card-face {
+  position: relative;
+  margin-bottom: var(--space-4);
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+}
+
+.card-question {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  line-height: var(--line-tight);
+}
+
+.card-rule { margin: var(--space-4) 0; border: 0; border-top: var(--border-width) solid var(--color-border); }
+.card-answer { font-size: var(--text-lg); line-height: var(--line-body); }
+
+.card-why {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
+
+/* Four across is too narrow to read on a phone; two by two keeps every label
+   legible and every target above the 48px floor. */
+.grades { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+
+.grade {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  padding: var(--space-3);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--ease-soft);
+}
+
+.grade:active { transform: scale(0.97); }
+.grade:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.grade-label { font-size: var(--text-base); line-height: var(--line-tight); }
+.grade-hint { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+/* `again` is not marked in danger red. Nothing on this screen is a failure —
+   the button reschedules a card, and colouring it as a mistake would say the
+   opposite of what the whole layer is built on. */
+.grade-again { box-shadow: inset 3px 0 0 var(--color-border); }
+.grade-good { box-shadow: inset 3px 0 0 var(--color-accent); }
+.grade-easy { box-shadow: inset 3px 0 0 var(--color-success); }
+
+.quiz-clock {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.choices { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.choice {
+  min-height: var(--tap);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.choice:active { transform: scale(0.99); }
+.choice:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.choice:disabled { cursor: default; }
+
+/* The right answer is always marked, whether or not it was the one chosen —
+   a quiz that only tells you that you were wrong has taught nothing. */
+.choice-right { border-color: var(--color-success); box-shadow: inset 3px 0 0 var(--color-success); }
+.choice-wrong { border-color: var(--color-danger); box-shadow: inset 3px 0 0 var(--color-danger); }
+.choice-past { opacity: 0.5; }
+
+.choices + .card-why { margin-top: var(--space-4); }
+.card-why + .primary { margin-top: var(--space-4); }
+.sheet + .primary { margin-top: var(--space-4); }
+
+/* -- the standalone file ----------------------------------------------------
+   Only reachable in the single-file build, where there is no tab bar to leave
+   room for and no Settings screen to hold the theme picker. */
+
+.shell-standalone { padding-bottom: var(--space-6); }
+
+.standalone-foot {
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: var(--border-width) solid var(--color-border);
+}
+
+.standalone-warn {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-muted);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  line-height: var(--line-body);
+}
+
+.standalone-foot .row { margin-top: var(--space-3); }
+.standalone-note { margin-top: var(--space-3); font-size: var(--text-sm); color: var(--color-success); }
+
+.standalone-about {
+  margin-top: var(--space-5);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}

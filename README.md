@@ -31,7 +31,7 @@ without the Home Screen step.
 
 ## What's on it
 
-The home screen is a grid of four, plus your pet.
+The home screen is a grid of tiles, plus your pet.
 
 | Tile | What it holds |
 |---|---|
@@ -39,6 +39,8 @@ The home screen is a grid of four, plus your pet.
 | **Exercise** | A workout log, and camera proof — front and back — that you did it |
 | **Mood** | Three sliders, 1–10: hunger, joy, moody. Both of you, side by side |
 | **Work** | A shared calendar, filled from a file you export from your own |
+| **Study** | 226 flashcards on programming, spaced out so they stick, plus a timed quiz |
+| **Cycle** | Logging and a forecast, behind a PIN if you want one |
 
 The **pet** is the point. It gains XP when either of you logs something, and
 levels up on quests that get set from a few questions during setup. Rep ranges,
@@ -102,6 +104,26 @@ publishing it here would be redistribution. `gift:build:music` produces
 `birthday-with-music.html`, which is gitignored and meant to be sent directly.
 See [NOTICE.md](NOTICE.md).
 
+## The study page
+
+[`study/index.html`](study) is the app's Study screen built as one self-contained
+file — React, the theme engine, both typefaces and all 226 cards inside it.
+Download it, double-click it, and it works with no internet.
+
+It is the same component the app mounts, handed a different store: Dexie inside
+the PWA, localStorage in the file. Nothing is duplicated, which is the only
+reason having it twice is affordable.
+
+```bash
+npm run study:build   # rebuild study/index.html from app/src/
+```
+
+One caveat worth knowing: opened straight off the disk, Chrome treats the page
+as having no origin and refuses it any storage at all, so the sitting works but
+a reload starts over. The page says so, and has **Save progress** for exactly
+that. Opened from a web address — the link on the front door — it remembers
+normally.
+
 ## The website
 
 `main` publishes the whole repository to GitHub Pages via
@@ -124,7 +146,8 @@ index.html  landing page                     ->  GitHub Pages
 app/        Vite + React + TypeScript PWA    ->  Cloudflare Pages
 worker/     Cloudflare Worker + D1           ->  pairing, sync, push
 gift/       the birthday piece               ->  one self-contained HTML file
-docs/       design spec
+study/      the study page, built             ->  one self-contained HTML file
+docs/       design spec, deploy runbook
 ```
 
 ## Local development
@@ -132,7 +155,7 @@ docs/       design spec
 ```bash
 npm install
 npm run dev          # http://localhost:5173
-npm test             # 60 app tests + 7 worker tests
+npm test             # 458 app tests + 19 worker tests
 npm run typecheck
 ```
 
@@ -144,41 +167,13 @@ Every write goes through `app/src/db/repository.ts`; components call those
 functions and let the Dexie live query re-render. Nothing in `features/` touches
 the database directly.
 
-## Deploying the app
+## Deploying
 
-Cloudflare Pages, via `.github/workflows/deploy.yml`, on pushes to `main`.
-
-Create an API token at **Cloudflare → My Profile → API Tokens** with the
-**Cloudflare Pages: Edit** permission, then add two repository secrets under
-**Settings → Secrets and variables → Actions**:
-
-| Secret | Where to find it |
-|---|---|
-| `CLOUDFLARE_API_TOKEN` | the token you just created |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare dashboard sidebar, or `npx wrangler whoami` |
-
-CI (`.github/workflows/ci.yml`) is separate, runs on every pull request, and
-involves no deploy credentials.
-
-## Deploying the Worker
-
-Needed for pairing and notifications.
-
-```bash
-cd worker
-npx wrangler d1 create heartbeat      # paste the id into wrangler.toml
-npm run db:remote                     # apply migrations
-
-npx wrangler secret put VAPID_PUBLIC_KEY
-npx wrangler secret put VAPID_PRIVATE_KEY
-
-npm run deploy
-```
-
-If you host the app anywhere other than `heartbeat.pages.dev`, update
-`ALLOWED_ORIGIN` in `worker/wrangler.toml` or the browser will block every
-request. It takes a comma-separated list and accepts a single-label wildcard
-such as `https://*.heartbeat.pages.dev` for preview deploys.
+Three independent targets — Cloudflare Pages (`app/`, automatic on push to
+`main`), a Cloudflare Worker (`worker/`, manual, owns pairing/sync/push/cron),
+and GitHub Pages (the landing page, automatic). They share one D1 database.
+Full step-by-step, including one-time Cloudflare account setup, GitHub Actions
+secrets, and the CORS gotcha: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## Status
 
@@ -191,6 +186,7 @@ such as `https://*.heartbeat.pages.dev` for preview deploys.
 | Dashboard grid and pet XP bar | Done |
 | Work screen | Done |
 | Cycle screen, forecast and PIN lock | Done |
+| Study: 226 cards, spaced repetition, quiz, standalone build | Done |
 | Mood / Exercise screens | Next |
 | Quests, achievements, push reminders | After that |
 

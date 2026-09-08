@@ -8,6 +8,7 @@ import { WorkPage } from './features/work/WorkPage';
 import { TasksPage } from './features/tasks/TasksPage';
 import { PartyPage } from './features/party/PartyPage';
 import { CyclePage } from './features/cycle/CyclePage';
+import { StudyRoute } from './features/study/StudyRoute';
 import { ChatPanel } from './features/chat/ChatPanel';
 import { useSync } from './pwa/useSync';
 
@@ -42,6 +43,10 @@ export function App() {
                 one too many, and a page that can be locked should not announce
                 itself along the bottom of every other screen. */}
             <Route path="/cycle" element={<CyclePage />} />
+            {/* Not a tab either, and for the first reason again: six along
+                the bottom is the ceiling, and this is somewhere you go
+                deliberately rather than glance at. */}
+            <Route path="/study" element={<StudyRoute />} />
             <Route path="/mood" element={<MoodPage />} />
             <Route path="/exercise" element={<ExercisePage />} />
             <Route path="/work" element={<WorkPage />} />

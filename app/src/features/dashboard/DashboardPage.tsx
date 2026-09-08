@@ -3,6 +3,8 @@ import { db, loadSettings } from '../../db/database';
 import { todayKey } from '../../domain/day';
 import { levelProgress } from '../../domain/xp';
 import { Tile } from '../../components/Tile';
+import { DECKS } from '../../content/study';
+import { dueCount, newCount } from '../../domain/study/queue';
 
 export function DashboardPage() {
   const settings = useLiveQuery(loadSettings, []);
@@ -24,6 +26,16 @@ export function DashboardPage() {
   // Whether there is a cycle log at all, not what is in it: the tile is a door,
   // and a door should not read out what is behind it to whoever walks past.
   const hasCycle = useLiveQuery(async () => (await db.cycles.count()) > 0, []);
+
+  // The tile reads the whole backlog rather than one deck's, because the
+  // number worth seeing from the home screen is "is there anything", not
+  // "which deck".
+  const studyDue = useLiveQuery(async () => {
+    const rows = await db.studyProgress.toArray();
+    const byCard = new Map(rows.map((row) => [row.cardId, row]));
+    const due = DECKS.reduce((n, deck) => n + dueCount(deck, byCard, day), 0);
+    return { due, fresh: DECKS.reduce((n, deck) => n + newCount(deck, byCard), 0) };
+  }, [day]);
 
   const progress = levelProgress(pet?.xp ?? 0);
 
@@ -74,6 +86,13 @@ export function DashboardPage() {
           glyph="▦"
           value="–"
           hint="Shared calendar"
+        />
+        <Tile
+          to="/study"
+          title="Study"
+          glyph="◆"
+          value={studyDue ? (studyDue.due > 0 ? `${studyDue.due} due` : '–') : '–'}
+          hint="Flashcards and quizzes"
         />
         <Tile
           to="/cycle"
