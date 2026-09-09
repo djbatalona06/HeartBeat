@@ -15,26 +15,9 @@ import { usePairing } from './features/pairing/usePairing';
 import { useSync } from './pwa/useSync';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CommandMenu } from './components/CommandMenu';
+import { Icon } from './components/icons';
+import { OPEN_WHILE_UNPAIRED, TABS } from './nav';
 
-const TABS = [
-  { to: '/', label: 'Home', glyph: '♥' },
-  { to: '/tasks', label: 'Tasks', glyph: '✦' },
-  { to: '/mood', label: 'Mood', glyph: '◑' },
-  { to: '/exercise', label: 'Move', glyph: '▲' },
-  { to: '/work', label: 'Work', glyph: '▦' },
-  { to: '/settings', label: 'You', glyph: '☰' },
-];
-
-/**
- * What stays open on a phone with no partner yet.
- *
- * Settings, because it holds the pairing form itself — a gate that locked the
- * only way through it would be a wall. It also holds the theme picker, which is
- * the reason not to narrow this to a pairing-only screen: the first screen
- * anyone sees should be one they chose, and choosing costs nothing and writes
- * nothing that would have to be re-keyed later.
- */
-const OPEN_WHILE_UNPAIRED = ['/settings'];
 
 export function App() {
   // Reconciles the day log with the other phone. Mounted here rather than in a
@@ -121,7 +104,7 @@ function NavBar({ locked }: { locked: boolean }) {
           className="tab"
           data-locked={locked && !OPEN_WHILE_UNPAIRED.includes(tab.to) ? 'true' : undefined}
         >
-          <span className="tab-glyph" aria-hidden="true">{tab.glyph}</span>
+          <span className="tab-glyph"><Icon name={tab.icon} /></span>
           <span className="tab-label">{tab.label}</span>
         </NavLink>
       ))}

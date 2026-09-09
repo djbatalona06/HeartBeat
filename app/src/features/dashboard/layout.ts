@@ -10,13 +10,14 @@
  * Everything here is pure. No `document`, no `window`: the caller measures the
  * box and hands it over, so the geometry can be checked in a node test.
  */
+import type { IconName } from '../../nav';
 
-/** A door on the ring. Glyphs come from the same abstract set as the tab bar. */
+/** A door on the ring. Icons are drawn by `components/icons.tsx`. */
 export interface HomeDestination {
   /** Router path, exactly as `App.tsx` declares it. */
   to: string;
   label: string;
-  glyph: string;
+  icon: IconName;
 }
 
 /**
@@ -29,12 +30,12 @@ export interface HomeDestination {
  * link at the bottom of Tasks, and Tasks already has a tab of its own.
  */
 export const HOME_DESTINATIONS: HomeDestination[] = [
-  { to: '/mood', label: 'Mood', glyph: '◑' },
-  { to: '/exercise', label: 'Move', glyph: '▲' },
-  { to: '/work', label: 'Work', glyph: '▦' },
-  { to: '/cycle', label: 'Cycle', glyph: '☾' },
-  { to: '/party', label: 'Party', glyph: '◈' },
-  { to: '/settings', label: 'Settings', glyph: '☰' },
+  { to: '/mood', label: 'Mood', icon: 'mood' },
+  { to: '/exercise', label: 'Move', icon: 'dumbbell' },
+  { to: '/work', label: 'Work', icon: 'calendar' },
+  { to: '/study', label: 'Study', icon: 'cards' },
+  { to: '/party', label: 'Party', icon: 'sword' },
+  { to: '/settings', label: 'Settings', icon: 'person' },
 ];
 
 export interface RingBox {

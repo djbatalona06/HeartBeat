@@ -432,6 +432,14 @@ body {
 
 .tab.active { color: var(--color-accent); }
 .tab-glyph { font-size: var(--text-lg); line-height: 1; }
+
+/* Drawn icons rather than Unicode geometry -- see components/icons.tsx.
+   display:block because an inline SVG sits on the text baseline and reserves
+   descender space under itself, which shows up as the glyph riding high in
+   every one of the three places these are used. They paint in currentColor,
+   so the tab bar rule above already colours them and .tab.active already
+   switches them to the accent without either knowing about the other. */
+.icon { display: block; }
 /* 12px is the floor the type scale promises, and a tab label carries meaning. */
 .tab-label { font-size: var(--text-xs); line-height: var(--line-tight); }
 
