@@ -93,6 +93,7 @@ let html = read('index.html')
   .replace('/*INLINE:THREE*/', () => safe(readFileSync(join(SRC, 'vendor', 'three.min.js'), 'utf8')))
   .replace('/*INLINE:TURNTABLE*/', () => safe(read('turntable.js')))
   .replace('/*INLINE:CRATE*/', () => safe(read('crate.js')))
+  .replace('/*INLINE:PROJECTOR*/', () => safe(read('projector.js')))
   .replace('/*INLINE:APP*/', () => safe(photosJs + read('app.js')))
   .replace('<!--INLINE:AUDIO-->', () => audioTag);
 
@@ -100,7 +101,10 @@ if (!audioTag) html = html.replace('<div class="sound" id="sound"', '<div class=
 
 // ---- verify self-containment -------------------------------------------------
 const remaining = html.match(/(?:src|href)="(?!data:|#)[^"]*"/g) || [];
-const external = remaining.filter((m) => !/^href="https:\/\/github\.com/.test(m));
+// The only two links allowed to leave this file: the app it is an invitation
+// to, and the repo the code lives in. Everything else must be a data: URI.
+const ALLOWED = ['href="https://heartbeat-eop.pages.dev', 'href="https://github.com'];
+const external = remaining.filter((m) => !ALLOWED.some((p) => m.startsWith(p)));
 if (external.length) throw new Error(`external references remain: ${external.slice(0, 5).join(', ')}`);
 if (/INLINE:/.test(html)) throw new Error('an INLINE placeholder was left unfilled');
 

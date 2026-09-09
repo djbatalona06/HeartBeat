@@ -127,6 +127,39 @@ async function run(label, viewport, forceNoWebGL, touch = false) {
     await page.$eval('.letter-next', (b) => b.style.opacity === '1' && b.style.pointerEvents === 'auto'));
 
   await page.click('.letter-next');
+  await page.waitForTimeout(400);
+
+  // ---- the projector -------------------------------------------------------
+  // The screen rolls for 1500ms before the first photograph, and each one
+  // then holds for three seconds. Paced down here so the walk costs a second
+  // rather than the two and a half minutes the real thing takes.
+  check('projector visible', await vis('#projector'));
+  await page.evaluate(() => window.GiftProjector.ctl().setPace(40, 40));
+  await page.waitForTimeout(1700);
+
+  const rolled = await page.evaluate(() => window.GiftProjector.ctl().state());
+  check('the screen came down', rolled.rolled, JSON.stringify(rolled));
+  check('it draws on the same photographs the crate does',
+    rolled.count === photoCount, `${rolled.count}/${photoCount}`);
+  check('a photograph is showing',
+    typeof rolled.showing === 'string' && rolled.showing.startsWith('data:image/jpeg;base64,'),
+    String(rolled.showing).slice(0, 32));
+  await page.screenshot({ path: join(SHOTS, `${label}-4b-projector.png`) });
+
+  // A tap anywhere moves it along, the way the letter does.
+  const before = rolled.index;
+  await page.click('#projector .proj-screen');
+  await page.waitForTimeout(120);
+  const after = await page.evaluate(() => window.GiftProjector.ctl().state().index);
+  check('tapping moves it along', after !== before, `${before} -> ${after}`);
+
+  // The way out is offered early rather than only at the end: three minutes
+  // of photographs with no exit is a hostage situation, not a gift.
+  check('the way out is offered',
+    await page.$eval('#projector .letter-next',
+      (b) => b.style.opacity === '1' && b.style.pointerEvents === 'auto'));
+
+  await page.click('#projector .letter-next');
   await page.waitForTimeout(1400);
   check('box visible', await vis('#crate'));
 
@@ -290,8 +323,10 @@ async function run(label, viewport, forceNoWebGL, touch = false) {
   await page.click('#crate .letter-next');
   await page.waitForTimeout(500);
   check('guide visible', await vis('#guide'));
+  const appHref = await page.$eval('#appLink', (a) => a.getAttribute('href'));
+  check('the CTA opens the app', appHref === 'https://heartbeat-eop.pages.dev', appHref);
   const href = await page.$eval('#repoLink', (a) => a.getAttribute('href'));
-  check('links to HeartBeat repo', href === 'https://github.com/djbatalona06/HeartBeat', href);
+  check('the foot links to the repo', href === 'https://github.com/djbatalona06/HeartBeat', href);
   await page.screenshot({ path: join(SHOTS, `${label}-6-guide.png`) });
 
   const overflow = await page.evaluate(() =>
