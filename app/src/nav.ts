@@ -1,11 +1,24 @@
 /**
- * The nav rail: what is on it, and what stays reachable without a partner.
+ * Where the app can go, and which surface shows it.
  *
  * There used to be two navigation surfaces — a six-wide tab bar and a
  * six-door ring on the home screen — kept in step by hand and a test that
- * checked they agreed. They agreed on four of six. This is the one surface
- * that replaced both: every destination the app has, always on screen, so
- * there is nothing left to keep in step.
+ * checked they agreed. They agreed on four of six. A vertical rail replaced
+ * both, on the reasoning that a rail has no width limit so every destination
+ * could sit on one surface and nothing would need keeping in step.
+ *
+ * That held for the eight destinations there were. It does not hold now: this
+ * app has fourteen places to be, and a rail of fourteen icons is a list, not a
+ * bar. So the shape is Finch's — six tabs across the bottom, everything else
+ * one tap away behind the menu button — and the lesson from the first split is
+ * kept instead by making one registry the source for all of it. `PRIMARY_TABS`
+ * and `MENU_GROUPS` partition `ALL_DESTINATIONS`; `nav.test.ts` proves the
+ * partition, so a destination cannot be in both places or in neither.
+ *
+ * `CommandMenu` maps over `ALL_DESTINATIONS` for the same reason. It used to
+ * hold its own hand-written copy of this list, and by the time it was replaced
+ * that copy had already drifted: it had no entry for Study, so the one screen
+ * you would most want to jump straight to was the one ⌘K could not find.
  */
 
 /**
@@ -25,6 +38,12 @@ export const ICON_NAMES = [
   'cards',
   'sword',
   'moon',
+  'menu',
+  'sparkle',
+  'shop',
+  'friends',
+  'bag',
+  'bird',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
@@ -34,28 +53,86 @@ export interface Tab {
   to: string;
   label: string;
   icon: IconName;
+  /** One line, shown under the label in the menu grid and in ⌘K. */
+  hint: string;
+}
+
+export interface MenuGroup {
+  title: string;
+  tabs: Tab[];
 }
 
 /**
- * Every destination the app has. Eight, which was the ceiling neither of the
- * old two surfaces could reach on its own: the tab bar stopped at six because
- * a phone's width ran out, and the ring stopped at six because a seventh
- * bubble started crowding the mascot. A vertical rail has neither problem —
- * length costs height, and a phone has more of that than it has width.
+ * The six across the bottom.
  *
- * Cycle is not here and never was: it can be locked, and a page that can be
- * locked should not announce itself alongside every other screen. It is a
- * section of Mood rather than a route of its own.
+ * Six because that is what a phone's width fits at a real tap target, and
+ * because these six are the ones a self-care app is opened for: what today
+ * wants, what it pays, what that buys, who else is here, what you own, and the
+ * bird it is all for. Everything else is a place you go on purpose, which is
+ * what the menu is.
+ *
+ * Friends is the partner, not a network. This app is for two people, so Tree
+ * Town has one other house in it — that is a smaller feature than Finch's and
+ * an honest one, rather than a social graph with nobody in it.
  */
-export const TABS: Tab[] = [
-  { to: '/', label: 'Home', icon: 'house' },
-  { to: '/tasks', label: 'Tasks', icon: 'checklist' },
-  { to: '/mood', label: 'Mood', icon: 'mood' },
-  { to: '/exercise', label: 'Move', icon: 'dumbbell' },
-  { to: '/work', label: 'Work', icon: 'calendar' },
-  { to: '/study', label: 'Study', icon: 'cards' },
-  { to: '/party', label: 'Party', icon: 'sword' },
-  { to: '/settings', label: 'You', icon: 'person' },
+export const PRIMARY_TABS: Tab[] = [
+  { to: '/', label: 'Home', icon: 'house', hint: 'Your birb, and what today still wants' },
+  { to: '/quests', label: 'Quests', icon: 'sparkle', hint: 'Extra ways to earn, and the shelf' },
+  { to: '/shop', label: 'Shop', icon: 'shop', hint: 'Gear, eggs, and what coins are for' },
+  { to: '/friends', label: 'Friends', icon: 'friends', hint: 'Their birb, and something kind to send' },
+  { to: '/bag', label: 'Bag', icon: 'bag', hint: 'What you own and what you are wearing' },
+  { to: '/birb', label: 'Birb', icon: 'bird', hint: 'Companions, adventures, and the boss' },
+];
+
+/**
+ * Everything else, as a grid behind the menu button.
+ *
+ * Grouped rather than listed: fourteen tiles in one block is the same problem
+ * as fourteen icons in a rail, and these do fall into two honest halves — the
+ * log you keep, and the app itself.
+ */
+export const MENU_GROUPS: MenuGroup[] = [
+  {
+    title: 'Your day',
+    tabs: [
+      { to: '/tasks', label: 'Tasks', icon: 'checklist', hint: 'Dailies, habits and to-dos' },
+      { to: '/mood', label: 'Mood', icon: 'mood', hint: 'Three meters, the cycle log, something sweet' },
+      { to: '/exercise', label: 'Move', icon: 'dumbbell', hint: 'Workouts and proof' },
+      { to: '/work', label: 'Work', icon: 'calendar', hint: 'The shared calendar' },
+      { to: '/study', label: 'Study', icon: 'cards', hint: 'Flashcards, due today' },
+    ],
+  },
+  {
+    title: 'The app',
+    tabs: [
+      { to: '/party', label: 'Party', icon: 'sword', hint: 'Everything about the two of you at once' },
+      { to: '/settings', label: 'You', icon: 'person', hint: 'Pairing, theme, notifications' },
+    ],
+  },
+];
+
+/**
+ * Both surfaces at once, in the order you would read them.
+ *
+ * This is what `CommandMenu` searches, so a destination that reaches either
+ * surface is findable by name without anyone remembering to add it twice.
+ */
+export const ALL_DESTINATIONS: Tab[] = [
+  ...PRIMARY_TABS,
+  ...MENU_GROUPS.flatMap((group) => group.tabs),
+];
+
+/**
+ * Names that are not destinations of their own but are what somebody types.
+ *
+ * The cycle log became the last section of Mood. It kept its route as a
+ * redirect because it is in notification deep links and quite possibly on
+ * somebody's home screen; it keeps its name here for the same reason, because
+ * "cycle" is the word, and a search that answers "nothing goes by that name"
+ * to the right word is worse than no search.
+ */
+export const ALIASES: Tab[] = [
+  { to: '/mood', label: 'Cycle', icon: 'moon', hint: 'The log, at the foot of Mood' },
 ];
 
 /**

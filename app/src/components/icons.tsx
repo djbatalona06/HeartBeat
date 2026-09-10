@@ -109,6 +109,62 @@ const PATHS: Record<IconName, JSX.Element> = {
   // A crescent. The cycle half of the mood page, where it labels the section
   // rather than a route.
   moon: <path d="M20 14.3A8.6 8.6 0 0 1 9.7 4a8.6 8.6 0 1 0 10.3 10.3z" />,
+
+  // Three lines. The one control that is a control rather than a place, so it
+  // is the one drawing here that is deliberately not a picture of anything.
+  menu: (
+    <>
+      <path d="M4 7h16" />
+      <path d="M4 12h16" />
+      <path d="M4 17h16" />
+    </>
+  ),
+
+  // A four-pointed star with a smaller one beside it. Quests are the extra on
+  // top of the day, which is what a sparkle is for.
+  sparkle: (
+    <>
+      <path d="M10 3.6 11.7 8 16 9.7 11.7 11.4 10 15.8 8.3 11.4 4 9.7 8.3 8z" />
+      <path d="M17.2 14.4 18.1 16.7 20.4 17.6 18.1 18.5 17.2 20.8 16.3 18.5 14 17.6 16.3 16.7z" />
+    </>
+  ),
+
+  // A tote with two handles. Where coins go out.
+  shop: (
+    <>
+      <path d="M4.6 8.4h14.8l-1.1 11a1.4 1.4 0 0 1-1.4 1.2H7.1a1.4 1.4 0 0 1-1.4-1.2z" />
+      <path d="M9 10.6V7a3 3 0 0 1 6 0v3.6" />
+    </>
+  ),
+
+  // Two birds side by side, one smaller. Two people, which is the whole app.
+  friends: (
+    <>
+      <path d="M10.6 8.2a3.1 3.1 0 1 1-6.2 0 3.1 3.1 0 0 1 6.2 0z" />
+      <path d="M2.9 20.1a4.6 4.6 0 0 1 9.2 0" />
+      <path d="M15.8 5.4a3.1 3.1 0 0 1 0 5.6" />
+      <path d="M17 15.9a4.6 4.6 0 0 1 4.1 4.2" />
+    </>
+  ),
+
+  // A satchel with a flap. What you already own, as against what the shop has.
+  bag: (
+    <>
+      <path d="M3.9 9.7h16.2v9.2a1.6 1.6 0 0 1-1.6 1.6H5.5a1.6 1.6 0 0 1-1.6-1.6z" />
+      <path d="M3.9 9.7 6.6 4.2h10.8l2.7 5.5" />
+      <path d="M9.4 13.1h5.2" />
+    </>
+  ),
+
+  // A bird on a perch. The one this is all for.
+  bird: (
+    <>
+      <path d="M8.6 4.3a3.7 3.7 0 0 1 3.7 3.7v3.3a6.3 6.3 0 0 1-6.3 6.3H5a7.5 7.5 0 0 0 3.6-6.4" />
+      <path d="M12.3 8h4.4l3.1 3.1-3.1.9" />
+      <path d="M7.1 6.6h.01" />
+      <path d="M9.6 17.6v2.8" />
+    </>
+  ),
 };
 
 interface IconProps {

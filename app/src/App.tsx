@@ -17,8 +17,11 @@ import { OnboardingPage } from './features/onboarding/OnboardingPage';
 import { useSync } from './pwa/useSync';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CommandMenu } from './components/CommandMenu';
+import { MenuSheet } from './components/MenuSheet';
 import { Icon } from './components/icons';
-import { OPEN_WHILE_UNPAIRED, TABS } from './nav';
+import { QuestsPage } from './features/quests/QuestsPage';
+import { FriendsPage } from './features/party/FriendsPage';
+import { OPEN_WHILE_UNPAIRED, PRIMARY_TABS } from './nav';
 
 
 export function App() {
@@ -57,6 +60,16 @@ export function App() {
                   <Routes>
                     <Route path="/" element={<DashboardPage />} />
                     <Route path="/tasks" element={<TasksPage />} />
+                    {/* The five tabs that are not Home. Party is still a route
+                        of its own — it is all of these at once, which is the
+                        view somebody who has been away for a week wants — and
+                        the four below are the same sections, one screen each,
+                        so the bar can lead somewhere specific. */}
+                    <Route path="/quests" element={<QuestsPage />} />
+                    <Route path="/shop" element={<PartyPage only={['shop']} title="Shop" />} />
+                    <Route path="/friends" element={<FriendsPage />} />
+                    <Route path="/bag" element={<PartyPage only={['worn', 'companions']} title="Bag" />} />
+                    <Route path="/birb" element={<PartyPage only={['companions', 'boss']} title="Birb" />} />
                     <Route path="/party" element={<PartyPage />} />
                     {/* The cycle log is the last section of Mood now. The old
                         route is kept as a redirect rather than dropped: it is in
@@ -86,12 +99,13 @@ export function App() {
               reset when the screen behind it changes. */}
           {paired ? <CommandMenu /> : null}
           {/* Kept while unpaired rather than hidden: every locked tab leads to the
-              gate, which is how you get back out of Settings, and a rail that
+              gate, which is how you get back out of Settings, and a bar that
               disappears is harder to understand than one that is plainly waiting.
               Locked only once the answer is in, for the reason the gate waits:
-              otherwise a phone that paired months ago dims its whole rail for a
+              otherwise a phone that paired months ago dims its whole bar for a
               frame on every cold start. */}
-          <NavRail locked={ready && !paired} />
+          <MenuSheet locked={ready && !paired} />
+          <TabBar locked={ready && !paired} />
         </HashRouter>
       </ThemeProvider>
     </ErrorBoundary>
@@ -99,29 +113,31 @@ export function App() {
 }
 
 /**
- * Every destination, always on screen, down the left edge.
+ * The six, across the bottom, as a grid.
  *
- * Bottom-aligned rather than top: a phone held one-handed reaches its own
- * bottom corner without shifting grip, and a rail that starts at the top
- * would put Settings, the eighth and least-visited entry, closest to the
- * thumb while Home sat furthest away. Only the active tab carries its label
- * below 640px — see the media query in styles.css — everything else is an
- * icon with an aria-label, which is what `Icon` already renders for.
+ * A grid of six equal columns rather than a flex row, so every tab is exactly
+ * one sixth of the width whatever its label happens to be — "Home" and
+ * "Friends" get the same target, and the bar does not shift under the thumb
+ * when the active label grows. It replaces a vertical rail that had grown to
+ * eight and could not have taken fourteen; see the note at the top of `nav.ts`.
+ *
+ * Every tab keeps its label, at every width. The rail hid all but the active
+ * one below 640px because a 64px column had no room; six across the bottom of
+ * even a small phone does.
  */
-function NavRail({ locked }: { locked: boolean }) {
+function TabBar({ locked }: { locked: boolean }) {
   return (
-    <nav className="rail" aria-label="Sections">
-      {TABS.map((tab) => (
+    <nav className="tabbar" aria-label="Sections">
+      {PRIMARY_TABS.map((tab) => (
         <NavLink
           key={tab.to}
           to={tab.to}
           end={tab.to === '/'}
-          className="rail-tab"
-          aria-label={tab.label}
+          className="tabbar-tab"
           data-locked={locked && !OPEN_WHILE_UNPAIRED.includes(tab.to) ? 'true' : undefined}
         >
-          <span className="rail-glyph"><Icon name={tab.icon} /></span>
-          <span className="rail-label">{tab.label}</span>
+          <span className="tabbar-glyph"><Icon name={tab.icon} /></span>
+          <span className="tabbar-label">{tab.label}</span>
         </NavLink>
       ))}
     </nav>

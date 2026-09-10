@@ -99,12 +99,12 @@ describe('the shared shape layer', () => {
 
   /**
    * The shell publishes its own measurements so a screen can read how much room
-   * it has. A page's content is measured against whatever the rail has left,
+   * it has. A page's content is measured against whatever the tab bar has left,
    * and the alternative — copying `82px` into a second file — drifts the first
-   * time this changes and clips content under the rail on somebody's phone.
+   * time this changes and clips content under the bar on somebody's phone.
    */
-  const LAYOUT = ['--shell-max', '--shell-gutter', '--shell-top', '--rail-width',
-                  '--shell-left', '--shell-bottom', '--stack'];
+  const LAYOUT = ['--shell-max', '--shell-gutter', '--shell-top', '--tabbar-h',
+                  '--shell-bottom', '--shell-bottom-clear', '--stack'];
 
   it('publishes the shell measurements to every theme, identically', () => {
     const first = themeToCssVars(THEMES[0]);
@@ -117,11 +117,15 @@ describe('the shared shape layer', () => {
     }
   });
 
-  it('leaves more room on the left than the rail itself occupies', () => {
-    // --shell-left is a calc over --rail-width, so the guarantee is structural
-    // rather than arithmetic: it cannot be smaller by construction.
-    expect(SHARED_TOKENS['--shell-left']).toContain('var(--rail-width)');
-    expect(Number.parseFloat(SHARED_TOKENS['--rail-width'])).toBeGreaterThanOrEqual(
+  it('leaves more room at the bottom than the tab bar itself occupies', () => {
+    // --shell-bottom-clear is a calc over --tabbar-h, so the guarantee is
+    // structural rather than arithmetic: it cannot be smaller by construction.
+    // The same shape as the retired --shell-left / --rail-width pair, turned a
+    // quarter turn when the rail became a bar — see nav.ts.
+    expect(SHARED_TOKENS['--shell-bottom-clear']).toContain('var(--tabbar-h)');
+    // And the bar has to be at least a tap tall, or six tabs sit in a strip
+    // too short to hit.
+    expect(Number.parseFloat(SHARED_TOKENS['--tabbar-h'])).toBeGreaterThanOrEqual(
       Number.parseFloat(SHARED_TOKENS['--tap']),
     );
   });

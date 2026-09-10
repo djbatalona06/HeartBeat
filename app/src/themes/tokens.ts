@@ -54,12 +54,14 @@ export const SHARED_TOKENS: Record<string, string> = {
   '--shell-gutter': '18px',
   '--shell-top': 'var(--space-5)',
   '--shell-bottom': 'var(--space-5)',
-  /** The rail's own width, before the phone's safe area is added beside it.
-      Widens at the breakpoint in styles.css where every label gets to stay
-      visible rather than only the active one's. */
-  '--rail-width': '64px',
-  /** What a page must leave clear on the left: the rail, plus room to breathe. */
-  '--shell-left': 'calc(var(--rail-width) + var(--space-5))',
+  /** The tab bar's own height, before the phone's safe area is added under it.
+      A token because `.shell` has to leave exactly this much clear at the
+      bottom, and `.menu-panel` has to sit exactly this far above it. */
+  '--tabbar-h': '62px',
+  /** What a page must leave clear at the bottom: the bar, plus room to breathe.
+      Replaced `--shell-left`, which was the same idea for the left-edge rail —
+      see the note at the top of nav.ts for why the rail became a bar. */
+  '--shell-bottom-clear': 'calc(var(--tabbar-h) + var(--space-5))',
 
   // The gap between stacked cards. Finch's breathing room is mostly this one
   // number, and it is the first thing to raise when a screen feels crowded.

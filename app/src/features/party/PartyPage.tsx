@@ -63,6 +63,21 @@ interface BossPayload {
 }
 
 /**
+ * The four things this page can show, and the order they read in.
+ *
+ * The tab bar gives Shop, Bag and Birb a screen each, and all three are
+ * sections of this page — so they are selected here rather than copied into
+ * three new files. Nothing forks: the identity effect, the three live queries
+ * and the receipt are written once and every route gets the same ones, which
+ * is what stops "the shop" behaving differently depending on how you reached
+ * it. `/party` passes nothing and still shows all four.
+ */
+export type PartySection = 'companions' | 'worn' | 'shop' | 'boss' | 'achievements';
+
+export const ALL_SECTIONS: readonly PartySection[] =
+  ['companions', 'worn', 'shop', 'boss', 'achievements'];
+
+/**
  * The party: who is walking with you, what you are wearing, and the one fight
  * where health exists at all.
  *
@@ -71,7 +86,10 @@ interface BossPayload {
  * says so plainly when there is no Worker configured rather than showing a bar
  * that is quietly a lie.
  */
-export function PartyPage() {
+export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
+  only?: readonly PartySection[];
+  title?: string;
+}) {
   const settings = useLiveQuery(loadSettings, []);
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -114,7 +132,7 @@ export function PartyPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Party</h1>
+        <h1 className="page-title">{title}</h1>
         <p className="page-sub">
           <Link className="sheet-party" to="/tasks">← Tasks</Link>
         </p>
@@ -122,6 +140,7 @@ export function PartyPage() {
 
       {avatar && identity ? (
         <>
+          {only.includes('companions') ? (
           <Companions
             avatar={avatar}
             pets={pets ?? []}
@@ -147,8 +166,10 @@ export function PartyPage() {
               setMessage(result.ok ? `Gone for ${result.hours} hours.` : result.reason ?? null);
             }}
           />
+          ) : null}
 
-          <Wardrobe
+          {only.includes('worn') ? (
+          <Worn
             avatar={avatar}
             owned={owned ?? []}
             onEquip={async (itemId) => {
@@ -156,13 +177,25 @@ export function PartyPage() {
               if (!result.ok) setMessage(result.reason ?? null);
             }}
             onUnequip={(slot) => unequipSlot(identity.memberId, identity.coupleId, slot)}
+            /* Worn no longer carries the shop with it, so it can no longer send
+               you "below" to a panel that is on another tab now. */
+            shopIsHere={only.includes('shop')}
+          />
+          ) : null}
+
+          {only.includes('shop') ? (
+          <Shop
+            avatar={avatar}
+            owned={owned ?? []}
             onBuy={async (itemId) => {
               const result = await buyGear(identity.memberId, identity.coupleId, itemId);
               if (!result.ok) setMessage(result.reason ?? null);
               else if (result.refined) setMessage(`Refined to +${result.refined}.`);
             }}
           />
+          ) : null}
 
+          {only.includes('boss') ? (
           <Boss
             avatar={avatar}
             pets={pets ?? []}
@@ -173,8 +206,11 @@ export function PartyPage() {
             onSpendPetMp={spendPetMp}
             onMessage={setMessage}
           />
+          ) : null}
 
-          <AchievementShelf coupleId={identity.coupleId} />
+          {/* The shelf has its own tab now, alongside the quests it rhymes
+              with. It stays on /party because /party is the everything view. */}
+          {only.includes('achievements') ? <AchievementShelf coupleId={identity.coupleId} /> : null}
         </>
       ) : null}
 
@@ -287,19 +323,19 @@ function Companions({ avatar, pets, owned, onChoose, onSeeLore, onHatch, onAdven
   );
 }
 
-function Wardrobe({ avatar, owned, onEquip, onUnequip, onBuy }: {
+function Worn({ avatar, owned, onEquip, onUnequip, shopIsHere }: {
   avatar: Avatar;
   owned: InventoryItem[];
   onEquip: (itemId: string) => void;
   onUnequip: (slot: GearSlot) => void;
-  onBuy: (itemId: string) => void;
+  /** Whether the shop panel is on this screen too, or a tab away. */
+  shopIsHere: boolean;
 }) {
   const level = levelOf(avatar);
   const refine = refineByItemId(owned);
   const bonus = gearBonusWithRefinement(avatar.gear, level, refine);
 
   return (
-    <>
       <section className="panel">
         <h2 className="section-title">Worn</h2>
         <p className="section-sub">
@@ -313,7 +349,9 @@ function Wardrobe({ avatar, owned, onEquip, onUnequip, onBuy }: {
             <div key={slot} className="slot">
               <div className="slot-name">{slot}</div>
               {slotOwned.length === 0 ? (
-                <p className="section-sub">Nothing owned yet. See the shop below.</p>
+                <p className="section-sub">
+                  {shopIsHere ? 'Nothing owned yet. See the shop below.' : 'Nothing owned yet — the Shop tab has some.'}
+                </p>
               ) : (
                 <div className="chips">
                   {slotOwned.map((item) => {
@@ -343,9 +381,6 @@ function Wardrobe({ avatar, owned, onEquip, onUnequip, onBuy }: {
           +{bonus.heart} heart · +{bonus.luck} luck
         </p>
       </section>
-
-      <Shop avatar={avatar} owned={owned} onBuy={onBuy} />
-    </>
   );
 }
 
