@@ -14,11 +14,14 @@ function PonyBackdrop({ calm }: { calm: boolean }) {
     fps: 20,
     draw(ctx, w, h, t) {
       ctx.clearRect(0, 0, w, h);
+      // The Soft Pastels palette read left to right, which is also warm to
+      // cool: petal frost, mauve, periwinkle. The shift only moves the
+      // opacities, so the gradient breathes without ever changing hue.
       const g = ctx.createLinearGradient(0, 0, w, h);
       const shift = (Math.sin(t * 0.12) + 1) / 2;
-      g.addColorStop(0, `rgba(190, 150, 240, ${0.1 + shift * 0.06})`);
-      g.addColorStop(0.5, `rgba(255, 160, 205, ${0.08 + shift * 0.05})`);
-      g.addColorStop(1, `rgba(150, 205, 245, ${0.1 - shift * 0.04})`);
+      g.addColorStop(0, `rgba(255, 214, 255, ${0.1 + shift * 0.06})`);
+      g.addColorStop(0.5, `rgba(200, 182, 255, ${0.09 + shift * 0.05})`);
+      g.addColorStop(1, `rgba(187, 208, 255, ${0.1 - shift * 0.04})`);
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
 
@@ -26,7 +29,7 @@ function PonyBackdrop({ calm }: { calm: boolean }) {
         const a = 0.14 + Math.sin(t * 1.4 + s.phase) * 0.12;
         if (a <= 0) continue;
         ctx.globalAlpha = a;
-        ctx.fillStyle = '#fff0fb';
+        ctx.fillStyle = '#ffd6ff';
         const x = s.x * w;
         const y = s.y * h;
         ctx.beginPath();
@@ -49,20 +52,24 @@ function PonyBackdrop({ calm }: { calm: boolean }) {
 export const ponyTheme: Theme = {
   id: 'pony',
   name: 'My Little Pony',
-  blurb: 'Pastel aurora and a scatter of sparkles.',
+  blurb: 'Petal frost and periwinkle, a scatter of sparkles.',
   isLight: false,
-  opaqueSurface: '#2b2145',
+  opaqueSurface: '#252145',
   colors: {
-    base: '#1e1733',
-    surface: 'rgba(43, 33, 69, 0.92)',
-    surfaceMuted: 'rgba(58, 45, 90, 0.7)',
-    border: 'rgba(214, 170, 245, 0.22)',
-    text: '#f8f1ff',
-    textMuted: 'rgba(214, 198, 238, 0.66)',
-    accent: '#d6aaf5',
-    accentText: '#1e1733',
-    danger: '#ff7d9c',
-    success: '#87e0b8',
+    // Soft Pastels is five light tints and no dark, so the two dark values
+    // here are the only ones in this file the palette did not supply: a
+    // periwinkle taken most of the way to black for the page, and one step up
+    // from it for the cards. Everything with a hue is the palette's own.
+    base: '#191634',
+    surface: 'rgba(38, 34, 70, 0.92)',
+    surfaceMuted: 'rgba(52, 46, 92, 0.7)',
+    border: 'rgba(200, 182, 255, 0.26)',
+    text: '#f6f1ff',
+    textMuted: 'rgba(211, 199, 245, 0.68)',
+    accent: '#c8b6ff',
+    accentText: '#191634',
+    danger: '#ff8ba0',
+    success: '#93e5c0',
   },
   typography: {
     display: "'Outfit', system-ui, sans-serif",
@@ -76,7 +83,7 @@ export const ponyTheme: Theme = {
     radius: '18px',
     radiusLarge: '28px',
     border: '1px',
-    shadow: '0 18px 40px rgba(8, 5, 18, 0.55)',
+    shadow: '0 18px 40px rgba(6, 4, 16, 0.58)',
   },
   Backdrop: PonyBackdrop,
 };

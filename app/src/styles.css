@@ -331,32 +331,49 @@ body {
 
    Bottom-aligned, not top: a phone held one-handed reaches its own bottom
    corner without a grip shift, and Settings -- the eighth and least-visited
-   entry -- would otherwise sit closest to the thumb while Home sat furthest. */
+   entry -- would otherwise sit closest to the thumb while Home sat furthest.
+
+   It is a dock rather than a full-height slab, and that is the fix for how
+   this shipped. It was `top: 0; bottom: 0` with `justify-content: flex-end`,
+   which is a column exactly as tall as the window with all eight tabs pushed
+   into the bottom of it -- so above them sat an empty tinted, blurred,
+   hard-edged strip covering the top-left of every screen in the app. It read
+   as a broken banner because that is structurally what it was: chrome with
+   nothing in it. Sizing the element to its own contents removes it, and
+   nothing else had to change -- the tabs were always in the right place. */
 .rail {
   position: fixed;
   left: 0;
-  top: 0;
+  /* `top` deliberately unset: the dock is as tall as its tabs and no taller. */
   bottom: 0;
   z-index: 2;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   align-items: stretch;
   gap: var(--space-1);
-  overflow-y: auto;
   /* Width is a token because `.shell` has to leave exactly this much clear. */
   width: var(--rail-width);
-  padding:
-    calc(env(safe-area-inset-top) + var(--space-2))
-    0
-    calc(env(safe-area-inset-bottom) + var(--space-2))
-    env(safe-area-inset-left);
-  background: color-mix(in srgb, var(--color-base) 88%, transparent);
+  padding: var(--space-2) 0;
+  margin-bottom: calc(env(safe-area-inset-bottom) + var(--space-2));
+  margin-left: env(safe-area-inset-left);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   backdrop-filter: blur(14px);
-  border-right: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
+  /* Flat against the screen edge it is docked to, curved on the two corners
+     that face the page. */
+  border-left: none;
+  border-radius: 0 var(--radius-large) var(--radius-large) 0;
+  box-shadow: var(--shadow);
+  /* A phone in landscape has less height than eight tabs need. Scrolling is
+     the fallback, not the normal case, so the scrollbar is not reserved. */
+  max-height: calc(100dvh - env(safe-area-inset-bottom) - var(--space-4));
+  overflow-y: auto;
+  scrollbar-width: none;
 }
+.rail::-webkit-scrollbar { display: none; }
 
 .rail-tab {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -371,11 +388,47 @@ body {
   border-radius: var(--radius);
   text-decoration: none;
   color: var(--color-text-muted);
-  transition: color var(--motion-fast) var(--motion-easing);
+  transition: color var(--motion-fast) var(--motion-easing),
+              background-color var(--motion-fast) var(--motion-easing);
 }
 
-.rail-tab.active { color: var(--color-accent); }
-.rail-glyph { font-size: var(--text-lg); line-height: 1; }
+/* The active tab is a filled pill, not just a recoloured glyph. Colour alone
+   was carrying the whole answer to "where am I", at 64px wide, against an
+   animated backdrop -- and for anyone who cannot separate the accent from the
+   muted tone it was carrying nothing at all. */
+.rail-tab.active {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+
+/* The marker on the docked edge. Scales from nothing on the way in, so
+   switching tabs reads as the marker moving rather than blinking. */
+.rail-tab::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-1) * -1);
+  top: 50%;
+  width: 3px;
+  height: 60%;
+  border-radius: 0 3px 3px 0;
+  background: var(--color-accent);
+  transform: translateY(-50%) scaleY(0);
+  transition: transform var(--motion-medium) var(--ease-soft);
+}
+.rail-tab.active::before { transform: translateY(-50%) scaleY(1); }
+
+.rail-tab:active { background: color-mix(in srgb, var(--color-accent) 20%, transparent); }
+.rail-tab:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+
+.rail-glyph {
+  font-size: var(--text-lg);
+  line-height: 1;
+  transition: transform var(--motion-medium) var(--ease-soft);
+}
+/* The overshoot in --ease-soft is the whole effect: the glyph passes its
+   resting size and settles back, which is what a press is supposed to feel
+   like. Damped with everything else under calm and reduced-motion. */
+.rail-tab.active .rail-glyph { transform: scale(1.14); }
 
 /* Drawn icons rather than Unicode geometry -- see components/icons.tsx.
    display:block because an inline SVG sits on the text baseline and reserves
@@ -409,7 +462,12 @@ body {
   }
   .rail-tab { flex-direction: row; justify-content: flex-start; gap: var(--space-3); padding-inline: var(--space-3); }
   .rail-label { display: block; }
+  /* With room for a label the glyph no longer needs to grow to say "here" --
+     the pill and the marker already do, and scaling it just pushes the text. */
+  .rail-tab.active .rail-glyph { transform: none; }
 }
+
+:root[data-calm='true'] .rail-tab.active .rail-glyph { transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
@@ -1592,7 +1650,9 @@ body {
 }
 
 /* A tab that leads to the gate rather than to itself. Dimmed, never disabled:
-   tapping it is how you get back to the invitation from Settings. */
+   tapping it is how you get back to the invitation from Settings. Selector
+   renamed from `.tab` when the rail replaced the tab bar; it matched nothing
+   at all for one release, and nothing caught it. */
 .rail-tab[data-locked='true'] { opacity: 0.4; }
 
 /* ---- welcome ----------------------------------------------------------------
@@ -3056,3 +3116,140 @@ body {
    already has padding of its own. */
 .cycle-panel .cal-head { margin-top: var(--space-4); }
 .cycle-panel .cal-grid { margin-left: 0; margin-right: 0; }
+
+/* ---- motion -----------------------------------------------------------------
+   The app had backdrops and almost nothing else: five animated canvases behind
+   the content, and content that appeared instantly and sat perfectly still. So
+   the one part of the screen that moved was the part carrying no information,
+   which reads as a screensaver behind a spreadsheet rather than as a living
+   app. Everything below moves something that *means* something -- a screen
+   arriving, a card being pressed, a bar filling.
+
+   Three rules this section keeps to:
+
+   1. **Nothing here is load-bearing.** Every entrance animates from a
+      transparent, offset state to the element's own natural one, with
+      `both` fill. If the animation never runs -- calm mode, reduced motion,
+      an old browser -- the element is simply already where it belongs. No
+      rule here sets `opacity: 0` outside a keyframe, which is the usual way
+      an animation layer turns into a blank screen.
+   2. **Damped, not disabled, under calm.** `data-calm` is the app's own quiet
+      switch and `prefers-reduced-motion` is the system's. Both are honoured;
+      the global reduced-motion rule near the top of this file already
+      collapses every duration, and the `[data-calm]` blocks below drop the
+      transforms that the collapse alone would leave jumping.
+   3. **Transform and opacity only.** Nothing here animates a property that
+      forces layout, so a stagger across a long list stays on the compositor. */
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes settle-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* A highlight travelling once across a bar that just moved. */
+@keyframes bar-sheen {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(220%); }
+}
+
+/* The screen itself, on arrival. `.page` is remounted by the router on every
+   route change, so this doubles as the route transition without any of the
+   machinery a real transition needs -- no exit animation, no route state, no
+   library. The old screen is simply gone and the new one arrives. */
+.page > .page-head { animation: rise-in var(--motion-medium) var(--ease-soft) both; }
+
+/* Then its sections, each a beat behind the one above it. Six is where the
+   stagger stops: past that the delay is longer than the animation and the
+   bottom of a long screen would visibly wait its turn. Everything after the
+   sixth arrives with the sixth. */
+.page > * { animation: settle-in var(--motion-medium) var(--ease-soft) both; }
+.page > *:nth-child(1) { animation-delay: 40ms; }
+.page > *:nth-child(2) { animation-delay: 80ms; }
+.page > *:nth-child(3) { animation-delay: 120ms; }
+.page > *:nth-child(4) { animation-delay: 160ms; }
+.page > *:nth-child(5) { animation-delay: 200ms; }
+.page > *:nth-child(n + 6) { animation-delay: 240ms; }
+
+/* Cards answer a press. `.tile` already did; these are the three classes the
+   app actually renders (see the rule that gives them their surface), and they
+   did not. */
+.sheet, .panel, .task-section {
+  transition: transform var(--motion-fast) var(--motion-easing),
+              border-color var(--motion-medium) var(--motion-easing);
+}
+
+/* Hover only where hovering is real. A phone reports `:hover` as sticky after
+   a tap, so a lift written without this stays lifted until you touch
+   something else. */
+@media (hover: hover) and (pointer: fine) {
+  .sheet:hover, .panel:hover, .task-section:hover {
+    border-color: color-mix(in srgb, var(--color-accent) 32%, var(--color-border));
+  }
+}
+
+/* A pressable chip should feel like a switch. */
+.chip { transition: transform var(--motion-fast) var(--ease-soft),
+                    background-color var(--motion-fast) var(--motion-easing),
+                    border-color var(--motion-fast) var(--motion-easing); }
+.chip:active { transform: scale(0.94); }
+/* The overshoot lands here: a chip turning on passes its size and settles. */
+.chip-on { transform: scale(1.04); }
+
+/* The primary button already scaled on press; it now also lifts off the page
+   while it is pressable and settles when it is not. */
+.primary {
+  transition: transform var(--motion-fast) var(--ease-soft),
+              opacity var(--motion-fast) var(--motion-easing),
+              box-shadow var(--motion-medium) var(--motion-easing);
+}
+
+/* A bar that just changed sweeps once. The sweep is a child rather than a
+   background on the fill itself, so it is unaffected by the width transition
+   already on `.bar-fill` -- animating a gradient's position across an element
+   whose width is simultaneously animating is how a sheen ends up crawling. */
+.bar { position: relative; }
+.bar-fill { position: relative; overflow: hidden; }
+.bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, #ffffff 42%, transparent),
+    transparent
+  );
+  animation: bar-sheen 2.6s var(--motion-easing) infinite;
+}
+
+/* The XP bar is the one that earns a permanent sheen -- it is the reward
+   readout. Every other bar borrows the shape but reports a plain quantity, so
+   a travelling highlight on it is just noise. */
+.bar-fill:not(.bar-fill-accent)::after { animation: none; content: none; }
+
+/* ---- motion, damped ---------------------------------------------------------
+   Calm mode is the app's own switch and is not the same thing as the system's
+   reduced-motion setting: calm means "settle down", not "stop". Entrances
+   still run -- they are how a screen explains that it changed -- but nothing
+   loops, and nothing that overshoots is left overshooting once the duration
+   collapse takes the travel out of it. */
+:root[data-calm='true'] .bar-fill::after { animation: none; content: none; }
+:root[data-calm='true'] .chip-on { transform: none; }
+:root[data-calm='true'] .page > *,
+:root[data-calm='true'] .page > .page-head { animation-delay: 0ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The global rule above collapses durations to 0.01ms, which lands every
+     entrance on its final frame -- correct, and the reason none of this is
+     load-bearing. What a collapsed duration does *not* fix is a looping
+     animation, which simply loops faster, so the sheen is turned off here
+     outright rather than sped up. */
+  .bar-fill::after { animation: none; content: none; }
+  .page > *, .page > .page-head { animation-delay: 0ms; }
+  .chip-on { transform: none; }
+}
