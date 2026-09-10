@@ -303,15 +303,20 @@ The tables (`github_links`, `oauth_states`, `oauth_claims`) come from
 `worker/migrations/0012_github_link.sql`, which `worker-deploy.yml` applies
 before deploying like every other migration. Nothing here needs a manual step.
 
-### What recovery does and does not bring back
+### What recovery brings back
 
 Recovery restores **identity** — the member, the couple and a fresh bearer —
 and with it everything the server holds for that couple: mood, exercise, cycle
 and work entries, workout photographs, the message thread, the shared pet's XP,
-and boss fights.
+boss fights, and — since `0013_holdings.sql` — the RPG layer: gear inventory,
+hatched companions, the coin-and-XP sheet, tasks and the weekly quest.
 
-It does **not** bring back the RPG layer. Gear inventory, companions, quests,
-tasks and the coin wallet are local-only Dexie tables today with no server
-table behind them, so they live and die with the device. That is a gap in the
-sync rather than in recovery, and it is the same gap a reinstall has always
-had.
+The one thing that does not come back is a quest that was **finished before
+the RPG layer started syncing**. `Quest` had no `updatedAt` until then, and a
+row without one is never newer than a watermark, so it stays on the phone that
+finished it. An active quest is rewritten by every progress measurement and so
+picks up a real stamp within a day. Achievements are also still local-only.
+
+Recovery is not required for any of this — a phone that re-pairs by code gets
+the same restore. The link only removes the need for the *other* partner to be
+holding a working phone.
