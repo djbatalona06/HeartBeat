@@ -1260,6 +1260,10 @@ body {
   margin-top: var(--space-4);
 }
 
+/* Inline in a panel rather than alone on a page: the panel already carries
+   the space this margin was opening up against a page header. */
+.cycle-lock-inline { margin-top: 0; }
+
 .cycle-lock-label { font-size: var(--text-xs); color: var(--color-text-muted); }
 .cycle-pin { width: 100%; max-width: 12rem; letter-spacing: 0.35em; }
 .cycle-unlock:disabled { opacity: 0.45; }
@@ -2985,3 +2989,21 @@ body {
   color: var(--color-text-muted);
   line-height: var(--line-body);
 }
+
+/* ---- the cycle log, as a section of Mood ---------------------------------
+   It was a page, at a route kept off the tab bar so it would not announce
+   itself. It is the last section of Mood now, still gated on its own: the
+   PIN re-locks whenever the app leaves the foreground, and a gate around the
+   whole page would blank the mood meters every time she glanced at a
+   notification. See features/cycle/CycleLock.tsx. */
+.cycle-panel { margin-top: var(--stack); }
+
+.cycle-panel-title {
+  display: flex; align-items: center; gap: var(--space-2);
+}
+.cycle-panel-title .icon { color: var(--color-accent); }
+
+/* The month grid was laid out against a page and is now inside a panel that
+   already has padding of its own. */
+.cycle-panel .cal-head { margin-top: var(--space-4); }
+.cycle-panel .cal-grid { margin-left: 0; margin-right: 0; }

@@ -33,11 +33,13 @@ interface Command {
 const COMMANDS: Command[] = [
   { id: 'home', label: 'Home', hint: 'The dashboard', to: '/' },
   { id: 'tasks', label: 'Tasks', hint: 'Dailies, habits and to-dos', to: '/tasks' },
-  { id: 'mood', label: 'Mood', hint: 'Three meters, and something sweet', to: '/mood' },
+  { id: 'mood', label: 'Mood', hint: 'Three meters, the cycle log, something sweet', to: '/mood' },
   { id: 'move', label: 'Move', hint: 'Workouts and proof', to: '/exercise' },
   { id: 'work', label: 'Work', hint: 'The shared calendar', to: '/work' },
   { id: 'party', label: 'Party', hint: 'The pet, gear and boss fights', to: '/party' },
-  { id: 'cycle', label: 'Cycle', hint: 'The cycle log', to: '/cycle' },
+  // Still here by name, because that is what someone types. It leads to the
+  // section of Mood the log became rather than to a page of its own.
+  { id: 'cycle', label: 'Cycle', hint: 'The log, at the foot of Mood', to: '/mood' },
   { id: 'settings', label: 'Settings', hint: 'Pairing, theme, notifications', to: '/settings' },
 ];
 

@@ -1,13 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Icon } from '../../components/icons';
 import { MAX_PIN_LENGTH, MIN_PIN_LENGTH, hasPin, isValidPin, verifyPin } from './lock';
 
 /**
- * The gate in front of the cycle page.
+ * The gate in front of the cycle log.
  *
- * It re-locks whenever the app leaves the foreground, which is the moment the
- * phone is most likely to change hands. Nothing behind it is rendered while
- * locked — not hidden with CSS, not mounted and covered — so there is no
- * arrangement of the page that shows through.
+ * It used to gate a whole page at `/cycle`. The log now lives as the last
+ * section of Mood, because two screens that both asked how the day felt — one
+ * in numbers, one in words — was the confusion, and a route that had to stay
+ * off the tab bar to keep its own secret was the symptom.
+ *
+ * So this gates a section instead. Two things had to survive that move and
+ * both are load-bearing:
+ *
+ *   - Nothing behind it is rendered while locked. Not hidden with CSS, not
+ *     mounted and covered. There is no arrangement of the page that shows it.
+ *   - It re-locks whenever the app leaves the foreground, which is the moment
+ *     the phone is most likely to change hands.
+ *
+ * The second one is why this is scoped to the section and not to the page. The
+ * mood half has to stay mounted and usable through every tab away and back; if
+ * the re-lock reached the whole page, logging your own mood would blank the
+ * screen every time you glanced at a notification.
  */
 
 interface Props {
@@ -15,7 +29,7 @@ interface Props {
 }
 
 export function CycleLock({ children }: Props) {
-  // Null while we find out. Rendering the page during that beat would flash
+  // Null while we find out. Rendering the section during that beat would flash
   // its contents at exactly the person the lock is for.
   const [locked, setLocked] = useState<boolean | null>(null);
 
@@ -56,14 +70,19 @@ function PinPrompt({ onUnlock }: { onUnlock: () => void }) {
   }, [checking, pin, onUnlock]);
 
   return (
-    <div className="page">
-      <header className="page-head">
-        <h1 className="page-title">Locked</h1>
-        <p className="page-sub">This page is yours.</p>
-      </header>
+    <section className="panel cycle-panel" aria-labelledby="cycle-locked-heading">
+      <h2 className="section-title cycle-panel-title" id="cycle-locked-heading">
+        <Icon name="moon" />
+        <span>Cycle</span>
+      </h2>
+
+      <p className="section-sub">
+        Enter your PIN to open the log. It locks again the moment you leave the app,
+        even if that was only for a moment.
+      </p>
 
       <form
-        className="cycle-lock"
+        className="cycle-lock cycle-lock-inline"
         onSubmit={(e) => { e.preventDefault(); void submit(); }}
       >
         <label className="cycle-lock-label" htmlFor="cycle-pin">PIN</label>
@@ -73,7 +92,6 @@ function PinPrompt({ onUnlock }: { onUnlock: () => void }) {
           type="password"
           inputMode="numeric"
           autoComplete="off"
-          autoFocus
           maxLength={MAX_PIN_LENGTH}
           value={pin}
           onChange={(e) => { setPin(e.target.value.replace(/\D/g, '')); setWrong(false); }}
@@ -98,6 +116,6 @@ function PinPrompt({ onUnlock }: { onUnlock: () => void }) {
           </p>
         )}
       </form>
-    </div>
+    </section>
   );
 }

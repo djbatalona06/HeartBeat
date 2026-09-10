@@ -130,8 +130,9 @@ export function SettingsPage() {
           <span>I log my cycle. Off means the page shows my partner&rsquo;s.</span>
         </label>
         <p className="section-sub">
-          The page itself, and its PIN, are on <Link to="/cycle">the Cycle screen</Link>. A PIN
-          set there stays on this phone and is never synced.
+          The log itself, and its PIN, are at the foot of{' '}
+          <Link to="/mood">the Mood screen</Link>. A PIN set there stays on this phone and
+          is never synced.
         </p>
       </section>
 

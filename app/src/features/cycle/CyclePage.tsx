@@ -6,6 +6,7 @@ import { addDays, daysBetween, todayKey } from '../../domain/day';
 import { DEFAULT_TIMEZONE, type CycleEntry, type DayKey } from '../../domain/types';
 import { FLOWS, MOODS, SYMPTOM_GROUPS } from '../../domain/cycle/taxonomy';
 import { daysLate, periodStartsFrom, predict, type Prediction } from '../../domain/cycle/predict';
+import { Icon } from '../../components/icons';
 import { CycleLock } from './CycleLock';
 import { LockSettings } from './LockSettings';
 
@@ -67,7 +68,16 @@ function shortDay(day: DayKey): string {
   });
 }
 
-export function CyclePage() {
+/**
+ * The cycle log, as the last section of Mood rather than a page of its own.
+ *
+ * Two screens both asking how the day went -- one in numbers, one in words --
+ * was the confusion this removes. They still write to two different tables and
+ * two different sync kinds, which is right: three meters from 1 to 10 and a
+ * list of symptom chips are not the same measurement and folding them together
+ * would lose both. What is merged is the surface, not the schema.
+ */
+export function CycleSection() {
   return (
     <CycleLock>
       <CycleBody />
@@ -132,13 +142,14 @@ function CycleBody() {
   const canLog = Boolean(tracksCycle && myId);
 
   return (
-    <div className="page">
-      <header className="page-head">
-        <h1 className="page-title">Cycle</h1>
-        <p className="page-sub">
-          {canLog ? 'Yours to log. Both of you can see it.' : 'Theirs to log. You can see it.'}
-        </p>
-      </header>
+    <section className="panel cycle-panel" aria-labelledby="cycle-heading">
+      <h2 className="section-title cycle-panel-title" id="cycle-heading">
+        <Icon name="moon" />
+        <span>Cycle</span>
+      </h2>
+      <p className="section-sub">
+        {canLog ? 'Yours to log. Both of you can see it.' : 'Theirs to log. You can see it.'}
+      </p>
 
       {subjectId ? (
         <Summary prediction={prediction} today={today} />
@@ -226,7 +237,7 @@ function CycleBody() {
       )}
 
       <LockSettings />
-    </div>
+    </section>
   );
 }
 

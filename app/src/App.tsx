@@ -7,7 +7,6 @@ import { MoodPage } from './features/mood/MoodPage';
 import { WorkPage } from './features/work/WorkPage';
 import { TasksPage } from './features/tasks/TasksPage';
 import { PartyPage } from './features/party/PartyPage';
-import { CyclePage } from './features/cycle/CyclePage';
 import { StudyRoute } from './features/study/StudyRoute';
 import { ChatPanel } from './features/chat/ChatPanel';
 import { PairGate } from './features/pairing/PairGate';
@@ -54,10 +53,11 @@ export function App() {
                   {/* Not a tab. Six across the bottom is already the ceiling on a
                       phone, and the party is somewhere you go from the sheet. */}
                   <Route path="/party" element={<PartyPage />} />
-                  {/* Not a tab either, and for a second reason: a seventh label is
-                      one too many, and a page that can be locked should not announce
-                      itself along the bottom of every other screen. */}
-                  <Route path="/cycle" element={<CyclePage />} />
+                  {/* The cycle log is the last section of Mood now. The old
+                      route is kept as a redirect rather than dropped: it is in
+                      notification deep links, in the command menu, and quite
+                      possibly on somebody's home screen. */}
+                  <Route path="/cycle" element={<Navigate to="/mood" replace />} />
                   {/* Not a tab either, and for the first reason again: six along
                       the bottom is the ceiling, and this is somewhere you go
                       deliberately rather than glance at. */}
