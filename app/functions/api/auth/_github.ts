@@ -182,3 +182,58 @@ export function backToApp(request: Request, params: Record<string, string>): Res
   app.hash = `/settings?${new URLSearchParams(params)}`;
   return Response.redirect(app.toString(), 302);
 }
+
+/* -- the statements, hoisted so they can be run against real SQLite -----------
+ * Every security property this feature has is a WHERE clause, and none of them
+ * is visible from the outside: a refused write and a write that happened to
+ * change nothing look identical to the caller, so a bug in any of them is
+ * silent by construction. `worker/src/githubAuth.test.ts` applies the real
+ * migrations and runs these exact strings — the same arrangement
+ * `pairing.test.ts` uses for the join race and `holdings.test.ts` for the
+ * ownership guard, and for the same stated reason: a hand-written fake returns
+ * whatever the test wants and proves nothing about what the database does.
+ */
+
+/**
+ * Consumed by the read. Single-use has to be enforced by the write and not by
+ * a check somebody can race, so a replayed callback finds nothing however fast
+ * it arrives — which is the entire job of the `state` parameter.
+ */
+export const STATE_CONSUME_SQL =
+  'DELETE FROM oauth_states WHERE state = ? AND expires_at >= ? RETURNING intent, member_id';
+
+/** The same, for the code the redirect came back with. */
+export const CLAIM_CONSUME_SQL =
+  `DELETE FROM oauth_claims WHERE code = ? AND expires_at >= ?
+   RETURNING outcome, member_id, couple_id, github_login`;
+
+/**
+ * Connect a GitHub account to the member the bearer already proved.
+ *
+ * The `WHERE` on the conflict branch is the guard: a GitHub account already
+ * connected to somebody else updates nothing, rather than being quietly moved.
+ * A second GitHub account for a member already holding one is refused by the
+ * unique index on `member_id` instead, which throws — two different failures,
+ * both meaning "that is already taken".
+ */
+export const LINK_UPSERT_SQL =
+  `INSERT INTO github_links (github_user_id, member_id, github_login, created_at, updated_at)
+   VALUES (?, ?, ?, ?, ?)
+   ON CONFLICT (github_user_id) DO UPDATE SET
+     github_login = excluded.github_login,
+     updated_at   = excluded.updated_at
+   WHERE github_links.member_id = excluded.member_id`;
+
+/**
+ * Who a GitHub account recovers, if anyone.
+ *
+ * The join is load-bearing twice: an account nobody connected yields no row at
+ * all, and a member whose device was revoked is excluded rather than
+ * recovered — revocation has to mean something against this route too, or it
+ * would be the way around it.
+ */
+export const RECOVER_LOOKUP_SQL =
+  `SELECT l.member_id, m.couple_id
+     FROM github_links l
+     JOIN members m ON m.id = l.member_id
+    WHERE l.github_user_id = ? AND m.revoked_at IS NULL`;

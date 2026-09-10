@@ -1,6 +1,7 @@
 import { recordAuthEvent } from '../../_lib';
 import {
-  CLAIM_TTL_MS, backToApp, githubApp, identify, randomKey, redirectUriFor, sweep,
+  CLAIM_TTL_MS, LINK_UPSERT_SQL, RECOVER_LOOKUP_SQL, STATE_CONSUME_SQL,
+  backToApp, githubApp, identify, randomKey, redirectUriFor, sweep,
   type GitHubEnv,
 } from '../_github';
 
@@ -31,9 +32,7 @@ export const onRequestGet: PagesFunction<GitHubEnv> = async ({ request, env }) =
 
   // Consumed by the read: the DELETE is what makes the state single-use, so a
   // replayed callback finds nothing however fast it arrives.
-  const pending = await env.DB.prepare(
-    'DELETE FROM oauth_states WHERE state = ? AND expires_at >= ? RETURNING intent, member_id',
-  )
+  const pending = await env.DB.prepare(STATE_CONSUME_SQL)
     .bind(state, now)
     .first<{ intent: string; member_id: string | null }>();
   if (!pending) return backToApp(request, { github: 'failed' });
@@ -61,14 +60,7 @@ export const onRequestGet: PagesFunction<GitHubEnv> = async ({ request, env }) =
     // account linked. Either way the honest answer is "that is already taken",
     // and unlinking first is the way through.
     try {
-      await env.DB.prepare(
-        `INSERT INTO github_links (github_user_id, member_id, github_login, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT (github_user_id) DO UPDATE SET
-           github_login = excluded.github_login,
-           updated_at   = excluded.updated_at
-         WHERE github_links.member_id = excluded.member_id`,
-      )
+      await env.DB.prepare(LINK_UPSERT_SQL)
         .bind(user.id, pending.member_id, user.login, now, now)
         .run();
     } catch {
@@ -103,12 +95,7 @@ export const onRequestGet: PagesFunction<GitHubEnv> = async ({ request, env }) =
   // Recovery. The linked member is looked up by GitHub's id and nothing else;
   // an account nobody has linked gets no member, no couple, and no offer to
   // create one.
-  const link = await env.DB.prepare(
-    `SELECT l.member_id, m.couple_id
-       FROM github_links l
-       JOIN members m ON m.id = l.member_id
-      WHERE l.github_user_id = ? AND m.revoked_at IS NULL`,
-  )
+  const link = await env.DB.prepare(RECOVER_LOOKUP_SQL)
     .bind(user.id)
     .first<{ member_id: string; couple_id: string }>();
 
