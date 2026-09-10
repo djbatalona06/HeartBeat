@@ -5,10 +5,12 @@ import { ensureIdentity, completeTask, seedStarterPlan } from '../../db/reposito
 import { todayKey } from '../../domain/day';
 import { levelProgress } from '../../domain/xp';
 import { openDailies } from '../../domain/rpg/task';
-import type { Task } from '../../domain/rpg/types';
+import { GEAR_SLOTS, type Task } from '../../domain/rpg/types';
+import { gearById } from '../../domain/rpg/gear';
 import { useTheme } from '../../themes/ThemeProvider';
 import { getMascot } from '../pet/mascots';
 import { QuestBoard } from '../quests/QuestBoard';
+import { gearArt } from '../party/art/gear';
 
 /**
  * Home. What the pet is doing, and what is left to do today.
@@ -57,6 +59,11 @@ export function DashboardPage() {
     () => (settings?.coupleId ? db.pet.get(settings.coupleId) : undefined),
     [settings?.coupleId],
   );
+  const avatar = useLiveQuery(
+    () => (memberId ? db.avatars.get(memberId) : undefined),
+    [memberId],
+  );
+  const equippedIds = avatar ? GEAR_SLOTS.map((slot) => avatar.gear[slot]).filter(Boolean) as string[] : [];
 
   // `Pet.level` is carried forward from whoever last wrote the row and is never
   // recomputed, so the level shown is always derived from the XP instead. XP
@@ -124,6 +131,21 @@ export function DashboardPage() {
             {dailies === undefined ? '' : 'Nothing waiting on the list today.'}
           </p>
         )}
+
+        {equippedIds.length ? (
+          <ul className="home-equipped" aria-label="Equipped">
+            {equippedIds.map((itemId) => {
+              const item = gearById(itemId);
+              const Art = gearArt(itemId);
+              if (!item || !Art) return null;
+              return (
+                <li key={itemId} className="home-equipped-item" title={item.name}>
+                  <Art />
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
       </section>
 
       {coupleId ? (

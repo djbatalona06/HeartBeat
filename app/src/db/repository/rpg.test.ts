@@ -5,6 +5,8 @@ import {
   addXp,
   archiveTask,
   bondPet,
+  buyEgg,
+  buyGear,
   completeTask,
   equipItem,
   getOrCreateAvatar,
@@ -24,6 +26,7 @@ import {
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import { payoutFor } from '../../domain/rpg/task';
 import { maxPetMp, petKindById, rankOf } from '../../domain/rpg/pets';
+import { DUPLICATE_PET_BOND, EGG_PRICE, REFINE_MAX } from '../../domain/rpg/shop';
 import { xpForLevel } from '../../domain/xp';
 
 /**
@@ -43,6 +46,7 @@ beforeEach(async () => {
   await Promise.all([
     db.tasks.clear(), db.avatars.clear(), db.rewards.clear(),
     db.redemptions.clear(), db.lifeEvents.clear(), db.pets.clear(), db.pet.clear(),
+    db.inventory.clear(),
   ]);
 });
 
@@ -51,6 +55,15 @@ async function daily(over: { difficulty?: 'trivial' | 'easy' | 'medium' | 'hard'
     { coupleId: COUPLE, memberId: HER, type: 'daily', title: 'Walk', ...over },
     DAY,
   );
+}
+
+/** Grants ownership directly, bypassing payment — for tests about equipping
+ *  rather than about the shop. `buyGear`'s own tests cover the purchase. */
+async function own(memberId: string, itemId: string) {
+  await db.inventory.put({
+    id: `inv-${memberId}-${itemId}`, coupleId: COUPLE, memberId, itemId,
+    refine: 0, acquiredAt: 1, updatedAt: 1,
+  });
 }
 
 describe('putTask', () => {
@@ -287,11 +300,24 @@ describe('rewards', () => {
 });
 
 describe('gear', () => {
-  it('equips what the level allows and refuses what it does not', async () => {
+  it('refuses to equip an item never bought', async () => {
     await db.avatars.put({
       memberId: HER, coupleId: COUPLE, xp: xpForLevel(5),
       coins: 0, energy: 0, mp: 0, gear: {}, updatedAt: 1,
     });
+    const result = await equipItem(HER, COUPLE, 'weapon-ember-brand');
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain('shop');
+    expect((await db.avatars.get(HER))!.gear.weapon).toBeUndefined();
+  });
+
+  it('equips what is owned and the level allows, and refuses what it does not', async () => {
+    await db.avatars.put({
+      memberId: HER, coupleId: COUPLE, xp: xpForLevel(5),
+      coins: 0, energy: 0, mp: 0, gear: {}, updatedAt: 1,
+    });
+    await own(HER, 'weapon-ember-brand');
+    await own(HER, 'head-aurora-veil');
 
     expect((await equipItem(HER, COUPLE, 'weapon-ember-brand')).ok).toBe(true);
     expect((await db.avatars.get(HER))!.gear.weapon).toBe('weapon-ember-brand');
@@ -306,12 +332,99 @@ describe('gear', () => {
       memberId: HER, coupleId: COUPLE, xp: xpForLevel(9),
       coins: 0, energy: 0, mp: 0, gear: {}, updatedAt: 1,
     });
+    await own(HER, 'weapon-comet-lance');
     const bare = sheetFor((await db.avatars.get(HER))!).stats.strength;
 
     await equipItem(HER, COUPLE, 'weapon-comet-lance');
     await unequipSlot(HER, COUPLE, 'weapon');
     expect((await db.avatars.get(HER))!.gear.weapon).toBeUndefined();
     expect(sheetFor((await db.avatars.get(HER))!).stats.strength).toBe(bare);
+  });
+});
+
+describe('buyGear', () => {
+  it('adds a new item to the inventory and spends the price', async () => {
+    await db.avatars.put({
+      memberId: HER, coupleId: COUPLE, xp: 0, coins: 100, energy: 0, mp: 0, gear: {}, updatedAt: 1,
+    });
+    const result = await buyGear(HER, COUPLE, 'head-paper-crown');
+    expect(result.ok).toBe(true);
+    expect(result.refined).toBeUndefined();
+    expect((await db.avatars.get(HER))!.coins).toBe(70); // common: 30
+    const owned = await db.inventory.where('[memberId+itemId]').equals([HER, 'head-paper-crown']).first();
+    expect(owned?.refine).toBe(0);
+  });
+
+  it('refines rather than duplicates a second purchase of the same item', async () => {
+    await db.avatars.put({
+      memberId: HER, coupleId: COUPLE, xp: 0, coins: 1000, energy: 0, mp: 0, gear: {}, updatedAt: 1,
+    });
+    await buyGear(HER, COUPLE, 'head-paper-crown');
+    const second = await buyGear(HER, COUPLE, 'head-paper-crown');
+    expect(second.ok).toBe(true);
+    expect(second.refined).toBe(1);
+    expect(await db.inventory.where('memberId').equals(HER).count()).toBe(1);
+  });
+
+  it('refuses past the refine cap', async () => {
+    await db.avatars.put({
+      memberId: HER, coupleId: COUPLE, xp: 0, coins: 100000, energy: 0, mp: 0, gear: {}, updatedAt: 1,
+    });
+    // The first purchase creates the row at refine 0; reaching the cap takes
+    // REFINE_MAX more purchases after that, refining it once each time.
+    for (let i = 0; i < REFINE_MAX + 1; i += 1) await buyGear(HER, COUPLE, 'head-paper-crown');
+    const owned = await db.inventory.where('[memberId+itemId]').equals([HER, 'head-paper-crown']).first();
+    expect(owned?.refine).toBe(REFINE_MAX);
+
+    const maxed = await buyGear(HER, COUPLE, 'head-paper-crown');
+    expect(maxed.ok).toBe(false);
+    expect(maxed.reason).toContain(`+${REFINE_MAX}`);
+  });
+
+  it('refuses without spending when short on coins', async () => {
+    await db.avatars.put({
+      memberId: HER, coupleId: COUPLE, xp: 0, coins: 5, energy: 0, mp: 0, gear: {}, updatedAt: 1,
+    });
+    const result = await buyGear(HER, COUPLE, 'head-paper-crown');
+    expect(result.ok).toBe(false);
+    expect((await db.avatars.get(HER))!.coins).toBe(5);
+  });
+});
+
+describe('buyEgg', () => {
+  it('spends the egg price and hatches a new pet', async () => {
+    await db.avatars.put({
+      memberId: HER, coupleId: COUPLE, xp: 0, coins: EGG_PRICE, energy: 0, mp: 0, gear: {}, updatedAt: 1,
+    });
+    const result = await buyEgg(COUPLE, HER, { rarity: 0, species: 0.1 }, 0);
+    expect(result.ok).toBe(true);
+    expect(result.merged).toBeUndefined();
+    expect((await db.avatars.get(HER))!.coins).toBe(0);
+    expect(await db.pets.where('memberId').equals(HER).count()).toBe(1);
+  });
+
+  it('merges a duplicate kind into the existing pet\'s bond rather than adding a second', async () => {
+    await db.avatars.put({
+      memberId: HER, coupleId: COUPLE, xp: 0, coins: EGG_PRICE * 2, energy: 0, mp: 0, gear: {}, updatedAt: 1,
+    });
+    const first = await buyEgg(COUPLE, HER, { rarity: 0, species: 0.1 }, 0);
+    const second = await buyEgg(COUPLE, HER, { rarity: 0, species: 0.1 }, 0);
+
+    expect(second.ok).toBe(true);
+    expect(second.merged).toBe(true);
+    expect(second.pet!.id).toBe(first.pet!.id);
+    expect(second.pet!.bond).toBe(DUPLICATE_PET_BOND);
+    expect(await db.pets.where('memberId').equals(HER).count()).toBe(1);
+  });
+
+  it('refuses without spending when short on coins', async () => {
+    await db.avatars.put({
+      memberId: HER, coupleId: COUPLE, xp: 0, coins: EGG_PRICE - 1, energy: 0, mp: 0, gear: {}, updatedAt: 1,
+    });
+    const result = await buyEgg(COUPLE, HER, { rarity: 0, species: 0.1 }, 0);
+    expect(result.ok).toBe(false);
+    expect((await db.avatars.get(HER))!.coins).toBe(EGG_PRICE - 1);
+    expect(await db.pets.where('memberId').equals(HER).count()).toBe(0);
   });
 });
 
