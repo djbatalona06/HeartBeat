@@ -125,6 +125,41 @@ export const QUEST_TEMPLATES: readonly QuestTemplate[] = [
     title: (t) => `Keep track on ${days(t)}`,
     blurb: 'A day logged on the cycle tab.',
   },
+
+  // Basic: easier than the template sharing its measure, for a week that
+  // should not ask for much. `steady` on these still lands under the `easy`
+  // target of their counterpart above, by design.
+  {
+    id: 'settle-in',
+    measure: 'moodDays',
+    base: 2,
+    title: (t) => `Just say how it went, ${days(t)}`,
+    blurb: 'One mood logged is one day. A quieter version of the same thing.',
+  },
+  {
+    id: 'one-thing',
+    measure: 'planDays',
+    base: 1,
+    title: (t) => `Put something in the diary on ${days(t)}`,
+    blurb: 'A day you added anything to the calendar. Barely a week at all.',
+  },
+
+  // Advanced: harder than their counterpart at every difficulty, for a couple
+  // who has been finishing quests early and wants the week to ask for more.
+  {
+    id: 'push',
+    measure: 'exerciseDays',
+    base: 6,
+    title: (t) => `Move on ${days(t)} -- most of the week`,
+    blurb: 'Any workout logged on the Move tab counts the day.',
+  },
+  {
+    id: 'clear-the-list',
+    measure: 'tasksFinished',
+    base: 9,
+    title: (t) => `Finish ${inWords(t)} different things`,
+    blurb: 'Each task counts once, the week it is ticked off. A heavier list than usual.',
+  },
 ];
 
 export function templateById(id: string): QuestTemplate | undefined {

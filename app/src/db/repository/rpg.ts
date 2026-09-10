@@ -1,6 +1,7 @@
 import { db } from '../database';
-import type { DayKey, MemberId } from '../../domain/types';
+import { DEFAULT_SETTINGS, type DayKey, type MemberId } from '../../domain/types';
 import { addDays } from '../../domain/day';
+import { starterPlanFor } from '../../domain/rpg/starterPlan';
 import {
   newAvatar,
   type Avatar,
@@ -80,6 +81,38 @@ export async function putTask(draft: TaskDraft, day: DayKey, taskId?: string): P
   const task = newTask({ id: id(), ...draft }, now(), day);
   await db.tasks.put(task);
   return task.id;
+}
+
+/**
+ * Plants the starter plan exactly once per install: six fixed dailies and two
+ * that rotate with the ISO week, so Tasks is never the empty list and blank
+ * text field a brand-new pair would otherwise open to.
+ *
+ * Guarded inside the transaction it writes in, not by a check beforehand --
+ * two calls racing on the same cold start (the identity effect can fire more
+ * than once) must not plant sixteen tasks instead of eight.
+ */
+export async function seedStarterPlan(
+  memberId: MemberId,
+  coupleId: string,
+  day: DayKey,
+): Promise<boolean> {
+  return db.transaction('rw', db.settings, db.tasks, async () => {
+    const settings = await db.settings.get('settings');
+    if (settings?.starterPlanSeededAt) return false;
+
+    for (const starter of starterPlanFor(day)) {
+      const task = newTask(
+        { id: id(), coupleId, memberId, type: 'daily', title: starter.title, difficulty: starter.difficulty },
+        now(),
+        day,
+      );
+      await db.tasks.put(task);
+    }
+
+    await db.settings.put({ ...(settings ?? DEFAULT_SETTINGS), id: 'settings', starterPlanSeededAt: now() });
+    return true;
+  });
 }
 
 export async function archiveTask(taskId: string): Promise<void> {

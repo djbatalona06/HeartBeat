@@ -32,3 +32,21 @@ export function daysBetween(from: DayKey, to: DayKey): number {
   };
   return Math.round((parse(to) - parse(from)) / 86400000);
 }
+
+/**
+ * ISO-8601 week number of a day key: Monday-start weeks, the first week of the
+ * year being whichever one holds that year's first Thursday. Used to rotate
+ * the same two starter tasks into both phones without either one syncing a
+ * choice — the week number is arithmetic, so it agrees with itself.
+ */
+export function isoWeekOf(day: DayKey): number {
+  const [y, m, d] = day.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  // Nearest Thursday: ISO weeks are defined by which week holds it.
+  const dayNum = (date.getUTCDay() + 6) % 7; // Monday = 0 .. Sunday = 6
+  date.setUTCDate(date.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  const firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
+  return 1 + Math.round((date.getTime() - firstThursday.getTime()) / (7 * 86400000));
+}

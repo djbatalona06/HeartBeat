@@ -53,10 +53,13 @@ export const SHARED_TOKENS: Record<string, string> = {
   '--shell-max': '560px',
   '--shell-gutter': '18px',
   '--shell-top': 'var(--space-5)',
-  /** The bar's own height, before the phone's safe area is added underneath. */
-  '--tabbar-height': '60px',
-  /** What a page must leave clear at the bottom: the bar, plus room to breathe. */
-  '--shell-bottom': 'calc(var(--tabbar-height) + var(--space-5))',
+  '--shell-bottom': 'var(--space-5)',
+  /** The rail's own width, before the phone's safe area is added beside it.
+      Widens at the breakpoint in styles.css where every label gets to stay
+      visible rather than only the active one's. */
+  '--rail-width': '64px',
+  /** What a page must leave clear on the left: the rail, plus room to breathe. */
+  '--shell-left': 'calc(var(--rail-width) + var(--space-5))',
 
   // The gap between stacked cards. Finch's breathing room is mostly this one
   // number, and it is the first thing to raise when a screen feels crowded.

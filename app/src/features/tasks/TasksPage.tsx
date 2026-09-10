@@ -12,6 +12,7 @@ import {
   getOrCreateAvatar,
   logHabitDown,
   putTask,
+  seedStarterPlan,
   settleTasks,
   type CompletionReceipt,
 } from '../../db/repository';
@@ -55,15 +56,18 @@ export function TasksPage() {
 
   // The sheet has to exist before the first completion, or a fresh install
   // shows a page with no character on it and no way to tell that is temporary.
+  // The starter plan is seeded from here too, for the same reason: a fresh
+  // install should never open this page to an empty list and a blank field.
   useEffect(() => {
     let live = true;
     ensureIdentity()
       .then(async (next) => {
         await getOrCreateAvatar(next.memberId, next.coupleId);
+        await seedStarterPlan(next.memberId, next.coupleId, day);
         if (live) setIdentity(next);
       });
     return () => { live = false; };
-  }, []);
+  }, [day]);
 
   // Walk every Daily forward to yesterday. Idempotent, so running it on every
   // mount and every day rollover is free.
