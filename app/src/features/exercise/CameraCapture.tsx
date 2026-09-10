@@ -14,9 +14,21 @@ import {
  * It is a file input rather than `getUserMedia`. A standalone PWA on iOS is not
  * a reliable place to hold a camera stream — permission is asked again on every
  * cold start, and a backgrounded app loses the track — whereas a file input is
- * the system picker, and the system picker has never once failed. `capture` is
- * advisory there: it puts a camera in front of you, it does not skip the
- * picker, which is why nothing in this component's copy promises that it will.
+ * the system picker, and the system picker has never once failed.
+ *
+ * **Two inputs, and `capture` is the only difference between them.** There
+ * used to be one, carrying `capture`, which on a phone opens the camera and
+ * *only* the camera. That is the wrong single choice: the workout is often
+ * over before anyone thinks to log it, and the photograph that proves it is
+ * already in the camera roll. An input without `capture` is the same system
+ * picker offering the library and Files instead. Both hand back a `File` and
+ * both go through the same `onPicked`, so the split is genuinely one attribute
+ * and no second code path.
+ *
+ * `capture` is advisory even where it applies: it puts a camera in front of
+ * you, it does not skip the picker, and on a desktop it is ignored entirely
+ * and both buttons open the same dialog. Which is why the copy says "Take" and
+ * "Choose" rather than promising what will appear.
  *
  * All the DOM lives here, and all the arithmetic lives in `photo.ts`, because a
  * canvas cannot be tested in the node environment the suite runs in and the
@@ -141,8 +153,10 @@ async function renderProof(file: File): Promise<Proof> {
 }
 
 export function CameraCapture({ memberId, day, facing, photo }: CameraCaptureProps) {
-  const inputId = useId();
-  const input = useRef<HTMLInputElement>(null);
+  const cameraId = useId();
+  const libraryId = useId();
+  const camera = useRef<HTMLInputElement>(null);
+  const library = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The bytes: already here for a shot taken on this phone, fetched once from
@@ -194,27 +208,58 @@ export function CameraCapture({ memberId, day, facing, photo }: CameraCapturePro
           <span className="proof-slot-text">Loading the photo…</span>
         </div>
       ) : (
-        <label className="proof-slot" htmlFor={inputId}>
+        // The empty slot opens the camera, because taking one now is the
+        // common case; choosing an existing one is the second button under it
+        // rather than a second full-size target competing with it.
+        <label className="proof-slot" htmlFor={cameraId}>
           <span className="proof-plus" aria-hidden="true">+</span>
-          <span className="proof-slot-text">{busy ? 'Working…' : 'Add a photo'}</span>
+          <span className="proof-slot-text">{busy ? 'Working…' : 'Take a photo'}</span>
         </label>
       )}
 
       <input
-        ref={input}
-        id={inputId}
+        ref={camera}
+        id={cameraId}
         className="proof-input"
         type="file"
         accept="image/*"
         capture={facing === 'back' ? 'environment' : 'user'}
         onChange={onPicked}
       />
+      {/* The same input without `capture`: the system picker, offering the
+          camera roll and Files rather than going straight to the lens. */}
+      <input
+        ref={library}
+        id={libraryId}
+        className="proof-input"
+        type="file"
+        accept="image/*"
+        onChange={onPicked}
+      />
 
-      {photo ? (
-        <div className="proof-actions">
-          <button type="button" className="proof-action" onClick={() => input.current?.click()} disabled={busy}>
-            {busy ? 'Working…' : 'Replace'}
+      <div className="proof-actions">
+        {photo ? (
+          <button
+            type="button"
+            className="proof-action"
+            onClick={() => camera.current?.click()}
+            disabled={busy}
+          >
+            {busy ? 'Working…' : 'Retake'}
           </button>
+        ) : null}
+        <button
+          type="button"
+          className="proof-action"
+          onClick={() => library.current?.click()}
+          disabled={busy}
+        >
+          {/* Longer when it is the only button on the row, because on its own
+              "Choose" does not say choose what. Beside Retake and Remove the
+              row supplies that. */}
+          {photo ? 'Choose' : 'Choose an existing one'}
+        </button>
+        {photo ? (
           <button
             type="button"
             className="proof-action"
@@ -223,8 +268,8 @@ export function CameraCapture({ memberId, day, facing, photo }: CameraCapturePro
           >
             Remove
           </button>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       {photo ? (
         <span className="proof-size">
