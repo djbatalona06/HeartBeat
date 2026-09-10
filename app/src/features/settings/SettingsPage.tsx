@@ -9,6 +9,7 @@ import { fetchProfiles, health, pairJoin, pairStart, putProfile } from '../../pw
 import { NotificationsBlock } from './NotificationsBlock';
 import { StudyLinkBlock } from './StudyLinkBlock';
 import { ComplimentBlock } from './ComplimentBlock';
+import { GitHubBlock } from './GitHubBlock';
 import {
   clearPendingInvite,
   putMyProfile,
@@ -89,6 +90,12 @@ export function SettingsPage() {
       {paired ? (
         <Partner members={members} settings={settings} />
       ) : null}
+
+      {/* Under pairing on purpose, and rendered whether or not this phone is
+          paired: an unpaired one is exactly where "get back in" belongs, and
+          it is the reason Settings stays open while unpaired at all. Renders
+          nothing when the deploy has no OAuth app. */}
+      <GitHubBlock token={settings?.workerSecret} paired={paired} />
 
       <section className="set-block">
         <h2 className="section-title">Theme</h2>

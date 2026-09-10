@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { saveSettings } from '../../db/database';
 import { installState, isIos } from '../../pwa/install';
+import { githubLink } from '../../pwa/api';
 
 const REPO_URL = 'https://github.com/djbatalona06/HeartBeat';
 
@@ -17,6 +18,16 @@ const REPO_URL = 'https://github.com/djbatalona06/HeartBeat';
 export function WelcomePage() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+
+  // Whether this deploy offers GitHub recovery at all. Asked without a token,
+  // which the endpoint allows precisely so this screen — which nobody on it is
+  // signed in to — can find out. Never throws; a null answer is "no".
+  const [recovery, setRecovery] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void githubLink().then((link) => { if (live) setRecovery(Boolean(link?.configured)); });
+    return () => { live = false; };
+  }, []);
   const state = installState();
   const inAppBrowser = state === 'unsupported-browser';
 
@@ -114,11 +125,31 @@ export function WelcomePage() {
           <dt>What if I delete the app?</dt>
           <dd>
             The icon goes, and the notification permission goes with it. What
-            you logged stays on the server for your partner to see; re-adding
-            the icon and pairing again brings it back to this phone.
+            you logged stays on the server for your partner to see. Getting it
+            back onto a phone means pairing again — which needs your partner,
+            unless you connected GitHub first, which is what that is for.
           </dd>
         </dl>
       </section>
+
+      {/* Only when the deploy actually has an OAuth app. The pairing code is
+          still the only way *into* a couple, so this is never an alternative
+          to the steps above — it is the way back for somebody who has already
+          done them once. */}
+      {recovery ? (
+        <section className="panel">
+          <h2 className="section-title">Been here before?</h2>
+          <p className="section-sub">
+            If you were already part of a couple here and connected GitHub,
+            you can sign back in with it rather than pairing again. It is not
+            a login — it only proves you are you, so this phone can pick up
+            where the old one left off.
+          </p>
+          <Link className="primary welcome-recover" to="/settings">
+            Get back in &rarr;
+          </Link>
+        </section>
+      ) : null}
 
       <a className="welcome-repo" href={REPO_URL} target="_blank" rel="noreferrer">
         <span aria-hidden="true">&#9679;</span> github.com/djbatalona06/HeartBeat

@@ -3446,3 +3446,44 @@ body {
   font-variant-numeric: tabular-nums;
 }
 .asset-streak { color: var(--color-accent); }
+
+/* ---- the GitHub block -------------------------------------------------------
+   Optional account recovery. The whole section is absent on a deploy with no
+   OAuth app, so none of this has an "unavailable" state to style. */
+
+.github-note {
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid var(--color-border);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+
+/* Bad news takes the danger border and nothing else — a filled red panel on a
+   screen somebody has just been redirected to reads as "you broke it", and
+   most of what lands here is "that link expired". */
+.github-note[data-problem='true'] { border-color: var(--color-danger); }
+
+.github-account {
+  margin: var(--space-3) 0;
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+
+.github-fineprint {
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  line-height: var(--line-body);
+  color: var(--color-text-muted);
+}
+
+/* The recovery link on Welcome. `.primary` is written for a button; as a link
+   it has to centre its own text — the same note the pairing CTA carries. */
+.welcome-recover {
+  display: block;
+  margin-top: var(--space-4);
+  text-align: center;
+  text-decoration: none;
+}

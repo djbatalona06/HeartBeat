@@ -114,6 +114,8 @@ export interface Health {
    * construction — it reaches every browser that ever enables notifications.
    */
   vapidPublicKey?: string | null;
+  /** Whether this deploy has a GitHub OAuth app configured. */
+  github?: boolean;
 }
 
 /** Never throws: "is the backend up" must not itself fail loudly. */
@@ -427,4 +429,92 @@ export async function askAbout(question: string, token: string): Promise<string>
   });
   if (!res.ok) throw await errorFrom(res);
   return ((await res.json()) as { answer: string }).answer;
+}
+
+/* -- optional account recovery through GitHub --------------------------------
+ * The pairing code is still the only way into a couple. This is a second proof
+ * of "I am this member", for the case pairing cannot answer: the phone is gone
+ * and the single-use invite that put it in the couple was consumed months ago.
+ *
+ * The round trip is three calls, because a redirect cannot be trusted to carry
+ * a bearer token. `githubStart` asks for a URL, the browser goes to GitHub and
+ * comes back to /#/settings?github=…&claim=…, and `githubClaim` exchanges that
+ * one-time code for the result. See app/functions/api/auth/_github.ts.
+ */
+
+export interface GitHubLink {
+  /** False when the deploy has no OAuth app. The UI hides itself on this. */
+  configured: boolean;
+  linked: boolean;
+  githubLogin?: string;
+}
+
+/** Never throws, for the same reason `health` does not: a screen that cannot
+ *  answer "is this available" should render without it, not fail. */
+export async function githubLink(token?: string): Promise<GitHubLink | null> {
+  try {
+    const res = await fetch('/api/auth/github/link', {
+      headers: token ? authHeaders(token) : undefined,
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as GitHubLink;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Ask for the URL to send the browser to.
+ *
+ * `link` binds the sign-in to the member the token already proves, and is the
+ * only way a link is ever created. `recover` sends no token, and asserts
+ * nothing about who it is.
+ */
+export async function githubStart(
+  intent: 'link' | 'recover',
+  token?: string,
+): Promise<string> {
+  const res = await fetch('/api/auth/github/start', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? authHeaders(token) : {}),
+    },
+    body: JSON.stringify({ intent }),
+  });
+  if (!res.ok) throw await errorFrom(res);
+  return ((await res.json()) as { url: string }).url;
+}
+
+export type GitHubClaim =
+  | { outcome: 'linked'; githubLogin: string }
+  | { outcome: 'recovered'; memberId: string; coupleId: string; token: string; githubLogin: string };
+
+/**
+ * Exchange the one-time code the redirect came back with.
+ *
+ * A `recovered` result carries a freshly minted bearer, and minting it is what
+ * signs the old phone out — the member row holds exactly one token hash, so
+ * recovery necessarily replaces it. That is the point of recovery and also its
+ * safety property.
+ */
+export async function githubClaim(claim: string, token?: string): Promise<GitHubClaim> {
+  const res = await fetch('/api/auth/github/claim', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? authHeaders(token) : {}),
+    },
+    body: JSON.stringify({ claim }),
+  });
+  if (!res.ok) throw await errorFrom(res);
+  return (await res.json()) as GitHubClaim;
+}
+
+export async function githubUnlink(token: string): Promise<void> {
+  const res = await fetch('/api/auth/github/link', {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw await errorFrom(res);
 }

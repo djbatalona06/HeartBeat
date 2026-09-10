@@ -1,4 +1,5 @@
-import { json, type Env } from './_lib';
+import { json } from './_lib';
+import { githubApp, type GitHubEnv } from './auth/_github';
 
 /**
  * Is the backend actually wired up?
@@ -15,7 +16,7 @@ import { json, type Env } from './_lib';
  * false` rather than as an error, so a deploy without push configured still
  * answers this route.
  */
-export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
+export const onRequestGet: PagesFunction<GitHubEnv> = async ({ env }) => {
   let db = false;
   try {
     await env.DB.prepare('SELECT 1').first();
@@ -30,5 +31,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     ai: Boolean(env.AI),
     push: Boolean(vapidPublicKey),
     vapidPublicKey,
+    // Optional account recovery. False is a configuration answer, not a fault:
+    // the pairing code is still the only way into a couple, so a deploy
+    // without an OAuth app is fully functional and simply does not offer this.
+    github: Boolean(githubApp(env)),
   });
 };

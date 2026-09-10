@@ -231,3 +231,87 @@ writes the same object to the same name, and a row that already has a key is
 skipped. It deletes nothing — `photo_data_uri` and the base64 in old payloads
 stay put so a phone that has not updated keeps working. A later migration drops
 them once nothing reads them.
+
+## 8. GitHub sign-in (optional)
+
+**Entirely optional.** The app is fully functional without it, and the
+six-character pairing code remains the *only* way into a couple whether this is
+configured or not. If the two variables below are unset, `/api/health` reports
+`github: false`, the Settings section renders nothing at all, and every route
+under `/api/auth/github/` answers `503` in words. Nothing else changes.
+
+### What it is for
+
+Pairing has one failure it cannot answer: a phone is lost or replaced, and the
+invite that put it in the couple was single-use and consumed months ago. The
+only recovery was for the *other* partner to start a fresh pairing — which
+meant recovery was impossible for whoever was holding the only phone.
+
+So this is a second proof of *"I am this member"*, and deliberately not a
+second way to become one:
+
+- **Connecting** requires a device already authenticated as that member. Its
+  bearer token is what says which member is being connected.
+- **Recovering** returns exactly the member that was connected, and never
+  creates one. Signing in with a GitHub account nobody has connected gets you
+  told so and nothing else — no account, no empty couple, no offer to make one.
+- Recovery **rotates the bearer**, because `members` holds one `token_hash` per
+  member. The old phone is signed out. That is the point for a lost phone, and
+  it is also the safety property: if somebody else reaches it, the person it
+  belongs to finds out immediately.
+
+### Create the OAuth app
+
+1. GitHub → Settings → Developer settings → **OAuth Apps** → New OAuth App.
+2. **Homepage URL**: `https://heartbeat-eop.pages.dev`
+3. **Authorization callback URL**:
+   `https://heartbeat-eop.pages.dev/api/auth/github/callback`
+   This must match exactly. The app derives the same URL from the incoming
+   request rather than from configuration, so there is nothing to keep in step
+   — but GitHub compares it against what you type here.
+4. Generate a client secret.
+
+No scopes are requested. An empty scope still identifies the account, which is
+the entire purpose; `read:user` would additionally read their profile and
+anything with `repo` in it would read their code, and a couples' mood tracker
+has no business holding either. The consent screen says so.
+
+### Add the two secrets
+
+These are **Pages project** secrets, not repository secrets and not additions
+to `CLOUDFLARE_API_TOKEN`:
+
+```bash
+npx wrangler pages secret put GITHUB_CLIENT_ID   --project-name heartbeat-app
+npx wrangler pages secret put GITHUB_CLIENT_SECRET --project-name heartbeat-app
+```
+
+Or in the dashboard: **Workers & Pages → heartbeat-app → Settings →
+Environment variables → Add (encrypt)**. Add them to Production; add them to
+Preview too if you want the feature on preview deployments, which have a
+different hostname and therefore need their own callback URL registered.
+
+Confirm with:
+
+```bash
+curl -s https://heartbeat-eop.pages.dev/api/health | jq .github   # expect true
+```
+
+### Migration
+
+The tables (`github_links`, `oauth_states`, `oauth_claims`) come from
+`worker/migrations/0012_github_link.sql`, which `worker-deploy.yml` applies
+before deploying like every other migration. Nothing here needs a manual step.
+
+### What recovery does and does not bring back
+
+Recovery restores **identity** — the member, the couple and a fresh bearer —
+and with it everything the server holds for that couple: mood, exercise, cycle
+and work entries, workout photographs, the message thread, the shared pet's XP,
+and boss fights.
+
+It does **not** bring back the RPG layer. Gear inventory, companions, quests,
+tasks and the coin wallet are local-only Dexie tables today with no server
+table behind them, so they live and die with the device. That is a gap in the
+sync rather than in recovery, and it is the same gap a reinstall has always
+had.
