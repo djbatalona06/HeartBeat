@@ -1,5 +1,5 @@
 import { authenticate, hashToken, json, newToken, recordAuthEvent } from '../../_lib';
-import { sweep, type GitHubEnv } from '../_github';
+import { CLAIM_CONSUME_SQL, sweep, type GitHubEnv } from '../_github';
 
 /**
  * Exchange a one-time claim code for its result.
@@ -28,10 +28,7 @@ export const onRequestPost: PagesFunction<GitHubEnv> = async ({ request, env }) 
 
   // Consumed by the read, for the same reason the state is: single-use has to
   // be enforced by the write, not by a check somebody can race.
-  const claim = await env.DB.prepare(
-    `DELETE FROM oauth_claims WHERE code = ? AND expires_at >= ?
-     RETURNING outcome, member_id, couple_id, github_login`,
-  )
+  const claim = await env.DB.prepare(CLAIM_CONSUME_SQL)
     .bind(code, now)
     .first<{
       outcome: string;
