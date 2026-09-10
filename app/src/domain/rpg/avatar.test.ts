@@ -88,8 +88,20 @@ describe('applyPayout', () => {
   const payout: Payout = { xp: 12, coins: 5, energy: 8, mp: 3 };
 
   it('credits every pool', () => {
-    const after = applyPayout(avatar(), payout, AT + 1);
-    expect(after).toMatchObject({ xp: 12, coins: 5, energy: 8, mp: 3, updatedAt: AT + 1 });
+    // Written as before + payout rather than as four literals: a new avatar
+    // opens with `STARTER_COINS` in its wallet, so a literal here would be
+    // asserting the starting balance and the credit at the same time, and
+    // would have to be edited every time the economy's opening hand changed.
+    // What this test is for is the credit.
+    const before = avatar();
+    const after = applyPayout(before, payout, AT + 1);
+    expect(after).toMatchObject({
+      xp: before.xp + payout.xp,
+      coins: before.coins + payout.coins,
+      energy: before.energy + payout.energy,
+      mp: before.mp + payout.mp,
+      updatedAt: AT + 1,
+    });
   });
 
   it('fills energy and MP to the ceiling and stops', () => {

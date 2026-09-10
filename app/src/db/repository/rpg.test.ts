@@ -27,6 +27,7 @@ import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import { payoutFor } from '../../domain/rpg/task';
 import { maxPetMp, petKindById, rankOf } from '../../domain/rpg/pets';
 import { DUPLICATE_PET_BOND, EGG_PRICE, REFINE_MAX } from '../../domain/rpg/shop';
+import { STARTER_COINS } from '../../domain/rpg/types';
 import { xpForLevel } from '../../domain/xp';
 
 /**
@@ -100,7 +101,11 @@ describe('completeTask', () => {
 
     const avatar = (await db.avatars.get(HER))!;
     expect(avatar.xp).toBe(expected.xp);
-    expect(avatar.coins).toBe(expected.coins);
+    // Coins are the one pool that does not start at zero — a new avatar is
+    // minted with `STARTER_COINS` so the shop is not a price list somebody can
+    // only look at on day one. So the balance is the opening hand plus the
+    // payout, and it is the payout this is checking.
+    expect(avatar.coins).toBe(STARTER_COINS + expected.coins);
     expect(avatar.energy).toBe(expected.energy);
     expect((await db.pet.get(COUPLE))?.xp).toBe(expected.xp);
     expect((await db.tasks.get(id))!.value).toBeGreaterThan(0);
@@ -288,13 +293,19 @@ describe('rewards', () => {
   });
 
   it('refuses without spending anything, and says how far off it is', async () => {
-    const rewardId = await putReward({ coupleId: COUPLE, title: 'Weekend away', cost: 500 });
+    const COST = 500;
+    const rewardId = await putReward({ coupleId: COUPLE, title: 'Weekend away', cost: COST });
     await getOrCreateAvatar(HER, COUPLE);
 
     const result = await redeemReward(rewardId, HER, DAY);
     expect(result.ok).toBe(false);
-    expect(result.reason).toContain('500');
-    expect((await db.avatars.get(HER))!.coins).toBe(0);
+    // The shortfall, not the price. This used to assert the price and pass,
+    // because a new avatar held nothing and the two numbers were the same —
+    // so the test could not tell "how far off it is" from "what it costs",
+    // which is the entire thing it is named for. `STARTER_COINS` separates
+    // them.
+    expect(result.reason).toContain(String(COST - STARTER_COINS));
+    expect((await db.avatars.get(HER))!.coins).toBe(STARTER_COINS);
     expect(await db.redemptions.count()).toBe(0);
   });
 });

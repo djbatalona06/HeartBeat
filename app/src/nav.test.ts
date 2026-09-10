@@ -14,7 +14,7 @@ import { ICON_NAMES, OPEN_WHILE_UNPAIRED, TABS } from './nav';
  */
 describe('the nav rail', () => {
   it('carries every destination the app has', () => {
-    expect(TABS).toHaveLength(8);
+    expect(TABS).toHaveLength(9);
   });
 
   it('gives every tab a label and an icon, and repeats neither', () => {
@@ -26,7 +26,7 @@ describe('the nav rail', () => {
     expect(new Set(TABS.map((t) => t.icon)).size).toBe(TABS.length);
   });
 
-  it('goes to eight different places, starting at home', () => {
+  it('goes to nine different places, starting at home', () => {
     expect(new Set(TABS.map((t) => t.to)).size).toBe(TABS.length);
     expect(TABS[0].to).toBe('/');
   });
@@ -45,7 +45,9 @@ describe('the nav rail', () => {
 
   it('reaches every page worth reaching', () => {
     const reachable = new Set(TABS.map((t) => t.to));
-    for (const path of ['/', '/tasks', '/mood', '/exercise', '/work', '/settings', '/study', '/party']) {
+    for (const path of [
+      '/', '/tasks', '/mood', '/exercise', '/work', '/settings', '/study', '/party', '/assets',
+    ]) {
       expect(reachable, path).toContain(path);
     }
   });
