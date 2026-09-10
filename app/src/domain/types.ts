@@ -219,6 +219,19 @@ export interface Quest {
   completedAt?: number;
   /** When the week ran out with the target unmet. Nothing is taken; it stops. */
   retiredAt?: number;
+  /**
+   * Last write, for the sync.
+   *
+   * Optional only because rows written before quests synced at all do not have
+   * one, and a Dexie store cannot be back-filled without a migration for a
+   * field that will be correct on the row's next write anyway. Every write in
+   * `db/repository/quests.ts` stamps it; `stampOf` in `domain/sync/holdings.ts`
+   * reads a missing one as 0, which means a quest that has been finished since
+   * before this existed stays on the phone that finished it. An *active* one
+   * is rewritten by every progress measurement, so it starts syncing within a
+   * day without anybody doing anything.
+   */
+  updatedAt?: number;
 }
 
 export interface Achievement {
@@ -302,6 +315,15 @@ export interface Settings {
    */
   syncPushedAt?: number;
   syncPulledAt?: number;
+  /**
+   * The same pair of watermarks for the RPG layer, which is a separate round
+   * trip against a separately-keyed table — see `pwa/holdingsSync.ts`. Kept
+   * apart from the entry watermarks rather than shared: one endpoint failing
+   * must not stall the other, and a shared cursor would mean a pull from one
+   * silently advancing the other past rows it never saw.
+   */
+  holdingsPushedAt?: number;
+  holdingsPulledAt?: number;
   /** Set when the cycle page is locked; see features/cycle/lock.ts. */
   cyclePinSalt?: string;
   cyclePinHash?: string;

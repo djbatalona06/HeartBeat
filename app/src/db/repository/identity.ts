@@ -62,7 +62,15 @@ export async function rekeyIdentity(from: Identity, to: Identity): Promise<numbe
   // would sit below it and never be offered to the server — the same silence
   // this repair exists to end. Starting both from zero is safe in both
   // directions, because push and pull each settle on the newer `updatedAt`.
-  await saveSettings({ syncPushedAt: 0, syncPulledAt: 0 });
+  //
+  // All four, not two. The RPG layer has its own pair for its own endpoint
+  // (see `pwa/holdingsSync.ts`), and they fail in exactly the same way: leave
+  // them behind and a phone that has just re-paired — or recovered through
+  // GitHub onto a new device — pushes its whole day log to the new couple and
+  // none of its gear, companions or coins, silently.
+  await saveSettings({
+    syncPushedAt: 0, syncPulledAt: 0, holdingsPushedAt: 0, holdingsPulledAt: 0,
+  });
 
   // A planned table the schema does not have yet — one arriving with a later
   // version — is skipped rather than thrown over.

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { sync } from './sync';
+import { syncHoldings } from './holdingsSync';
 import { flushPetXp } from './petSync';
 
 /**
@@ -32,6 +33,19 @@ export function useSync(): void {
         // leaving a device that has been off for a month permanently behind.
         for (let page = 0; page < 20; page++) {
           const result = await sync();
+          if (!result || !result.more || cancelled) break;
+        }
+
+        // The RPG layer, on its own endpoint and its own watermarks — see
+        // holdingsSync.ts for why it is not more kinds on /api/entries.
+        //
+        // After the entries, and inside the same try, but deliberately last:
+        // the day log is what the app is for, and if only one of the two can
+        // get through on a bad connection it should be that one. A throw here
+        // is caught by the same handler and leaves both sets of watermarks
+        // where they were.
+        for (let page = 0; page < 20; page++) {
+          const result = await syncHoldings();
           if (!result || !result.more || cancelled) break;
         }
       } catch {
