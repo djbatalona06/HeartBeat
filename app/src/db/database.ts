@@ -5,6 +5,7 @@ import type {
 } from '../domain/types';
 import { DEFAULT_SETTINGS } from '../domain/types';
 import type { Avatar, LifeEvent, Redemption, Reward, Task } from '../domain/rpg/types';
+import type { InventoryItem } from '../domain/rpg/inventory';
 import type { PetInstance } from '../domain/rpg/pets';
 import type { CardProgress, StudySession } from '../domain/study/types';
 
@@ -42,6 +43,9 @@ export class HeartBeatDB extends Dexie {
   // v6 — the study layer. Decks ship with the build; only progress is stored.
   studyProgress!: Table<CardProgress, string>;
   studySessions!: Table<StudySession, string>;
+
+  // v7 — gear ownership. Avatar.gear only ever recorded what is worn.
+  inventory!: Table<InventoryItem, string>;
 
   constructor() {
     super('heartbeat');
@@ -108,6 +112,13 @@ export class HeartBeatDB extends Dexie {
       // Read one way — today's sittings, to price the next one against the
       // daily cap — so `day` is the index that matters.
       studySessions: 'id, day, deckId, [day+deckId]',
+    });
+
+    // v7 adds gear ownership. [memberId+itemId] is the hot path: a purchase
+    // has to find whether this member already owns this item before deciding
+    // whether to insert a new row or refine the existing one.
+    this.version(7).stores({
+      inventory: 'id, coupleId, memberId, itemId, [memberId+itemId]',
     });
   }
 }

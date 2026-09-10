@@ -16,8 +16,10 @@ import { complete, newTask, pressDown, settleMissed, toneFor } from '../../domai
 import { applyPayout, levelOf, sheetFor, spend } from '../../domain/rpg/avatar';
 import { adventureCost } from '../../domain/rpg/stage';
 import { GOOD_VIBES_SENDER_GRANT, checkGrant, grantFor } from '../../domain/rpg/lifeEvents';
-import { equip, gearBonus, unequip } from '../../domain/rpg/gear';
+import { equip, unequip } from '../../domain/rpg/gear';
 import { maxPetMp, petKindById, rankOf, rollKind, type PetInstance } from '../../domain/rpg/pets';
+import { refineByItemId } from '../../domain/rpg/inventory';
+import { DUPLICATE_PET_BOND, EGG_PRICE, canAfford, gearBonusWithRefinement } from '../../domain/rpg/shop';
 import { id, now } from './shared';
 import { addXp } from './petXp';
 
@@ -331,11 +333,20 @@ export async function redeemReward(
 
 /* -- gear and companions ---------------------------------------------------- */
 
+/**
+ * Wearing requires owning. A row equipped before ownership existed (nothing
+ * in the app predates it by much, but a dev database might) is left worn
+ * rather than stripped — this only gates the next *change*, never un-equips
+ * something already on.
+ */
 export async function equipItem(
   memberId: MemberId,
   coupleId: string,
   itemId: string,
 ): Promise<{ ok: boolean; reason?: string }> {
+  const owned = await db.inventory.where('[memberId+itemId]').equals([memberId, itemId]).first();
+  if (!owned) return { ok: false, reason: 'Not owned yet — buy it from the shop first.' };
+
   const avatar = await getOrCreateAvatar(memberId, coupleId);
   const result = equip(avatar.gear, itemId, levelOf(avatar));
   if (!result.ok) return { ok: false, reason: result.reason };
@@ -353,9 +364,16 @@ export async function unequipSlot(
 }
 
 /**
- * Hatch an egg. The rolls are passed in rather than taken here so the caller
- * owns the randomness and this stays testable — and so a drop can be replayed
- * exactly when something looks wrong.
+ * Hatch an egg for free, always inserting a new row even over a kind already
+ * held. The rolls are passed in rather than taken here so the caller owns the
+ * randomness and this stays testable — and so a drop can be replayed exactly
+ * when something looks wrong.
+ *
+ * Not the production path: the "Hatch an egg" button spends coins and merges
+ * a duplicate kind rather than stacking it, both of which live in `buyEgg`
+ * below. This stays as the low-level primitive it wraps, and as a plain
+ * fixture builder for tests that are about companion mechanics rather than
+ * the economy.
  */
 export async function hatchPet(
   coupleId: string,
@@ -377,6 +395,69 @@ export async function hatchPet(
   };
   await db.pets.put(pet);
   return pet;
+}
+
+export interface HatchResult {
+  ok: boolean;
+  reason?: string;
+  pet?: PetInstance;
+  /** True when this hatch folded into an existing pet of the same kind
+   *  rather than adding a new one. */
+  merged?: boolean;
+}
+
+/**
+ * Hatch an egg, coins first. Rolls are passed in for the same reason
+ * `hatchPet` takes them: the caller owns the randomness, so a drop can be
+ * replayed exactly when something looks wrong.
+ *
+ * A kind already owned does not queue a second, unplayable copy — it folds
+ * into the one already hatched, gaining bond the way an adventure does, only
+ * more of it. `PET_RANK_BONDS` in `pets.ts` is already the ceiling on what
+ * that bond can reach, so nothing here needs a ceiling of its own.
+ */
+export async function buyEgg(
+  coupleId: string,
+  memberId: MemberId,
+  rolls: { rarity: number; species: number },
+  luck: number,
+  victoryBonus = 0,
+): Promise<HatchResult> {
+  return db.transaction('rw', db.avatars, db.pets, async () => {
+    const avatar = await getOrCreateAvatar(memberId, coupleId);
+    const check = canAfford(avatar.coins, EGG_PRICE);
+    if (!check.ok) return { ok: false, reason: check.reason };
+
+    const paid = spend(avatar, { coins: EGG_PRICE }, now());
+    if (!paid) return { ok: false, reason: 'Not enough coins.' };
+    await db.avatars.put(paid);
+
+    const kind = rollKind(rolls.rarity, rolls.species, luck, victoryBonus);
+    const existing = await db.pets.where('[memberId+kindId]').equals([memberId, kind.id]).first();
+
+    if (existing) {
+      const merged: PetInstance = {
+        ...existing,
+        bond: existing.bond + DUPLICATE_PET_BOND,
+        updatedAt: now(),
+      };
+      await db.pets.put(merged);
+      return { ok: true, pet: merged, merged: true };
+    }
+
+    const pet: PetInstance = {
+      id: id(),
+      coupleId,
+      memberId,
+      kindId: kind.id,
+      bond: 0,
+      mp: 0,
+      hatchedAt: now(),
+      updatedAt: now(),
+    };
+    await db.pets.put(pet);
+    return { ok: true, pet };
+  });
 }
 
 /** The lore is a reveal, so the moment it is shown is recorded, not assumed. */
@@ -428,7 +509,11 @@ export async function startAdventure(
   coupleId: string,
 ): Promise<{ ok: boolean; reason?: string; hours?: number }> {
   const avatar = await getOrCreateAvatar(memberId, coupleId);
-  const sheet = sheetFor(avatar, gearBonus(avatar.gear, levelOf(avatar)));
+  const owned = await db.inventory.where('memberId').equals(memberId).toArray();
+  const sheet = sheetFor(
+    avatar,
+    gearBonusWithRefinement(avatar.gear, levelOf(avatar), refineByItemId(owned)),
+  );
   const cost = adventureCost(sheet.level, sheet.energy);
   if (cost.shortBy > 0) {
     return { ok: false, reason: `${cost.shortBy} more energy and they can go.` };

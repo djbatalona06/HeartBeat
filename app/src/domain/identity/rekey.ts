@@ -89,6 +89,7 @@ export const REKEY_TABLES: readonly TableRekey[] = [
   { table: 'tasks', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   { table: 'avatars', primaryKey: 'memberId', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   { table: 'pets', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
+  { table: 'inventory', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   { table: 'rewards', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   { table: 'redemptions', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   // `fromMemberId` is who sent a Good Vibe. Missing it would leave a grant from

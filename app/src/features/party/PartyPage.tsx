@@ -5,10 +5,11 @@ import { db, loadSettings } from '../../db/database';
 import {
   awardBossVictory,
   bossVictoryXp,
+  buyEgg,
+  buyGear,
   ensureIdentity,
   getOrCreateAvatar,
   equipItem,
-  hatchPet,
   markLoreSeen,
   setCompanion,
   spendMp,
@@ -18,14 +19,18 @@ import {
 } from '../../db/repository';
 import { flushPetXp } from '../../pwa/petSync';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
-import { RARITY_NAMES, canEquip, gearBonus, gearForSlot, type Rarity } from '../../domain/rpg/gear';
+import { GEAR, RARITY_NAMES, canEquip, gearForSlot, type GearItem, type Rarity } from '../../domain/rpg/gear';
 import { adventureCost } from '../../domain/rpg/stage';
 import { petKindById, petSheet, type PetInstance } from '../../domain/rpg/pets';
 import { SKILLS, castBlockedBecause, skillById } from '../../domain/rpg/skills';
 import { hpFraction, resolveBlow, victoryDropBonus, waitingOn, type BossState } from '../../domain/rpg/boss';
 import { GEAR_SLOTS, type Avatar, type GearSlot } from '../../domain/rpg/types';
+import { findOwned, ownsItem, refineByItemId, type InventoryItem } from '../../domain/rpg/inventory';
+import { EGG_PRICE, GEAR_PRICE, REFINE_MAX, gearBonusWithRefinement, refinePrice } from '../../domain/rpg/shop';
 import { BorderGlow } from '../../components/BorderGlow';
 import { AchievementShelf } from '../achievements/AchievementShelf';
+import { gearArt } from './art/gear';
+import { petArt } from './art/pets';
 
 /**
  * How brightly a companion's card is lit, by how rare it is.
@@ -93,6 +98,12 @@ export function PartyPage() {
       : ([] as PetInstance[])),
     [identity?.memberId],
   );
+  const owned = useLiveQuery(
+    async () => (identity
+      ? db.inventory.where('memberId').equals(identity.memberId).toArray()
+      : ([] as InventoryItem[])),
+    [identity?.memberId],
+  );
 
   useEffect(() => {
     if (!message) return;
@@ -114,18 +125,22 @@ export function PartyPage() {
           <Companions
             avatar={avatar}
             pets={pets ?? []}
+            owned={owned ?? []}
             onChoose={(petId) => setCompanion(identity.memberId, identity.coupleId, petId)}
             onSeeLore={(petId) => markLoreSeen(petId)}
             onHatch={async () => {
               const level = levelOf(avatar);
-              const luck = sheetFor(avatar, gearBonus(avatar.gear, level)).stats.luck;
-              const pet = await hatchPet(
+              const bonus = gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned ?? []));
+              const luck = sheetFor(avatar, bonus).stats.luck;
+              const result = await buyEgg(
                 identity.coupleId,
                 identity.memberId,
                 { rarity: Math.random(), species: Math.random() },
                 luck,
               );
-              setMessage(`${petKindById(pet.kindId)!.name} hatched.`);
+              if (!result.ok) { setMessage(result.reason ?? null); return; }
+              const name = petKindById(result.pet!.kindId)!.name;
+              setMessage(result.merged ? `Another ${name}. Two of the same found each other.` : `${name} hatched.`);
             }}
             onAdventure={async () => {
               const result = await startAdventure(identity.memberId, identity.coupleId);
@@ -135,16 +150,23 @@ export function PartyPage() {
 
           <Wardrobe
             avatar={avatar}
+            owned={owned ?? []}
             onEquip={async (itemId) => {
               const result = await equipItem(identity.memberId, identity.coupleId, itemId);
               if (!result.ok) setMessage(result.reason ?? null);
             }}
             onUnequip={(slot) => unequipSlot(identity.memberId, identity.coupleId, slot)}
+            onBuy={async (itemId) => {
+              const result = await buyGear(identity.memberId, identity.coupleId, itemId);
+              if (!result.ok) setMessage(result.reason ?? null);
+              else if (result.refined) setMessage(`Refined to +${result.refined}.`);
+            }}
           />
 
           <Boss
             avatar={avatar}
             pets={pets ?? []}
+            owned={owned ?? []}
             workerUrl={settings?.workerUrl}
             token={settings?.workerSecret}
             onSpendMp={(amount) => spendMp(identity.memberId, identity.coupleId, amount)}
@@ -161,16 +183,17 @@ export function PartyPage() {
   );
 }
 
-function Companions({ avatar, pets, onChoose, onSeeLore, onHatch, onAdventure }: {
+function Companions({ avatar, pets, owned, onChoose, onSeeLore, onHatch, onAdventure }: {
   avatar: Avatar;
   pets: PetInstance[];
+  owned: InventoryItem[];
   onChoose: (petId: string | undefined) => void;
   onSeeLore: (petId: string) => void;
   onHatch: () => void;
   onAdventure: () => void;
 }) {
   const level = levelOf(avatar);
-  const sheet = sheetFor(avatar, gearBonus(avatar.gear, level));
+  const sheet = sheetFor(avatar, gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned)));
   const cost = adventureCost(level, sheet.energy);
 
   return (
@@ -187,6 +210,7 @@ function Companions({ avatar, pets, onChoose, onSeeLore, onHatch, onAdventure }:
           {pets.map((pet) => {
             const view = petSheet(pet);
             const chosen = avatar.companionId === pet.id;
+            const Art = petArt(pet.kindId);
             // A rarer companion is lit more brightly, and the one you have
             // actually chosen is the only one whose ring drifts on its own.
             return (
@@ -197,6 +221,7 @@ function Companions({ avatar, pets, onChoose, onSeeLore, onHatch, onAdventure }:
                   intensity={RARITY_INTENSITY[view.kind.rarity]}
                   animated={chosen}
                 >
+                {Art ? <div className="pet-portrait"><Art /></div> : null}
                 <div className="pet-head">
                   <span className="pet-name">{view.kind.name}</span>
                   <span className="pet-rarity">{RARITY_NAMES[view.kind.rarity]} · rank {view.rank}</span>
@@ -243,67 +268,137 @@ function Companions({ avatar, pets, onChoose, onSeeLore, onHatch, onAdventure }:
       )}
 
       <div className="row">
-        <button type="button" className="primary" onClick={onHatch}>Hatch an egg</button>
+        <button type="button" className="primary" disabled={avatar.coins < EGG_PRICE} onClick={onHatch}>
+          {avatar.coins < EGG_PRICE
+            ? `${EGG_PRICE - avatar.coins} more coins for an egg`
+            : `Hatch an egg · ${EGG_PRICE} coins`}
+        </button>
         <button type="button" className="quiet" onClick={onAdventure}>
           {cost.shortBy > 0
             ? `${cost.shortBy} more energy`
             : `Adventure · ${cost.energy} energy, ${cost.hours}h`}
         </button>
       </div>
+      <p className="section-sub">
+        A kind you already have does not queue a second — it folds into the
+        one you have, the same way a duplicate item refines rather than stacks.
+      </p>
     </section>
   );
 }
 
-function Wardrobe({ avatar, onEquip, onUnequip }: {
+function Wardrobe({ avatar, owned, onEquip, onUnequip, onBuy }: {
   avatar: Avatar;
+  owned: InventoryItem[];
   onEquip: (itemId: string) => void;
   onUnequip: (slot: GearSlot) => void;
+  onBuy: (itemId: string) => void;
 }) {
   const level = levelOf(avatar);
-  const bonus = gearBonus(avatar.gear, level);
+  const refine = refineByItemId(owned);
+  const bonus = gearBonusWithRefinement(avatar.gear, level, refine);
 
   return (
+    <>
+      <section className="panel">
+        <h2 className="section-title">Worn</h2>
+        <p className="section-sub">
+          Five slots. Levelling is flat so nobody can build themselves out of a
+          boss; this is where a choice lives, and it comes off in one tap.
+        </p>
+
+        {GEAR_SLOTS.map((slot) => {
+          const slotOwned = gearForSlot(slot).filter((item) => ownsItem(owned, item.id));
+          return (
+            <div key={slot} className="slot">
+              <div className="slot-name">{slot}</div>
+              {slotOwned.length === 0 ? (
+                <p className="section-sub">Nothing owned yet. See the shop below.</p>
+              ) : (
+                <div className="chips">
+                  {slotOwned.map((item) => {
+                    const worn = avatar.gear[slot] === item.id;
+                    const allowed = canEquip(item, level);
+                    const itemRefine = refine[item.id] ?? 0;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`chip ${worn ? 'chip-on' : ''} ${allowed ? '' : 'chip-locked'}`}
+                        title={allowed ? item.blurb : `From level ${item.minLevel}`}
+                        onClick={() => (worn ? onUnequip(slot) : onEquip(item.id))}
+                      >
+                        {item.name}{itemRefine > 0 ? ` +${itemRefine}` : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        <p className="section-sub">
+          Worn: +{bonus.strength} strength · +{bonus.insight} insight ·
+          +{bonus.heart} heart · +{bonus.luck} luck
+        </p>
+      </section>
+
+      <Shop avatar={avatar} owned={owned} onBuy={onBuy} />
+    </>
+  );
+}
+
+function Shop({ avatar, owned, onBuy }: {
+  avatar: Avatar;
+  owned: InventoryItem[];
+  onBuy: (itemId: string) => void;
+}) {
+  return (
     <section className="panel">
-      <h2 className="section-title">Worn</h2>
+      <h2 className="section-title">Shop</h2>
       <p className="section-sub">
-        Four slots. Levelling is flat so nobody can build themselves out of a
-        boss; this is where a choice lives, and it comes off in one tap.
+        {avatar.coins} coins. A second purchase of something already owned
+        refines it instead of sitting unworn.
       </p>
 
-      {GEAR_SLOTS.map((slot) => (
-        <div key={slot} className="slot">
-          <div className="slot-name">{slot}</div>
-          <div className="chips">
-            {gearForSlot(slot).map((item) => {
-              const worn = avatar.gear[slot] === item.id;
-              const allowed = canEquip(item, level);
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`chip ${worn ? 'chip-on' : ''} ${allowed ? '' : 'chip-locked'}`}
-                  title={allowed ? item.blurb : `From level ${item.minLevel}`}
-                  onClick={() => (worn ? onUnequip(slot) : onEquip(item.id))}
-                >
-                  {item.name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-
-      <p className="section-sub">
-        Worn: +{bonus.strength ?? 0} strength · +{bonus.insight ?? 0} insight ·
-        +{bonus.heart ?? 0} heart · +{bonus.luck ?? 0} luck
-      </p>
+      <ul className="shop-grid">
+        {GEAR.map((item: GearItem) => {
+          const itemOwned = findOwned(owned, item.id);
+          const price = itemOwned ? refinePrice(item.rarity, itemOwned.refine) : GEAR_PRICE[item.rarity];
+          const atCap = itemOwned !== undefined && itemOwned.refine >= REFINE_MAX;
+          const afford = avatar.coins >= price;
+          const Art = gearArt(item.id);
+          return (
+            <li key={item.id} className="shop-item">
+              <button
+                type="button"
+                className="shop-item-button"
+                disabled={!afford || atCap}
+                title={item.blurb}
+                onClick={() => onBuy(item.id)}
+              >
+                {Art ? <span className="shop-item-art"><Art /></span> : null}
+                <span className="shop-item-name">
+                  {item.name}{itemOwned && itemOwned.refine > 0 ? ` +${itemOwned.refine}` : ''}
+                </span>
+                <span className="shop-item-rarity">{RARITY_NAMES[item.rarity]}</span>
+                <span className="shop-item-price">
+                  {atCap ? 'Fully refined' : itemOwned ? `Refine · ${price}` : `${price} coins`}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }
 
-function Boss({ avatar, pets, workerUrl, token, onSpendMp, onSpendPetMp, onMessage }: {
+function Boss({ avatar, pets, owned, workerUrl, token, onSpendMp, onSpendPetMp, onMessage }: {
   avatar: Avatar;
   pets: PetInstance[];
+  owned: InventoryItem[];
   workerUrl?: string;
   token?: string;
   onSpendMp: (amount: number) => Promise<boolean>;
@@ -313,7 +408,7 @@ function Boss({ avatar, pets, workerUrl, token, onSpendMp, onSpendPetMp, onMessa
   const [boss, setBoss] = useState<BossPayload | null>(null);
   const [busy, setBusy] = useState(false);
   const level = levelOf(avatar);
-  const sheet = sheetFor(avatar, gearBonus(avatar.gear, level));
+  const sheet = sheetFor(avatar, gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned)));
 
   const call = useCallback(async (path: string, body?: unknown): Promise<BossPayload | null> => {
     if (!workerUrl || !token) return null;

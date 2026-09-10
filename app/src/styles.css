@@ -163,6 +163,18 @@ body {
 
 .home-today-title { font-size: var(--text-base); }
 
+/* Whatever is worn, echoed here so it is seen without a trip to Party. */
+.home-equipped {
+  list-style: none;
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--color-border);
+}
+.home-equipped-item { width: 32px; height: 32px; }
+.home-equipped-item .gear-art { width: 100%; height: 100%; }
+
 /* ---- the home pet card ----------------------------------------------------
    The pet's name, its level and its bar. The level is always derived from XP
    rather than read off the row — see `DashboardPage.tsx`. */
@@ -571,8 +583,49 @@ body {
 .pet-skill { margin-top: var(--space-3); font-size: var(--text-sm); }
 .pet-lore { margin-top: var(--space-3); font-size: var(--text-sm); color: var(--color-text-muted); line-height: var(--line-body); font-style: italic; }
 
+/* A companion's own drawing, above its name -- see features/party/art/pets.
+   Companions had no artwork at all before this and rendered as text cards. */
+.pet-portrait { width: 56px; height: 56px; margin-bottom: var(--space-2); }
+.pet-art { width: 100%; height: 100%; }
+
 .slot { margin-top: var(--space-4); }
 .slot-name { font-size: var(--text-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* ---- the shop --------------------------------------------------------------
+   Every gear item, buyable with coins. A second purchase of something already
+   owned refines it — see domain/rpg/shop.ts — rather than filling a slot
+   nobody can wear two of at once. */
+.shop-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.shop-item-button {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-2);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color var(--motion-fast) var(--motion-easing);
+}
+.shop-item-button:disabled { opacity: 0.45; cursor: default; }
+.shop-item-button:not(:disabled):active { transform: scale(0.97); }
+
+.shop-item-art { width: 44px; height: 44px; }
+.shop-item-art .gear-art { width: 100%; height: 100%; }
+.shop-item-name { font-size: var(--text-sm); line-height: var(--line-tight); }
+.shop-item-rarity { font-size: var(--text-xs); color: var(--color-text-muted); }
+.shop-item-price { font-size: var(--text-xs); color: var(--color-accent); font-variant-numeric: tabular-nums; }
 
 /* ---- voice input ---------------------------------------------------------- */
 /* One microphone control, shared by tasks, the calendar and the chat composer.
