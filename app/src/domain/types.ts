@@ -329,6 +329,13 @@ export interface Settings {
    * `db/repository/rpg.ts`.
    */
   starterPlanSeededAt?: number;
+  /**
+   * Set the moment someone chooses "look around anyway" on the Welcome
+   * screen — a browser visitor who has not installed the app to a Home
+   * Screen, told once what that costs them, and let through regardless. See
+   * `features/onboarding/WelcomePage.tsx`.
+   */
+  guestAcknowledged?: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

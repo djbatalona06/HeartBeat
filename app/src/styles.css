@@ -282,6 +282,15 @@ body {
   overflow: hidden;
 }
 
+/* The meter doubling as the slider: a grab cursor, and no page-scroll
+   fighting a vertical drag on touch. */
+.meter-track[data-draggable='true'] { cursor: grab; touch-action: none; }
+.meter-track[data-draggable='true']:active { cursor: grabbing; }
+.meter-track[data-draggable='true']:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .meter-fill {
   position: absolute;
   left: 0;
@@ -1385,82 +1394,10 @@ body {
 
 .mood-invite a { color: var(--color-accent); }
 
+/* The meter is the input now — see components/Meter.tsx — so this section
+   only ever wraps the note field below the two columns. */
 .mood-set { margin-top: var(--space-4); }
-
-.mood-set-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
 .mood-set-label { display: block; font-size: var(--text-sm); }
-
-.mood-set-word {
-  font-family: var(--font-display);
-  font-size: var(--text-sm);
-  color: var(--color-accent);
-}
-
-/* Before a slider is touched there is no word to say, and a neutral one would
-   be inventing an answer. */
-.mood-set-word[data-set='false'] { font-family: var(--font-body); color: var(--color-text-muted); }
-
-.mood-set-ends {
-  display: flex;
-  justify-content: space-between;
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-}
-
-/* The only control on the page, so it gets the whole width of it and a thumb
-   big enough to land on without looking. */
-.mood-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: var(--tap);
-  margin: 0;
-  background: none;
-  cursor: pointer;
-}
-
-.mood-slider::-webkit-slider-runnable-track {
-  height: 12px;
-  border-radius: 999px;
-  background: var(--color-surface-muted);
-}
-
-.mood-slider::-moz-range-track {
-  height: 12px;
-  border-radius: 999px;
-  background: var(--color-surface-muted);
-}
-
-.mood-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 28px;
-  height: 28px;
-  margin-top: -8px;
-  border-radius: 50%;
-  border: var(--border-width) solid var(--color-surface);
-  background: var(--color-accent);
-}
-
-.mood-slider::-moz-range-thumb {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: var(--border-width) solid var(--color-surface);
-  background: var(--color-accent);
-}
-
-.mood-slider:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  border-radius: var(--radius);
-}
 
 .mood-note { margin-top: var(--space-2); resize: vertical; line-height: var(--line-body); }
 
@@ -1656,7 +1593,117 @@ body {
 
 /* A tab that leads to the gate rather than to itself. Dimmed, never disabled:
    tapping it is how you get back to the invitation from Settings. */
-.tab[data-locked='true'] { opacity: 0.4; }
+.rail-tab[data-locked='true'] { opacity: 0.4; }
+
+/* ---- welcome ----------------------------------------------------------------
+   The subpage a browser visitor meets before the app itself. See
+   features/onboarding/WelcomePage.tsx and FirstRunGate.tsx. */
+.welcome-list { list-style: none; display: flex; flex-direction: column; gap: var(--space-3); }
+.welcome-list strong { font-family: var(--font-display); font-weight: var(--font-display-weight, 400); }
+
+.welcome-steps {
+  list-style: decimal;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+.welcome-steps strong { display: block; font-family: var(--font-display); font-size: var(--text-base); }
+
+.welcome-faq { display: flex; flex-direction: column; gap: var(--space-1); }
+.welcome-faq dt { font-family: var(--font-display); font-size: var(--text-base); margin-top: var(--space-3); }
+.welcome-faq dt:first-child { margin-top: 0; }
+.welcome-faq dd { color: var(--color-text-muted); font-size: var(--text-sm); line-height: var(--line-body); }
+
+.welcome-repo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: center;
+  margin-top: var(--space-5);
+  padding: var(--space-3);
+  background: var(--color-surface-muted);
+  border-radius: 999px;
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: var(--text-sm);
+}
+.welcome-repo span { color: var(--color-accent); }
+
+.welcome-guest {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-4);
+  text-align: center;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 14px);
+}
+
+/* ---- onboarding --------------------------------------------------------------
+   Five screens, dots above, Next/Back below. See
+   features/onboarding/OnboardingPage.tsx. */
+.onboarding-dots {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.onboarding-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border);
+}
+.onboarding-dot[data-on='true'] { background: var(--color-accent); }
+
+.onboarding-step { text-align: center; min-height: 40vh; }
+
+.onboarding-pets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.onboarding-pet-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.onboarding-pet-card:active { transform: scale(0.96); }
+.onboarding-pet-art { width: 56px; height: 56px; }
+.onboarding-pet-name { font-family: var(--font-display); font-size: var(--text-sm); }
+.onboarding-pet-theme { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+.onboarding-item { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin: var(--space-4) 0; }
+.onboarding-item-art {
+  width: 88px;
+  height: 88px;
+  animation: home-breathe 3.2s ease-in-out infinite;
+}
+:root[data-calm='true'] .onboarding-item-art { animation: none; }
+.onboarding-item-name { font-family: var(--font-display); font-size: var(--text-lg); }
+
+.onboarding-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-5);
+}
+
+.onboarding-skip {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-top: var(--space-3);
+  color: var(--color-text-muted);
+}
 
 /* ---- exercise --------------------------------------------------------------
    The day stepper, the set grid and the two proof slots.

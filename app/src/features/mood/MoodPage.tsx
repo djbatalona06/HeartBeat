@@ -9,9 +9,7 @@ import { Meter } from '../../components/Meter';
 import { ComplimentComposer } from './ComplimentComposer';
 import { CycleSection } from '../cycle/CyclePage';
 import {
-  MOOD_MAX,
   MOOD_METERS,
-  MOOD_MIN,
   NEUTRAL_MOOD,
   PARTNER_FALLBACK_NAME,
   comparisonLine,
@@ -29,13 +27,15 @@ import {
  *
  * The columns are the screen. They are vertical because the question this page
  * answers is "how are we both doing", and two sets of columns compare at a
- * glance in a way two stacked bars do not. Everything below them is the way to
- * fill them in, and there is deliberately only one thing to do here.
+ * glance in a way two stacked bars do not.
  *
- * A day nobody has logged shows a dash — not a zero, and not a middling five.
- * The sliders sit in the middle so there is somewhere to start, but until one
- * is touched the draft is null and the column stays honest. Saving is explicit
- * for the same reason: opening this page must never be what writes a mood.
+ * The meter is the input now — drag it, or focus it and use the arrow keys —
+ * rather than a display column with a second, separate slider repeating the
+ * same value underneath. A day nobody has logged shows a dash and an empty
+ * track, never a zero and never a hidden default: the first touch lands the
+ * value wherever it actually lands, rather than jumping from a pre-set five.
+ * Saving stays explicit, for the reason it always was: opening this page must
+ * never be what writes a mood.
  */
 export function MoodPage() {
   const settings = useLiveQuery(loadSettings, []);
@@ -128,7 +128,7 @@ export function MoodPage() {
     <div className="page">
       <header className="page-head">
         <h1 className="page-title">Mood</h1>
-        <p className="page-sub">Three meters a day, for each of you. The cycle log is below.</p>
+        <p className="page-sub">Drag a meter to where today actually is. The cycle log is below.</p>
       </header>
 
       <section className="mood-summary">
@@ -138,7 +138,7 @@ export function MoodPage() {
       </section>
 
       <section className="mood-compare" data-paired={showPartner ? 'true' : 'false'}>
-        <MoodColumn who="You" values={shown} unsaved={metersChanged} />
+        <MoodColumn who="You" values={shown} unsaved={metersChanged} onChange={setMeter} />
         {showPartner ? (
           <MoodColumn who={partnerName} values={theirs} unsaved={false} />
         ) : (
@@ -168,40 +168,8 @@ export function MoodPage() {
       ) : null}
 
       <section className="panel">
-        <h2 className="section-title">How is today?</h2>
-        <p className="section-sub">
-          Drag each one to where the day actually is. Nothing here goes down on its own.
-        </p>
-
-        {MOOD_METERS.map((meter) => {
-          const value = shown?.[meter.key] ?? NEUTRAL_MOOD[meter.key];
-          return (
-            <div className="mood-set" key={meter.key}>
-              <div className="mood-set-head">
-                <label className="mood-set-label" htmlFor={`mood-${meter.key}`}>
-                  {meter.label}
-                </label>
-                <span className="mood-set-word" data-set={shown ? 'true' : 'false'}>
-                  {shown ? scaleWord(meter.key, value) : 'Not set'}
-                </span>
-              </div>
-              <input
-                className="mood-slider"
-                id={`mood-${meter.key}`}
-                type="range"
-                min={MOOD_MIN}
-                max={MOOD_MAX}
-                step={1}
-                value={value}
-                onChange={(e) => setMeter(meter.key, Number(e.target.value))}
-              />
-              <div className="mood-set-ends">
-                <span>{meter.low}</span>
-                <span>{meter.high}</span>
-              </div>
-            </div>
-          );
-        })}
+        <h2 className="section-title">Anything to add?</h2>
+        <p className="section-sub">Nothing here goes down on its own.</p>
 
         <div className="mood-set">
           <label className="mood-set-label" htmlFor="mood-note">Note</label>
@@ -238,6 +206,8 @@ interface MoodColumnProps {
   values: MoodValues | null;
   /** Mine, mid-edit: the column is showing a draft, so it says so. */
   unsaved: boolean;
+  /** Present only for the editable column — the partner's stays read-only. */
+  onChange?: (key: MoodKey, value: number) => void;
 }
 
 function columnState(values: MoodValues | null, unsaved: boolean): string {
@@ -245,7 +215,7 @@ function columnState(values: MoodValues | null, unsaved: boolean): string {
   return unsaved ? 'Not saved yet' : 'Logged';
 }
 
-function MoodColumn({ who, values, unsaved }: MoodColumnProps) {
+function MoodColumn({ who, values, unsaved, onChange }: MoodColumnProps) {
   return (
     <div className="mood-column" role="group" aria-label={who} data-unsaved={unsaved ? 'true' : 'false'}>
       <p className="mood-who">{who}</p>
@@ -256,6 +226,7 @@ function MoodColumn({ who, values, unsaved }: MoodColumnProps) {
             label={meter.label}
             value={values ? values[meter.key] : null}
             valueText={values ? scaleWord(meter.key, values[meter.key]) : undefined}
+            onChange={onChange ? (value) => onChange(meter.key, value) : undefined}
           />
         ))}
       </div>

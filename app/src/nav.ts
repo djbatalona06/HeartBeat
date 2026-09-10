@@ -66,5 +66,9 @@ export const TABS: Tab[] = [
  * the reason not to narrow this to a pairing-only screen: the first screen
  * anyone sees should be one they chose, and choosing costs nothing and writes
  * nothing that would have to be re-keyed later.
+ *
+ * Welcome and Onboarding are open for the same reason, earlier: they run
+ * before pairing is even the question, via `FirstRunGate` — see
+ * `features/onboarding/`.
  */
-export const OPEN_WHILE_UNPAIRED = ['/settings'];
+export const OPEN_WHILE_UNPAIRED = ['/settings', '/welcome', '/onboarding'];
