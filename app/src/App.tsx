@@ -7,6 +7,7 @@ import { MoodPage } from './features/mood/MoodPage';
 import { WorkPage } from './features/work/WorkPage';
 import { TasksPage } from './features/tasks/TasksPage';
 import { PartyPage } from './features/party/PartyPage';
+import { AssetsPage } from './features/assets/AssetsPage';
 import { StudyRoute } from './features/study/StudyRoute';
 import { ChatPanel } from './features/chat/ChatPanel';
 import { PairGate } from './features/pairing/PairGate';
@@ -58,6 +59,7 @@ export function App() {
                     <Route path="/" element={<DashboardPage />} />
                     <Route path="/tasks" element={<TasksPage />} />
                     <Route path="/party" element={<PartyPage />} />
+                    <Route path="/assets" element={<AssetsPage />} />
                     {/* The cycle log is the last section of Mood now. The old
                         route is kept as a redirect rather than dropped: it is in
                         notification deep links, in the command menu, and quite

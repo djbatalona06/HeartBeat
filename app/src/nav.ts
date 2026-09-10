@@ -25,6 +25,7 @@ export const ICON_NAMES = [
   'cards',
   'sword',
   'moon',
+  'bag',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
@@ -37,11 +38,18 @@ export interface Tab {
 }
 
 /**
- * Every destination the app has. Eight, which was the ceiling neither of the
- * old two surfaces could reach on its own: the tab bar stopped at six because
- * a phone's width ran out, and the ring stopped at six because a seventh
- * bubble started crowding the mascot. A vertical rail has neither problem —
- * length costs height, and a phone has more of that than it has width.
+ * Every destination the app has. Nine, which is well past the ceiling neither
+ * of the old two surfaces could reach: the tab bar stopped at six because a
+ * phone's width ran out, and the ring stopped at six because a seventh bubble
+ * started crowding the mascot. A vertical rail has neither problem — length
+ * costs height, and a phone has more of that than it has width. The ninth is
+ * the first entry added since the rail replaced both, and it cost 48px of a
+ * dimension there was plenty of.
+ *
+ * Bag sits next to Party rather than next to Tasks, because the two of them
+ * are the same subject split by verb: Party is what you are doing with the
+ * RPG layer, Bag is what you have. Putting Bag beside Tasks would file it
+ * under the to-do list, which is only a quarter of what it holds.
  *
  * Cycle is not here and never was: it can be locked, and a page that can be
  * locked should not announce itself alongside every other screen. It is a
@@ -55,6 +63,7 @@ export const TABS: Tab[] = [
   { to: '/work', label: 'Work', icon: 'calendar' },
   { to: '/study', label: 'Study', icon: 'cards' },
   { to: '/party', label: 'Party', icon: 'sword' },
+  { to: '/assets', label: 'Bag', icon: 'bag' },
   { to: '/settings', label: 'You', icon: 'person' },
 ];
 

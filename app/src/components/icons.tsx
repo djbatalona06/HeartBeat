@@ -109,6 +109,16 @@ const PATHS: Record<IconName, JSX.Element> = {
   // A crescent. The cycle half of the mood page, where it labels the section
   // rather than a route.
   moon: <path d="M20 14.3A8.6 8.6 0 0 1 9.7 4a8.6 8.6 0 1 0 10.3 10.3z" />,
+
+  // A satchel with its handle up. What you own, rather than what you are
+  // doing with it — a chest or a crate would have read as storage, and this
+  // is the bag you carry.
+  bag: (
+    <>
+      <path d="M4.6 8.5h14.8l-1.1 11a1.6 1.6 0 0 1-1.6 1.4H7.3a1.6 1.6 0 0 1-1.6-1.4z" />
+      <path d="M8.9 8.5V6.4a3.1 3.1 0 0 1 6.2 0v2.1" />
+    </>
+  ),
 };
 
 interface IconProps {
