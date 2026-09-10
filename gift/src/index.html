@@ -52,6 +52,46 @@
         <circle cx="1" cy="5" r="4.2" fill="#f2578a"/>
       </g>
     </symbol>
+    <!--
+      The tomcat. #kitty is a mark: a head, floating, used as a seal and a
+      header. He is a character: he has to stand next to a screen and pull it
+      down, so he has a body, a raised arm, and feet on the floor.
+
+      Drawn from the same five colours and the same flat-fill vocabulary. The
+      bow that sits on her ear sits at his throat instead, which is the whole
+      of the difference read at a glance.
+    -->
+    <symbol id="tomcat" viewBox="0 0 100 132">
+      <!-- Ears, then the cap over the crown between them. -->
+      <path d="M22 26 C16 12 20 6 26 5 C33 4 40 11 44 20 Z" fill="currentColor"/>
+      <path d="M78 26 C84 12 80 6 74 5 C67 4 60 11 56 20 Z" fill="currentColor"/>
+      <ellipse cx="50" cy="44" rx="33" ry="27" fill="currentColor"/>
+      <path d="M32 22 C34 10 41 5 50 5 C59 5 66 10 68 22 Z" fill="#d81f45"/>
+      <path d="M27 22 L71 22 C71 26 69 27 66 27 L30 27 C28 27 27 25 27 22 Z" fill="#e2467a"/>
+      <ellipse cx="38" cy="42" rx="3.4" ry="4.6" fill="#2a0f1c"/>
+      <ellipse cx="62" cy="42" rx="3.4" ry="4.6" fill="#2a0f1c"/>
+      <ellipse cx="50" cy="50" rx="4.6" ry="3.3" fill="#f5c85c"/>
+      <g stroke="#2a0f1c" stroke-width="1.5" stroke-linecap="round" opacity="0.85">
+        <line x1="14" y1="38" x2="28" y2="40"/>
+        <line x1="13" y1="46" x2="28" y2="46"/>
+        <line x1="15" y1="54" x2="28" y2="51"/>
+        <line x1="86" y1="38" x2="72" y2="40"/>
+        <line x1="87" y1="46" x2="72" y2="46"/>
+        <line x1="85" y1="54" x2="72" y2="51"/>
+      </g>
+      <!-- Body, feet, and the arm that holds the cord. -->
+      <ellipse cx="50" cy="101" rx="25" ry="27" fill="currentColor"/>
+      <ellipse cx="39" cy="126" rx="10" ry="5" fill="currentColor"/>
+      <ellipse cx="61" cy="126" rx="10" ry="5" fill="currentColor"/>
+      <path d="M69 88 C82 82 89 68 89 56" stroke="currentColor" stroke-width="10" stroke-linecap="round" fill="none"/>
+      <circle cx="89" cy="53" r="6.5" fill="currentColor"/>
+      <!-- Her bow, worn at the throat. -->
+      <g transform="translate(50,73)">
+        <path d="M-2 0 L-14 -7 L-14 7 Z" fill="#d81f45"/>
+        <path d="M2 0 L14 -7 L14 7 Z" fill="#d81f45"/>
+        <circle cx="0" cy="0" r="4.2" fill="#f2578a"/>
+      </g>
+    </symbol>
 
     <symbol id="bow" viewBox="0 0 30 23">
       <path d="M14 11.5 L1 3 L1 20 Z" fill="currentColor"/>
@@ -210,12 +250,31 @@
     </div>
   </div>
 
-  <!-- 5 · the file box and record player (three.js, with a flat fallback) -->
+  <!-- 5 · the projector -->
+  <div class="phase" id="projector" hidden>
+    <div class="proj-stage" id="projStage">
+      <div class="proj-cord" id="projCord" aria-hidden="true"></div>
+      <div class="proj-roller" aria-hidden="true"></div>
+      <div class="proj-screen" id="projScreen">
+        <img class="proj-photo" id="projA" alt="">
+        <img class="proj-photo" id="projB" alt="">
+        <div class="proj-grain" aria-hidden="true"></div>
+        <div class="proj-vignette" aria-hidden="true"></div>
+        <div class="proj-weight" aria-hidden="true"></div>
+      </div>
+      <svg class="proj-cat" viewBox="0 0 100 132" aria-hidden="true">
+        <use href="#tomcat" color="#fffdfa"/>
+      </svg>
+    </div>
+    <div class="proj-hint" id="projHint">tap to move it along</div>
+  </div>
+
+  <!-- 6 · the file box and record player (three.js, with a flat fallback) -->
   <div class="phase" id="crate" hidden>
     <div class="crate-hint" id="crateHint">drag to flip through · tap one to play it</div>
   </div>
 
-  <!-- 6 · guide -->
+  <!-- 7 · guide -->
   <div class="phase" id="guide" hidden>
     <div class="guide-inner">
       <div class="guide-mark">
@@ -266,8 +325,8 @@
         </div>
       </div>
 
-      <a class="guide-cta" id="repoLink" href="https://github.com/djbatalona06/HeartBeat" target="_blank" rel="noopener">Go to HeartBeat →</a>
-      <div class="guide-foot">everything after this is on the repo</div>
+      <a class="guide-cta" id="appLink" href="https://heartbeat-eop.pages.dev" target="_blank" rel="noopener">Go to HeartBeat →</a>
+      <div class="guide-foot">the code is <a id="repoLink" href="https://github.com/djbatalona06/HeartBeat" target="_blank" rel="noopener">on GitHub</a></div>
     </div>
   </div>
 
@@ -287,6 +346,7 @@
 <script>/*INLINE:THREE*/</script>
 <script>/*INLINE:TURNTABLE*/</script>
 <script>/*INLINE:CRATE*/</script>
+<script>/*INLINE:PROJECTOR*/</script>
 <script>/*INLINE:APP*/</script>
 </body>
 </html>

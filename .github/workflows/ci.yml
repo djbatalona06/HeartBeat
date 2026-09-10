@@ -28,6 +28,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Check D1 config sync
+        run: npm run check:config
+
       - name: Test
         run: npm test
 
@@ -43,3 +46,11 @@ jobs:
           node gift/build.mjs
           git diff --exit-code -- gift/birthday.html \
             || (echo "::error::gift/birthday.html is stale — run 'npm run gift:build' and commit the result" && exit 1)
+
+      - name: Build the study page
+        # Committed like the gift, and checked the same way: the single-file
+        # build is only trustworthy if CI proves it still matches its sources.
+        run: |
+          node scripts/build-study.mjs
+          git diff --exit-code -- study/index.html \
+            || (echo "::error::study/index.html is stale — run 'npm run study:build' and commit the result" && exit 1)

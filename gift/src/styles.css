@@ -569,6 +569,12 @@ body {
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
   text-transform: uppercase; color: rgba(255, 214, 228, 0.35);
 }
+.guide-foot a {
+  color: inherit; text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: rgba(255, 214, 228, 0.25);
+  transition: color 200ms ease, text-decoration-color 200ms ease;
+}
+.guide-foot a:hover { color: var(--hk-pink); text-decoration-color: var(--hk-pink); }
 
 /* ---- chrome ------------------------------------------------------------- */
 .sound {
@@ -663,4 +669,155 @@ body {
   .aura { animation: none; }
   .lily-drift { animation: none; }
   .paper-wrap::after { transition: none; }
+}
+
+/* ---- the projector -----------------------------------------------------
+   A beat between the letter and the records. The tomcat walks a screen down
+   out of the ceiling and shows her the photographs before she handles one.
+
+   Every position on this phase is derived from the numbers at the top of
+   .proj-stage. A projector screen that does not hang off its own roller, or a
+   cord that stops short of the paw pulling it, reads as broken however good
+   the photograph is -- so the roller, the screen, the cat and the cord are one
+   arrangement measured once, not four things placed near each other.
+
+   Everything that moves is a transform or an opacity: the screen scales from
+   its roller rather than growing in height, and the photographs cross-fade
+   rather than swap, so no frame of this phase costs a layout. */
+.proj-stage {
+  position: absolute; inset: 0;
+
+  --screen-w: min(76vw, 560px);
+  --screen-h: calc(var(--screen-w) * 0.75);
+  /* The band at the foot of the phase that the hint and the button occupy. */
+  --bottom-band: clamp(150px, 24vw, 200px);
+  /* Centred in what is left above that band, never tighter than the top
+     inset. On a tall phone a screen pinned to a fixed offset leaves half the
+     page empty below it, which reads as a layout that ran out rather than a
+     screen hanging in a room. */
+  --roller-y: max(clamp(28px, 5vw, 74px),
+    calc((100dvh - var(--bottom-band) - var(--screen-h)) / 2));
+  --screen-top: calc(var(--roller-y) + 8px);
+  /* The bottom edge of the screen is the floor everything else stands on. */
+  --floor-y: calc(var(--screen-top) + var(--screen-h));
+
+  --cat-w: clamp(58px, 9vw, 92px);
+  --cat-h: calc(var(--cat-w) * 1.32);
+  --cat-top: calc(var(--floor-y) - var(--cat-h));
+  --cat-left: calc(50% - var(--screen-w) / 2 - var(--cat-w) - clamp(10px, 2vw, 26px));
+
+  /* The raised paw, read straight off the symbol viewBox: the circle sits at
+     x=89 of 100 and y=53 of 132. */
+  --paw-left: calc(var(--cat-left) + var(--cat-w) * 0.89);
+  --paw-top: calc(var(--cat-top) + var(--cat-h) * 0.40);
+}
+
+.proj-roller {
+  position: absolute;
+  top: var(--roller-y); left: 50%; margin-left: calc(var(--screen-w) / -2);
+  width: var(--screen-w); height: 9px; border-radius: 5px;
+  background: linear-gradient(180deg, var(--hk-gold), rgba(120, 78, 26, 0.9));
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* From the roller to the paw, and no further. */
+.proj-cord {
+  position: absolute;
+  top: var(--roller-y); left: var(--paw-left);
+  width: 2px; height: calc(var(--paw-top) - var(--roller-y));
+  background: rgba(255, 214, 228, 0.4);
+}
+
+/* transform-origin: top is the whole illusion. The horizontal centring is a
+   negative margin rather than a translate, because the roll animates the
+   transform and the two cannot share it. */
+.proj-screen {
+  position: absolute;
+  top: var(--screen-top); left: 50%; margin-left: calc(var(--screen-w) / -2);
+  width: var(--screen-w); height: var(--screen-h);
+  overflow: hidden; border-radius: 0 0 3px 3px;
+  background: #efe6d8;
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 253, 250, 0.14);
+  transform: scaleY(0); transform-origin: top center;
+}
+
+.proj-stage[data-rolled="true"] .proj-screen {
+  animation: rollDown 1500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* The weighted bar along the bottom edge, so the screen has some mass. */
+.proj-weight {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 7px;
+  background: linear-gradient(180deg, rgba(120, 78, 26, 0.85), rgba(60, 34, 12, 0.95));
+}
+
+/* Two photographs, one fading over the other. The sepia and the lifted black
+   are the nostalgia: a warm print, never quite reaching white or black. */
+.proj-photo {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover;
+  opacity: 0;
+  filter: sepia(0.42) saturate(0.82) contrast(0.92) brightness(1.06);
+  transition: opacity 900ms ease;
+}
+.proj-photo.on { opacity: 1; animation: lampFlicker 2.6s ease-in-out infinite; }
+
+/* Grain, as a tiled turbulence texture. It is a data: URI because the build
+   refuses any reference that is not one. */
+.proj-grain {
+  position: absolute; inset: -12%;
+  pointer-events: none; opacity: 0.3; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22170%22%20height%3D%22170%22%3E%3Cfilter%20id%3D%22n%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%220.82%22%20numOctaves%3D%223%22%20stitchTiles%3D%22stitch%22%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%22170%22%20height%3D%22170%22%20filter%3D%22url(%23n)%22%20opacity%3D%220.55%22%2F%3E%3C%2Fsvg%3E");
+  background-size: 170px 170px;
+  animation: grainShift 620ms steps(1, end) infinite;
+}
+
+.proj-vignette {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 96% at 50% 46%, transparent 42%, rgba(42, 15, 28, 0.55) 100%);
+}
+
+.proj-cat {
+  position: absolute;
+  top: var(--cat-top); left: var(--cat-left);
+  width: var(--cat-w); height: var(--cat-h);
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.45));
+}
+
+.proj-hint {
+  position: absolute; left: 0; right: 0; bottom: clamp(78px, 11vw, 116px);
+  text-align: center;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: rgba(255, 214, 228, 0.42);
+  animation: hint 2.8s ease-in-out infinite;
+}
+
+/* Above the stage. The stage is inset:0 so a tap anywhere moves the reel
+   along, which also means it sits under the finger everywhere -- the one place
+   that must not happen is the button that leaves the scene. */
+#projector .letter-next {
+  position: absolute; z-index: 2;
+  left: 50%; bottom: clamp(30px, 5vw, 52px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  transition: opacity 420ms ease;
+}
+
+/* Under 560px the screen takes the whole width and there is no room beside it,
+   so the cat steps in front of its bottom-left corner rather than being
+   cropped off the page. Only these three numbers change; everything else is
+   already measured from them. */
+@media (max-width: 560px) {
+  .proj-stage {
+    --screen-w: 88vw;
+    --cat-w: clamp(46px, 13vw, 68px);
+    --cat-left: 3vw;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proj-stage[data-rolled="true"] .proj-screen { animation: none; transform: scaleY(1); }
+  .proj-photo.on { animation: none; }
+  .proj-grain { animation: none; }
+  .proj-hint { animation: none; }
 }

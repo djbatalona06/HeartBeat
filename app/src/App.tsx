@@ -7,33 +7,16 @@ import { MoodPage } from './features/mood/MoodPage';
 import { WorkPage } from './features/work/WorkPage';
 import { TasksPage } from './features/tasks/TasksPage';
 import { PartyPage } from './features/party/PartyPage';
-import { CyclePage } from './features/cycle/CyclePage';
+import { StudyRoute } from './features/study/StudyRoute';
 import { ChatPanel } from './features/chat/ChatPanel';
 import { PairGate } from './features/pairing/PairGate';
 import { usePairing } from './features/pairing/usePairing';
 import { useSync } from './pwa/useSync';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CommandMenu } from './components/CommandMenu';
+import { Icon } from './components/icons';
+import { OPEN_WHILE_UNPAIRED, TABS } from './nav';
 
-const TABS = [
-  { to: '/', label: 'Home', glyph: '♥' },
-  { to: '/tasks', label: 'Tasks', glyph: '✦' },
-  { to: '/mood', label: 'Mood', glyph: '◑' },
-  { to: '/exercise', label: 'Move', glyph: '▲' },
-  { to: '/work', label: 'Work', glyph: '▦' },
-  { to: '/settings', label: 'You', glyph: '☰' },
-];
-
-/**
- * What stays open on a phone with no partner yet.
- *
- * Settings, because it holds the pairing form itself — a gate that locked the
- * only way through it would be a wall. It also holds the theme picker, which is
- * the reason not to narrow this to a pairing-only screen: the first screen
- * anyone sees should be one they chose, and choosing costs nothing and writes
- * nothing that would have to be re-keyed later.
- */
-const OPEN_WHILE_UNPAIRED = ['/settings'];
 
 export function App() {
   // Reconciles the day log with the other phone. Mounted here rather than in a
@@ -70,10 +53,15 @@ export function App() {
                   {/* Not a tab. Six across the bottom is already the ceiling on a
                       phone, and the party is somewhere you go from the sheet. */}
                   <Route path="/party" element={<PartyPage />} />
-                  {/* Not a tab either, and for a second reason: a seventh label is
-                      one too many, and a page that can be locked should not announce
-                      itself along the bottom of every other screen. */}
-                  <Route path="/cycle" element={<CyclePage />} />
+                  {/* The cycle log is the last section of Mood now. The old
+                      route is kept as a redirect rather than dropped: it is in
+                      notification deep links, in the command menu, and quite
+                      possibly on somebody's home screen. */}
+                  <Route path="/cycle" element={<Navigate to="/mood" replace />} />
+                  {/* Not a tab either, and for the first reason again: six along
+                      the bottom is the ceiling, and this is somewhere you go
+                      deliberately rather than glance at. */}
+                  <Route path="/study" element={<StudyRoute />} />
                   <Route path="/mood" element={<MoodPage />} />
                   <Route path="/exercise" element={<ExercisePage />} />
                   <Route path="/work" element={<WorkPage />} />
@@ -116,7 +104,7 @@ function NavBar({ locked }: { locked: boolean }) {
           className="tab"
           data-locked={locked && !OPEN_WHILE_UNPAIRED.includes(tab.to) ? 'true' : undefined}
         >
-          <span className="tab-glyph" aria-hidden="true">{tab.glyph}</span>
+          <span className="tab-glyph"><Icon name={tab.icon} /></span>
           <span className="tab-label">{tab.label}</span>
         </NavLink>
       ))}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
 import * as barrel from './index';
@@ -17,7 +18,7 @@ import * as barrel from './index';
  * looks like a missing export rather than a missing line here — so this test
  * reads the directory and insists the two agree.
  */
-const HERE = new URL('.', import.meta.url).pathname;
+const HERE = fileURLToPath(new URL('.', import.meta.url));
 
 /** Not sections: the barrel itself, the shared helpers, and any test file. */
 const NOT_A_SECTION = new Set(['index.ts', 'shared.ts']);

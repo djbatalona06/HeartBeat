@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
@@ -34,7 +35,7 @@ interface SqliteDb {
   };
 }
 
-const MIGRATIONS = join(new URL('.', import.meta.url).pathname, '..', 'migrations');
+const MIGRATIONS = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'migrations');
 
 /** The slice of D1's interface joinCouple asks for, over node:sqlite. */
 function d1(db: SqliteDb): JoinDb {
@@ -211,10 +212,14 @@ describe('joinCouple', () => {
  * admission SQL, at least, cannot drift without a test going red.
  */
 describe('the two pairing surfaces', () => {
+  // Normalised to LF: these assertions compare source text, and a Windows
+  // checkout hands back CRLF, which would fail a multi-line toContain for a
+  // reason that has nothing to do with the two surfaces drifting apart.
   const pagesJoin = readFileSync(
-    join(new URL('.', import.meta.url).pathname, '..', '..', 'app', 'functions', 'api', 'pair', 'join.ts'),
+    join(fileURLToPath(new URL('.', import.meta.url)), '..', '..', 'app', 'functions', 'api', 'pair', 'join.ts'),
     'utf8',
-  );
+  )
+    .replace(/\r\n/g, '\n');
 
   it('use the same guarded INSERT', () => {
     expect(pagesJoin).toContain(JOIN_INSERT_SQL);

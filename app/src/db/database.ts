@@ -6,6 +6,7 @@ import type {
 import { DEFAULT_SETTINGS } from '../domain/types';
 import type { Avatar, LifeEvent, Redemption, Reward, Task } from '../domain/rpg/types';
 import type { PetInstance } from '../domain/rpg/pets';
+import type { CardProgress, StudySession } from '../domain/study/types';
 
 /**
  * The phone holds the whole record. The Worker keeps a copy so the other half
@@ -37,6 +38,10 @@ export class HeartBeatDB extends Dexie {
 
   // v5 — camera proof.
   workoutPhotos!: Table<WorkoutPhoto, string>;
+
+  // v6 — the study layer. Decks ship with the build; only progress is stored.
+  studyProgress!: Table<CardProgress, string>;
+  studySessions!: Table<StudySession, string>;
 
   constructor() {
     super('heartbeat');
@@ -85,6 +90,24 @@ export class HeartBeatDB extends Dexie {
     // payload cap is measured in kilobytes and a photograph is not.
     this.version(5).stores({
       workoutPhotos: 'id, memberId, day, [memberId+day]',
+    });
+
+    // v6 adds the study layer, and adds nothing to the wire: these two stores
+    // are the first that are deliberately local-only. The couple's sync exists
+    // so two people can read each other's day, and a flashcard queue is not
+    // that — see the Study section of docs/DESIGN.md.
+    //
+    // Written against v5 while that number was free; v5 shipped to real phones
+    // as workout photos first, and a Dexie version that a device has already
+    // opened cannot be renumbered. So the study layer lands as v6.
+    this.version(6).stores({
+      // Keyed by card, because progress is per card and a card belongs to
+      // exactly one deck. [deckId+dueOn] is the hot path: every mount asks one
+      // deck what is due today.
+      studyProgress: 'cardId, deckId, dueOn, [deckId+dueOn]',
+      // Read one way — today's sittings, to price the next one against the
+      // daily cap — so `day` is the index that matters.
+      studySessions: 'id, day, deckId, [day+deckId]',
     });
   }
 }

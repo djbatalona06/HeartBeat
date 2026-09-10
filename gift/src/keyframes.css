@@ -45,3 +45,27 @@
   50%  { transform: rotate(calc(var(--tilt) + 6deg)) scale(1.05); }
   100% { transform: rotate(calc(var(--tilt) - 6deg)) scale(1); }
 }
+
+/* The screen coming down. Scaled from the roller rather than animating
+   height, so it costs a transform and not a layout on every frame. */
+@keyframes rollDown {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+/* Projected grain. Four nudges of a tiled noise texture, stepped rather than
+   eased -- film grain jumps, it does not slide. */
+@keyframes grainShift {
+  0%   { transform: translate3d(0, 0, 0); }
+  25%  { transform: translate3d(-3%, 2%, 0); }
+  50%  { transform: translate3d(2%, -3%, 0); }
+  75%  { transform: translate3d(-2%, -2%, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+/* The lamp never quite settles. */
+@keyframes lampFlicker {
+  0%, 100% { opacity: 0.9; }
+  40%      { opacity: 1; }
+  70%      { opacity: 0.84; }
+}

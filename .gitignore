@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# The intermediate bundle for study/index.html. The artefact itself is committed.
+app/dist-standalone/
 .wrangler/
 .shots/
 .claude/worktrees/

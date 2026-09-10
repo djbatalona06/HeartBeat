@@ -13,6 +13,8 @@
     "build": "npm run build --workspace app",
     "test": "npm run test --workspace app && npm run test --workspace worker",
     "typecheck": "npm run typecheck --workspace app && npm run typecheck --workspace worker",
+    "check:config": "node scripts/check-config-sync.mjs",
+    "study:build": "node scripts/build-study.mjs",
     "gift:extract": "node gift/tools/extract.mjs",
     "gift:build": "node gift/build.mjs",
     "gift:verify": "node gift/tools/verify.mjs",

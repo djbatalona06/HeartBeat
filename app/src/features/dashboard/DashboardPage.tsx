@@ -6,6 +6,7 @@ import { todayKey } from '../../domain/day';
 import { levelProgress } from '../../domain/xp';
 import { useTheme } from '../../themes/ThemeProvider';
 import { getMascot } from '../pet/mascots';
+import { Icon } from '../../components/icons';
 import { HOME_DESTINATIONS, ringLayout } from './layout';
 
 interface RingMetrics {
@@ -170,7 +171,7 @@ export function DashboardPage() {
               data-logged={logged ? 'true' : 'false'}
               aria-label={logged ? `${door.label}, logged today` : door.label}
             >
-              <span className="home-bubble-glyph" aria-hidden="true">{door.glyph}</span>
+              <span className="home-bubble-glyph"><Icon name={door.icon} /></span>
               <span className="home-bubble-label">{door.label}</span>
             </Link>
           );

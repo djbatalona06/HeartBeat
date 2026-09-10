@@ -7,6 +7,7 @@ import { todayKey } from '../../domain/day';
 import { DEFAULT_TIMEZONE, type MoodEntry } from '../../domain/types';
 import { Meter } from '../../components/Meter';
 import { ComplimentComposer } from './ComplimentComposer';
+import { CycleSection } from '../cycle/CyclePage';
 import {
   MOOD_MAX,
   MOOD_METERS,
@@ -127,7 +128,7 @@ export function MoodPage() {
     <div className="page">
       <header className="page-head">
         <h1 className="page-title">Mood</h1>
-        <p className="page-sub">Three meters a day, for each of you.</p>
+        <p className="page-sub">Three meters a day, for each of you. The cycle log is below.</p>
       </header>
 
       <section className="mood-summary">
@@ -218,6 +219,16 @@ export function MoodPage() {
           {canSave || !ready ? 'Save today' : 'Saved'}
         </button>
       </section>
+
+      {/* Last, and gated on its own.
+
+          Last because the three meters are what this page is for and the cycle
+          log is the longer, more deliberate thing you scroll to. Gated on its
+          own because it can carry a PIN, and that PIN re-locks every time the
+          app leaves the foreground -- if the gate reached the whole page,
+          logging your own mood would blank the screen every time you glanced
+          at a notification. See CycleLock. */}
+      <CycleSection />
     </div>
   );
 }

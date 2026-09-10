@@ -12,7 +12,7 @@
 (function () {
   'use strict';
 
-  var PHASES = ['gate', 'intro', 'envelope', 'letter', 'crate', 'guide'];
+  var PHASES = ['gate', 'intro', 'envelope', 'letter', 'projector', 'crate', 'guide'];
   var INTRO_MS = 11000;
 
   // ---- the letter -----------------------------------------------------------
@@ -154,7 +154,7 @@
     next.textContent = 'there are records →';
     next.style.opacity = '0';
     next.style.pointerEvents = 'none';
-    next.addEventListener('click', function (e) { e.stopPropagation(); toCrate(); });
+    next.addEventListener('click', function (e) { e.stopPropagation(); toProjector(); });
     paper.appendChild(next);
     el.letterNext = next;
   }
@@ -289,8 +289,27 @@
     });
   }
 
-  // ---- 5 · the file box and record player ------------------------------------
+  // ---- 5 · the projector -----------------------------------------------------
+  // A beat between the letter and the records: the same photographs, shown to
+  // her once, before she is handed a box of them to sort through.
+  function toProjector() {
+    clearTimers();
+    show('projector');
+    if (window.GiftProjector) {
+      window.GiftProjector.mount(el.projector, {
+        photos: window.GIFT_PHOTOS || [],
+        onDone: toCrate
+      });
+    } else {
+      // The scene is a flourish, not a gate. If its script is missing the
+      // records are still the point, so go straight there.
+      toCrate();
+    }
+  }
+
+  // ---- 6 · the file box and record player ------------------------------------
   function toCrate() {
+    if (window.GiftProjector) window.GiftProjector.stop();
     clearTimers();
     show('crate');
     if (window.GiftCrate && !el.crateMounted) {
@@ -322,7 +341,7 @@
     $('inspect').classList.remove('on');
   });
 
-  // ---- 6 · guide ------------------------------------------------------------
+  // ---- 7 · guide ------------------------------------------------------------
   function toGuide() {
     show('guide');
     if (window.GiftCrate) window.GiftCrate.pause();
@@ -355,7 +374,8 @@
     if (state.phase === 'gate') el.gate.click();
     else if (state.phase === 'intro') { clearTimers(); toEnvelope(); }
     else if (state.phase === 'envelope') $('env').click();
-    else if (state.phase === 'letter') { if (state.typing) finishTyping(); else toCrate(); }
+    else if (state.phase === 'letter') { if (state.typing) finishTyping(); else toProjector(); }
+    else if (state.phase === 'projector') el.projector.click();
     else if (state.phase === 'crate') toGuide();
   });
 
@@ -389,7 +409,7 @@
   show('gate');
 
   window.GIFT = {
-    toCrate: toCrate, toGuide: toGuide, show: show, state: state,
+    toProjector: toProjector, toCrate: toCrate, toGuide: toGuide, show: show, state: state,
     // Verification hook: lets the walkthrough run a real, unskipped reveal
     // in a fraction of a second instead of the full two-and-a-half minutes.
     setPace: function (ms, gap) { MS_PER_CHAR = ms; if (gap != null) GAP_MS = gap; }

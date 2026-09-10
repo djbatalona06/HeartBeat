@@ -43,6 +43,7 @@ today, and says nothing otherwise.
 | **Cycle** | Period tracking, behind its own PIN if you want one |
 | **Party** | The two of you as a party: gear, pets, and the boss you are fighting |
 | **Settings** | Pairing, the theme picker, your partner's name and photo, calendar |
+| **Study** | 226 flashcards on programming, spaced out so they stick, plus a timed quiz |
 
 The **pet** is the point. It gains XP when either of you logs something, and
 levels up on quests that get set from a few questions during setup. Rep ranges,
@@ -113,6 +114,26 @@ publishing it here would be redistribution. `gift:build:music` produces
 `birthday-with-music.html`, which is gitignored and meant to be sent directly.
 See [NOTICE.md](NOTICE.md).
 
+## The study page
+
+[`study/index.html`](study) is the app's Study screen built as one self-contained
+file — React, the theme engine, both typefaces and all 226 cards inside it.
+Download it, double-click it, and it works with no internet.
+
+It is the same component the app mounts, handed a different store: Dexie inside
+the PWA, localStorage in the file. Nothing is duplicated, which is the only
+reason having it twice is affordable.
+
+```bash
+npm run study:build   # rebuild study/index.html from app/src/
+```
+
+One caveat worth knowing: opened straight off the disk, Chrome treats the page
+as having no origin and refuses it any storage at all, so the sitting works but
+a reload starts over. The page says so, and has **Save progress** for exactly
+that. Opened from a web address — the link on the front door — it remembers
+normally.
+
 ## The website
 
 `main` publishes the whole repository to GitHub Pages via
@@ -143,7 +164,7 @@ docs/       design spec + deploy guide
 ```bash
 npm install
 npm run dev          # http://localhost:5173
-npm test             # 60 app tests + 7 worker tests
+npm test             # 458 app tests + 19 worker tests
 npm run typecheck
 ```
 
@@ -159,7 +180,8 @@ the database directly.
 
 The app splits across three independent deploy targets — Cloudflare Pages
 (`app/`, automated via `.github/workflows/deploy.yml` on push to `main`), a
-Cloudflare Worker (`worker/`, manual — no workflow deploys it), and GitHub
+Cloudflare Worker (`worker/`, automated via
+`.github/workflows/worker-deploy.yml` when `worker/**` changes), and GitHub
 Pages (this landing page and `gift/`, automated via
 `.github/workflows/static.yml`). Both Cloudflare pieces bind the same D1
 database.
@@ -183,6 +205,7 @@ involves no deploy credentials.
 | Dashboard grid and pet XP bar | Done |
 | Work screen | Done |
 | Cycle screen, forecast and PIN lock | Done |
+| Study: 226 cards, spaced repetition, quiz, standalone build | Done |
 | Mood / Exercise screens | Next |
 | Quests, achievements, push reminders | After that |
 

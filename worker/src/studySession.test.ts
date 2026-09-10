@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -24,7 +25,7 @@ interface SqliteDb {
   };
 }
 
-const ROOT = join(new URL('.', import.meta.url).pathname, '..', '..');
+const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..');
 const MIGRATIONS = join(ROOT, 'worker', 'migrations');
 const SESSION_FN = join(ROOT, 'app', 'functions', 'api', 'study', 'session.ts');
 

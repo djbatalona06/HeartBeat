@@ -6,6 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { HOME_DESTINATIONS, ringLayout, type RingSlot } from './layout';
+import { ICON_NAMES } from '../../nav';
 
 /** A 390×844 phone, less the shell's 18px side padding: the common case. */
 const PHONE_BOX = { width: 354, height: 354 };
@@ -146,12 +147,12 @@ describe('HOME_DESTINATIONS', () => {
     expect(HOME_DESTINATIONS.map((d) => d.to)).toContain('/party');
   });
 
-  it('gives every door a label and a glyph, and repeats neither', () => {
+  it('gives every door a label and an icon, and repeats neither', () => {
     for (const door of HOME_DESTINATIONS) {
       expect(door.label.length, door.to).toBeGreaterThan(0);
-      expect(door.glyph.length, door.to).toBeGreaterThan(0);
+      expect(ICON_NAMES, door.to).toContain(door.icon);
     }
     expect(new Set(HOME_DESTINATIONS.map((d) => d.label)).size).toBe(HOME_DESTINATIONS.length);
-    expect(new Set(HOME_DESTINATIONS.map((d) => d.glyph)).size).toBe(HOME_DESTINATIONS.length);
+    expect(new Set(HOME_DESTINATIONS.map((d) => d.icon)).size).toBe(HOME_DESTINATIONS.length);
   });
 });
