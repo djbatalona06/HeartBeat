@@ -47,12 +47,14 @@ body {
   position: relative;
   z-index: 1;
   min-height: 100%;
+  /* Left rather than bottom: the nav rail runs down the left edge at every
+     width, so this is the one padding side that always has to clear it. */
   padding:
     calc(env(safe-area-inset-top) + var(--shell-top))
     calc(env(safe-area-inset-right) + var(--shell-gutter))
     calc(env(safe-area-inset-bottom) + var(--shell-bottom))
-    calc(env(safe-area-inset-left) + var(--shell-gutter));
-  max-width: var(--shell-max);
+    calc(env(safe-area-inset-left) + var(--shell-left));
+  max-width: calc(var(--shell-max) + var(--shell-left));
   margin: 0 auto;
 }
 
@@ -78,112 +80,24 @@ body {
   line-height: var(--line-body);
 }
 
-/* ---- the home ring --------------------------------------------------------
-   The front door: the pet in the middle, the doors evenly around it. Where
-   each one goes is `features/dashboard/layout.ts` — it measures the box and
-   hands back px, and everything here only has to place what it is told.
+/* ---- the home mascot --------------------------------------------------------
+   The front door used to be a ring of six doors around the pet — see the
+   history in nav.ts. Every destination lives on the nav rail now, so this
+   screen answers a different question, and the mascot no longer needs to be
+   measured and placed: it sits still, centred, at its own natural size. */
 
-   Finch's breathing room, and deliberately not Finch's density. Six doors, one
-   creature, one bar. Nothing on this screen reads out a number it does not
-   have to. */
-
-.home-ring {
-  /* A bubble is the 48px tap floor plus a ring of padding around its label, so
-     the tap target is never smaller than the floor wherever the tokens move. */
-  --home-bubble: calc(var(--tap) + var(--space-5));
+.home-mascot-standalone {
   position: relative;
-  width: 100%;
-  max-width: 460px;
-  margin: var(--space-5) auto var(--space-6);
-  aspect-ratio: 1;
-  /* Nothing shows until the box has been measured, so the bubbles never flash
-     stacked on the centre for a frame. */
-  opacity: 0;
-  transition: opacity var(--motion-medium) var(--motion-easing);
-}
-
-.home-ring[data-ready='true'] { opacity: 1; }
-
-/* Two zero-height rulers, sized by the same properties the layout is measured
-   in. `DashboardPage.tsx` watches them, so a pack that overrides a token moves
-   the ring rather than desyncing it. */
-.home-probe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.home-probe-bubble { width: var(--home-bubble); }
-.home-probe-gap { width: var(--space-5); }
-
-/* On a short phone the ring gives up height before the pet card gives up its
-   place. The chat button floats over the bottom right of every screen, and the
-   one line the pet gets to say should not have to share with it. The floor is
-   the geometry's: six bubbles need a box of 4 × --home-bubble to sit a whole
-   --space-5 apart, and below that the ring stops being a ring. */
-@media (max-height: 720px) {
-  .home-ring {
-    max-height: max(46vh, calc(var(--home-bubble) * 4));
-    margin-block: var(--space-4) var(--space-5);
-  }
-}
-
-/* Too small for a ring — a landscape phone, a very short window. The same six
-   doors wrap into rows under the pet rather than vanishing. */
-.home-ring[data-shape='rows'] {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  aspect-ratio: auto;
-  max-height: none;
-}
-
-/* A whole row to itself, as tall as the short side allows. The art keeps its
-   square through its own aspect ratio rather than through the box. */
-.home-ring[data-shape='rows'] .home-mascot {
-  position: relative;
-  flex: 0 0 100%;
-  width: 100%;
-  height: min(56vw, 34vh);
-  transform: none;
-  margin: 0 0 var(--space-3);
-}
-
-.home-ring[data-shape='rows'] .home-mascot::before {
-  top: 2%;
-  bottom: 2%;
-  left: 50%;
-  right: auto;
-  width: min(56vw, 34vh);
-  transform: translateX(-50%);
-}
-
-.home-ring[data-shape='rows'] .home-mascot-art { width: auto; height: 100%; }
-
-.home-ring[data-shape='rows'] .home-bubble {
-  position: static;
-  transform: none;
-}
-
-.home-ring[data-shape='rows'] .home-bubble:active { transform: scale(0.93); }
-
-.home-mascot {
-  position: absolute;
   display: grid;
   place-items: center;
-  width: var(--home-mascot);
-  height: var(--home-mascot);
-  transform: translate(-50%, -50%);
+  width: min(56vw, 220px);
+  height: min(56vw, 220px);
+  margin: var(--space-5) auto var(--space-4);
 }
 
 /* It sits in its own soft light rather than on a card. A card would make it an
    item on a dashboard, and it is the reason for the screen. */
-.home-mascot::before {
+.home-mascot-standalone::before {
   content: '';
   position: absolute;
   inset: 2%;
@@ -206,55 +120,48 @@ body {
 
 /* Calm mode stops it, and so does reduced motion further down. A pet that will
    not hold still is the opposite of what this screen is for. */
-.home-mascot[data-calm='true'] .home-mascot-art { animation: none; }
-.home-mascot[data-mood='sleepy'] .home-mascot-art { animation-duration: 8.5s; }
+.home-mascot-standalone[data-calm='true'] .home-mascot-art { animation: none; }
+.home-mascot-standalone[data-mood='sleepy'] .home-mascot-art { animation-duration: 8.5s; }
 
 @keyframes home-breathe {
   0%, 100% { transform: scale(1) translateY(0); }
   50% { transform: scale(1.025) translateY(-1.4%); }
 }
 
-.home-bubble {
-  position: absolute;
+/* ---- today ------------------------------------------------------------------
+   The eight-task starter plan lands here first, and stays here once it has
+   been edited into something else entirely — this is a live view of whatever
+   Tasks currently has due today, not a separate list of its own. */
+
+.home-today { margin-top: var(--stack); }
+
+.home-today-list { list-style: none; margin-top: var(--space-3); }
+
+.home-today-row {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  /* --home-bubble is `--tap` plus `--space-5`, so the tap target is the 48px
-     floor with a ring of padding around the label and never less. */
-  width: var(--home-bubble);
-  height: var(--home-bubble);
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  text-decoration: none;
-  color: var(--color-text);
-  background: var(--color-surface);
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+.home-today-row:last-child { border-bottom: none; }
+
+.home-today-tick {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 999px;
   border: var(--border-width) solid var(--color-border);
-  box-shadow: var(--shadow);
-  transition: transform var(--motion-fast) var(--ease-soft),
-              border-color var(--motion-fast) var(--motion-easing);
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font-size: var(--text-lg);
+  cursor: pointer;
 }
+.home-today-tick:active { transform: scale(0.93); }
 
-.home-bubble:active { transform: translate(-50%, -50%) scale(0.93); }
-.home-bubble:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
-
-.home-bubble-glyph { color: var(--color-accent); font-size: var(--text-lg); line-height: 1; }
-.home-bubble-label { font-size: var(--text-xs); color: var(--color-text-muted); line-height: 1; }
-
-/* One dot, not a number. Whether there is something logged today is all the
-   front door needs to say; the page behind it says the rest. */
-.home-bubble[data-logged='true'] { border-color: var(--color-accent); }
-.home-bubble[data-logged='true']::after {
-  content: '';
-  position: absolute;
-  top: 11%;
-  right: 11%;
-  width: var(--space-2);
-  height: var(--space-2);
-  border-radius: 50%;
-  background: var(--color-accent);
-}
+.home-today-title { font-size: var(--text-base); }
 
 /* ---- the home pet card ----------------------------------------------------
    The pet's name, its level and its bar. The level is always derived from XP
@@ -395,53 +302,93 @@ body {
   background: var(--color-surface-muted);
 }
 
-/* ---- tab bar -------------------------------------------------------------- */
-.tabbar {
+/* ---- nav rail --------------------------------------------------------------
+   A left-edge rail rather than a bottom bar: the app grew past what fits along
+   the bottom of a phone (six was already the ceiling there, and the home ring
+   had its own six-door ceiling for a different reason -- see nav.ts). Length
+   costs height on a rail, and a phone has far more of that than width.
+
+   Bottom-aligned, not top: a phone held one-handed reaches its own bottom
+   corner without a grip shift, and Settings -- the eighth and least-visited
+   entry -- would otherwise sit closest to the thumb while Home sat furthest. */
+.rail {
   position: fixed;
   left: 0;
-  right: 0;
+  top: 0;
   bottom: 0;
   z-index: 2;
   display: flex;
-  justify-content: space-around;
+  flex-direction: column;
+  justify-content: flex-end;
   align-items: stretch;
-  /* Height is a token because `.shell` has to leave exactly this much clear. */
-  min-height: var(--tabbar-height);
-  padding: 0 var(--space-2) env(safe-area-inset-bottom);
+  gap: var(--space-1);
+  overflow-y: auto;
+  /* Width is a token because `.shell` has to leave exactly this much clear. */
+  width: var(--rail-width);
+  padding:
+    calc(env(safe-area-inset-top) + var(--space-2))
+    0
+    calc(env(safe-area-inset-bottom) + var(--space-2))
+    env(safe-area-inset-left);
   background: color-mix(in srgb, var(--color-base) 88%, transparent);
   backdrop-filter: blur(14px);
-  border-top: var(--border-width) solid var(--color-border);
+  border-right: var(--border-width) solid var(--color-border);
 }
 
-.tab {
+.rail-tab {
   display: flex;
-  flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-1);
-  /* A real tap target rather than one that happens to be about the right size:
-     six of these are the only way between screens. */
+  gap: 2px;
+  flex-shrink: 0;
+  /* A real tap target rather than one that happens to be about the right
+     size: eight of these are the only way between screens. */
   min-height: var(--tap);
   padding: var(--space-2) var(--space-1);
+  margin: 0 var(--space-1);
   border-radius: var(--radius);
   text-decoration: none;
   color: var(--color-text-muted);
   transition: color var(--motion-fast) var(--motion-easing);
 }
 
-.tab.active { color: var(--color-accent); }
-.tab-glyph { font-size: var(--text-lg); line-height: 1; }
+.rail-tab.active { color: var(--color-accent); }
+.rail-glyph { font-size: var(--text-lg); line-height: 1; }
 
 /* Drawn icons rather than Unicode geometry -- see components/icons.tsx.
    display:block because an inline SVG sits on the text baseline and reserves
    descender space under itself, which shows up as the glyph riding high in
    every one of the three places these are used. They paint in currentColor,
-   so the tab bar rule above already colours them and .tab.active already
+   so the rail rule above already colours them and .rail-tab.active already
    switches them to the accent without either knowing about the other. */
 .icon { display: block; }
-/* 12px is the floor the type scale promises, and a tab label carries meaning. */
-.tab-label { font-size: var(--text-xs); line-height: var(--line-tight); }
+
+/* Only the active tab keeps its label below the breakpoint -- the rest are an
+   icon with an aria-label, which Icon already renders for. 12px is the floor
+   the type scale promises, and a rail label carries meaning. */
+.rail-label {
+  display: none;
+  font-size: var(--text-xs);
+  line-height: var(--line-tight);
+  white-space: nowrap;
+}
+.rail-tab.active .rail-label { display: block; }
+
+/* Wide enough that every label can stay up without crowding the icon above
+   it. --rail-width and --shell-left are theme tokens written inline by the
+   theme engine (see themes/tokens.ts, applyTheme), so an ordinary rule here
+   cannot out-rank them on specificity -- an inline style beats every
+   stylesheet rule but one that says !important. This is the one place in the
+   app that has to say it, and only for these two properties. */
+@media (min-width: 640px) {
+  :root {
+    --rail-width: 132px !important;
+    --shell-left: calc(132px + var(--space-5)) !important;
+  }
+  .rail-tab { flex-direction: row; justify-content: flex-start; gap: var(--space-3); padding-inline: var(--space-3); }
+  .rail-label { display: block; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
@@ -879,12 +826,14 @@ body {
 .cal-time .field { margin-top: var(--space-1); }
 
 /* ---- messages ------------------------------------------------------------- */
-/* Not a tab: six across the bottom is already the ceiling. The pill floats just
-   above the tab bar, and opens into a sheet over whatever screen you were on. */
+/* Not on the rail: the thread is not a destination in the way the eight
+   sections are. The bottom-right corner is clear at every width now that the
+   rail runs down the left, so the pill floats there and opens into a sheet
+   over whatever screen you were on. */
 .chat-pill {
   position: fixed;
   right: calc(env(safe-area-inset-right) + 14px);
-  bottom: calc(env(safe-area-inset-bottom) + 78px);
+  bottom: calc(env(safe-area-inset-bottom) + 14px);
   z-index: 3;
   display: inline-flex;
   align-items: center;
@@ -918,10 +867,10 @@ body {
 
 .chat {
   position: fixed;
-  left: 0;
+  /* Never over the rail: the sections stay reachable mid-conversation. */
+  left: var(--shell-left);
   right: 0;
-  /* Above the tab bar, never over it: the tabs stay reachable mid-conversation. */
-  bottom: calc(env(safe-area-inset-bottom) + 66px);
+  bottom: calc(env(safe-area-inset-bottom) + 14px);
   z-index: 3;
   display: flex;
   flex-direction: column;
@@ -1987,12 +1936,12 @@ body {
    Nothing here is red. Not being able to send reminders is not an error the
    person made. */
 
-/* The chat pill floats above the tab bar at the bottom right, and Reminders is
-   the last block on Settings — so without room to scroll past, the time control
-   sits underneath it. The padding is the pill's offset plus its own height. */
+/* The chat pill floats at the bottom right, and Reminders is the last block on
+   Settings — so without room to scroll past, the time control sits underneath
+   it. The padding is the pill's offset plus its own height. */
 .notify {
   margin-top: var(--space-6);
-  padding-bottom: calc(env(safe-area-inset-bottom) + 78px + var(--tap));
+  padding-bottom: calc(env(safe-area-inset-bottom) + 14px + var(--tap));
 }
 
 .notify-title {
@@ -2712,7 +2661,7 @@ body {
 .cmd-pill {
   position: fixed;
   right: calc(env(safe-area-inset-right) + 14px);
-  bottom: calc(env(safe-area-inset-bottom) + 78px + var(--tap) + var(--space-2));
+  bottom: calc(env(safe-area-inset-bottom) + 14px + var(--tap) + var(--space-2));
   z-index: 3;
   display: inline-flex;
   align-items: center;

@@ -50,17 +50,12 @@ export function App() {
                 <Routes>
                   <Route path="/" element={<DashboardPage />} />
                   <Route path="/tasks" element={<TasksPage />} />
-                  {/* Not a tab. Six across the bottom is already the ceiling on a
-                      phone, and the party is somewhere you go from the sheet. */}
                   <Route path="/party" element={<PartyPage />} />
                   {/* The cycle log is the last section of Mood now. The old
                       route is kept as a redirect rather than dropped: it is in
                       notification deep links, in the command menu, and quite
                       possibly on somebody's home screen. */}
                   <Route path="/cycle" element={<Navigate to="/mood" replace />} />
-                  {/* Not a tab either, and for the first reason again: six along
-                      the bottom is the ceiling, and this is somewhere you go
-                      deliberately rather than glance at. */}
                   <Route path="/study" element={<StudyRoute />} />
                   <Route path="/mood" element={<MoodPage />} />
                   <Route path="/exercise" element={<ExercisePage />} />
@@ -81,31 +76,42 @@ export function App() {
               reset when the screen behind it changes. */}
           {paired ? <CommandMenu /> : null}
           {/* Kept while unpaired rather than hidden: every locked tab leads to the
-              gate, which is how you get back out of Settings, and a bar that
+              gate, which is how you get back out of Settings, and a rail that
               disappears is harder to understand than one that is plainly waiting.
               Locked only once the answer is in, for the reason the gate waits:
-              otherwise a phone that paired months ago dims its whole bar for a
+              otherwise a phone that paired months ago dims its whole rail for a
               frame on every cold start. */}
-          <NavBar locked={ready && !paired} />
+          <NavRail locked={ready && !paired} />
         </HashRouter>
       </ThemeProvider>
     </ErrorBoundary>
   );
 }
 
-function NavBar({ locked }: { locked: boolean }) {
+/**
+ * Every destination, always on screen, down the left edge.
+ *
+ * Bottom-aligned rather than top: a phone held one-handed reaches its own
+ * bottom corner without shifting grip, and a rail that starts at the top
+ * would put Settings, the eighth and least-visited entry, closest to the
+ * thumb while Home sat furthest away. Only the active tab carries its label
+ * below 640px — see the media query in styles.css — everything else is an
+ * icon with an aria-label, which is what `Icon` already renders for.
+ */
+function NavRail({ locked }: { locked: boolean }) {
   return (
-    <nav className="tabbar">
+    <nav className="rail" aria-label="Sections">
       {TABS.map((tab) => (
         <NavLink
           key={tab.to}
           to={tab.to}
           end={tab.to === '/'}
-          className="tab"
+          className="rail-tab"
+          aria-label={tab.label}
           data-locked={locked && !OPEN_WHILE_UNPAIRED.includes(tab.to) ? 'true' : undefined}
         >
-          <span className="tab-glyph"><Icon name={tab.icon} /></span>
-          <span className="tab-label">{tab.label}</span>
+          <span className="rail-glyph"><Icon name={tab.icon} /></span>
+          <span className="rail-label">{tab.label}</span>
         </NavLink>
       ))}
     </nav>

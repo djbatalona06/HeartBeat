@@ -1,11 +1,11 @@
 /**
- * The bottom bar: what is on it, and what stays reachable without a partner.
+ * The nav rail: what is on it, and what stays reachable without a partner.
  *
- * Pulled out of `App.tsx` for the reason `features/dashboard/layout.ts` was
- * pulled out of `DashboardPage.tsx` — it is data, the tests only run `.ts`, and
- * the two navigation surfaces had already drifted into two hand-maintained
- * copies of the same six destinations. Keeping both here means a route can be
- * renamed once.
+ * There used to be two navigation surfaces — a six-wide tab bar and a
+ * six-door ring on the home screen — kept in step by hand and a test that
+ * checked they agreed. They agreed on four of six. This is the one surface
+ * that replaced both: every destination the app has, always on screen, so
+ * there is nothing left to keep in step.
  */
 
 /**
@@ -37,12 +37,15 @@ export interface Tab {
 }
 
 /**
- * Six, and six is the ceiling on a phone.
+ * Every destination the app has. Eight, which was the ceiling neither of the
+ * old two surfaces could reach on its own: the tab bar stopped at six because
+ * a phone's width ran out, and the ring stopped at six because a seventh
+ * bubble started crowding the mascot. A vertical rail has neither problem —
+ * length costs height, and a phone has more of that than it has width.
  *
  * Cycle is not here and never was: it can be locked, and a page that can be
- * locked should not announce itself along the bottom of every other screen.
- * It is now a section of Mood rather than a route of its own, which is what
- * finally makes that true instead of merely arranged for.
+ * locked should not announce itself alongside every other screen. It is a
+ * section of Mood rather than a route of its own.
  */
 export const TABS: Tab[] = [
   { to: '/', label: 'Home', icon: 'house' },
@@ -50,6 +53,8 @@ export const TABS: Tab[] = [
   { to: '/mood', label: 'Mood', icon: 'mood' },
   { to: '/exercise', label: 'Move', icon: 'dumbbell' },
   { to: '/work', label: 'Work', icon: 'calendar' },
+  { to: '/study', label: 'Study', icon: 'cards' },
+  { to: '/party', label: 'Party', icon: 'sword' },
   { to: '/settings', label: 'You', icon: 'person' },
 ];
 

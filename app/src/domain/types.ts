@@ -322,6 +322,13 @@ export interface Settings {
    */
   pendingInvite?: string;
   pendingInviteExpiresAt?: number;
+  /**
+   * Set the moment the starter plan is seeded, so it is planted exactly once
+   * per install rather than re-appearing after every one of its eight tasks
+   * has been renamed or retired. See `seedStarterPlan` in
+   * `db/repository/rpg.ts`.
+   */
+  starterPlanSeededAt?: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

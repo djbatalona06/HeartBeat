@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, dayKey, daysBetween } from './day';
+import { addDays, dayKey, daysBetween, isoWeekOf } from './day';
 
 const LA = 'America/Los_Angeles';
 
@@ -59,5 +59,30 @@ describe('daysBetween', () => {
   it('counts correctly across a DST boundary', () => {
     expect(daysBetween('2026-03-07', '2026-03-09')).toBe(2);
     expect(daysBetween('2026-10-31', '2026-11-02')).toBe(2);
+  });
+});
+
+describe('isoWeekOf', () => {
+  // 2026-01-01 is a Thursday, so it is week 1 by definition -- the week
+  // containing the year's first Thursday always is.
+  it('puts the first Thursday of the year in week 1', () => {
+    expect(isoWeekOf('2026-01-01')).toBe(1);
+  });
+
+  // 2026 has 53 ISO weeks, because its January 1st is a Thursday. December
+  // 31st, 2026 is also a Thursday -- exactly 52 weeks after the first -- so it
+  // falls in the year's 53rd and final week.
+  it('gives a year with a Thursday January 1st a 53rd week', () => {
+    expect(isoWeekOf('2026-12-31')).toBe(53);
+  });
+
+  // The Monday that starts week 1 of 2026 falls in the calendar year before
+  // it -- the ISO week owns the day, not the calendar year printed on it.
+  it('can put a December day in week 1 of the following year', () => {
+    expect(isoWeekOf('2025-12-29')).toBe(1);
+  });
+
+  it('agrees with itself -- the whole point, so two unsynced phones land on the same rotating pair', () => {
+    expect(isoWeekOf('2026-09-25')).toBe(isoWeekOf('2026-09-25'));
   });
 });

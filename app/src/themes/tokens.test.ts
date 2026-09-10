@@ -99,12 +99,12 @@ describe('the shared shape layer', () => {
 
   /**
    * The shell publishes its own measurements so a screen can read how much room
-   * it has. The home screen places a ring of bubbles inside whatever is left,
-   * and the alternative — copying `92px` into a second file — drifts the first
-   * time this changes and clips the bottom row on somebody's phone.
+   * it has. A page's content is measured against whatever the rail has left,
+   * and the alternative — copying `82px` into a second file — drifts the first
+   * time this changes and clips content under the rail on somebody's phone.
    */
-  const LAYOUT = ['--shell-max', '--shell-gutter', '--shell-top', '--tabbar-height',
-                  '--shell-bottom', '--stack'];
+  const LAYOUT = ['--shell-max', '--shell-gutter', '--shell-top', '--rail-width',
+                  '--shell-left', '--shell-bottom', '--stack'];
 
   it('publishes the shell measurements to every theme, identically', () => {
     const first = themeToCssVars(THEMES[0]);
@@ -117,11 +117,11 @@ describe('the shared shape layer', () => {
     }
   });
 
-  it('leaves more room at the bottom than the bar itself occupies', () => {
-    // --shell-bottom is a calc over --tabbar-height, so the guarantee is
-    // structural rather than arithmetic: it cannot be smaller by construction.
-    expect(SHARED_TOKENS['--shell-bottom']).toContain('var(--tabbar-height)');
-    expect(Number.parseFloat(SHARED_TOKENS['--tabbar-height'])).toBeGreaterThanOrEqual(
+  it('leaves more room on the left than the rail itself occupies', () => {
+    // --shell-left is a calc over --rail-width, so the guarantee is structural
+    // rather than arithmetic: it cannot be smaller by construction.
+    expect(SHARED_TOKENS['--shell-left']).toContain('var(--rail-width)');
+    expect(Number.parseFloat(SHARED_TOKENS['--rail-width'])).toBeGreaterThanOrEqual(
       Number.parseFloat(SHARED_TOKENS['--tap']),
     );
   });
