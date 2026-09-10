@@ -65,6 +65,11 @@ Two workflows deploy: `deploy.yml` (Pages, every push to `main`) and `worker-dep
 - `CLOUDFLARE_API_TOKEN` — must have **Cloudflare Pages: Edit** + **D1: Edit** + **Workers AI: Read** + **Workers Scripts: Edit** (the last one for `worker-deploy.yml`)
 - `CLOUDFLARE_ACCOUNT_ID` — from the Cloudflare dashboard sidebar
 
+Optional, and set on the **Pages project** rather than as repo secrets:
+`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` turn on GitHub account recovery.
+Unset is a supported configuration — the feature hides itself and the pairing
+code remains the only way into a couple either way. See §8 of `docs/DEPLOY.md`.
+
 The deploy step runs from `app/` so wrangler reads `app/wrangler.toml` for D1/Workers AI bindings. Deploying from the repo root would leave functions unbound and every `/api` call would 500.
 
 Full deploy walkthrough: `docs/DEPLOY.md`
