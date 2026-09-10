@@ -13,8 +13,10 @@ import {
   QUEST_DIFFICULTIES,
   shapeFor,
   templateById,
+  type QuestMeasure,
   type QuestShape,
 } from '../../domain/quests/templates';
+import { questArt } from './art';
 import type { Quest, QuestDifficulty } from '../../domain/types';
 
 /**
@@ -79,6 +81,10 @@ function Running({ quest, day, onRetire }: { quest: Quest; day: string; onRetire
   return (
     <div className="quest-card">
       <div className="quest-head">
+        {/* The measure's own mark. `shape` is undefined only for a quest whose
+            template was retired between releases, and a missing icon is the
+            right amount of nothing to render for that. */}
+        {shape ? <QuestMark measure={shape.measure} /> : null}
         <span className="quest-name">{quest.title}</span>
         <span className="quest-count">{quest.progress}/{quest.target}</span>
       </div>
@@ -163,6 +169,7 @@ function Picker({ coupleId, day }: { coupleId: string; day: string }) {
                   setBusy(false);
                 }}
               >
+                <QuestMark measure={template.measure} />
                 <span className="quest-offer-name">{target.title}</span>
                 <span className="quest-offer-worth">+{target.xp} XP</span>
               </button>
@@ -193,4 +200,13 @@ function Past({ quests }: { quests: Quest[] }) {
       </ul>
     </details>
   );
+}
+
+/**
+ * A quest's mark, keyed by what it counts rather than by which template it is
+ * — two quests that count the same thing should look the same. See `./art`.
+ */
+function QuestMark({ measure }: { measure: QuestMeasure }) {
+  const Art = questArt(measure);
+  return <span className="quest-mark"><Art /></span>;
 }
