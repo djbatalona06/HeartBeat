@@ -76,3 +76,28 @@ export async function buyGear(
     return { ok: true };
   });
 }
+
+/**
+ * A welcome gift rather than a purchase — the item revealed at the end of
+ * onboarding. No coins move, and it is idempotent: running it again for
+ * someone who already has the item (onboarding interrupted and resumed, the
+ * effect firing twice) does nothing rather than granting a second one for
+ * free.
+ */
+export async function grantStarterItem(
+  memberId: MemberId,
+  coupleId: CoupleId,
+  itemId: string,
+): Promise<void> {
+  const existing = await db.inventory.where('[memberId+itemId]').equals([memberId, itemId]).first();
+  if (existing) return;
+  await db.inventory.put({
+    id: id(),
+    coupleId,
+    memberId,
+    itemId,
+    refine: 0,
+    acquiredAt: now(),
+    updatedAt: now(),
+  });
+}

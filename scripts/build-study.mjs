@@ -13,6 +13,7 @@ import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { STUDY_FAVICON } from './favicons.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -67,18 +68,8 @@ for (const file of readdirSync(fontDir)) {
   if (inlinedCss !== before) fontCount += 1;
 }
 
-// ---- 4. favicon: the same cat mark the app uses ------------------------------
-const favicon = `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 78">'
-  + '<path d="M22 26C16 12 20 6 26 5c7-1 14 6 18 15z" fill="#fff"/>'
-  + '<path d="M78 26C84 12 80 6 74 5c-7-1-14 6-18 15z" fill="#fff"/>'
-  + '<ellipse cx="50" cy="44" rx="33" ry="27" fill="#fff"/>'
-  + '<ellipse cx="38" cy="42" rx="3.4" ry="4.6" fill="#2a0f1c"/>'
-  + '<ellipse cx="62" cy="42" rx="3.4" ry="4.6" fill="#2a0f1c"/>'
-  + '<ellipse cx="50" cy="50" rx="4.6" ry="3.3" fill="#f5c85c"/>'
-  + '<circle cx="25" cy="22" r="8" fill="#d81f45"/>'
-  + '</svg>',
-)}">`;
+// ---- 4. favicon: a flashcard, for the page that is one -----------------------
+const favicon = STUDY_FAVICON;
 
 // ---- 5. assemble -------------------------------------------------------------
 let html = readFileSync(join(DIST, 'study.html'), 'utf8');

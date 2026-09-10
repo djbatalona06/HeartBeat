@@ -11,6 +11,9 @@ import { StudyRoute } from './features/study/StudyRoute';
 import { ChatPanel } from './features/chat/ChatPanel';
 import { PairGate } from './features/pairing/PairGate';
 import { usePairing } from './features/pairing/usePairing';
+import { FirstRunGate } from './features/onboarding/FirstRunGate';
+import { WelcomePage } from './features/onboarding/WelcomePage';
+import { OnboardingPage } from './features/onboarding/OnboardingPage';
 import { useSync } from './pwa/useSync';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CommandMenu } from './components/CommandMenu';
@@ -38,33 +41,40 @@ export function App() {
             reload both have to resolve without a server-side rewrite rule. */}
         <HashRouter>
           <main className="shell">
-            {/* Inside the router, so the gate can leave the route it interrupted
-                standing: a deep link arriving unpaired waits here and opens for
-                real once the second phone joins, rather than being redirected
-                away and forgotten. */}
-            <PairGate ready={ready} paired={paired} open={OPEN_WHILE_UNPAIRED}>
-              {/* Around the routes only. A single page throwing should leave the
-                  nav bar and the thread standing, so there is still a way out of
-                  the broken screen without force-quitting the app. */}
-              <ErrorBoundary scope="route" recoverTo="#/">
-                <Routes>
-                  <Route path="/" element={<DashboardPage />} />
-                  <Route path="/tasks" element={<TasksPage />} />
-                  <Route path="/party" element={<PartyPage />} />
-                  {/* The cycle log is the last section of Mood now. The old
-                      route is kept as a redirect rather than dropped: it is in
-                      notification deep links, in the command menu, and quite
-                      possibly on somebody's home screen. */}
-                  <Route path="/cycle" element={<Navigate to="/mood" replace />} />
-                  <Route path="/study" element={<StudyRoute />} />
-                  <Route path="/mood" element={<MoodPage />} />
-                  <Route path="/exercise" element={<ExercisePage />} />
-                  <Route path="/work" element={<WorkPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </ErrorBoundary>
-            </PairGate>
+            {/* Outside PairGate, and asks a different question: not whether
+                there are two of you, but whether the one of you here has met
+                the app at all. Runs even for a visitor who never pairs. */}
+            <FirstRunGate>
+              {/* Inside the router, so the gate can leave the route it interrupted
+                  standing: a deep link arriving unpaired waits here and opens for
+                  real once the second phone joins, rather than being redirected
+                  away and forgotten. */}
+              <PairGate ready={ready} paired={paired} open={OPEN_WHILE_UNPAIRED}>
+                {/* Around the routes only. A single page throwing should leave the
+                    nav bar and the thread standing, so there is still a way out of
+                    the broken screen without force-quitting the app. */}
+                <ErrorBoundary scope="route" recoverTo="#/">
+                  <Routes>
+                    <Route path="/" element={<DashboardPage />} />
+                    <Route path="/tasks" element={<TasksPage />} />
+                    <Route path="/party" element={<PartyPage />} />
+                    {/* The cycle log is the last section of Mood now. The old
+                        route is kept as a redirect rather than dropped: it is in
+                        notification deep links, in the command menu, and quite
+                        possibly on somebody's home screen. */}
+                    <Route path="/cycle" element={<Navigate to="/mood" replace />} />
+                    <Route path="/study" element={<StudyRoute />} />
+                    <Route path="/mood" element={<MoodPage />} />
+                    <Route path="/exercise" element={<ExercisePage />} />
+                    <Route path="/work" element={<WorkPage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/welcome" element={<WelcomePage />} />
+                    <Route path="/onboarding" element={<OnboardingPage />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </ErrorBoundary>
+              </PairGate>
+            </FirstRunGate>
           </main>
           {/* Inside the router so its "open Settings" link works, but outside
               <main> so it survives every route change — the thread should not
