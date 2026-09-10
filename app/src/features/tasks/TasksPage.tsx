@@ -29,6 +29,7 @@ import {
   type TaskType,
 } from '../../domain/rpg/types';
 import { DEFAULT_TIMEZONE } from '../../domain/types';
+import { taskArt } from '../quests/art';
 
 const DIFFICULTIES = Object.keys(DIFFICULTY_WEIGHT) as TaskDifficulty[];
 
@@ -202,9 +203,18 @@ function Section({ title, sub, type, tasks, day, onComplete, onDown, onArchive }
   const ordered = [...tasks].sort((a, b) => a.value - b.value);
   if (!ordered.length) return null;
 
+  const Mark = taskArt(type);
+
   return (
     <section className="task-section">
-      <h2 className="section-title">{title}</h2>
+      {/* On the heading, not on each row. Every row in a section is the same
+          kind by construction, so a per-row icon would draw the same shape
+          eight times and distinguish nothing — what the icon is for is telling
+          the three sections apart while scrolling past them. */}
+      <h2 className="section-title task-heading">
+        <span className="task-mark"><Mark /></span>
+        {title}
+      </h2>
       <p className="section-sub">{sub}</p>
       <ul className="task-list">
         {ordered.map((task) => (

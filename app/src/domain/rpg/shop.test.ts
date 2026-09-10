@@ -13,6 +13,7 @@ import {
 } from './shop';
 import { PET_RANK_BONDS } from './pets';
 import { GEAR, RARITIES, gearById } from './gear';
+import { STARTER_COINS } from './types';
 import type { Rarity } from './gear';
 
 describe('GEAR_PRICE', () => {
@@ -144,5 +145,37 @@ describe('gearBonusWithRefinement', () => {
     const equipped = { helmet: godly.id };
     const bonus = gearBonusWithRefinement(equipped, 1, { [godly.id]: 5 });
     expect(bonus).toEqual({ strength: 0, insight: 0, heart: 0, luck: 0 });
+  });
+});
+
+/**
+ * The opening hand.
+ *
+ * `STARTER_COINS` lives in `types.ts`, beside `newAvatar`, because it is a
+ * property of starting rather than of buying — but what makes the number the
+ * right number is entirely about buying, and those prices live here. So this
+ * is where the three are held against each other: change any one of them and
+ * the first decision a new member makes changes shape, and that should be a
+ * decision somebody makes rather than a thing that happens.
+ */
+describe('what a new member can afford on day one', () => {
+  it('buys exactly four common items, with nothing left over', () => {
+    expect(STARTER_COINS / GEAR_PRICE.common).toBe(4);
+  });
+
+  it('or exactly one egg, with nothing left over', () => {
+    expect(STARTER_COINS).toBe(EGG_PRICE);
+  });
+
+  it('cannot reach an epic, so the ceiling still has to be earned', () => {
+    expect(canAfford(STARTER_COINS, GEAR_PRICE.epic).ok).toBe(false);
+    expect(canAfford(STARTER_COINS, GEAR_PRICE.godly).ok).toBe(false);
+  });
+
+  it('can reach a rare, so breadth is a real trade against depth', () => {
+    // Four commons, or one rare and one common, or an egg. A starting balance
+    // with one obvious answer is not a decision.
+    expect(canAfford(STARTER_COINS, GEAR_PRICE.rare).ok).toBe(true);
+    expect(canAfford(STARTER_COINS - GEAR_PRICE.rare, GEAR_PRICE.common).ok).toBe(true);
   });
 });

@@ -1924,10 +1924,15 @@ body {
   border: 0;
 }
 
-.proof-actions { display: flex; gap: var(--space-2); }
+/* Wraps, because there are three of these now and `.proof-grid` gives each
+   proof half a phone's width. Three buttons sharing 180px would each be a
+   truncated word above the tap-target floor in height and below it in sense. */
+.proof-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
 .proof-action {
-  flex: 1;
+  /* Grow to share a row, but never shrink below something readable — the
+     basis is what decides how many fit before the rest wrap. */
+  flex: 1 1 84px;
   min-height: var(--tap);
   border-radius: var(--radius);
   border: var(--border-width) solid var(--color-border);
@@ -3253,3 +3258,275 @@ body {
   .page > *, .page > .page-head { animation-delay: 0ms; }
   .chip-on { transform: none; }
 }
+
+/* ---- the bag ----------------------------------------------------------------
+   The asset manager. Everything a member owns, which the app already knew and
+   had nowhere to say: owned gear was a "bought" flag inside the shop, so the
+   only way to see what you had was to scroll a price list; companions were a
+   row beside a boss fight; and a finished to-do vanished from the one screen
+   that had ever shown it.
+
+   Every measurement below is a shared token, so this page keeps the same
+   rhythm as the rest without restating it. */
+
+.asset-totals {
+  display: grid;
+  /* Four across on a phone is 80px each at the narrowest supported width,
+     which fits three digits and a word under them. It wraps rather than
+     shrinks below that. */
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: var(--space-3);
+}
+
+.asset-total { display: flex; flex-direction: column; gap: 2px; }
+
+.asset-total-value {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  line-height: var(--line-tight);
+  /* Tabular figures so four counters that update independently do not jog
+     each other sideways as they change width. */
+  font-variant-numeric: tabular-nums;
+}
+
+.asset-total-label { font-size: var(--text-sm); color: var(--color-text-muted); }
+.asset-total-sub { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+.asset-shop-note { margin: var(--space-4) 0 0; }
+.asset-shop-note a { color: var(--color-accent); }
+
+.asset-message {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid var(--color-border);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+
+.asset-shelf + .asset-shelf { margin-top: var(--space-5); }
+
+.asset-shelf-name {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  /* The slot names are a list to scan, not headings to read. */
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.asset-shelf-empty { font-size: var(--text-sm); color: var(--color-text-muted); }
+
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.asset-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  /* Above the 48px floor even before the artwork, because the whole card is
+     the tap target rather than a button tucked inside one. */
+  min-height: var(--tap);
+  padding: var(--space-3) var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: center;
+  transition: transform var(--motion-fast) var(--ease-soft),
+              border-color var(--motion-fast) var(--motion-easing),
+              background-color var(--motion-fast) var(--motion-easing);
+}
+
+.asset-card:active { transform: scale(0.96); }
+.asset-card:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+/* Worn is the state worth seeing from across the shelf, so it takes the
+   accent border and the accent tint rather than a badge alone. */
+.asset-card[data-worn='true'] {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface-muted));
+}
+
+/* Held but above your level. Dimmed, never disabled — the same rule the
+   locked rail tab follows, and for the same reason: `equipItem` answers with
+   the reason, which is more use than a button that goes dead. */
+.asset-card[data-locked='true']:not([data-worn='true']) { opacity: 0.55; }
+
+.asset-card-art { display: block; width: 44px; height: 44px; }
+.asset-card-art svg { width: 100%; height: 100%; }
+
+.asset-card-name { font-size: var(--text-sm); line-height: var(--line-tight); }
+.asset-card-meta { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+.asset-card-flag {
+  font-size: var(--text-xs);
+  color: var(--color-accent);
+}
+.asset-card-flag-locked { color: var(--color-text-muted); }
+
+.asset-pets, .asset-done {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.asset-pet {
+  display: flex;
+  align-items: center;
+  /* Wraps rather than squeezes. The art is a fixed 48px and "Walking with
+     you" is a long flag, so on a narrow phone the meta line underneath the
+     pet's name was losing the fight and breaking mid-phrase. Letting the flag
+     drop to its own line keeps the sentence intact and costs one line only on
+     the single row that has a flag at all. */
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: transform var(--motion-fast) var(--ease-soft),
+              border-color var(--motion-fast) var(--motion-easing),
+              background-color var(--motion-fast) var(--motion-easing);
+}
+
+.asset-pet:active { transform: scale(0.985); }
+.asset-pet:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.asset-pet[data-active='true'] {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface-muted));
+}
+
+.asset-pet-art { display: block; flex-shrink: 0; width: 48px; height: 48px; }
+.asset-pet-art svg { width: 100%; height: 100%; }
+.asset-pet-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+
+/* Pushed to the end of whichever line it lands on. */
+.asset-pet .asset-card-flag { margin-left: auto; flex-shrink: 0; }
+.asset-pet-name { font-size: var(--text-base); line-height: var(--line-tight); }
+.asset-pet-meta { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+.asset-done-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+.asset-done-row:last-child { border-bottom: none; }
+
+/* The title takes whatever is left and truncates; the date never does, because
+   a half-shown date is worse than a half-shown sentence. */
+.asset-done-title {
+  min-width: 0;
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+.asset-done-when, .asset-streak {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.asset-streak { color: var(--color-accent); }
+
+/* ---- the GitHub block -------------------------------------------------------
+   Optional account recovery. The whole section is absent on a deploy with no
+   OAuth app, so none of this has an "unavailable" state to style. */
+
+.github-note {
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid var(--color-border);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+
+/* Bad news takes the danger border and nothing else — a filled red panel on a
+   screen somebody has just been redirected to reads as "you broke it", and
+   most of what lands here is "that link expired". */
+.github-note[data-problem='true'] { border-color: var(--color-danger); }
+
+.github-account {
+  margin: var(--space-3) 0;
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+
+.github-fineprint {
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  line-height: var(--line-body);
+  color: var(--color-text-muted);
+}
+
+/* The recovery link on Welcome. `.primary` is written for a button; as a link
+   it has to centre its own text — the same note the pairing CTA carries. */
+.welcome-recover {
+  display: block;
+  margin-top: var(--space-4);
+  text-align: center;
+  text-decoration: none;
+}
+
+/* ---- quest and task marks ---------------------------------------------------
+   Drawings for what a quest counts and for the three kinds of task. The board
+   and the task list were entirely typographic — a title, a number, a bar — so
+   every offer looked like every other offer and picking one was reading rather
+   than recognising. See features/quests/art. */
+
+.quest-icon { display: block; width: 100%; height: 100%; }
+
+/* A fixed box so a row's height does not depend on which shape landed in it,
+   and the text beside it starts at the same x in every row. */
+.quest-mark, .task-mark {
+  display: block;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  color: var(--color-accent);
+}
+
+/* The head is already a flex row; the mark joins it as a first child rather
+   than being absolutely placed, so nothing has to know its width. */
+.quest-head { align-items: center; }
+
+/* The offer row was two children under `space-between`, which put one at each
+   end. A third child arriving between them would have been stranded in the
+   middle with a gap either side, so the name takes the free space instead and
+   the row goes back to "mark and title together, reward on the right".
+   `center` rather than `baseline` because the mark is a block SVG with no
+   baseline of its own to sit on. */
+.quest-offer { align-items: center; }
+.quest-offer-name { flex: 1; min-width: 0; }
+.quest-offer .quest-mark { color: var(--color-accent); }
+
+/* The running quest's head is the same shape and needs the same fix. */
+.quest-name { flex: 1; min-width: 0; }
+
+.task-heading { display: flex; align-items: center; gap: var(--space-2); }
+.task-mark { width: 18px; height: 18px; }

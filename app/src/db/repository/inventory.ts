@@ -79,25 +79,48 @@ export async function buyGear(
 
 /**
  * A welcome gift rather than a purchase — the item revealed at the end of
- * onboarding. No coins move, and it is idempotent: running it again for
- * someone who already has the item (onboarding interrupted and resumed, the
- * effect firing twice) does nothing rather than granting a second one for
- * free.
+ * onboarding, and the wallet it is revealed alongside. No coins are *spent*,
+ * and it is idempotent: running it again for someone who already has the item
+ * (onboarding interrupted and resumed, the effect firing twice) does nothing
+ * rather than granting a second one for free.
+ *
+ * The coins arrive by a different route than the item, and the difference is
+ * the point. There is no "grant coins" step here to double-fire, because the
+ * starting balance is a property of the avatar row itself — `newAvatar` in
+ * `domain/rpg/types.ts` mints it with `STARTER_COINS`. All this does is make
+ * sure that row exists before onboarding ends, so a member who never completes
+ * a task still has a wallet to open the shop with.
+ *
+ * That also means it cannot top somebody up. Calling it on a member who has
+ * been playing for a month reads their existing avatar and leaves the balance
+ * exactly where they earned it, which is the correct behaviour and the reason
+ * this is not written as `coins += STARTER_COINS`.
+ *
+ * One transaction over both tables, so a gift is never half-given.
  */
 export async function grantStarterItem(
   memberId: MemberId,
   coupleId: CoupleId,
   itemId: string,
 ): Promise<void> {
-  const existing = await db.inventory.where('[memberId+itemId]').equals([memberId, itemId]).first();
-  if (existing) return;
-  await db.inventory.put({
-    id: id(),
-    coupleId,
-    memberId,
-    itemId,
-    refine: 0,
-    acquiredAt: now(),
-    updatedAt: now(),
+  await db.transaction('rw', db.avatars, db.inventory, async () => {
+    // Mints the row at STARTER_COINS if this member has never had one, and is
+    // a plain read if they have.
+    await getOrCreateAvatar(memberId, coupleId);
+
+    const existing = await db.inventory
+      .where('[memberId+itemId]')
+      .equals([memberId, itemId])
+      .first();
+    if (existing) return;
+    await db.inventory.put({
+      id: id(),
+      coupleId,
+      memberId,
+      itemId,
+      refine: 0,
+      acquiredAt: now(),
+      updatedAt: now(),
+    });
   });
 }

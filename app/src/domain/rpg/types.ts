@@ -127,8 +127,29 @@ export interface Avatar {
   updatedAt: number;
 }
 
+/**
+ * What a new avatar opens with.
+ *
+ * A brand-new member used to start on nothing, which meant the shop was a
+ * price list they could only look at until the first task paid out — the one
+ * screen in the app whose entire purpose is spending, dead on arrival on the
+ * day someone is most likely to go looking at it.
+ *
+ * 120 is deliberately not round in the economy's own terms: it is four common
+ * items (`GEAR_PRICE.common` is 30) or one egg (`EGG_PRICE` is 120) and
+ * nothing left over. So the first decision is a real one — breadth or a
+ * companion — rather than a formality with an obvious answer, and either
+ * choice leaves the wallet empty enough that the next purchase still has to be
+ * earned. Kept here beside `newAvatar` rather than in `shop.ts` because it is
+ * a property of starting, not of buying; `shop.test.ts` pins it against both
+ * prices so the three cannot drift apart silently.
+ */
+export const STARTER_COINS = 120;
+
 export function newAvatar(memberId: MemberId, coupleId: CoupleId, at: number): Avatar {
-  return { memberId, coupleId, xp: 0, coins: 0, energy: 0, mp: 0, gear: {}, updatedAt: at };
+  return {
+    memberId, coupleId, xp: 0, coins: STARTER_COINS, energy: 0, mp: 0, gear: {}, updatedAt: at,
+  };
 }
 
 /** Finch's growth stages, in order. */
