@@ -16,7 +16,44 @@ import type { CoupleId, DayKey, MemberId } from '../types';
  * to ordinary life without first changing this file.
  */
 
-export type TaskType = 'habit' | 'daily' | 'todo';
+/**
+ * A goal is a Daily that you chose on purpose and filed under an area of your
+ * life. Mechanically it *is* a Daily — same schedule, same value curve, same
+ * "already ticked today pays nothing" guard — which is why it is a task type
+ * rather than a table of its own. What it adds is provenance (`area`,
+ * `suggestionId`) and a screen that groups by it.
+ */
+export type TaskType = 'habit' | 'daily' | 'todo' | 'goal';
+
+/**
+ * The types that have a schedule, and so can be due, missed, and settled.
+ * Habits are always available and To-Dos have no schedule, so asking whether
+ * either is due is a category error — see `isDue` in `task.ts`.
+ *
+ * The predicate reads off the list rather than repeating it, because the two
+ * are used in different places for the same question: `settleTasks` queries the
+ * `[memberId+type]` index once per entry here, while `isDue` tests one task.
+ * Written twice, they would eventually disagree, and the symptom would be goals
+ * that show up on Home but never drift when missed.
+ */
+export const SCHEDULED_TYPES: readonly TaskType[] = ['daily', 'goal'];
+
+export function isScheduled(type: TaskType): boolean {
+  return SCHEDULED_TYPES.includes(type);
+}
+
+/**
+ * The areas of a life this app is willing to name.
+ *
+ * Six, and deliberately not more: these are the buckets a goal gets filed in,
+ * and a taxonomy you have to scroll is one nobody files anything under. The
+ * union lives here, beside the `Task.area` field that uses it, so the
+ * dependency runs one way — `selfCare.ts` owns the *content* (names, blurbs,
+ * icons, the suggestion catalogue) and imports this.
+ */
+export type AreaId = 'body' | 'mind' | 'feelings' | 'people' | 'space' | 'purpose';
+
+export const AREA_IDS: readonly AreaId[] = ['body', 'mind', 'feelings', 'people', 'space', 'purpose'];
 
 /**
  * Habitica's four difficulties and its four weights. The weight scales what a
@@ -57,6 +94,24 @@ export interface Task {
    * not count the same missed day twice.
    */
   lastSettledOn?: DayKey;
+  /**
+   * Goals only: which area of your life this one belongs to.
+   *
+   * Optional on every task rather than required on a goal, because these are
+   * new fields on an existing Dexie table — every row already stored reads
+   * `undefined` here, which is exactly right for the habits and to-dos that
+   * were never filed anywhere. That is also why goals are not indexed by area:
+   * they are read through the existing `[memberId+type]` index and grouped in
+   * memory, and one person's goals are a short list.
+   */
+  area?: AreaId;
+  /**
+   * Set when the goal was adopted from the suggestion catalogue rather than
+   * typed. Kept so the ideas screen can stop offering something you already
+   * took, and so a suggestion that is later reworded does not orphan the goal
+   * it became.
+   */
+  suggestionId?: string;
   /** To-dos only: a to-do is done once and then archived rather than reset. */
   done?: boolean;
   archivedAt?: number;

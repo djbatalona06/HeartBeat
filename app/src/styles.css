@@ -3218,6 +3218,126 @@ body {
 .cycle-panel .cal-head { margin-top: var(--space-4); }
 .cycle-panel .cal-grid { margin-left: 0; margin-right: 0; }
 
+/* ---- goals, ideas and the areas grid ---------------------------------------
+   Everything here tints with `color-mix()` against `--color-accent` rather
+   than naming a colour. Six hardcoded area colours were the obvious way to
+   draw this and would have been the one grid on screen ignoring whichever
+   theme pack is on — the packs differ by palette, so a fixed palette is a
+   pack that cannot be switched off. See domain/rpg/selfCare.ts. */
+.area-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+.area-tile {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius-large);
+  border: var(--border-width) solid var(--color-border);
+  /* The fill strengthens with the day's progress, so a glance across the grid
+     reads as "which of these has had anything today". */
+  background: color-mix(in srgb, var(--color-accent) calc(var(--area-fill, 0%) * 0.18), var(--color-surface));
+  color: var(--color-text);
+  text-decoration: none;
+  transition: transform var(--motion-fast) var(--ease-soft),
+              background-color var(--motion-medium) var(--motion-easing);
+}
+.area-tile:active { transform: scale(0.985); }
+.area-tile:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.area-glyph { font-size: var(--text-xl); color: var(--color-accent); }
+.area-name { font-family: var(--font-display); font-size: var(--text-lg); line-height: var(--line-tight); }
+.area-count { font-size: var(--text-xs); color: var(--color-text-muted); }
+.area-blurb {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
+
+.area-bar {
+  margin-top: var(--space-2);
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
+  overflow: hidden;
+}
+.area-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-accent);
+  transition: width var(--motion-slow) var(--ease-soft);
+}
+
+.goal-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.goal-actions .primary { flex: 0 0 auto; }
+.goal-link {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+}
+.goal-link:hover, .goal-link:focus-visible { color: var(--color-accent); }
+
+.section-title .goal-area-glyph {
+  color: var(--color-accent);
+  margin-right: var(--space-2);
+  vertical-align: -0.1em;
+}
+
+.idea-list { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+
+.idea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+.idea-body { flex: 1 1 auto; min-width: 0; }
+.idea-title { font-size: var(--text-base); line-height: var(--line-body); }
+.idea-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.idea-area { display: inline-flex; align-items: center; gap: var(--space-1); }
+.idea-difficulty { text-transform: capitalize; }
+
+/* A tap target, not a glyph: this is the one control on the screen, and it is
+   hit with a thumb while scrolling a long list. */
+.idea-add {
+  flex: 0 0 auto;
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 999px;
+  border: var(--border-width) solid var(--color-border);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: var(--text-xl);
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--motion-easing),
+              transform var(--motion-fast) var(--ease-soft);
+}
+.idea-add:hover { background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+.idea-add:active { transform: scale(0.92); }
+.idea-add:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
 /* ---- motion -----------------------------------------------------------------
    The app had backdrops and almost nothing else: five animated canvases behind
    the content, and content that appeared instantly and sat perfectly still. So

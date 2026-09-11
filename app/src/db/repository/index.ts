@@ -14,6 +14,7 @@
 export * from './achievements';
 export * from './chat';
 export * from './entries';
+export * from './goals';
 export * from './identity';
 export * from './inventory';
 export * from './members';

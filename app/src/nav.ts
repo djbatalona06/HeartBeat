@@ -44,6 +44,8 @@ export const ICON_NAMES = [
   'friends',
   'bag',
   'bird',
+  'target',
+  'leaf',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
@@ -100,6 +102,14 @@ export const MENU_GROUPS: MenuGroup[] = [
       { to: '/exercise', label: 'Move', icon: 'dumbbell', hint: 'Workouts and proof' },
       { to: '/work', label: 'Work', icon: 'calendar', hint: 'The shared calendar' },
       { to: '/study', label: 'Study', icon: 'cards', hint: 'Flashcards, due today' },
+    ],
+  },
+  {
+    title: 'Self-care',
+    tabs: [
+      { to: '/goals', label: 'Goals', icon: 'target', hint: 'What you are keeping up, by area' },
+      { to: '/goals/ideas', label: 'Goal ideas', icon: 'sparkle', hint: 'Small things to try, tailored to you' },
+      { to: '/areas', label: 'Areas', icon: 'leaf', hint: 'The six parts, and which are quiet' },
     ],
   },
   {

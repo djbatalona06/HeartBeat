@@ -20,6 +20,9 @@ import { CommandMenu } from './components/CommandMenu';
 import { MenuSheet } from './components/MenuSheet';
 import { Icon } from './components/icons';
 import { QuestsPage } from './features/quests/QuestsPage';
+import { GoalsPage } from './features/goals/GoalsPage';
+import { GoalIdeasPage } from './features/goals/GoalIdeasPage';
+import { AreasPage } from './features/goals/AreasPage';
 import { FriendsPage } from './features/party/FriendsPage';
 import { OPEN_WHILE_UNPAIRED, PRIMARY_TABS } from './nav';
 
@@ -66,6 +69,11 @@ export function App() {
                         the four below are the same sections, one screen each,
                         so the bar can lead somewhere specific. */}
                     <Route path="/quests" element={<QuestsPage />} />
+                    {/* Ideas before the bare /goals so the more specific path
+                        is not swallowed by it. */}
+                    <Route path="/goals/ideas" element={<GoalIdeasPage />} />
+                    <Route path="/goals" element={<GoalsPage />} />
+                    <Route path="/areas" element={<AreasPage />} />
                     <Route path="/shop" element={<PartyPage only={['shop']} title="Shop" />} />
                     <Route path="/friends" element={<FriendsPage />} />
                     <Route path="/bag" element={<PartyPage only={['worn', 'companions']} title="Bag" />} />

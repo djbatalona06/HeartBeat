@@ -2,6 +2,8 @@ import { addDays, daysBetween } from '../day';
 import type { DayKey } from '../types';
 import {
   DIFFICULTY_WEIGHT,
+  isScheduled,
+  type AreaId,
   type Payout,
   type Task,
   type TaskDifficulty,
@@ -153,12 +155,12 @@ export function weekdayOf(day: DayKey): number {
 }
 
 /**
- * Only Dailies are ever "due". Habits are always available and To-Dos have no
- * schedule, so asking whether either is due is a category error that returns
- * false rather than throwing.
+ * Only scheduled tasks — Dailies and Goals — are ever "due". Habits are always
+ * available and To-Dos have no schedule, so asking whether either is due is a
+ * category error that returns false rather than throwing.
  */
 export function isDue(task: Pick<Task, 'type' | 'dueDays'>, day: DayKey): boolean {
-  if (task.type !== 'daily') return false;
+  if (!isScheduled(task.type)) return false;
   if (!task.dueDays || task.dueDays.length === 0) return true;
   return task.dueDays.includes(weekdayOf(day));
 }
@@ -167,7 +169,13 @@ export function isCompletedOn(task: Pick<Task, 'lastCompletedOn'>, day: DayKey):
   return task.lastCompletedOn === day;
 }
 
-/** What is left to do today, in the order a list should show it. */
+/**
+ * What is left to do today, in the order a list should show it.
+ *
+ * Filters by `isDue`, so handing it goals alongside dailies returns both —
+ * which is how Home shows one checklist rather than two. The name is kept
+ * because the caller's question has not changed, only the mix it asks about.
+ */
 export function openDailies(tasks: Task[], day: DayKey): Task[] {
   return tasks
     .filter((t) => !t.archivedAt && isDue(t, day) && !isCompletedOn(t, day))
@@ -195,7 +203,7 @@ export function settleMissed(
   maxDays: number = MAX_SETTLE_DAYS,
 ): { value: number; streak: number; lastSettledOn: DayKey; missed: number } {
   const unchanged = { value: task.value, streak: task.streak, lastSettledOn: throughDay, missed: 0 };
-  if (task.type !== 'daily' || task.archivedAt) return unchanged;
+  if (!isScheduled(task.type) || task.archivedAt) return unchanged;
 
   const anchor = task.lastSettledOn ?? task.lastCompletedOn;
   if (!anchor) return unchanged;
@@ -231,6 +239,8 @@ export function newTask(
     difficulty?: TaskDifficulty;
     notes?: string;
     dueDays?: number[];
+    area?: AreaId;
+    suggestionId?: string;
   },
   at: number,
   day: DayKey,
@@ -243,6 +253,8 @@ export function newTask(
     title: fields.title,
     notes: fields.notes,
     difficulty: fields.difficulty ?? 'easy',
+    area: fields.area,
+    suggestionId: fields.suggestionId,
     value: 0,
     streak: 0,
     dueDays: fields.dueDays,

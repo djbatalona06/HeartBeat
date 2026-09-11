@@ -23,6 +23,7 @@ import { gearBonus } from '../../domain/rpg/gear';
 import { nextStageLevel } from '../../domain/rpg/stage';
 import {
   DIFFICULTY_WEIGHT,
+  isScheduled,
   type Avatar,
   type Task,
   type TaskDifficulty,
@@ -223,7 +224,13 @@ function Section({ title, sub, type, tasks, day, onComplete, onDown, onArchive }
   );
 }
 
-function TaskRow({ task, day, showDown, onComplete, onDown, onArchive }: {
+/**
+ * One task, however it got here. Exported because Goals shows the same row for
+ * the same reason — a goal is a scheduled task, so "tick it, and here is what
+ * it is worth today" is the same sentence — and a second copy of this markup
+ * would be the one that forgot the disabled state on an already-ticked row.
+ */
+export function TaskRow({ task, day, showDown, onComplete, onDown, onArchive }: {
   task: Task;
   day: string;
   showDown: boolean;
@@ -232,7 +239,10 @@ function TaskRow({ task, day, showDown, onComplete, onDown, onArchive }: {
   onArchive: (task: Task) => void;
 }) {
   const done = task.type !== 'habit' && isCompletedOn(task, day);
-  const dueToday = task.type !== 'daily' || isDue(task, day);
+  // Only a scheduled task can fail to be due. Habits are always available and
+  // to-dos have no schedule, so telling either "not due today" would be wrong —
+  // as it was for goals while this asked about `'daily'` by name.
+  const dueToday = !isScheduled(task.type) || isDue(task, day);
 
   return (
     <li className={`task ${done ? 'task-done' : ''}`} data-tone={toneFor(task.value)}>

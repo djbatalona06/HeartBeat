@@ -4,6 +4,8 @@ import { addDays } from '../../domain/day';
 import { starterPlanFor } from '../../domain/rpg/starterPlan';
 import {
   newAvatar,
+  SCHEDULED_TYPES,
+  type AreaId,
   type Avatar,
   type GearSlot,
   type LifeEventKind,
@@ -61,6 +63,10 @@ export interface TaskDraft {
   difficulty?: TaskDifficulty;
   notes?: string;
   dueDays?: number[];
+  /** Goals only. Re-filing one is an edit like any other. */
+  area?: AreaId;
+  /** Set once, when a goal is adopted from the catalogue. Never edited. */
+  suggestionId?: string;
 }
 
 /**
@@ -76,6 +82,10 @@ export async function putTask(draft: TaskDraft, day: DayKey, taskId?: string): P
       notes: draft.notes,
       difficulty: draft.difficulty ?? existing.difficulty,
       dueDays: draft.dueDays,
+      area: draft.area ?? existing.area,
+      // Provenance, not a field: where a goal came from cannot be edited into
+      // something it did not come from.
+      suggestionId: existing.suggestionId,
       updatedAt: now(),
     });
     return existing.id;
@@ -104,8 +114,21 @@ export async function seedStarterPlan(
     if (settings?.starterPlanSeededAt) return false;
 
     for (const starter of starterPlanFor(day)) {
+      // Seeded filed rather than loose: the starter plan draws from the same
+      // catalogue Goals offers, so carrying the area and the id across means
+      // the areas screen has something in it on day one and the ideas screen
+      // knows not to offer back what was already planted.
       const task = newTask(
-        { id: id(), coupleId, memberId, type: 'daily', title: starter.title, difficulty: starter.difficulty },
+        {
+          id: id(),
+          coupleId,
+          memberId,
+          type: 'daily',
+          title: starter.title,
+          difficulty: starter.difficulty,
+          area: starter.area,
+          suggestionId: starter.id,
+        },
         now(),
         day,
       );
@@ -214,7 +237,12 @@ export async function logHabitDown(taskId: string): Promise<void> {
  */
 export async function settleTasks(memberId: MemberId, today: DayKey): Promise<number> {
   const throughDay = addDays(today, -1);
-  const tasks = await db.tasks.where('[memberId+type]').equals([memberId, 'daily']).toArray();
+  // Both scheduled types, because a goal that is missed has to drift for the
+  // same reason a daily does — it becomes worth more when you come back to it.
+  // Two point lookups on the compound index rather than a scan of every task.
+  const tasks = (await Promise.all(
+    SCHEDULED_TYPES.map((type) => db.tasks.where('[memberId+type]').equals([memberId, type]).toArray()),
+  )).flat();
   let missed = 0;
   for (const task of tasks) {
     const result = settleMissed(task, throughDay);

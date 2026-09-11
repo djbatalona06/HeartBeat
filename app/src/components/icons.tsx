@@ -165,6 +165,21 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M9.6 17.6v2.8" />
     </>
   ),
+  /** Goals: rings closing on a centre, which is what a goal is. */
+  target: (
+    <>
+      <circle cx="12" cy="12" r="8.2" />
+      <circle cx="12" cy="12" r="4.4" />
+      <circle cx="12" cy="12" r="0.9" />
+    </>
+  ),
+  /** Areas: something growing, because the six of them are a garden, not a score. */
+  leaf: (
+    <>
+      <path d="M19.4 4.6c0 7.4-4 11.4-10.2 11.4H5.6C5.6 8.6 9.6 4.6 15.8 4.6Z" />
+      <path d="M4.6 19.4c1.7-3.6 4.1-6.2 7.3-7.9" />
+    </>
+  ),
 };
 
 interface IconProps {
