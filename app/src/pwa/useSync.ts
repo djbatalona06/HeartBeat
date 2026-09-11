@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { sync } from './sync';
 import { syncHoldings } from './holdingsSync';
 import { flushPetXp } from './petSync';
+import { loadSettings } from '../db/database';
+import { settleLifeEvents } from '../db/repository';
 
 /**
  * Runs sync on the occasions that matter and no others.
@@ -47,6 +49,14 @@ export function useSync(): void {
         for (let page = 0; page < 20; page++) {
           const result = await syncHoldings();
           if (!result || !result.more || cancelled) break;
+        }
+
+        // A Good Vibe is written on the sender's phone and paid on ours, so the
+        // grant only lands once the row has actually arrived — which is why
+        // this is after the holdings loop and not beside the write.
+        const settings = await loadSettings();
+        if (settings.memberId && settings.coupleId && !cancelled) {
+          await settleLifeEvents(settings.memberId, settings.coupleId);
         }
       } catch {
         // Offline, or the backend is down. Both are ordinary: everything renders

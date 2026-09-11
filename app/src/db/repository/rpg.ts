@@ -284,6 +284,7 @@ export async function grantLifeEvent(
     const check = checkGrant(recent, kind, memberId, day, options.fromMemberId);
     if (!check.ok) return { ok: false, reason: check.reason };
 
+    const at = now();
     await db.lifeEvents.put({
       id: id(),
       coupleId,
@@ -292,17 +293,32 @@ export async function grantLifeEvent(
       day,
       fromMemberId: options.fromMemberId,
       note: options.note,
-      grantedAt: now(),
+      grantedAt: at,
+      updatedAt: at,
     });
 
     const payout = grantFor(kind);
-    const recipient = await getOrCreateAvatar(memberId, coupleId);
-    await db.avatars.put(applyPayout(recipient, payout, now()));
+
+    // Who gets paid here, and who gets paid somewhere else.
+    //
+    // A grant with no sender is one this device made about its own day, so the
+    // recipient's avatar is the local one and paying it here is right. Good
+    // Vibes are the other case: the *sender's* phone writes the row, and the
+    // recipient's avatar only exists here as a hollow copy that
+    // `collectPending` never pushes and `shouldApply` never accepts. Paying it
+    // here spent the energy into a row nobody reads.
+    //
+    // So the recipient is paid on their own device, by `settleLifeEvents`, once
+    // the row reaches them. See db/repository/lifeEventSettle.ts.
+    if (!options.fromMemberId) {
+      const recipient = await getOrCreateAvatar(memberId, coupleId);
+      await db.avatars.put(applyPayout(recipient, payout, at));
+    }
 
     // Sending is worth something too, or nobody sends.
     if (kind === 'good-vibes' && options.fromMemberId) {
       const sender = await getOrCreateAvatar(options.fromMemberId, coupleId);
-      await db.avatars.put(applyPayout(sender, GOOD_VIBES_SENDER_GRANT, now()));
+      await db.avatars.put(applyPayout(sender, GOOD_VIBES_SENDER_GRANT, at));
     }
 
     return { ok: true, payout };

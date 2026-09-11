@@ -3,7 +3,10 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { UPSERT_SQL } from '../../app/functions/api/holdings';
+import { KINDS, PARTNER_WRITABLE, UPSERT_SQL } from '../../app/functions/api/holdings';
+import {
+  HOLDING_KINDS, PARTNER_WRITABLE_KINDS,
+} from '../../app/src/domain/sync/holdings';
 
 /**
  * The RPG layer's upsert, against real SQLite with the real migrations
@@ -110,7 +113,11 @@ describe('the holdings upsert', () => {
   });
 
   it('holds that line for every personal kind, not just inventory', () => {
-    for (const kind of ['inventory', 'pet', 'avatar', 'task']) {
+    // Life events and cheers are on this list deliberately. Both phones *see*
+    // them — that is the entire point of the feed — and neither may rewrite the
+    // other's. This is the test that catches visibility leaking into write
+    // permission, which is the one way the split could go wrong quietly.
+    for (const kind of ['inventory', 'pet', 'avatar', 'task', 'lifeEvent', 'cheer']) {
       write('her', { id: `x-${kind}`, kind, payload: '{"mine":true}', updatedAt: NOW });
       expect(
         write('him', { id: `x-${kind}`, kind, payload: '{"mine":false}', updatedAt: NOW + 9999 }),
@@ -170,5 +177,46 @@ describe('the holdings upsert', () => {
         ORDER BY updated_at ASC, kind ASC, id ASC`,
     ).all('c1', NOW + 1) as Array<{ id: string }>;
     expect(rows.map((r) => r.id)).toEqual(['a', 'c']);
+  });
+});
+
+/**
+ * The kind list exists in four places and cannot be imported into three of
+ * them: the client's `HOLDING_KINDS`, the endpoint's `KINDS`, the literal
+ * inside `UPSERT_SQL`, and the CHECK in the migrations. The duplication is
+ * deliberate — a Pages Function must not import from `src/` — which means
+ * nothing but this block stops the four drifting apart. Until now nothing did.
+ */
+describe('the four copies of the kind list', () => {
+  it('accepts every kind the client can send', () => {
+    const db = fresh();
+    for (const kind of HOLDING_KINDS) {
+      const changes = db.prepare(UPSERT_SQL)
+        .run(`row-${kind}`, kind, 'c1', 'her', '{}', NOW).changes;
+      expect(Number(changes), kind).toBe(1);
+    }
+  });
+
+  it('rejects a kind the client cannot send', () => {
+    const db = fresh();
+    expect(() => db.prepare(UPSERT_SQL).run('x', 'wager', 'c1', 'her', '{}', NOW)).toThrow();
+  });
+
+  it('serves the same kinds the client sends', () => {
+    expect([...KINDS]).toEqual([...HOLDING_KINDS]);
+  });
+
+  /**
+   * Parsed out of the statement rather than restated, so the assertion cannot
+   * drift by being updated alongside the thing it is checking. This is what
+   * catches someone "helpfully" adding `lifeEvent` to the SQL, which would hand
+   * each phone the right to overwrite the other's events.
+   */
+  it('writes the writable list, and only that, into the upsert', () => {
+    const clause = /excluded\.kind IN \(([^)]*)\)/.exec(UPSERT_SQL);
+    expect(clause).not.toBeNull();
+    const inSql = clause![1].split(',').map((part) => part.trim().replaceAll("'", ''));
+    expect(inSql).toEqual([...PARTNER_WRITABLE_KINDS]);
+    expect(inSql).toEqual([...PARTNER_WRITABLE]);
   });
 });

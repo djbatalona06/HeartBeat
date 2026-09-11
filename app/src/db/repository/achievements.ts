@@ -96,6 +96,11 @@ export async function achievementState(coupleId: string) {
     // `kind` is not an index on this table, so this is a scan rather than a
     // lookup. It is a handful of rows and adding an index would mean a Dexie
     // version bump for a counter.
+    //
+    // Since life events sync, this is the *union* of what both phones hold, not
+    // a sum of two counts — each row keeps its own id, so nothing is counted
+    // twice. It does now mean "vibes either of us sent", which is why the
+    // catalogue copy is in the couple's voice.
     db.lifeEvents.filter((e) => e.kind === 'good-vibes').count(),
     db.tasks.toArray(),
     db.avatars.toArray(),

@@ -115,3 +115,19 @@ export function checkGrant(
   }
   return { ok: true };
 }
+
+/**
+ * Who wrote the row, which is not always who it is about.
+ *
+ * Good Vibes are the exception the rest of the file is built around: the
+ * `memberId` is who receives the grant and `fromMemberId` is who sent it. Every
+ * other kind is granted by the person it concerns, so the two agree.
+ *
+ * One rule, and it is what makes cheering work out: you may cheer any event you
+ * did not write. That blocks cheering your own hard day and cheering a Good
+ * Vibe you sent, while still allowing the nicest case in the feature — cheering
+ * a Good Vibe you received — which a naive "not about me" test would refuse.
+ */
+export function authorOf(event: LifeEvent): string {
+  return event.fromMemberId ?? event.memberId;
+}

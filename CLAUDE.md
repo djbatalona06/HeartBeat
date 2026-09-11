@@ -28,6 +28,9 @@ cd app && npx vitest run src/db/repository/entries.test.ts
 # Gift page
 npm run gift:build   # rebuild gift/birthday.html
 npm run gift:verify  # headless browser walk of every screen
+
+# Study page (rebuild after ANY change to app/src/styles.css — see pitfalls)
+npm run study:build  # rebuild study/index.html
 ```
 
 ## Architecture
@@ -47,7 +50,7 @@ Both Cloudflare pieces bind the **same D1 database**.
 All writes go through `app/src/db/repository/`. Components call repository functions; Dexie live queries drive re-renders. Nothing in `features/` touches the database directly.
 
 - **Local DB**: Dexie (IndexedDB), schema in `app/src/db/database.ts`
-- **Remote sync**: Cloudflare Worker (`worker/src/`) reads/writes D1; the app POSTs to `/api/*` Pages Functions in `app/functions/`. Two round trips, deliberately separate: `/api/entries` carries everything keyed by a **day** (mood, exercise, cycle, work, photos) and `/api/holdings` everything keyed by a **row** (inventory, pets, avatars, tasks, quests). They have their own watermarks in `Settings`, so one failing does not stall the other.
+- **Remote sync**: Cloudflare Worker (`worker/src/`) reads/writes D1; the app POSTs to `/api/*` Pages Functions in `app/functions/`. Two round trips, deliberately separate: `/api/entries` carries everything keyed by a **day** (mood, exercise, cycle, work, photos) and `/api/holdings` everything keyed by a **row** (inventory, pets, avatars, tasks, quests, life events, cheers). They have their own watermarks in `Settings`, so one failing does not stall the other.
 - **Domain logic**: `app/src/domain/` — pure TypeScript, no React, no Dexie. Tests live beside each module (`*.test.ts`). Vitest is restricted to `*.test.ts` only; components are not unit-tested by design.
 
 ### Key domain modules
@@ -81,6 +84,9 @@ Full deploy walkthrough: `docs/DEPLOY.md`
 - **Day keys use member timezone**, not UTC — use the member's zone for `noteDays`, `endOfDay`, and any "days" count.
 - **Achievement dedup**: award IDs must be deterministic (e.g. `ach-<code>`, `quest-<id>`) so both devices don't double-credit the same event.
 - **`loadSettings()` inside live queries**: never call it inside a `useLiveQuery` callback — it triggers a sync rewrite that re-fires the query up to 20× per foreground cycle.
+- **Editing `app/src/styles.css` means running `npm run study:build` and committing `study/index.html`** — the study page inlines the whole stylesheet (`cssCodeSplit: false`), so any rule anywhere changes that committed artefact, and CI fails on `git diff --exit-code -- study/index.html`.
+- **Holdings sync has two kind lists, not one.** `PARTNER_WRITABLE_KINDS` (`domain/sync/holdings.ts`) is who may overwrite a row — a security property, mirrored in the `excluded.kind IN (...)` clause of `UPSERT_SQL` and pinned by a test that parses that clause. `PARTNER_VISIBLE_KINDS` is whose rows a device will apply locally. Life events and cheers are visible without being writable. Adding a kind to the visible list is a display decision; adding one to the writable list is a security decision.
+- **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)
 

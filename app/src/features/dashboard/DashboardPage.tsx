@@ -12,6 +12,7 @@ import { useTheme } from '../../themes/ThemeProvider';
 import { getMascot } from '../pet/mascots';
 import { QuestBoard } from '../quests/QuestBoard';
 import { VitalsPanel, glowOf } from '../pet/VitalsPanel';
+import { FeedPanel } from '../party/FeedPanel';
 import { gearArt } from '../party/art/gear';
 
 /**
@@ -24,6 +25,10 @@ import { gearArt } from '../party/art/gear';
  * lives on the tab bar or behind the menu — see nav.ts — which frees this
  * screen to answer a different question: not "where do I go", but "what does
  * today still want from me".
+ *
+ * The feed at the foot is the one thing here that looks backwards. It is also
+ * where the four life-event kinds that had grants and no buttons finally get
+ * them, because logging a hard day and seeing it land belong together.
  */
 export function DashboardPage() {
   const { theme, calm } = useTheme();
@@ -180,6 +185,18 @@ export function DashboardPage() {
 
       {coupleId ? (
         <QuestBoard coupleId={coupleId} day={day} timeZone={settings?.timeZone ?? 'America/Los_Angeles'} />
+      ) : null}
+
+      {/* Last, because it is the only backward-looking thing on the page. The
+          screen reads pet, then what the two of you have done, then what today
+          still wants, then the quest — and only then what has been happening. */}
+      {coupleId && memberId ? (
+        <FeedPanel
+          coupleId={coupleId}
+          memberId={memberId}
+          day={day}
+          tracksCycle={settings?.tracksCycle === true}
+        />
       ) : null}
     </div>
   );

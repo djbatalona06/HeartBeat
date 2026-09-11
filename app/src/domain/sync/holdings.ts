@@ -1,4 +1,4 @@
-import type { Avatar, Task } from '../rpg/types';
+import type { Avatar, Cheer, LifeEvent, Task } from '../rpg/types';
 import type { InventoryItem } from '../rpg/inventory';
 import type { PetInstance } from '../rpg/pets';
 import type { Quest } from '../types';
@@ -20,28 +20,50 @@ import type { Quest } from '../types';
  * does not get exercised.
  */
 
-export const HOLDING_KINDS = ['inventory', 'pet', 'avatar', 'quest', 'task'] as const;
+export const HOLDING_KINDS = [
+  'inventory', 'pet', 'avatar', 'quest', 'task', 'lifeEvent', 'cheer',
+] as const;
 export type HoldingKind = (typeof HOLDING_KINDS)[number];
 
 /**
- * The one kind that belongs to the couple rather than to one of them.
+ * Two properties that used to be one list, and are not the same property.
  *
- * A quest is taken on together, either of you can start or retire it, and both
- * devices have to converge on the same one. Everything else has exactly one
- * writer — your own inventory, your own companions, your own sheet, your own
- * list — which is what makes last-write-wins provably safe for them rather
- * than merely usually right: with a single writer there is no second version
- * to lose. Kept as a list rather than a boolean so adding a second shared kind
- * is a one-line change in the place that already explains the rule.
+ * **Writable** — either of you may overwrite the row. Only the quest: it is
+ * taken on together, either of you can start or retire it, and both devices
+ * have to converge on the same one. The rule is enforced server-side by the
+ * `excluded.kind IN ('quest')` clause of `UPSERT_SQL`; this list is its client
+ * mirror, and a test in `worker/src/holdings.test.ts` pins the two together by
+ * parsing that clause rather than restating it.
+ *
+ * **Visible** — a pulled row of this kind is applied here even though our
+ * partner wrote it. Every writable kind is visible. Life events and cheers are
+ * visible *without* being writable: they are append-only and have exactly one
+ * writer for life, so there is no second version to lose and nothing for the
+ * other phone to overwrite.
+ *
+ * Splitting them is the whole reason life events could join at all. Adding a
+ * kind to the visible list is a display decision. Adding one to the writable
+ * list is a security decision — it hands the other phone the right to rewrite
+ * rows it did not make. Keeping them one list made the second look like the
+ * first, which is exactly how that right gets granted by accident.
  */
-export const SHARED_KINDS: readonly HoldingKind[] = ['quest'];
+export const PARTNER_WRITABLE_KINDS: readonly HoldingKind[] = ['quest'];
 
-export function isShared(kind: HoldingKind): boolean {
-  return SHARED_KINDS.includes(kind);
+export const PARTNER_VISIBLE_KINDS: readonly HoldingKind[] = [
+  'quest', 'lifeEvent', 'cheer',
+];
+
+export function isPartnerWritable(kind: HoldingKind): boolean {
+  return PARTNER_WRITABLE_KINDS.includes(kind);
 }
 
-/** A local row of any of the five kinds. All of them carry `updatedAt`. */
-export type HoldingRow = InventoryItem | PetInstance | Avatar | Quest | Task;
+export function isPartnerVisible(kind: HoldingKind): boolean {
+  return PARTNER_VISIBLE_KINDS.includes(kind);
+}
+
+/** A local row of any of the seven kinds. All of them carry `updatedAt`. */
+export type HoldingRow =
+  | InventoryItem | PetInstance | Avatar | Quest | Task | LifeEvent | Cheer;
 
 export interface WireHolding {
   /** The local primary key, carried through unchanged. */
@@ -85,6 +107,17 @@ export function keyOf(kind: HoldingKind, row: HoldingRow): string {
  * the watermark, and nothing is newer than 0. An active quest is rewritten by
  * every progress measurement, so it picks up a real stamp within a day without
  * anybody doing anything, which is the case that actually matters.
+ *
+ * `LifeEvent` is the second kind to arrive this way and the story is the same:
+ * it carried `grantedAt` and no write time until it started syncing, so events
+ * granted before this stay on the phone that granted them.
+ *
+ * Reading `grantedAt` instead, for those, would be worse than not sending them.
+ * This stamp is what the server stores and what the *partner's* pull cursor is
+ * compared against, so a row written with an event time from three weeks ago
+ * lands below a cursor that has already moved past it and is never served to
+ * the other phone at all — present on the server, invisible to the person it is
+ * addressed to.
  */
 export function stampOf(row: HoldingRow): number {
   return row.updatedAt ?? 0;
@@ -99,15 +132,18 @@ export function toWire(kind: HoldingKind, row: HoldingRow): WireHolding {
  *
  * Two rules, and the order matters.
  *
- * **Ownership first.** A row of a personal kind is only ever written by its
- * own member's device, so a pulled one that is not ours is our *partner's* —
- * their inventory, their sheet — and must never overwrite ours even if it is
- * newer. The server refuses to store such a write, but the client must also
- * refuse to apply one: the pull is a whole-couple feed by design (it is how
- * the partner's own rows reach a device at all), so rows that are not ours
- * arrive on every single sync, legitimately. Treating "arrived" as "applies to
- * me" would have each phone overwriting its own possessions with the other's
- * on every round trip.
+ * **Visibility first.** The pull is a whole-couple feed by design — it is how
+ * the partner's rows reach a device at all — so rows that are not ours arrive
+ * on every single sync, legitimately, and most of them are none of our
+ * business. A partner's inventory or sheet is theirs to hold; treating
+ * "arrived" as "applies to me" would have each phone overwrite its own
+ * possessions with the other's on every round trip. So a row that is not ours
+ * is dropped unless its kind is one both of you are meant to see.
+ *
+ * Note what this clause is and is not. It decides whether we *display* a
+ * partner's row, not whether they may *overwrite* ours — that is
+ * `PARTNER_WRITABLE_KINDS`, enforced server-side, and a life event passes this
+ * check while still failing that one.
  *
  * **Then recency**, which is last-write-wins by the row's own `updatedAt` and
  * not by arrival order — the same rule `/api/entries` follows, for the same
@@ -122,9 +158,52 @@ export function shouldApply(
   pulled: PulledHolding,
   local: HoldingRow | undefined,
 ): boolean {
-  if (!isShared(pulled.kind) && !pulled.mine) return false;
+  if (!isPartnerVisible(pulled.kind) && !pulled.mine) return false;
   if (!local) return true;
   return pulled.updatedAt > stampOf(local);
+}
+
+/**
+ * Whose row the server will record this as, and therefore whose device may
+ * offer it.
+ *
+ * Not `row.memberId` for every kind, which is the trap this exists to name: a
+ * Good Vibe's `memberId` is who *receives* it and its `fromMemberId` is who
+ * wrote it. A device that offered rows by recipient would push its partner's
+ * grants back up under its own id, which the endpoint refuses silently — the
+ * upsert's member check fails, nothing changes, and the row still counts itself
+ * as written, on every sync for the life of the couple.
+ *
+ * `undefined` means the row is the couple's and either of them may write it,
+ * which is the quest and nothing else.
+ */
+export function writerOf(kind: HoldingKind, row: HoldingRow): string | undefined {
+  if (isPartnerWritable(kind)) return undefined;
+  if (kind === 'lifeEvent') {
+    const event = row as LifeEvent;
+    return event.fromMemberId ?? event.memberId;
+  }
+  return (row as { memberId?: string }).memberId;
+}
+
+/**
+ * The rows of a batch this device is entitled to push.
+ *
+ * `highWaterAfter` already folds pulled rows into the push watermark, so in
+ * practice an applied partner row is not offered back anyway. That is a
+ * load-bearing invariant defended by nothing local to the caller, though, and
+ * it breaks the moment anyone reasons about the two watermarks separately.
+ * One filter, applied to every kind, is cheaper than remembering why it holds.
+ */
+export function mineToPush(
+  kind: HoldingKind,
+  rows: readonly HoldingRow[],
+  memberId: string,
+): HoldingRow[] {
+  return rows.filter((row) => {
+    const writer = writerOf(kind, row);
+    return writer === undefined || writer === memberId;
+  });
 }
 
 /**
