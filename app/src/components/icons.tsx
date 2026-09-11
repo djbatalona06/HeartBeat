@@ -224,6 +224,14 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M12 9.6S13.2 5 15.4 5a2 2 0 0 1 0 4.6Z" />
     </>
   ),
+  // A coin, edge-on ring and all. Deliberately not a currency letter: the
+  // wallet badge sits beside a level and two glyphs would be read as a word.
+  coin: (
+    <>
+      <circle cx="12" cy="12" r="8.2" />
+      <circle cx="12" cy="12" r="4.4" />
+    </>
+  ),
 };
 
 interface IconProps {

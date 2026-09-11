@@ -19,6 +19,7 @@ import { useSync } from './pwa/useSync';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CommandMenu } from './components/CommandMenu';
 import { MenuSheet } from './components/MenuSheet';
+import { StatusHud } from './components/StatusHud';
 import { Icon } from './components/icons';
 import { QuestsPage } from './features/quests/QuestsPage';
 import { GoalsPage } from './features/goals/GoalsPage';
@@ -140,6 +141,11 @@ export function App() {
               otherwise a phone that paired months ago dims its whole bar for a
               frame on every cold start. */}
           <MenuSheet locked={ready && !paired} />
+          {/* The opposite corner to the menu button, and the same reasoning as
+              the bar below: shown while unpaired too. Level and coins are this
+              phone's own — a solo first run earns and spends both — so there is
+              nothing here that waits on a second person. */}
+          <StatusHud />
           <TabBar locked={ready && !paired} />
         </HashRouter>
       </ThemeProvider>
