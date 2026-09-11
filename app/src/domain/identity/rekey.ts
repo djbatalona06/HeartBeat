@@ -100,6 +100,12 @@ export const REKEY_TABLES: readonly TableRekey[] = [
     memberFields: ['memberId', 'fromMemberId'],
     coupleFields: ['coupleId'],
   },
+  // A cheer's primary key embeds the member id it was written under, and
+  // `rehomes()` is false because `id` is not itself a member field — so the row
+  // is re-keyed in place with the old id still baked into its key. That is
+  // harmless because the feed counts *distinct members* rather than rows (see
+  // `buildFeed`), so a re-cheer after pairing reads as one person, not two.
+  { table: 'cheers', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   { table: 'pet', primaryKey: 'coupleId', memberFields: [], coupleFields: ['coupleId'] },
   // Couple-level, both of them: no memberId to move, and no slot to collide on
   // — pairing mints a fresh coupleId, so nothing is already sitting there.

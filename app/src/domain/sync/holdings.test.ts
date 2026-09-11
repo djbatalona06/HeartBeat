@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  HOLDING_KINDS, SHARED_KINDS, highWaterAfter, isShared, keyOf, pendingSince,
-  shouldApply, stampOf, toWire,
+  HOLDING_KINDS, PARTNER_VISIBLE_KINDS, PARTNER_WRITABLE_KINDS, highWaterAfter,
+  isPartnerVisible, isPartnerWritable, keyOf, mineToPush, pendingSince,
+  shouldApply, stampOf, toWire, writerOf,
   type HoldingKind, type PulledHolding,
 } from './holdings';
-import type { Avatar } from '../rpg/types';
+import type { Avatar, Cheer, LifeEvent } from '../rpg/types';
 import type { InventoryItem } from '../rpg/inventory';
 import type { Quest } from '../types';
 
@@ -34,6 +35,25 @@ function quest(over: Partial<Quest> = {}): Quest {
   };
 }
 
+function lifeEvent(over: Partial<LifeEvent> = {}): LifeEvent {
+  return {
+    id: 'le-1', coupleId: 'c1', memberId: ME, kind: 'hard-day',
+    day: '2026-09-25', grantedAt: AT, updatedAt: AT, ...over,
+  };
+}
+
+/** A Good Vibe: addressed to ME, written by THEM. The distinction is the point. */
+function vibe(over: Partial<LifeEvent> = {}): LifeEvent {
+  return lifeEvent({ id: 'le-v', kind: 'good-vibes', memberId: ME, fromMemberId: THEM, ...over });
+}
+
+function cheer(over: Partial<Cheer> = {}): Cheer {
+  return {
+    id: `le-1:${ME}`, coupleId: 'c1', memberId: ME, eventId: 'le-1',
+    createdAt: AT, updatedAt: AT, ...over,
+  };
+}
+
 function pulled(over: Partial<PulledHolding> = {}): PulledHolding {
   return {
     id: 'inv-1', kind: 'inventory', payload: item(), updatedAt: AT,
@@ -60,6 +80,7 @@ describe('the wire shape', () => {
       avatar: avatar, inventory: item, quest,
       pet: () => ({ id: 'p1', updatedAt: AT }),
       task: () => ({ id: 't1', updatedAt: AT }),
+      lifeEvent, cheer,
     };
     for (const kind of HOLDING_KINDS) {
       const key = keyOf(kind, rows[kind]() as never);
@@ -91,12 +112,70 @@ describe('stampOf', () => {
   });
 });
 
-describe('which kinds are shared', () => {
-  it('shares the quest and nothing else', () => {
-    expect(SHARED_KINDS).toEqual(['quest']);
+describe('which kinds are writable, and which are merely visible', () => {
+  /**
+   * These were one list, and splitting them is what let life events sync at
+   * all. Writable is a security property — it decides whether the other phone
+   * may overwrite a row it did not write — and is mirrored in SQL. Visible is a
+   * display decision. A test that let the two collapse back into each other
+   * would let a display decision quietly hand out write permission.
+   */
+  it('lets either of you write only the quest', () => {
+    expect(PARTNER_WRITABLE_KINDS).toEqual(['quest']);
     for (const kind of HOLDING_KINDS) {
-      expect(isShared(kind), kind).toBe(kind === 'quest');
+      expect(isPartnerWritable(kind), kind).toBe(kind === 'quest');
     }
+  });
+
+  it('shows both of you the quest, life events and cheers', () => {
+    expect(PARTNER_VISIBLE_KINDS).toEqual(['quest', 'lifeEvent', 'cheer']);
+  });
+
+  it('makes every writable kind visible, but not the reverse', () => {
+    for (const kind of PARTNER_WRITABLE_KINDS) {
+      expect(isPartnerVisible(kind), kind).toBe(true);
+    }
+    expect(isPartnerVisible('lifeEvent')).toBe(true);
+    expect(isPartnerWritable('lifeEvent')).toBe(false);
+  });
+});
+
+describe('writerOf', () => {
+  /**
+   * The trap the whole feature turns on: a Good Vibe's `memberId` is who
+   * *receives* it. Reading that as the writer would have the recipient's phone
+   * push their partner's grant back up under its own id every sync.
+   */
+  it('reads a Good Vibe as written by its sender, not its recipient', () => {
+    expect(writerOf('lifeEvent', vibe())).toBe(THEM);
+  });
+
+  it('reads a self-granted event as written by the person it is about', () => {
+    expect(writerOf('lifeEvent', lifeEvent({ memberId: THEM }))).toBe(THEM);
+  });
+
+  it('gives a quest no single writer, because it belongs to the couple', () => {
+    expect(writerOf('quest', quest())).toBeUndefined();
+  });
+
+  it('reads a cheer as written by whoever left it', () => {
+    expect(writerOf('cheer', cheer({ memberId: THEM }))).toBe(THEM);
+  });
+});
+
+describe('mineToPush', () => {
+  it('drops a Good Vibe our partner wrote, however it is addressed to us', () => {
+    expect(mineToPush('lifeEvent', [vibe()], ME)).toEqual([]);
+  });
+
+  it('keeps an event this device actually wrote', () => {
+    const mine = lifeEvent({ memberId: THEM, fromMemberId: ME });
+    expect(mineToPush('lifeEvent', [mine], ME)).toEqual([mine]);
+  });
+
+  it('keeps the quest for either of us', () => {
+    expect(mineToPush('quest', [quest()], ME)).toHaveLength(1);
+    expect(mineToPush('quest', [quest()], THEM)).toHaveLength(1);
   });
 });
 
@@ -170,5 +249,45 @@ describe('highWaterAfter', () => {
   it('never goes backwards', () => {
     expect(highWaterAfter(AT, [], [])).toBe(AT);
     expect(highWaterAfter(AT, [toWire('inventory', item({ updatedAt: 5 }))], [])).toBe(AT);
+  });
+});
+
+describe('applying a partner\'s row', () => {
+  /** The case the whole feature turns on: their event has to land here. */
+  it('applies a life event our partner wrote', () => {
+    const row = pulled({
+      id: 'le-v', kind: 'lifeEvent', payload: vibe(), memberId: THEM, mine: false,
+    });
+    expect(shouldApply(row, undefined)).toBe(true);
+  });
+
+  it('applies a cheer our partner left', () => {
+    const row = pulled({
+      id: `le-1:${THEM}`, kind: 'cheer', payload: cheer({ memberId: THEM }),
+      memberId: THEM, mine: false,
+    });
+    expect(shouldApply(row, undefined)).toBe(true);
+  });
+
+  /**
+   * Re-pinned after the gate changed from ownership to visibility, because the
+   * change is exactly the sort that quietly widens what it was narrowing.
+   */
+  it('still refuses every personal kind our partner wrote', () => {
+    for (const kind of ['inventory', 'pet', 'avatar', 'task'] as const) {
+      const row = pulled({ kind, memberId: THEM, mine: false });
+      expect(shouldApply(row, undefined), kind).toBe(false);
+    }
+  });
+});
+
+describe('life events written before they synced', () => {
+  it('stamps as 0 and is never offered', () => {
+    const legacy = { ...lifeEvent(), updatedAt: undefined } as unknown as LifeEvent;
+    expect(stampOf(legacy)).toBe(0);
+    // Deliberately not falling back to `grantedAt`. This stamp becomes the
+    // server's `updated_at`, which is the partner's pull cursor — a row landing
+    // below a cursor that has already passed it is stored and never served.
+    expect(pendingSince('lifeEvent', [legacy], 0)).toEqual([]);
   });
 });

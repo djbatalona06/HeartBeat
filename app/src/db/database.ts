@@ -4,7 +4,9 @@ import type {
   WorkEvent, WorkoutPhoto,
 } from '../domain/types';
 import { DEFAULT_SETTINGS } from '../domain/types';
-import type { Avatar, LifeEvent, Redemption, Reward, Task } from '../domain/rpg/types';
+import type {
+  Avatar, Cheer, LifeEvent, LifeEventSettlement, Redemption, Reward, Task,
+} from '../domain/rpg/types';
 import type { InventoryItem } from '../domain/rpg/inventory';
 import type { PetInstance } from '../domain/rpg/pets';
 import type { CardProgress, StudySession } from '../domain/study/types';
@@ -31,6 +33,9 @@ export class HeartBeatDB extends Dexie {
   rewards!: Table<Reward, string>;
   redemptions!: Table<Redemption, string>;
   lifeEvents!: Table<LifeEvent, string>;
+  cheers!: Table<Cheer, string>;
+  /** v9, local only: which received life events this phone has already paid. */
+  lifeEventSettlements!: Table<LifeEventSettlement, string>;
 
   // v4 — the thread.
   messages!: Table<ChatMessage, string>;
@@ -137,6 +142,32 @@ export class HeartBeatDB extends Dexie {
       // Read two ways: this member's entries newest first, and the one written
       // on a given day, which is what the prompt-of-the-day screen asks for.
       reflections: 'id, coupleId, memberId, day, [memberId+day], createdAt',
+    });
+
+    // v9 is the social layer: life events now cross to the other phone, so they
+    // need a feed to appear in, a reaction, and somewhere to record that a
+    // grant addressed to this member has been paid.
+    this.version(9).stores({
+      // Keyed by `${eventId}:${memberId}`, which is what makes a second tap the
+      // same row rather than a second one. `eventId` is the read path: the feed
+      // asks for the cheers on a dozen events at once, never one query per row.
+      cheers: 'id, coupleId, memberId, eventId, [eventId+memberId]',
+      // Restated only to add [coupleId+grantedAt]. The feed reads the newest
+      // handful, and without that index it is a scan of every event the couple
+      // has ever had.
+      lifeEvents:
+        'id, coupleId, memberId, day, [memberId+day], [coupleId+day], [coupleId+grantedAt]',
+      // Deliberately local-only, like the study tables in v6, and deliberately
+      // not a ring buffer like `Pet.awardedXpIds`.
+      //
+      // A Good Vibe is written on the sender's phone and paid on the
+      // recipient's, once the row arrives — see repository/lifeEventSettle.ts.
+      // "Once" has to survive a reinstall, because a restored phone pulls its
+      // own avatar back *with* the energy already in it and then pulls the
+      // events again. A watermark would mis-handle a row that arrives out of
+      // order and a bounded ring can forget; one short row per event cannot do
+      // either, and the table is a few bytes a day.
+      lifeEventSettlements: 'eventId',
     });
   }
 }

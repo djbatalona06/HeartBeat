@@ -27,7 +27,7 @@
  * - `events`        calendar events on the couple's days
  * - `cycleDays`     days of cycle logging
  * - `notes`         notes sent between the two phones
- * - `vibesSent`     Good Vibes sent to the other person
+ * - `vibesSent`     Good Vibes sent between the two of you, either way
  * - `pets`          companions hatched
  * - `gearWorn`      slots filled on the character sheet
  * - `petLevel`      the shared pet's level
@@ -146,10 +146,13 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     [25, 'Twenty-five notes', 'A conversation, at this point.'],
     [150, 'A hundred and fifty', 'Rather a lot to say to each other.'],
   ]),
+  // In the couple's voice, because the count is now the couple's. Good Vibes
+  // cross between the phones, so both hold the same union of rows and this
+  // measures what the two of you sent, not what one of you did.
   ...track('vibes', 'Being kind', 'vibesSent', [
-    [1, 'A good vibe', 'You sent one for no reason at all.'],
-    [10, 'Ten of them', 'Ten unprompted kindnesses.'],
-    [40, 'Forty', 'Forty times you thought of them first.'],
+    [1, 'A good vibe', 'One of you sent one for no reason at all.'],
+    [10, 'Ten of them', 'Ten unprompted kindnesses between you.'],
+    [40, 'Forty', 'Forty times one of you thought of the other first.'],
   ]),
   ...track('pets', 'The menagerie', 'pets', [
     [1, 'Something hatched', 'Your first companion.'],

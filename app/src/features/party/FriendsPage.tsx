@@ -7,6 +7,7 @@ import { todayKey } from '../../domain/day';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import { petKindById } from '../../domain/rpg/pets';
 import { dyeStyle } from '../../domain/rpg/dyes';
+import { GOOD_VIBES_PER_SENDER_PER_DAY } from '../../domain/rpg/lifeEvents';
 import { getMascot } from '../pet/mascots';
 import { useTheme } from '../../themes/ThemeProvider';
 import { petArt } from './art/pets';
@@ -73,9 +74,14 @@ export function FriendsPage() {
   // than of events, for the reason every quest measure is: a busy Tuesday is
   // still one Tuesday.
   const friendship = new Set((events ?? []).map((e) => e.day)).size;
-  const sentToday = (events ?? []).some(
+  // Counted, not a boolean. The cap is three a day and this said one, so the
+  // button went dead after a single send while the domain would happily have
+  // taken two more. The number comes from the domain module now, so the screen
+  // no longer carries its own copy of the rule.
+  const sentToday = (events ?? []).filter(
     (e) => e.kind === 'good-vibes' && e.day === day && e.fromMemberId === memberId,
-  );
+  ).length;
+  const vibesLeft = Math.max(0, GOOD_VIBES_PER_SENDER_PER_DAY - sentToday);
 
   const mascot = getMascot(theme.id);
   const companion = partnerAvatar?.companionId
@@ -151,8 +157,9 @@ export function FriendsPage() {
           <section className="panel">
             <h2 className="section-title">Good vibes</h2>
             <p className="section-sub">
-              One a day, and it grants them energy rather than costing you any.
-              A note is optional — the energy arrives either way.
+              {GOOD_VIBES_PER_SENDER_PER_DAY} a day, and each grants them energy
+              rather than costing you any. A note is optional — the energy
+              arrives either way.
             </p>
             <input
               className="field"
@@ -165,10 +172,12 @@ export function FriendsPage() {
             <button
               type="button"
               className="primary"
-              disabled={sentToday}
+              disabled={vibesLeft === 0}
               onClick={sendVibes}
             >
-              {sentToday ? 'Already sent today' : 'Send good vibes'}
+              {vibesLeft === 0
+                ? `That is ${GOOD_VIBES_PER_SENDER_PER_DAY} for today`
+                : `Send good vibes (${vibesLeft} left)`}
             </button>
           </section>
         </>

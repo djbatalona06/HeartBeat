@@ -245,17 +245,27 @@ describe('grantLifeEvent', () => {
   });
 
   describe('Good Vibes', () => {
-    it('pays the recipient more than the sender', async () => {
+    /**
+     * This used to assert that both avatars were paid here, which was the bug
+     * rather than the behaviour. Only the sender is on this phone; the
+     * recipient's avatar exists locally as a hollow copy that `collectPending`
+     * never pushes and `shouldApply` never accepts, so the energy written into
+     * it went nowhere. The recipient is paid on their own device once the row
+     * arrives — see `lifeEventSettle.test.ts`, which owns the other half.
+     *
+     * The grant is still the larger one; where it lands is what changed.
+     */
+    it('pays the sender here, and leaves the recipient to their own phone', async () => {
       const result = await grantLifeEvent(COUPLE, HER, 'good-vibes', DAY, {
         fromMemberId: HIM,
         note: 'saw this and thought of you',
       });
       expect(result.ok).toBe(true);
+      expect(result.payout?.energy).toBeGreaterThan(0);
 
-      const her = (await db.avatars.get(HER))!;
       const him = (await db.avatars.get(HIM))!;
-      expect(her.energy).toBeGreaterThan(him.energy);
       expect(him.xp).toBeGreaterThan(0);
+      expect(await db.avatars.get(HER)).toBeUndefined();
       expect((await db.lifeEvents.toArray())[0].note).toBe('saw this and thought of you');
     });
 

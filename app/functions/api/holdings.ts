@@ -16,19 +16,34 @@ import { authenticate, json, type Env } from './_lib';
  * two different sets of edge cases.
  */
 
-const KINDS = ['inventory', 'pet', 'avatar', 'quest', 'task'] as const;
+/**
+ * Exported so a test can hold it against the client's `HOLDING_KINDS`. The two
+ * lists are duplicated across the boundary on purpose — this file must not
+ * import from `src/` — which means nothing but a test stops them drifting.
+ */
+export const KINDS = [
+  'inventory', 'pet', 'avatar', 'quest', 'task', 'lifeEvent', 'cheer',
+] as const;
 type Kind = (typeof KINDS)[number];
 
 /**
- * Only `quest` is couple-shared: one quest belongs to the two of you, either
- * can start or retire it, and both devices must converge on the same one.
+ * Who may overwrite whose row. Only `quest`: one quest belongs to the two of
+ * you, either can start or retire it, and both devices must converge on the
+ * same one.
  *
  * Everything else has exactly one writer — your own inventory, your own
- * companions, your own sheet, your own list — which is what makes
- * last-write-wins provably safe rather than merely usually right: with a
- * single writer there is no second version to lose.
+ * companions, your own sheet, your own list, the life event you logged, the
+ * cheer you left — which is what makes last-write-wins provably safe rather
+ * than merely usually right: with a single writer there is no second version
+ * to lose.
+ *
+ * This is *not* the list of kinds both phones can see. Life events and cheers
+ * are pulled and displayed by both and still belong to whoever wrote them; that
+ * distinction lives client-side in `PARTNER_VISIBLE_KINDS`, and it must never
+ * be imported into this list. Widening this one hands the other phone the right
+ * to rewrite rows it did not make.
  */
-const SHARED: readonly Kind[] = ['quest'];
+export const PARTNER_WRITABLE: readonly Kind[] = ['quest'];
 
 /**
  * Per-row ceiling. These rows are small by construction — an inventory row is
@@ -69,6 +84,12 @@ export const UPSERT_SQL =
      -- to the couple rather than to one of them. Not each other's inventories:
      -- two people who can rewrite each other's possessions is not a sync, it
      -- is a bug waiting for a bad clock.
+     --
+     -- The life event and the cheer are deliberately absent, and adding them
+     -- would be a mistake that looks like a fix. Both phones *see* those rows
+     -- — that is the whole point of the feed — but seeing is decided
+     -- client-side by PARTNER_VISIBLE_KINDS. Each row still has exactly one
+     -- writer for life, and this clause is what holds them to it.
      AND (holdings.member_id = excluded.member_id OR excluded.kind IN ('quest'))`;
 
 function utf8Bytes(text: string): number {
@@ -167,5 +188,5 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     );
   }
 
-  return json({ ok: true, written: rows.length, rejected, shared: SHARED });
+  return json({ ok: true, written: rows.length, rejected, shared: PARTNER_WRITABLE });
 };

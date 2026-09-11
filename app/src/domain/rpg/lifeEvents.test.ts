@@ -26,6 +26,7 @@ function event(over: Partial<LifeEvent> = {}): LifeEvent {
     kind: 'hard-day',
     day: DAY,
     grantedAt: 1,
+    updatedAt: 1,
     ...over,
   };
 }

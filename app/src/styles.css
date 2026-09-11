@@ -4278,3 +4278,89 @@ body {
 
 .task-heading { display: flex; align-items: center; gap: var(--space-2); }
 .task-mark { width: 18px; height: 18px; }
+
+/* ---- the feed --------------------------------------------------------------
+   Last thing on the home screen, and the only backward-looking one. It sits
+   under the quest board and borrows that board's rhythm — a section title, a
+   row of chips, then a list with a divider between rows — so the two read as
+   one column rather than two competing panels.
+
+   Every tint is `color-mix` against the accent rather than a fixed colour, for
+   the reason the goals grid documents: the theme packs repaint by swapping
+   custom properties, and a hardcoded colour survives that swap. */
+.feed { margin-top: var(--stack); }
+
+.feed-compose {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* Same pill as `.chip`, but never capitalised: these carry proper names
+   ("Sick day", "Period start") that title-casing would mangle. */
+.feed-chip {
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+/* Dimmed rather than hidden. A chip that vanishes once its cap is spent leaves
+   the row reflowing under the thumb; `checkGrant`'s reason rides the title so
+   the disabled state can say why. */
+.feed-chip:disabled { opacity: 0.45; cursor: default; }
+
+.feed-milestone {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.feed-milestone .field { flex: 1; min-width: 12rem; }
+
+.feed-list { list-style: none; margin-top: var(--space-3); }
+
+.feed-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+.feed-row:last-child { border-bottom: none; }
+
+/* min-width:0 so a long note wraps inside the row instead of pushing the cheer
+   button off the right edge on a narrow phone. */
+.feed-body { flex: 1; min-width: 0; display: grid; gap: 2px; }
+
+.feed-who {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.feed-line { color: var(--color-text); }
+
+.feed-cheer {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.feed-cheer-on {
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  color: var(--color-accent);
+}
+/* Your own events are the common disabled case, and there is nothing wrong
+   with them — so this reads as "not for you" rather than as a broken control. */
+.feed-cheer:disabled { cursor: default; }
+.feed-cheer:disabled:not(.feed-cheer-on) { opacity: 0.35; }

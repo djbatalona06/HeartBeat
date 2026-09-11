@@ -265,7 +265,52 @@ export interface LifeEvent {
   /** Good Vibes only: who sent it, and what they wrote. */
   fromMemberId?: MemberId;
   note?: string;
+  /** When the thing happened. */
   grantedAt: number;
+  /**
+   * When the row was written, which is what the sync compares.
+   *
+   * Two fields that are equal the day a row is made, and deliberately not one.
+   * This stamp becomes the server's `updated_at`, which is the *partner's* pull
+   * cursor: a row written with an event time from three weeks ago lands below a
+   * cursor that has already moved past it and is never served to the other
+   * phone at all. An event time and a write time must not be assumed equal
+   * forever — a back-dated milestone is the case that breaks it.
+   */
+  updatedAt: number;
+}
+
+/**
+ * “I saw that.” The one gesture in the app that pays nothing — see
+ * `domain/rpg/feed.ts` for the argument.
+ */
+export interface Cheer {
+  /**
+   * `${eventId}:${memberId}`, derived rather than minted, so the same person
+   * cheering the same event twice is one row rather than a race between two
+   * phones. There is no un-cheer: holdings sync has no tombstone, so a deleted
+   * row is resurrected by the next pull.
+   */
+  id: string;
+  coupleId: CoupleId;
+  /** Who cheered, and the row's only writer for life. */
+  memberId: MemberId;
+  /** The `LifeEvent.id` this is attached to. */
+  eventId: string;
+  createdAt: number;
+  /** The wire stamp. Equal to `createdAt` and never rewritten. */
+  updatedAt: number;
+}
+
+/**
+ * A record that a life event addressed to this member has been paid out here.
+ *
+ * Local only — never synced, never re-keyed. It is keyed by the event id, which
+ * survives a pairing change, so a re-key leaves every settlement still valid.
+ */
+export interface LifeEventSettlement {
+  eventId: string;
+  settledAt: number;
 }
 
 /** Something to buy with coins. Deliberately whatever the two of you decide. */

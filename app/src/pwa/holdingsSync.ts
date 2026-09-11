@@ -1,6 +1,6 @@
 import { db, loadSettings, saveSettings } from '../db/database';
 import {
-  HOLDING_KINDS, highWaterAfter, pendingSince, shouldApply,
+  HOLDING_KINDS, highWaterAfter, mineToPush, pendingSince, shouldApply,
   type HoldingKind, type HoldingRow, type PulledHolding, type WireHolding,
 } from '../domain/sync/holdings';
 
@@ -9,7 +9,8 @@ import {
  *
  * `sync.ts` carries everything keyed by a *day*. This carries everything keyed
  * by a *row* — gear inventory, hatched companions, the coin-and-XP sheet,
- * tasks and the weekly quest — which had no server table at all until now, so
+ * tasks, the weekly quest, and the life events and cheers behind the feed —
+ * which had no server table at all until now, so
  * reinstalling the app or recovering onto a new phone brought back a couple's
  * whole history and none of their possessions.
  *
@@ -35,6 +36,8 @@ function storeFor(kind: HoldingKind) {
     case 'avatar': return db.avatars;
     case 'quest': return db.quests;
     case 'task': return db.tasks;
+    case 'lifeEvent': return db.lifeEvents;
+    case 'cheer': return db.cheers;
   }
 }
 
@@ -45,20 +48,30 @@ function authHeaders(token: string): HeadersInit {
 /**
  * Everything of ours that has changed since the watermark.
  *
- * Scoped to this member for the four personal kinds; quests are the couple's
- * and are read whole. Reading a partner's rows here would be pushing their
- * possessions back up under our own member id, which the endpoint would refuse
- * — correctly, and noisily, every single sync.
+ * Two reads that cannot use the member index, for different reasons. Quests
+ * belong to the couple, so there is no member to filter on. Life events have a
+ * writer the index does not know about: a Good Vibe's `memberId` is who
+ * *receives* it, and only `fromMemberId` says who wrote it, so the rows this
+ * device may offer are not the rows any one index returns. Both are read whole
+ * — a handful of rows a day either way — and then filtered.
+ *
+ * `mineToPush` is what actually decides, for every kind alike. Offering a
+ * partner's row would push their possessions up under our own member id, which
+ * the endpoint refuses silently: the upsert's member check fails, nothing
+ * changes, and the row still counts itself as written.
  */
 async function collectPending(memberId: string, since: number): Promise<WireHolding[]> {
   const out: WireHolding[] = [];
   for (const kind of HOLDING_KINDS) {
     const rows = kind === 'quest'
       ? await db.quests.toArray()
-      : kind === 'avatar'
-        ? await db.avatars.where('memberId').equals(memberId).toArray()
-        : await storeFor(kind).where('memberId').equals(memberId).toArray();
-    out.push(...pendingSince(kind, rows as HoldingRow[], since));
+      : kind === 'lifeEvent'
+        ? await db.lifeEvents.toArray()
+        : kind === 'avatar'
+          ? await db.avatars.where('memberId').equals(memberId).toArray()
+          : await storeFor(kind).where('memberId').equals(memberId).toArray();
+    const mine = mineToPush(kind, rows as HoldingRow[], memberId);
+    out.push(...pendingSince(kind, mine, since));
   }
   return out;
 }
