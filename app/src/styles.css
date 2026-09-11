@@ -3218,6 +3218,235 @@ body {
 .cycle-panel .cal-head { margin-top: var(--space-4); }
 .cycle-panel .cal-grid { margin-left: 0; margin-right: 0; }
 
+/* ---- the activities hub and its screens -------------------------------------
+   A grid rather than a list because these are peers: none of them is the main
+   one, and a list would imply an order that does not exist. */
+.activity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+.activity {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius-large);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+  min-height: var(--tap);
+  transition: transform var(--motion-fast) var(--ease-soft),
+              background-color var(--motion-fast) var(--motion-easing);
+}
+.activity:active { transform: scale(0.985); }
+.activity:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.activity:hover { background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)); }
+.activity-glyph { font-size: var(--text-xl); color: var(--color-accent); }
+.activity-name { font-family: var(--font-display); font-size: var(--text-lg); line-height: var(--line-tight); }
+.activity-hint { font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-body); }
+
+/* ---- breathing ---- */
+.breathe { text-align: center; }
+.breathe-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 240px;
+  margin: var(--space-4) 0;
+}
+.breathe-circle {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  border: 2px solid var(--color-accent);
+  /* The transition is short because `scaleAt` already moves this every frame;
+     it only smooths the gap between frames, never the breath itself. */
+  transition: transform 80ms linear;
+}
+/* Reduced motion, or the app's own calm mode: the words and the count stay,
+   the pulsing stops. A person may well have arrived here *because* they feel
+   unwell, which is exactly who that setting is for. */
+.breathe-stage[data-still='true'] .breathe-circle {
+  transform: scale(0.8) !important;
+  transition: none;
+}
+.breathe-words { position: relative; display: grid; gap: var(--space-1); }
+.breathe-phase { font-family: var(--font-display); font-size: var(--text-xl); }
+.breathe-count { font-size: var(--text-3xl); line-height: 1; color: var(--color-accent); }
+.breathe-cycles { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-3); }
+
+/* ---- reflections ---- */
+.reflect-input { min-height: 120px; resize: vertical; line-height: var(--line-body); }
+.reflect-prompt { text-transform: none; text-align: left; }
+
+.reflect-list { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-3); }
+.reflect-entry { border-radius: var(--radius); background: var(--color-surface-muted); overflow: hidden; }
+.reflect-head {
+  width: 100%;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  min-height: var(--tap);
+  background: transparent;
+  border: 0;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.reflect-head:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.reflect-day { font-size: var(--text-xs); color: var(--color-text-muted); }
+.reflect-preview { font-size: var(--text-sm); line-height: var(--line-body); }
+.reflect-shared { font-size: var(--text-xs); color: var(--color-accent); }
+.reflect-body { padding: 0 var(--space-3) var(--space-3); }
+.reflect-question { font-size: var(--text-xs); color: var(--color-text-muted); margin-bottom: var(--space-2); }
+.reflect-text { font-size: var(--text-base); line-height: var(--line-body); white-space: pre-wrap; }
+.reflect-body .row { margin-top: var(--space-3); }
+.chip-danger { border-color: var(--color-danger); color: var(--color-danger); }
+
+/* ---- first aid ---- */
+/* Above the routines, because somebody who needs it most is least likely to
+   scroll for it. */
+.first-aid-signpost { border-color: var(--color-accent); }
+.first-aid-head {
+  width: 100%;
+  display: grid;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  background: transparent;
+  border: 0;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.first-aid-head:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.first-aid-steps { margin-top: var(--space-4); padding-left: var(--space-5); display: grid; gap: var(--space-3); }
+.first-aid-step { display: grid; gap: var(--space-1); }
+.first-aid-step-title { font-size: var(--text-base); }
+.first-aid-step-body { font-size: var(--text-sm); color: var(--color-text-muted); line-height: var(--line-body); }
+
+/* ---- soundscapes ---- */
+.bed-list { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.bed-button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'name state' 'blurb state';
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3);
+  min-height: var(--tap);
+  border-radius: var(--radius);
+  border: var(--border-width) solid transparent;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.bed-button[data-playing='true'] { border-color: var(--color-accent); }
+.bed-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.bed-name { grid-area: name; font-size: var(--text-base); }
+.bed-blurb { grid-area: blurb; font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-body); }
+.bed-state { grid-area: state; font-size: var(--text-sm); color: var(--color-text-muted); }
+.bed-button[data-playing='true'] .bed-state { color: var(--color-accent); }
+.bed-volume { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
+.bed-volume input { width: 100%; accent-color: var(--color-accent); min-height: var(--tap); }
+
+/* ---- movements ---- */
+.move-now { display: grid; gap: var(--space-1); margin: var(--space-4) 0; text-align: center; }
+.move-name { font-family: var(--font-display); font-size: var(--text-xl); }
+.move-count { font-size: var(--text-3xl); line-height: 1; color: var(--color-accent); }
+.move-how { font-size: var(--text-sm); color: var(--color-text-muted); line-height: var(--line-body); }
+.move-chip { text-transform: none; }
+.move-list { list-style: none; margin-top: var(--space-4); display: grid; gap: var(--space-1); }
+.move-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.move-row[data-state='now'] { background: color-mix(in srgb, var(--color-accent) 16%, transparent); color: var(--color-text); }
+.move-row[data-state='done'] { opacity: 0.5; text-decoration: line-through; }
+
+/* ---- quizzes ---- */
+.quiz-list { list-style: none; display: grid; gap: var(--space-2); }
+.quiz-pick {
+  width: 100%;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  min-height: var(--tap);
+  border-radius: var(--radius);
+  border: 0;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.quiz-pick:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.quiz-name { font-size: var(--text-base); }
+.quiz-blurb { font-size: var(--text-xs); color: var(--color-text-muted); }
+/* Answers are sentences, so they wrap rather than truncate, and they are not
+   capitalized the way a one-word difficulty chip is. */
+.quiz-option { text-transform: none; text-align: left; }
+
+/* ---- the timer ---- */
+.timer { text-align: center; }
+.timer-face {
+  font-size: var(--text-3xl);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  margin: var(--space-5) 0;
+  color: var(--color-accent);
+}
+
+/* ---- acts of kindness ---- */
+.kind-today { font-size: var(--text-lg); line-height: var(--line-body); margin: var(--space-3) 0 var(--space-4); }
+.kind-list { list-style: none; display: grid; gap: var(--space-2); margin-top: var(--space-3); }
+.kind-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+.kind-text { flex: 1 1 auto; font-size: var(--text-sm); line-height: var(--line-body); }
+.kind-send {
+  flex: 0 0 auto;
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  border: var(--border-width) solid var(--color-border);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.kind-send:disabled { color: var(--color-text-muted); cursor: default; }
+.kind-send:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.kind-quiet { flex: 0 0 auto; font-size: var(--text-xs); color: var(--color-text-muted); }
+
+/* Announced to a screen reader, never drawn. Used by the breathing phase, the
+   timer's state, and the current movement — all things that are obvious to look
+   at and invisible to listen to. */
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ---- adventures -------------------------------------------------------------
    A place you cannot reach yet is dimmed rather than hidden, and its button
    says the level instead of a cost: the list is as much a reason to keep

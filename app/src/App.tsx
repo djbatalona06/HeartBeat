@@ -23,6 +23,15 @@ import { QuestsPage } from './features/quests/QuestsPage';
 import { GoalsPage } from './features/goals/GoalsPage';
 import { GoalIdeasPage } from './features/goals/GoalIdeasPage';
 import { AreasPage } from './features/goals/AreasPage';
+import { ActivitiesPage } from './features/activities/ActivitiesPage';
+import { BreathePage } from './features/activities/BreathePage';
+import { ReflectionsPage } from './features/activities/ReflectionsPage';
+import { SoundscapesPage } from './features/activities/SoundscapesPage';
+import { MovementsPage } from './features/activities/MovementsPage';
+import { QuizzesPage } from './features/activities/QuizzesPage';
+import { TimerPage } from './features/activities/TimerPage';
+import { KindnessPage } from './features/activities/KindnessPage';
+import { FirstAidPage } from './features/activities/FirstAidPage';
 import { FriendsPage } from './features/party/FriendsPage';
 import { OPEN_WHILE_UNPAIRED, PRIMARY_TABS } from './nav';
 
@@ -74,6 +83,19 @@ export function App() {
                     <Route path="/goals/ideas" element={<GoalIdeasPage />} />
                     <Route path="/goals" element={<GoalsPage />} />
                     <Route path="/areas" element={<AreasPage />} />
+                    {/* The hub's children, most specific first. Reachable from
+                        /activities rather than from the menu — nine more menu
+                        tiles would be the clutter the hub exists to avoid; see
+                        the hub-child rule in nav.test.ts. */}
+                    <Route path="/activities/breathe" element={<BreathePage />} />
+                    <Route path="/activities/reflections" element={<ReflectionsPage />} />
+                    <Route path="/activities/soundscapes" element={<SoundscapesPage />} />
+                    <Route path="/activities/movements" element={<MovementsPage />} />
+                    <Route path="/activities/quizzes" element={<QuizzesPage />} />
+                    <Route path="/activities/timer" element={<TimerPage />} />
+                    <Route path="/activities/kindness" element={<KindnessPage />} />
+                    <Route path="/activities/first-aid" element={<FirstAidPage />} />
+                    <Route path="/activities" element={<ActivitiesPage />} />
                     <Route path="/shop" element={<PartyPage only={['shop']} title="Shop" />} />
                     <Route path="/friends" element={<FriendsPage />} />
                     <Route path="/bag" element={<PartyPage only={['worn', 'colours', 'companions']} title="Bag" />} />

@@ -46,6 +46,12 @@ export const ICON_NAMES = [
   'bird',
   'target',
   'leaf',
+  'wind',
+  'heart',
+  'pen',
+  'sound',
+  'timer',
+  'gift',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
@@ -110,6 +116,7 @@ export const MENU_GROUPS: MenuGroup[] = [
       { to: '/goals', label: 'Goals', icon: 'target', hint: 'What you are keeping up, by area' },
       { to: '/goals/ideas', label: 'Goal ideas', icon: 'sparkle', hint: 'Small things to try, tailored to you' },
       { to: '/areas', label: 'Areas', icon: 'leaf', hint: 'The six parts, and which are quiet' },
+      { to: '/activities', label: 'Activities', icon: 'wind', hint: 'Breathing, journal, sounds, movement, first aid' },
     ],
   },
   {
@@ -158,4 +165,11 @@ export const ALIASES: Tab[] = [
  * before pairing is even the question, via `FirstRunGate` — see
  * `features/onboarding/`.
  */
-export const OPEN_WHILE_UNPAIRED = ['/settings', '/welcome', '/onboarding'];
+export const OPEN_WHILE_UNPAIRED = [
+  '/settings',
+  '/welcome',
+  '/onboarding',
+  // A page meant for somebody's worst hour cannot sit behind a pairing gate.
+  // It writes nothing and reads nothing, so there is no couple for it to need.
+  '/activities/first-aid',
+];

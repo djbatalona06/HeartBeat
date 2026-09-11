@@ -180,6 +180,50 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M4.6 19.4c1.7-3.6 4.1-6.2 7.3-7.9" />
     </>
   ),
+  /** Breathing: moving air, which is the only honest way to draw a breath. */
+  wind: (
+    <>
+      <path d="M3.5 8.6h9.2a2.8 2.8 0 1 0-2.8-2.8" />
+      <path d="M3.5 12h13a2.8 2.8 0 1 1-2.8 2.8" />
+      <path d="M3.5 15.6h6.7a2.6 2.6 0 1 1-2.6 2.6" />
+    </>
+  ),
+  /** First aid. A heart rather than a cross: this is not a medical service. */
+  heart: (
+    <path d="M12 20.2s-7.8-4.6-7.8-9.8a4.3 4.3 0 0 1 7.8-2.5 4.3 4.3 0 0 1 7.8 2.5c0 5.2-7.8 9.8-7.8 9.8Z" />
+  ),
+  /** Reflections: writing, which is the whole of what that screen is. */
+  pen: (
+    <>
+      <path d="M15.5 4.8 19.2 8.5 8.9 18.8l-4.6.9.9-4.6Z" />
+      <path d="M13.7 6.6 17.4 10.3" />
+    </>
+  ),
+  /** Soundscapes: a sound, leaving. */
+  sound: (
+    <>
+      <path d="M4.4 9.4h3.3L12 5.6v12.8l-4.3-3.8H4.4Z" />
+      <path d="M15.7 9.2a4 4 0 0 1 0 5.6" />
+      <path d="M18.3 6.6a7.6 7.6 0 0 1 0 10.8" />
+    </>
+  ),
+  /** Timers: a clock face, at the only time a timer icon is ever drawn. */
+  timer: (
+    <>
+      <circle cx="12" cy="13.4" r="7.4" />
+      <path d="M12 9.6v3.8l2.6 1.8" />
+      <path d="M9.4 3h5.2" />
+    </>
+  ),
+  /** An act of kindness: something handed over. */
+  gift: (
+    <>
+      <rect x="3.8" y="9.6" width="16.4" height="10.6" rx="1.8" />
+      <path d="M3.8 13.6h16.4M12 9.6v10.6" />
+      <path d="M12 9.6S10.8 5 8.6 5a2 2 0 0 0 0 4.6Z" />
+      <path d="M12 9.6S13.2 5 15.4 5a2 2 0 0 1 0 4.6Z" />
+    </>
+  ),
 };
 
 interface IconProps {

@@ -8,6 +8,7 @@ import type { Avatar, LifeEvent, Redemption, Reward, Task } from '../domain/rpg/
 import type { InventoryItem } from '../domain/rpg/inventory';
 import type { PetInstance } from '../domain/rpg/pets';
 import type { CardProgress, StudySession } from '../domain/study/types';
+import type { Reflection } from '../domain/selfcare/reflections';
 
 /**
  * The phone holds the whole record. The Worker keeps a copy so the other half
@@ -46,6 +47,9 @@ export class HeartBeatDB extends Dexie {
 
   // v7 — gear ownership. Avatar.gear only ever recorded what is worn.
   inventory!: Table<InventoryItem, string>;
+
+  // v8 — the journal behind Activities, and the self-care layer's only table.
+  reflections!: Table<Reflection, string>;
 
   constructor() {
     super('heartbeat');
@@ -119,6 +123,20 @@ export class HeartBeatDB extends Dexie {
     // whether to insert a new row or refine the existing one.
     this.version(7).stores({
       inventory: 'id, coupleId, memberId, itemId, [memberId+itemId]',
+    });
+
+    // v8 adds reflections — the journal behind Activities, and the only new
+    // table the whole self-care layer needs. Goals went onto `tasks` and the
+    // three cosmetic catalogues onto `inventory`; a written entry is the one
+    // thing with no existing row shaped like it.
+    //
+    // It carries `memberId` and `coupleId`, so it is re-keyed on pairing like
+    // everything else — see REKEY_TABLES in domain/identity/rekey.ts, which
+    // has a test that fails if a table keyed this way is left out of it.
+    this.version(8).stores({
+      // Read two ways: this member's entries newest first, and the one written
+      // on a given day, which is what the prompt-of-the-day screen asks for.
+      reflections: 'id, coupleId, memberId, day, [memberId+day], createdAt',
     });
   }
 }

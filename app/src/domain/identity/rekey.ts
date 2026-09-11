@@ -106,6 +106,9 @@ export const REKEY_TABLES: readonly TableRekey[] = [
   { table: 'quests', primaryKey: 'id', memberFields: [], coupleFields: ['coupleId'] },
   { table: 'achievements', primaryKey: 'id', memberFields: [], coupleFields: ['coupleId'] },
   { table: 'messages', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
+  // Not `oneRowPerDay`: a person can write more than once in a day, and the
+  // repository appends rather than upserting on `[memberId+day]`.
+  { table: 'reflections', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
 ];
 
 /** What the repository is asked to do with one row. */
