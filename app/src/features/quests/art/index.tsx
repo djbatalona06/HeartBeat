@@ -151,10 +151,25 @@ const Todo = () => (
   </Glyph>
 );
 
+/**
+ * Rings closing on a centre. A Goal is a Daily you chose on purpose and filed
+ * under an area — mechanically the same schedule, so it is drawn as the thing
+ * with an aim rather than as a second sun. Matches the `target` icon the
+ * Self-care menu uses for the same idea.
+ */
+const Goal = () => (
+  <Glyph>
+    <circle cx="12" cy="12" r="8.2" />
+    <circle cx="12" cy="12" r="4.4" />
+    <circle cx="12" cy="12" r="0.9" />
+  </Glyph>
+);
+
 const TASK_ART: Record<TaskType, ComponentType> = {
   habit: Habit,
   daily: Daily,
   todo: Todo,
+  goal: Goal,
 };
 
 export function taskArt(type: TaskType): ComponentType {

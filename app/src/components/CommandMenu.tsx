@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { loadSettings } from '../db/database';
 import { askAbout } from '../pwa/api';
+import { ALIASES, ALL_DESTINATIONS } from '../nav';
 
 /**
  * Everything in the app, one search away — and a question when nothing matches.
@@ -29,19 +30,21 @@ interface Command {
   to: string;
 }
 
-/** Every place the app can go, including the two that are not tabs. */
-const COMMANDS: Command[] = [
-  { id: 'home', label: 'Home', hint: 'The dashboard', to: '/' },
-  { id: 'tasks', label: 'Tasks', hint: 'Dailies, habits and to-dos', to: '/tasks' },
-  { id: 'mood', label: 'Mood', hint: 'Three meters, the cycle log, something sweet', to: '/mood' },
-  { id: 'move', label: 'Move', hint: 'Workouts and proof', to: '/exercise' },
-  { id: 'work', label: 'Work', hint: 'The shared calendar', to: '/work' },
-  { id: 'party', label: 'Party', hint: 'The pet, gear and boss fights', to: '/party' },
-  // Still here by name, because that is what someone types. It leads to the
-  // section of Mood the log became rather than to a page of its own.
-  { id: 'cycle', label: 'Cycle', hint: 'The log, at the foot of Mood', to: '/mood' },
-  { id: 'settings', label: 'Settings', hint: 'Pairing, theme, notifications', to: '/settings' },
-];
+/**
+ * Every place the app can go, plus the names that are not places.
+ *
+ * Derived rather than written out. This list used to be a hand-kept copy of
+ * `nav.ts`, and by the time it was replaced the copy had already drifted: it
+ * had no entry for Study, so the screen you would most want ⌘K for was the one
+ * it could not find. Deriving it means a destination is searchable the moment
+ * it reaches either navigation surface, and cannot be forgotten here.
+ */
+const COMMANDS: Command[] = [...ALL_DESTINATIONS, ...ALIASES].map((tab) => ({
+  id: `${tab.label.toLowerCase()}-${tab.to}`,
+  label: tab.label,
+  hint: tab.hint,
+  to: tab.to,
+}));
 
 /** Sub-sequence matching, so "wk" finds Work and "st" finds Settings. */
 export function fuzzyScore(query: string, target: string): number | null {

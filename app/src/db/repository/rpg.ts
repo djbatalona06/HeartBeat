@@ -4,6 +4,8 @@ import { addDays } from '../../domain/day';
 import { starterPlanFor } from '../../domain/rpg/starterPlan';
 import {
   newAvatar,
+  SCHEDULED_TYPES,
+  type AreaId,
   type Avatar,
   type GearSlot,
   type LifeEventKind,
@@ -15,6 +17,7 @@ import {
 import { complete, newTask, pressDown, settleMissed, toneFor } from '../../domain/rpg/task';
 import { applyPayout, levelOf, sheetFor, spend } from '../../domain/rpg/avatar';
 import { adventureCost } from '../../domain/rpg/stage';
+import { canTravel, findAt, isNewTo, placeById, travelCost } from '../../domain/rpg/locations';
 import { GOOD_VIBES_SENDER_GRANT, checkGrant, grantFor } from '../../domain/rpg/lifeEvents';
 import { equip, unequip } from '../../domain/rpg/gear';
 import { maxPetMp, petKindById, rankOf, rollKind, type PetInstance } from '../../domain/rpg/pets';
@@ -61,6 +64,10 @@ export interface TaskDraft {
   difficulty?: TaskDifficulty;
   notes?: string;
   dueDays?: number[];
+  /** Goals only. Re-filing one is an edit like any other. */
+  area?: AreaId;
+  /** Set once, when a goal is adopted from the catalogue. Never edited. */
+  suggestionId?: string;
 }
 
 /**
@@ -76,6 +83,10 @@ export async function putTask(draft: TaskDraft, day: DayKey, taskId?: string): P
       notes: draft.notes,
       difficulty: draft.difficulty ?? existing.difficulty,
       dueDays: draft.dueDays,
+      area: draft.area ?? existing.area,
+      // Provenance, not a field: where a goal came from cannot be edited into
+      // something it did not come from.
+      suggestionId: existing.suggestionId,
       updatedAt: now(),
     });
     return existing.id;
@@ -104,8 +115,21 @@ export async function seedStarterPlan(
     if (settings?.starterPlanSeededAt) return false;
 
     for (const starter of starterPlanFor(day)) {
+      // Seeded filed rather than loose: the starter plan draws from the same
+      // catalogue Goals offers, so carrying the area and the id across means
+      // the areas screen has something in it on day one and the ideas screen
+      // knows not to offer back what was already planted.
       const task = newTask(
-        { id: id(), coupleId, memberId, type: 'daily', title: starter.title, difficulty: starter.difficulty },
+        {
+          id: id(),
+          coupleId,
+          memberId,
+          type: 'daily',
+          title: starter.title,
+          difficulty: starter.difficulty,
+          area: starter.area,
+          suggestionId: starter.id,
+        },
         now(),
         day,
       );
@@ -214,7 +238,12 @@ export async function logHabitDown(taskId: string): Promise<void> {
  */
 export async function settleTasks(memberId: MemberId, today: DayKey): Promise<number> {
   const throughDay = addDays(today, -1);
-  const tasks = await db.tasks.where('[memberId+type]').equals([memberId, 'daily']).toArray();
+  // Both scheduled types, because a goal that is missed has to drift for the
+  // same reason a daily does — it becomes worth more when you come back to it.
+  // Two point lookups on the compound index rather than a scan of every task.
+  const tasks = (await Promise.all(
+    SCHEDULED_TYPES.map((type) => db.tasks.where('[memberId+type]').equals([memberId, type]).toArray()),
+  )).flat();
   let missed = 0;
   for (const task of tasks) {
     const result = settleMissed(task, throughDay);
@@ -503,11 +532,39 @@ export async function bondPet(petId: string, amount: number): Promise<void> {
   await db.pets.put({ ...pet, bond: pet.bond + Math.max(0, amount), updatedAt: now() });
 }
 
-/** Energy in, from a finished adventure. The pure spend lives in `avatar.ts`. */
+export interface AdventureResult {
+  ok: boolean;
+  reason?: string;
+  hours?: number;
+  /** Where they went, when somewhere was named. */
+  place?: string;
+  /** What came home — flavour, one line. See `findAt` in `locations.ts`. */
+  found?: string;
+  /** The arrival bounty, paid only on a first visit. */
+  bounty?: number;
+}
+
+/**
+ * Energy out, for a finished adventure. The pure spend lives in `avatar.ts`.
+ *
+ * `locationId` is optional, so the plain "send them out" button still works
+ * exactly as it did — an adventure with nowhere named is the original
+ * behaviour, unchanged. Naming a place adds a distance surcharge, a one-off
+ * arrival bounty, and a line about what they brought back.
+ *
+ * `roll` is supplied by the caller rather than drawn here, the same rule the
+ * pet drops follow: this stays deterministic given its inputs, so a test can
+ * name the outcome instead of running it two hundred times and hoping.
+ */
 export async function startAdventure(
   memberId: MemberId,
   coupleId: string,
-): Promise<{ ok: boolean; reason?: string; hours?: number }> {
+  locationId?: string,
+  roll: number = 0,
+): Promise<AdventureResult> {
+  const place = placeById(locationId);
+  if (locationId && !place) return { ok: false, reason: 'Nowhere by that name.' };
+
   const avatar = await getOrCreateAvatar(memberId, coupleId);
   const owned = await db.inventory.where('memberId').equals(memberId).toArray();
   const sheet = sheetFor(
@@ -515,12 +572,42 @@ export async function startAdventure(
     gearBonusWithRefinement(avatar.gear, levelOf(avatar), refineByItemId(owned)),
   );
   const cost = adventureCost(sheet.level, sheet.energy);
-  if (cost.shortBy > 0) {
+
+  if (place) {
+    // Level before energy, so somebody is never told to rest up for somewhere
+    // they cannot reach yet. See `canTravel`.
+    const verdict = canTravel(place, sheet.level, sheet.energy, cost.energy);
+    if (!verdict.ok) return { ok: false, reason: verdict.reason };
+  } else if (cost.shortBy > 0) {
     return { ok: false, reason: `${cost.shortBy} more energy and they can go.` };
   }
-  const paid = spend(avatar, { energy: cost.energy }, now());
+
+  const energy = place ? travelCost(place, cost.energy) : cost.energy;
+  const paid = spend(avatar, { energy }, now());
   if (!paid) return { ok: false, reason: 'Not enough energy yet.' };
-  await db.avatars.put(paid);
+
+  if (!place) {
+    await db.avatars.put(paid);
+    if (avatar.companionId) await bondPet(avatar.companionId, 2);
+    return { ok: true, hours: cost.hours };
+  }
+
+  // First arrival pays the bounty and is remembered; every later visit is for
+  // the trip itself. Written in the same put as the energy so a bounty cannot
+  // be credited to a journey that failed to save.
+  const first = isNewTo(avatar.visited, place.id);
+  await db.avatars.put({
+    ...paid,
+    coins: paid.coins + (first ? place.bounty : 0),
+    visited: first ? [...(avatar.visited ?? []), place.id] : avatar.visited,
+  });
   if (avatar.companionId) await bondPet(avatar.companionId, 2);
-  return { ok: true, hours: cost.hours };
+
+  return {
+    ok: true,
+    hours: cost.hours,
+    place: place.name,
+    found: findAt(place, roll),
+    bounty: first ? place.bounty : undefined,
+  };
 }

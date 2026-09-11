@@ -5,8 +5,9 @@ import { ensureIdentity, completeTask, seedStarterPlan } from '../../db/reposito
 import { todayKey } from '../../domain/day';
 import { levelProgress } from '../../domain/xp';
 import { openDailies } from '../../domain/rpg/task';
-import { GEAR_SLOTS, type Task } from '../../domain/rpg/types';
+import { GEAR_SLOTS, SCHEDULED_TYPES, type Task } from '../../domain/rpg/types';
 import { gearById } from '../../domain/rpg/gear';
+import { dyeStyle } from '../../domain/rpg/dyes';
 import { useTheme } from '../../themes/ThemeProvider';
 import { getMascot } from '../pet/mascots';
 import { QuestBoard } from '../quests/QuestBoard';
@@ -19,9 +20,9 @@ import { gearArt } from '../party/art/gear';
  * below it. The ring is gone: it had its own six-door ceiling (crowding the
  * mascot past that), the tab bar had a different six-tab ceiling, and the two
  * disagreed on two of the six doors they both carried. Every destination now
- * lives on the nav rail instead — see nav.ts — which frees this screen to
- * answer a different question: not "where do I go", but "what does today
- * still want from me".
+ * lives on the tab bar or behind the menu — see nav.ts — which frees this
+ * screen to answer a different question: not "where do I go", but "what does
+ * today still want from me".
  */
 export function DashboardPage() {
   const { theme, calm } = useTheme();
@@ -47,9 +48,17 @@ export function DashboardPage() {
   const memberId = settings?.memberId ?? identity?.memberId;
   const coupleId = settings?.coupleId ?? identity?.coupleId;
 
+  // Dailies and goals together, because to the person looking at it there is
+  // one list of what today still wants — a goal you set on purpose is not a
+  // second, lesser checklist to go and find on another screen. Two point
+  // lookups on the existing compound index rather than a scan; `openDailies`
+  // filters both by `isDue`.
   const dailies = useLiveQuery(
     async (): Promise<Task[]> => (memberId
-      ? db.tasks.where('[memberId+type]').equals([memberId, 'daily']).toArray()
+      ? (await Promise.all(
+          SCHEDULED_TYPES.map((type) =>
+            db.tasks.where('[memberId+type]').equals([memberId, type]).toArray()),
+        )).flat()
       : []),
     [memberId],
   );
@@ -85,10 +94,14 @@ export function DashboardPage() {
         </p>
       </header>
 
+      {/* The dye is three CSS custom properties on the wrapper, which is the
+          whole of how a colourway reaches the drawing — every mascot paints in
+          those and nothing else, so none of the five files knows dyes exist. */}
       <div
         className="home-mascot-standalone"
         data-mood={petMood}
         data-calm={calm ? 'true' : 'false'}
+        style={dyeStyle(avatar?.dye) as React.CSSProperties}
         role="img"
         aria-label={`${mascot.name} the ${mascot.species}, level ${progress.level} and ${petMood}`}
       >

@@ -5,9 +5,12 @@ import { db, loadSettings } from '../../db/database';
 import {
   awardBossVictory,
   bossVictoryXp,
+  buyDye,
   buyEgg,
+  buyFurniture,
   buyGear,
   ensureIdentity,
+  placeFurniture,
   getOrCreateAvatar,
   equipItem,
   markLoreSeen,
@@ -16,6 +19,7 @@ import {
   spendPetMp,
   startAdventure,
   unequipSlot,
+  wearDye,
 } from '../../db/repository';
 import { flushPetXp } from '../../pwa/petSync';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
@@ -27,6 +31,20 @@ import { hpFraction, resolveBlow, victoryDropBonus, waitingOn, type BossState } 
 import { GEAR_SLOTS, type Avatar, type GearSlot } from '../../domain/rpg/types';
 import { findOwned, ownsItem, refineByItemId, type InventoryItem } from '../../domain/rpg/inventory';
 import { EGG_PRICE, GEAR_PRICE, REFINE_MAX, gearBonusWithRefinement, refinePrice } from '../../domain/rpg/shop';
+import { DEFAULT_DYE_ID, DYES, dyeStyle } from '../../domain/rpg/dyes';
+import {
+  FURNITURE,
+  HOUSE_SLOTS,
+  HOUSE_SLOT_NAMES,
+  furnitureForSlot,
+  normalizeHouse,
+  type House,
+  type HouseSlot,
+} from '../../domain/rpg/furniture';
+import { houseArt } from './art/house';
+import { PLACES, canTravel, nextPlace, travelCost } from '../../domain/rpg/locations';
+import { useTheme } from '../../themes/ThemeProvider';
+import { getMascot } from '../pet/mascots';
 import { BorderGlow } from '../../components/BorderGlow';
 import { AchievementShelf } from '../achievements/AchievementShelf';
 import { gearArt } from './art/gear';
@@ -63,6 +81,22 @@ interface BossPayload {
 }
 
 /**
+ * The things this page can show, and the order they read in.
+ *
+ * The tab bar gives Shop, Bag and Birb a screen each, and all three are
+ * sections of this page — so they are selected here rather than copied into
+ * three new files. Nothing forks: the identity effect, the three live queries
+ * and the receipt are written once and every route gets the same ones, which
+ * is what stops "the shop" behaving differently depending on how you reached
+ * it. `/party` passes nothing and still shows all of them.
+ */
+export type PartySection =
+  'companions' | 'worn' | 'colours' | 'house' | 'adventures' | 'shop' | 'boss' | 'achievements';
+
+export const ALL_SECTIONS: readonly PartySection[] =
+  ['companions', 'worn', 'colours', 'house', 'adventures', 'shop', 'boss', 'achievements'];
+
+/**
  * The party: who is walking with you, what you are wearing, and the one fight
  * where health exists at all.
  *
@@ -71,7 +105,10 @@ interface BossPayload {
  * says so plainly when there is no Worker configured rather than showing a bar
  * that is quietly a lie.
  */
-export function PartyPage() {
+export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
+  only?: readonly PartySection[];
+  title?: string;
+}) {
   const settings = useLiveQuery(loadSettings, []);
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -104,6 +141,12 @@ export function PartyPage() {
       : ([] as InventoryItem[])),
     [identity?.memberId],
   );
+  // The birbhouse is the couple's, so it is read off the shared pet row rather
+  // than either avatar — see domain/rpg/furniture.ts.
+  const pet = useLiveQuery(
+    async () => (identity ? db.pet.get(identity.coupleId) : undefined),
+    [identity?.coupleId],
+  );
 
   useEffect(() => {
     if (!message) return;
@@ -114,7 +157,7 @@ export function PartyPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Party</h1>
+        <h1 className="page-title">{title}</h1>
         <p className="page-sub">
           <Link className="sheet-party" to="/tasks">← Tasks</Link>
         </p>
@@ -122,6 +165,7 @@ export function PartyPage() {
 
       {avatar && identity ? (
         <>
+          {only.includes('companions') ? (
           <Companions
             avatar={avatar}
             pets={pets ?? []}
@@ -147,8 +191,10 @@ export function PartyPage() {
               setMessage(result.ok ? `Gone for ${result.hours} hours.` : result.reason ?? null);
             }}
           />
+          ) : null}
 
-          <Wardrobe
+          {only.includes('worn') ? (
+          <Worn
             avatar={avatar}
             owned={owned ?? []}
             onEquip={async (itemId) => {
@@ -156,13 +202,86 @@ export function PartyPage() {
               if (!result.ok) setMessage(result.reason ?? null);
             }}
             onUnequip={(slot) => unequipSlot(identity.memberId, identity.coupleId, slot)}
+            /* Worn no longer carries the shop with it, so it can no longer send
+               you "below" to a panel that is on another tab now. */
+            shopIsHere={only.includes('shop')}
+          />
+          ) : null}
+
+          {only.includes('colours') ? (
+          <Colours
+            avatar={avatar}
+            owned={owned ?? []}
+            onBuy={async (dyeId) => {
+              const result = await buyDye(identity.memberId, identity.coupleId, dyeId);
+              setMessage(result.ok ? 'Bought. Tap it again to put it on.' : result.reason ?? null);
+            }}
+            onWear={async (dyeId) => {
+              const result = await wearDye(identity.memberId, identity.coupleId, dyeId);
+              if (!result.ok) setMessage(result.reason ?? null);
+            }}
+          />
+          ) : null}
+
+          {only.includes('adventures') ? (
+          <Adventures
+            avatar={avatar}
+            owned={owned ?? []}
+            onGo={async (placeId) => {
+              // The roll is drawn here and handed in, so the repository and the
+              // domain both stay deterministic given their inputs.
+              const result = await startAdventure(
+                identity.memberId, identity.coupleId, placeId, Math.random(),
+              );
+              if (!result.ok) setMessage(result.reason ?? null);
+              else setMessage(
+                `${result.place}: came back with ${result.found}.`
+                + (result.bounty ? ` +${result.bounty} coins for getting there first.` : ''),
+              );
+            }}
+          />
+          ) : null}
+
+          {only.includes('house') ? (
+          <Birbhouse
+            house={(pet?.house ?? {}) as House}
+            owned={owned ?? []}
+            avatar={avatar}
+            onPlace={async (slot, itemId) => {
+              const result = await placeFurniture(identity.memberId, identity.coupleId, slot, itemId);
+              if (!result.ok) setMessage(result.reason ?? null);
+            }}
+            onClear={async (slot) => {
+              const result = await placeFurniture(identity.memberId, identity.coupleId, slot, undefined);
+              if (!result.ok) setMessage(result.reason ?? null);
+            }}
+          />
+          ) : null}
+
+          {only.includes('shop') ? (
+          <Shop
+            avatar={avatar}
+            owned={owned ?? []}
             onBuy={async (itemId) => {
               const result = await buyGear(identity.memberId, identity.coupleId, itemId);
               if (!result.ok) setMessage(result.reason ?? null);
               else if (result.refined) setMessage(`Refined to +${result.refined}.`);
             }}
           />
+          ) : null}
 
+          {only.includes('shop') ? (
+          <Decor
+            avatar={avatar}
+            owned={owned ?? []}
+            onBuy={async (itemId) => {
+              const result = await buyFurniture(identity.memberId, identity.coupleId, itemId);
+              setMessage(result.ok ? 'Bought. Place it on the Birb tab.' : result.reason ?? null);
+            }}
+          />
+          ) : null}
+
+          {only.includes('boss') ? (
           <Boss
             avatar={avatar}
             pets={pets ?? []}
@@ -173,8 +292,11 @@ export function PartyPage() {
             onSpendPetMp={spendPetMp}
             onMessage={setMessage}
           />
+          ) : null}
 
-          <AchievementShelf coupleId={identity.coupleId} />
+          {/* The shelf has its own tab now, alongside the quests it rhymes
+              with. It stays on /party because /party is the everything view. */}
+          {only.includes('achievements') ? <AchievementShelf coupleId={identity.coupleId} /> : null}
         </>
       ) : null}
 
@@ -287,19 +409,19 @@ function Companions({ avatar, pets, owned, onChoose, onSeeLore, onHatch, onAdven
   );
 }
 
-function Wardrobe({ avatar, owned, onEquip, onUnequip, onBuy }: {
+function Worn({ avatar, owned, onEquip, onUnequip, shopIsHere }: {
   avatar: Avatar;
   owned: InventoryItem[];
   onEquip: (itemId: string) => void;
   onUnequip: (slot: GearSlot) => void;
-  onBuy: (itemId: string) => void;
+  /** Whether the shop panel is on this screen too, or a tab away. */
+  shopIsHere: boolean;
 }) {
   const level = levelOf(avatar);
   const refine = refineByItemId(owned);
   const bonus = gearBonusWithRefinement(avatar.gear, level, refine);
 
   return (
-    <>
       <section className="panel">
         <h2 className="section-title">Worn</h2>
         <p className="section-sub">
@@ -313,7 +435,9 @@ function Wardrobe({ avatar, owned, onEquip, onUnequip, onBuy }: {
             <div key={slot} className="slot">
               <div className="slot-name">{slot}</div>
               {slotOwned.length === 0 ? (
-                <p className="section-sub">Nothing owned yet. See the shop below.</p>
+                <p className="section-sub">
+                  {shopIsHere ? 'Nothing owned yet. See the shop below.' : 'Nothing owned yet — the Shop tab has some.'}
+                </p>
               ) : (
                 <div className="chips">
                   {slotOwned.map((item) => {
@@ -343,9 +467,230 @@ function Wardrobe({ avatar, owned, onEquip, onUnequip, onBuy }: {
           +{bonus.heart} heart · +{bonus.luck} luck
         </p>
       </section>
+  );
+}
 
-      <Shop avatar={avatar} owned={owned} onBuy={onBuy} />
-    </>
+/**
+ * Where to send the bird, and where it has already been.
+ *
+ * Locations unlock by level rather than by purchase: coins already have three
+ * things to buy, and a level had never bought anything at all. A place you
+ * cannot reach yet is shown anyway, with the level it opens at — the list is
+ * as much a reason to keep going as it is a menu.
+ */
+function Adventures({ avatar, owned, onGo }: {
+  avatar: Avatar;
+  owned: InventoryItem[];
+  onGo: (placeId: string) => void;
+}) {
+  const level = levelOf(avatar);
+  const sheet = sheetFor(avatar, gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned)));
+  const base = adventureCost(sheet.level, sheet.energy).energy;
+  const visited = avatar.visited ?? [];
+  const next = nextPlace(level);
+
+  return (
+    <section className="panel">
+      <h2 className="section-title">Adventures</h2>
+      <p className="section-sub">
+        {sheet.energy} energy. Somewhere new pays a bounty the first time;
+        after that they go for the trip.
+      </p>
+
+      <ul className="place-list">
+        {PLACES.map((place) => {
+          const verdict = canTravel(place, sheet.level, sheet.energy, base);
+          const locked = level < place.unlockLevel;
+          const been = visited.includes(place.id);
+          return (
+            <li className="place" key={place.id} data-locked={locked ? 'true' : 'false'}>
+              <div className="place-body">
+                <div className="place-name">
+                  {place.name}
+                  {been ? <span className="place-been" title="Been here">✓</span> : null}
+                </div>
+                <div className="place-blurb">{place.blurb}</div>
+              </div>
+              <button
+                type="button"
+                className="place-go"
+                disabled={!verdict.ok}
+                onClick={() => onGo(place.id)}
+                title={verdict.ok ? `${travelCost(place, base)} energy` : verdict.reason}
+                aria-label={verdict.ok ? `Go to ${place.name}` : `${place.name}: ${verdict.reason}`}
+              >
+                {/* Words, not a ⚡: a colour emoji is the one thing on screen
+                    that cannot take the theme, and icons.tsx rejects
+                    glyph-as-icon for exactly this reason. */}
+                {locked
+                  ? `Lv ${place.unlockLevel}`
+                  : `${travelCost(place, base)} energy`}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      {next ? (
+        <p className="section-sub">
+          {next.name} opens at level {next.unlockLevel}.
+        </p>
+      ) : (
+        <p className="section-sub">Everywhere is open. They have been busy.</p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * The birbhouse: one room, drawn in layers, with the bird standing in it.
+ *
+ * The room is the couple's — it lives on the shared `pet` row — so rearranging
+ * it changes what both of you see. See the note at the top of
+ * `domain/rpg/furniture.ts`.
+ *
+ * Everything is drawn into one 100×100 SVG so the pieces share a coordinate
+ * space and can actually sit behind and in front of each other: window and
+ * wall behind the bird, floor and perch in front. Compositing separate boxes
+ * would have meant a rug that is always painted over the feet standing on it.
+ */
+function Birbhouse({ house, owned, avatar, onPlace, onClear }: {
+  house: House;
+  owned: InventoryItem[];
+  avatar: Avatar;
+  onPlace: (slot: HouseSlot, itemId: string) => void;
+  onClear: (slot: HouseSlot) => void;
+}) {
+  const { theme } = useTheme();
+  const mascot = getMascot(theme.id);
+  const placed = normalizeHouse(house);
+
+  return (
+    <section className="panel">
+      <h2 className="section-title">Birbhouse</h2>
+      <p className="section-sub">
+        Yours together — rearranging it changes what you both see.
+      </p>
+
+      <div className="house" role="img" aria-label="The birbhouse">
+        <svg viewBox="0 0 100 100" aria-hidden="true" className="house-scene">
+          <rect x="4" y="8" width="92" height="80" rx="6" fill="var(--color-surface-muted)" />
+          <path d="M4 76h92" stroke="var(--color-text-muted)" strokeWidth="1.2" opacity="0.5" />
+          {/* The whole room, then the bird on top of it. Nothing is drawn in
+              front of the character — see the note on HOUSE_SLOTS. */}
+          {HOUSE_SLOTS.map((slot) => {
+            const Art = houseArt(placed[slot]);
+            return Art ? <Art key={slot} /> : null;
+          })}
+          <g transform="translate(28 40) scale(0.44)" style={dyeStyle(avatar.dye) as React.CSSProperties}>
+            <mascot.Art mood="content" />
+          </g>
+        </svg>
+      </div>
+
+      {HOUSE_SLOTS.map((slot) => {
+        const options = furnitureForSlot(slot);
+        return (
+          <div className="house-slot" key={slot}>
+            <h3 className="house-slot-name">{HOUSE_SLOT_NAMES[slot]}</h3>
+            <div className="chips">
+              <button
+                type="button"
+                className={`chip ${placed[slot] ? '' : 'chip-on'}`}
+                aria-pressed={!placed[slot]}
+                onClick={() => onClear(slot)}
+              >
+                Bare
+              </button>
+              {options.map((item) => {
+                const isOwned = ownsItem(owned, item.id);
+                const isPlaced = placed[slot] === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`chip ${isPlaced ? 'chip-on' : ''} ${isOwned ? '' : 'chip-locked'}`}
+                    aria-pressed={isPlaced}
+                    title={isOwned ? item.blurb : `${item.blurb} — ${item.price} coins in the Shop.`}
+                    onClick={() => (isOwned ? onPlace(slot, item.id) : undefined)}
+                    disabled={!isOwned}
+                  >
+                    {item.name}{isOwned ? '' : ` · ${item.price}`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+/**
+ * Colourways, each shown on the actual bird rather than as a swatch.
+ *
+ * The preview is the real mascot component with the dye's three custom
+ * properties set on its wrapper — the same mechanism that dresses the bird for
+ * real, so what you see here cannot disagree with what you get. That works
+ * because every mascot paints only in `--color-text`, `--color-accent` and
+ * `--color-text-muted`; see `domain/rpg/dyes.ts`.
+ *
+ * One button per colourway, which buys it if it is not yours and wears it if it
+ * is. Two buttons on a tile this size would be two targets too small to hit,
+ * and the second one is never the one you want first.
+ */
+function Colours({ avatar, owned, onBuy, onWear }: {
+  avatar: Avatar;
+  owned: InventoryItem[];
+  onBuy: (dyeId: string) => void;
+  onWear: (dyeId: string) => void;
+}) {
+  const { theme } = useTheme();
+  const mascot = getMascot(theme.id);
+  const worn = avatar.dye ?? DEFAULT_DYE_ID;
+
+  return (
+    <section className="panel">
+      <h2 className="section-title">Colours</h2>
+      <p className="section-sub">
+        {avatar.coins} coins. Purely how {mascot.name} looks — a colourway changes
+        nothing you can do.
+      </p>
+
+      <ul className="dye-grid">
+        {DYES.map((dye) => {
+          const isOwned = dye.price === 0 || ownsItem(owned, dye.id);
+          const isWorn = worn === dye.id;
+          const afford = avatar.coins >= dye.price;
+          return (
+            <li key={dye.id} className="dye">
+              <button
+                type="button"
+                className="dye-button"
+                data-worn={isWorn ? 'true' : 'false'}
+                disabled={isWorn || (!isOwned && !afford)}
+                title={dye.blurb}
+                onClick={() => (isOwned ? onWear(dye.id) : onBuy(dye.id))}
+                aria-label={
+                  isWorn ? `${dye.name}, currently worn`
+                    : isOwned ? `Put ${dye.name} on`
+                      : `Buy ${dye.name} for ${dye.price} coins`
+                }
+              >
+                <span className="dye-art" style={dyeStyle(dye.id) as React.CSSProperties}>
+                  <mascot.Art mood="content" />
+                </span>
+                <span className="dye-name">{dye.name}</span>
+                <span className="dye-state">
+                  {isWorn ? 'Worn' : isOwned ? 'Wear it' : `${dye.price} coins`}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -386,6 +731,60 @@ function Shop({ avatar, owned, onBuy }: {
                 <span className="shop-item-price">
                   {atCap ? 'Fully refined' : itemOwned ? `Refine · ${price}` : `${price} coins`}
                 </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * Furniture, sold here and placed on the Birb tab.
+ *
+ * Its own section rather than more rows in the gear grid, because a rug has no
+ * rarity, no stat bonus and no refine level — the three things every column of
+ * that grid is showing. Putting it there would have meant either four empty
+ * cells per row or four meaningless ones.
+ */
+function Decor({ avatar, owned, onBuy }: {
+  avatar: Avatar;
+  owned: InventoryItem[];
+  onBuy: (itemId: string) => void;
+}) {
+  return (
+    <section className="panel">
+      <h2 className="section-title">For the birbhouse</h2>
+      <p className="section-sub">
+        Bought with your coins, into a room you both see. Place them on the Birb tab.
+      </p>
+
+      <ul className="decor-list">
+        {FURNITURE.map((item) => {
+          const isOwned = ownsItem(owned, item.id);
+          const afford = avatar.coins >= item.price;
+          const Art = houseArt(item.id);
+          return (
+            <li className="decor" key={item.id}>
+              {/* The same fragment the room draws, shown in its own 100×100
+                  window so a piece positioned for the far wall is still
+                  visible in a list row. */}
+              <span className="decor-art" aria-hidden="true">
+                <svg viewBox="0 0 100 100">{Art ? <Art /> : null}</svg>
+              </span>
+              <span className="decor-body">
+                <span className="decor-name">{item.name}</span>
+                <span className="decor-blurb">{item.blurb}</span>
+              </span>
+              <button
+                type="button"
+                className="decor-buy"
+                disabled={isOwned || !afford}
+                onClick={() => onBuy(item.id)}
+                aria-label={isOwned ? `${item.name}, already owned` : `Buy ${item.name} for ${item.price} coins`}
+              >
+                {isOwned ? 'Owned' : item.price}
               </button>
             </li>
           );

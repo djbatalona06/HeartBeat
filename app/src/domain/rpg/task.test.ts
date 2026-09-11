@@ -255,6 +255,59 @@ describe('openDailies', () => {
   });
 });
 
+/**
+ * A goal is a Daily you chose on purpose and filed under an area. Mechanically
+ * it *is* a Daily, and that is the whole reason it is a task type rather than a
+ * table: it inherits the schedule, the drift and the payout instead of getting
+ * a second copy of each. These pin the inheritance, because the way it would
+ * break is silent — a goal that shows up on Home, ticks, pays, and then simply
+ * never drifts when it is missed.
+ */
+describe('goals are scheduled tasks', () => {
+  const DAY = '2026-09-25';
+  const goal = (over: Partial<Task> = {}) => task({ type: 'goal', ...over });
+
+  it('counts as due, the same as a Daily', () => {
+    expect(isDue(goal(), DAY)).toBe(true);
+  });
+
+  it('honours dueDays like a Daily', () => {
+    // 2026-09-25 is a Friday.
+    expect(weekdayOf(DAY)).toBe(5);
+    expect(isDue(goal({ dueDays: [5] }), DAY)).toBe(true);
+    expect(isDue(goal({ dueDays: [1] }), DAY)).toBe(false);
+  });
+
+  it('shows up on the same list as the dailies, sorted together by value', () => {
+    // Home reads one checklist, not two: a goal you set on purpose is not a
+    // lesser list to go and find on another screen.
+    const list = openDailies(
+      [task({ id: 'daily', value: 3 }), goal({ id: 'goal', value: -4 })],
+      DAY,
+    );
+    expect(list.map((t) => t.id)).toEqual(['goal', 'daily']);
+  });
+
+  it('drifts when it is missed, so coming back to it is worth more', () => {
+    const missed = settleMissed(
+      goal({ lastSettledOn: '2026-09-22', value: 0 }),
+      '2026-09-24',
+    );
+    expect(missed.missed).toBe(2);
+    expect(missed.value).toBeLessThan(0);
+  });
+
+  it('resets rather than archives on completion, unlike a to-do', () => {
+    expect(complete(goal(), DAY).done).toBe(false);
+  });
+
+  it('is still not something a Habit or a To-Do can be', () => {
+    expect(isDue(task({ type: 'habit' }), DAY)).toBe(false);
+    expect(isDue(task({ type: 'todo' }), DAY)).toBe(false);
+    expect(settleMissed(task({ type: 'todo', lastSettledOn: '2026-09-22' }), '2026-09-24').missed).toBe(0);
+  });
+});
+
 describe('settleMissed', () => {
   const TODAY = '2026-09-25';
   const YESTERDAY = '2026-09-24';

@@ -47,14 +47,15 @@ body {
   position: relative;
   z-index: 1;
   min-height: 100%;
-  /* Left rather than bottom: the nav rail runs down the left edge at every
-     width, so this is the one padding side that always has to clear it. */
+  /* Bottom rather than left: the tab bar is docked along the bottom edge at
+     every width, so that is the side that always has to be cleared. The top
+     clears the menu button for the same reason. */
   padding:
-    calc(env(safe-area-inset-top) + var(--shell-top))
+    calc(env(safe-area-inset-top) + var(--shell-top) + var(--tap))
     calc(env(safe-area-inset-right) + var(--shell-gutter))
-    calc(env(safe-area-inset-bottom) + var(--shell-bottom))
-    calc(env(safe-area-inset-left) + var(--shell-left));
-  max-width: calc(var(--shell-max) + var(--shell-left));
+    calc(env(safe-area-inset-bottom) + var(--shell-bottom-clear))
+    calc(env(safe-area-inset-left) + var(--shell-gutter));
+  max-width: var(--shell-max);
   margin: 0 auto;
 }
 
@@ -323,151 +324,254 @@ body {
   background: var(--color-surface-muted);
 }
 
-/* ---- nav rail --------------------------------------------------------------
-   A left-edge rail rather than a bottom bar: the app grew past what fits along
-   the bottom of a phone (six was already the ceiling there, and the home ring
-   had its own six-door ceiling for a different reason -- see nav.ts). Length
-   costs height on a rail, and a phone has far more of that than width.
+/* ---- tab bar + menu ---------------------------------------------------------
+   Six across the bottom, and everything else behind the three-line button.
 
-   Bottom-aligned, not top: a phone held one-handed reaches its own bottom
-   corner without a grip shift, and Settings -- the eighth and least-visited
-   entry -- would otherwise sit closest to the thumb while Home sat furthest.
+   This replaced a left-edge rail, which had itself replaced a bottom bar. The
+   rail existed because the app had outgrown what fits along the bottom of a
+   phone -- six was the ceiling there -- and a rail has no width limit. That
+   reasoning was right for eight destinations and stopped being right at
+   fourteen: a rail of fourteen icons is a list, and a list is not a bar. So
+   the ceiling is respected instead of routed around. Six live on the bar, the
+   rest live in a grid one tap away, and `nav.ts` owns which is which.
 
-   It is a dock rather than a full-height slab, and that is the fix for how
-   this shipped. It was `top: 0; bottom: 0` with `justify-content: flex-end`,
-   which is a column exactly as tall as the window with all eight tabs pushed
-   into the bottom of it -- so above them sat an empty tinted, blurred,
-   hard-edged strip covering the top-left of every screen in the app. It read
-   as a broken banner because that is structurally what it was: chrome with
-   nothing in it. Sizing the element to its own contents removes it, and
-   nothing else had to change -- the tabs were always in the right place. */
-.rail {
+   The bar is a grid of six equal columns rather than a flex row, so a tab is
+   exactly one sixth of the width whatever its label says. Flex would size each
+   tab to its own text and leave "Home" a smaller target than "Friends", and
+   would shift every tab sideways as the active label changed weight. */
+.tabbar {
   position: fixed;
   left: 0;
-  /* `top` deliberately unset: the dock is as tall as its tabs and no taller. */
+  right: 0;
   bottom: 0;
   z-index: 2;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
   align-items: stretch;
-  gap: var(--space-1);
-  /* Width is a token because `.shell` has to leave exactly this much clear. */
-  width: var(--rail-width);
-  padding: var(--space-2) 0;
-  margin-bottom: calc(env(safe-area-inset-bottom) + var(--space-2));
-  margin-left: env(safe-area-inset-left);
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-inline: max(env(safe-area-inset-left), var(--space-1)) max(env(safe-area-inset-right), var(--space-1));
+  /* Denser than the 92% the rail used, and the reason is the shape change: a
+     64px strip down the left edge had almost nothing passing under it, while a
+     full-width bar has a column of body text sliding behind it on every
+     scroll. Blur alone does not save that -- and where backdrop-filter is
+     unsupported or switched off, blur saves nothing at all. */
+  background: color-mix(in srgb, var(--color-surface) 97%, transparent);
   backdrop-filter: blur(14px);
-  border: var(--border-width) solid var(--color-border);
-  /* Flat against the screen edge it is docked to, curved on the two corners
-     that face the page. */
-  border-left: none;
-  border-radius: 0 var(--radius-large) var(--radius-large) 0;
+  border-top: var(--border-width) solid var(--color-border);
   box-shadow: var(--shadow);
-  /* A phone in landscape has less height than eight tabs need. Scrolling is
-     the fallback, not the normal case, so the scrollbar is not reserved. */
-  max-height: calc(100dvh - env(safe-area-inset-bottom) - var(--space-4));
-  overflow-y: auto;
-  scrollbar-width: none;
 }
-.rail::-webkit-scrollbar { display: none; }
 
-.rail-tab {
+.tabbar-tab {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  flex-shrink: 0;
-  /* A real tap target rather than one that happens to be about the right
-     size: eight of these are the only way between screens. */
-  min-height: var(--tap);
-  padding: var(--space-2) var(--space-1);
-  margin: 0 var(--space-1);
-  border-radius: var(--radius);
+  gap: 3px;
+  min-width: 0;
   text-decoration: none;
   color: var(--color-text-muted);
-  transition: color var(--motion-fast) var(--motion-easing),
-              background-color var(--motion-fast) var(--motion-easing);
+  transition: color var(--motion-fast) var(--motion-easing);
 }
 
-/* The active tab is a filled pill, not just a recoloured glyph. Colour alone
-   was carrying the whole answer to "where am I", at 64px wide, against an
-   animated backdrop -- and for anyone who cannot separate the accent from the
-   muted tone it was carrying nothing at all. */
-.rail-tab.active {
-  color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
-}
-
-/* The marker on the docked edge. Scales from nothing on the way in, so
-   switching tabs reads as the marker moving rather than blinking. */
-.rail-tab::before {
-  content: '';
-  position: absolute;
-  left: calc(var(--space-1) * -1);
-  top: 50%;
-  width: 3px;
-  height: 60%;
-  border-radius: 0 3px 3px 0;
-  background: var(--color-accent);
-  transform: translateY(-50%) scaleY(0);
-  transition: transform var(--motion-medium) var(--ease-soft);
-}
-.rail-tab.active::before { transform: translateY(-50%) scaleY(1); }
-
-.rail-tab:active { background: color-mix(in srgb, var(--color-accent) 20%, transparent); }
-.rail-tab:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
-
-.rail-glyph {
+/* The active tab is a filled pill behind the glyph, not just a recoloured
+   one. Colour alone was carrying the whole answer to "where am I", and for
+   anyone who cannot separate the accent from the muted tone it was carrying
+   nothing at all. The pill is behind the icon rather than around the whole
+   tab so the labels stay on one baseline across all six. */
+.tabbar-glyph {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 30px;
+  border-radius: var(--radius-large);
   font-size: var(--text-lg);
   line-height: 1;
-  transition: transform var(--motion-medium) var(--ease-soft);
+  transition: background-color var(--motion-fast) var(--motion-easing),
+              transform var(--motion-medium) var(--ease-soft);
 }
-/* The overshoot in --ease-soft is the whole effect: the glyph passes its
-   resting size and settles back, which is what a press is supposed to feel
-   like. Damped with everything else under calm and reduced-motion. */
-.rail-tab.active .rail-glyph { transform: scale(1.14); }
+.tabbar-tab.active { color: var(--color-accent); }
+.tabbar-tab.active .tabbar-glyph {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  /* The overshoot in --ease-soft is the whole effect: the glyph passes its
+     resting size and settles back. Damped under calm and reduced-motion. */
+  transform: scale(1.06);
+}
+
+.tabbar-label {
+  font-size: var(--text-xs);
+  line-height: var(--line-tight);
+  /* Six labels on a 320px phone is ~50px each. Ellipsis rather than wrap:
+     a tab that grows to two lines drags the bar's height with it. */
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabbar-tab:active .tabbar-glyph { background: color-mix(in srgb, var(--color-accent) 24%, transparent); }
+.tabbar-tab:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -3px; border-radius: var(--radius); }
+
+/* A tab that leads to the gate rather than to itself. Dimmed, never disabled:
+   tapping it is how you get back to the invitation from Settings. This rule
+   has now been renamed twice -- `.tab`, then `.rail-tab` -- and the first time
+   it was left behind matching nothing at all for a release, with nothing
+   catching it. It lives here beside the rest of the bar's rules for that
+   reason, rather than three sections away where it was found. */
+.tabbar-tab[data-locked='true'] { opacity: 0.4; }
 
 /* Drawn icons rather than Unicode geometry -- see components/icons.tsx.
    display:block because an inline SVG sits on the text baseline and reserves
    descender space under itself, which shows up as the glyph riding high in
-   every one of the three places these are used. They paint in currentColor,
-   so the rail rule above already colours them and .rail-tab.active already
-   switches them to the accent without either knowing about the other. */
+   every one of the places these are used. They paint in currentColor, so the
+   rules above already colour them without either knowing about the other. */
 .icon { display: block; }
 
-/* Only the active tab keeps its label below the breakpoint -- the rest are an
-   icon with an aria-label, which Icon already renders for. 12px is the floor
-   the type scale promises, and a rail label carries meaning. */
-.rail-label {
-  display: none;
+/* ---- the menu button ------------------------------------------------------
+   Top-left, where Finch puts it, and where the app's own title used to sit
+   alone. Fixed rather than in the page, so it does not scroll away: it is the
+   way to two thirds of the app. */
+.menu-button {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + var(--space-2));
+  left: calc(env(safe-area-inset-left) + var(--space-2));
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  font-size: var(--text-lg);
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  backdrop-filter: blur(14px);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.menu-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.menu-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  background: color-mix(in srgb, var(--color-base) 62%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+/* The direction this opens is the point of the whole component, and it is not
+   decoration.
+
+   On a phone it opens UPWARD, docked just above the tab bar. The button that
+   opens it is at the top-left -- the furthest point on the screen from the
+   thumb of a one-handed grip -- so a panel that dropped from there would put
+   every entry in the half of the screen that grip cannot reach. Anchoring it
+   to the bottom instead puts the choices where the hand already is, and the
+   button stays where it is because that is where a menu button belongs.
+
+   At 768px and up it opens DOWNWARD from the button, like any other menu. A
+   tablet is not held in one hand, so there is no thumb arc to respect, and a
+   panel that flew up from the bottom edge while its button sat at the top
+   would just be unanchored. 768px rather than the 640px used elsewhere in
+   this file: 640 is a large phone, which still gets the thumb treatment. */
+.menu-panel {
+  position: fixed;
+  left: max(env(safe-area-inset-left), var(--space-2));
+  right: max(env(safe-area-inset-right), var(--space-2));
+  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-2));
+  max-height: calc(100dvh - var(--tabbar-h) - env(safe-area-inset-bottom) - env(safe-area-inset-top) - var(--space-7));
+  overflow-y: auto;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+  transform-origin: bottom center;
+  animation: menu-in var(--motion-medium) var(--ease-soft);
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.menu-group + .menu-group { margin-top: var(--space-4); }
+
+.menu-group-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* auto-fill rather than a fixed count, so the same rule gives a phone two
+   columns and a desktop panel four without a second breakpoint. It is the
+   shape .shop-grid already uses for the same reason. */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: var(--space-2);
+}
+
+.menu-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: 'glyph label' 'glyph hint';
+  align-items: center;
+  column-gap: var(--space-3);
+  min-height: var(--tap);
+  padding: var(--space-3);
+  text-decoration: none;
+  color: var(--color-text);
+  background: var(--color-surface-muted);
+  border-radius: var(--radius);
+  transition: background-color var(--motion-fast) var(--motion-easing);
+}
+.menu-item:active { background: color-mix(in srgb, var(--color-accent) 16%, transparent); }
+.menu-item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.menu-item.active { background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+.menu-item.active .menu-item-glyph { color: var(--color-accent); }
+.menu-item[data-locked='true'] { opacity: 0.4; }
+
+.menu-item-glyph { grid-area: glyph; font-size: var(--text-xl); color: var(--color-text-muted); }
+.menu-item-label { grid-area: label; font-size: var(--text-sm); font-weight: 600; }
+.menu-item-hint {
+  grid-area: hint;
   font-size: var(--text-xs);
   line-height: var(--line-tight);
-  white-space: nowrap;
+  color: var(--color-text-muted);
 }
-.rail-tab.active .rail-label { display: block; }
 
-/* Wide enough that every label can stay up without crowding the icon above
-   it. --rail-width and --shell-left are theme tokens written inline by the
-   theme engine (see themes/tokens.ts, applyTheme), so an ordinary rule here
-   cannot out-rank them on specificity -- an inline style beats every
-   stylesheet rule but one that says !important. This is the one place in the
-   app that has to say it, and only for these two properties. */
-@media (min-width: 640px) {
-  :root {
-    --rail-width: 132px !important;
-    --shell-left: calc(132px + var(--space-5)) !important;
+@media (min-width: 768px) {
+  .menu-panel {
+    /* Anchored under the button, which is fixed at the same two offsets. */
+    top: calc(env(safe-area-inset-top) + var(--space-2) + var(--tap) + var(--space-2));
+    bottom: auto;
+    left: calc(env(safe-area-inset-left) + var(--space-2));
+    right: auto;
+    width: min(560px, calc(100vw - var(--space-6)));
+    max-height: calc(100dvh - env(safe-area-inset-top) - var(--tap) - var(--space-7));
+    transform-origin: top left;
   }
-  .rail-tab { flex-direction: row; justify-content: flex-start; gap: var(--space-3); padding-inline: var(--space-3); }
-  .rail-label { display: block; }
-  /* With room for a label the glyph no longer needs to grow to say "here" --
-     the pill and the marker already do, and scaling it just pushes the text. */
-  .rail-tab.active .rail-glyph { transform: none; }
 }
 
-:root[data-calm='true'] .rail-tab.active .rail-glyph { transform: none; }
+/* A wide screen has room for the labels to breathe and for the bar not to run
+   the full width of a monitor. --tabbar-h is a theme token written inline on
+   :root by the theme engine (see themes/tokens.ts, applyTheme), so an ordinary
+   rule here cannot out-rank it on specificity -- an inline style beats every
+   stylesheet rule except one that says !important. This is the one place in
+   the app that has to say it, and only for this property. */
+@media (min-width: 640px) {
+  :root { --tabbar-h: 68px !important; }
+  .tabbar { justify-content: center; }
+  .tabbar-glyph { width: 56px; }
+}
+
+:root[data-calm='true'] .tabbar-tab.active .tabbar-glyph { transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
@@ -625,7 +729,7 @@ body {
 .receipt {
   position: fixed;
   left: 50%;
-  bottom: calc(env(safe-area-inset-bottom) + 84px);
+  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-3));
   z-index: 3;
   transform: translateX(-50%);
   display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center;
@@ -946,14 +1050,15 @@ body {
 .cal-time .field { margin-top: var(--space-1); }
 
 /* ---- messages ------------------------------------------------------------- */
-/* Not on the rail: the thread is not a destination in the way the eight
-   sections are. The bottom-right corner is clear at every width now that the
-   rail runs down the left, so the pill floats there and opens into a sheet
-   over whatever screen you were on. */
+/* Not on the bar: the thread is not a destination in the way the six sections
+   are. It floats above the bottom-right corner of the bar and opens into a
+   sheet over whatever screen you were on. Stacked off --tabbar-h rather than a
+   number, because the bar grows at the 640px breakpoint and a hard-coded
+   offset would put the pill through it there. */
 .chat-pill {
   position: fixed;
   right: calc(env(safe-area-inset-right) + 14px);
-  bottom: calc(env(safe-area-inset-bottom) + 14px);
+  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-2));
   z-index: 3;
   display: inline-flex;
   align-items: center;
@@ -987,10 +1092,12 @@ body {
 
 .chat {
   position: fixed;
-  /* Never over the rail: the sections stay reachable mid-conversation. */
-  left: var(--shell-left);
+  /* Never over the bar: the sections stay reachable mid-conversation. This
+     used to say `left: var(--shell-left)` and clear the rail sideways, which
+     is the same intent read a quarter turn round. */
+  left: 0;
   right: 0;
-  bottom: calc(env(safe-area-inset-bottom) + 14px);
+  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-2));
   z-index: 3;
   display: flex;
   flex-direction: column;
@@ -1648,12 +1755,6 @@ body {
   font-size: var(--text-sm);
   line-height: var(--line-body);
 }
-
-/* A tab that leads to the gate rather than to itself. Dimmed, never disabled:
-   tapping it is how you get back to the invitation from Settings. Selector
-   renamed from `.tab` when the rail replaced the tab bar; it matched nothing
-   at all for one release, and nothing caught it. */
-.rail-tab[data-locked='true'] { opacity: 0.4; }
 
 /* ---- welcome ----------------------------------------------------------------
    The subpage a browser visitor meets before the app itself. See
@@ -2826,7 +2927,7 @@ body {
 .cmd-pill {
   position: fixed;
   right: calc(env(safe-area-inset-right) + 14px);
-  bottom: calc(env(safe-area-inset-bottom) + 14px + var(--tap) + var(--space-2));
+  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--tap) + var(--space-4));
   z-index: 3;
   display: inline-flex;
   align-items: center;
@@ -3121,6 +3222,506 @@ body {
    already has padding of its own. */
 .cycle-panel .cal-head { margin-top: var(--space-4); }
 .cycle-panel .cal-grid { margin-left: 0; margin-right: 0; }
+
+/* ---- the activities hub and its screens -------------------------------------
+   A grid rather than a list because these are peers: none of them is the main
+   one, and a list would imply an order that does not exist. */
+.activity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+.activity {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius-large);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+  min-height: var(--tap);
+  transition: transform var(--motion-fast) var(--ease-soft),
+              background-color var(--motion-fast) var(--motion-easing);
+}
+.activity:active { transform: scale(0.985); }
+.activity:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.activity:hover { background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface)); }
+.activity-glyph { font-size: var(--text-xl); color: var(--color-accent); }
+.activity-name { font-family: var(--font-display); font-size: var(--text-lg); line-height: var(--line-tight); }
+.activity-hint { font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-body); }
+
+/* ---- breathing ---- */
+.breathe { text-align: center; }
+.breathe-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 240px;
+  margin: var(--space-4) 0;
+}
+.breathe-circle {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  border: 2px solid var(--color-accent);
+  /* The transition is short because `scaleAt` already moves this every frame;
+     it only smooths the gap between frames, never the breath itself. */
+  transition: transform 80ms linear;
+}
+/* Reduced motion, or the app's own calm mode: the words and the count stay,
+   the pulsing stops. A person may well have arrived here *because* they feel
+   unwell, which is exactly who that setting is for. */
+.breathe-stage[data-still='true'] .breathe-circle {
+  transform: scale(0.8) !important;
+  transition: none;
+}
+.breathe-words { position: relative; display: grid; gap: var(--space-1); }
+.breathe-phase { font-family: var(--font-display); font-size: var(--text-xl); }
+.breathe-count { font-size: var(--text-3xl); line-height: 1; color: var(--color-accent); }
+.breathe-cycles { font-size: var(--text-sm); color: var(--color-text-muted); margin-bottom: var(--space-3); }
+
+/* ---- reflections ---- */
+.reflect-input { min-height: 120px; resize: vertical; line-height: var(--line-body); }
+.reflect-prompt { text-transform: none; text-align: left; }
+
+.reflect-list { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-3); }
+.reflect-entry { border-radius: var(--radius); background: var(--color-surface-muted); overflow: hidden; }
+.reflect-head {
+  width: 100%;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  min-height: var(--tap);
+  background: transparent;
+  border: 0;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.reflect-head:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.reflect-day { font-size: var(--text-xs); color: var(--color-text-muted); }
+.reflect-preview { font-size: var(--text-sm); line-height: var(--line-body); }
+.reflect-shared { font-size: var(--text-xs); color: var(--color-accent); }
+.reflect-body { padding: 0 var(--space-3) var(--space-3); }
+.reflect-question { font-size: var(--text-xs); color: var(--color-text-muted); margin-bottom: var(--space-2); }
+.reflect-text { font-size: var(--text-base); line-height: var(--line-body); white-space: pre-wrap; }
+.reflect-body .row { margin-top: var(--space-3); }
+.chip-danger { border-color: var(--color-danger); color: var(--color-danger); }
+
+/* ---- first aid ---- */
+/* Above the routines, because somebody who needs it most is least likely to
+   scroll for it. */
+.first-aid-signpost { border-color: var(--color-accent); }
+.first-aid-head {
+  width: 100%;
+  display: grid;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  background: transparent;
+  border: 0;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.first-aid-head:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.first-aid-steps { margin-top: var(--space-4); padding-left: var(--space-5); display: grid; gap: var(--space-3); }
+.first-aid-step { display: grid; gap: var(--space-1); }
+.first-aid-step-title { font-size: var(--text-base); }
+.first-aid-step-body { font-size: var(--text-sm); color: var(--color-text-muted); line-height: var(--line-body); }
+
+/* ---- soundscapes ---- */
+.bed-list { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.bed-button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'name state' 'blurb state';
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3);
+  min-height: var(--tap);
+  border-radius: var(--radius);
+  border: var(--border-width) solid transparent;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.bed-button[data-playing='true'] { border-color: var(--color-accent); }
+.bed-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.bed-name { grid-area: name; font-size: var(--text-base); }
+.bed-blurb { grid-area: blurb; font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-body); }
+.bed-state { grid-area: state; font-size: var(--text-sm); color: var(--color-text-muted); }
+.bed-button[data-playing='true'] .bed-state { color: var(--color-accent); }
+.bed-volume { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
+.bed-volume input { width: 100%; accent-color: var(--color-accent); min-height: var(--tap); }
+
+/* ---- movements ---- */
+.move-now { display: grid; gap: var(--space-1); margin: var(--space-4) 0; text-align: center; }
+.move-name { font-family: var(--font-display); font-size: var(--text-xl); }
+.move-count { font-size: var(--text-3xl); line-height: 1; color: var(--color-accent); }
+.move-how { font-size: var(--text-sm); color: var(--color-text-muted); line-height: var(--line-body); }
+.move-chip { text-transform: none; }
+.move-list { list-style: none; margin-top: var(--space-4); display: grid; gap: var(--space-1); }
+.move-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.move-row[data-state='now'] { background: color-mix(in srgb, var(--color-accent) 16%, transparent); color: var(--color-text); }
+.move-row[data-state='done'] { opacity: 0.5; text-decoration: line-through; }
+
+/* ---- quizzes ---- */
+.quiz-list { list-style: none; display: grid; gap: var(--space-2); }
+.quiz-pick {
+  width: 100%;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  min-height: var(--tap);
+  border-radius: var(--radius);
+  border: 0;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.quiz-pick:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.quiz-name { font-size: var(--text-base); }
+.quiz-blurb { font-size: var(--text-xs); color: var(--color-text-muted); }
+/* Answers are sentences, so they wrap rather than truncate, and they are not
+   capitalized the way a one-word difficulty chip is. */
+.quiz-option { text-transform: none; text-align: left; }
+
+/* ---- the timer ---- */
+.timer { text-align: center; }
+.timer-face {
+  font-size: var(--text-3xl);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  margin: var(--space-5) 0;
+  color: var(--color-accent);
+}
+
+/* ---- acts of kindness ---- */
+.kind-today { font-size: var(--text-lg); line-height: var(--line-body); margin: var(--space-3) 0 var(--space-4); }
+.kind-list { list-style: none; display: grid; gap: var(--space-2); margin-top: var(--space-3); }
+.kind-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+.kind-text { flex: 1 1 auto; font-size: var(--text-sm); line-height: var(--line-body); }
+.kind-send {
+  flex: 0 0 auto;
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  border: var(--border-width) solid var(--color-border);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.kind-send:disabled { color: var(--color-text-muted); cursor: default; }
+.kind-send:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.kind-quiet { flex: 0 0 auto; font-size: var(--text-xs); color: var(--color-text-muted); }
+
+/* Announced to a screen reader, never drawn. Used by the breathing phase, the
+   timer's state, and the current movement — all things that are obvious to look
+   at and invisible to listen to. */
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- adventures -------------------------------------------------------------
+   A place you cannot reach yet is dimmed rather than hidden, and its button
+   says the level instead of a cost: the list is as much a reason to keep
+   going as it is a menu. */
+.place-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.place {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+.place[data-locked='true'] { opacity: 0.5; }
+.place-body { flex: 1 1 auto; min-width: 0; }
+.place-name { font-size: var(--text-base); display: flex; align-items: center; gap: var(--space-2); }
+.place-been { color: var(--color-success); font-size: var(--text-sm); }
+.place-blurb {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+  margin-top: var(--space-1);
+}
+.place-go {
+  flex: 0 0 auto;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  border: var(--border-width) solid var(--color-border);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.place-go:disabled { color: var(--color-text-muted); cursor: default; }
+.place-go:hover:not(:disabled) { background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+.place-go:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+/* ---- the birbhouse ----------------------------------------------------------
+   One SVG, drawn in layers, so window and wall sit behind the bird and floor
+   and perch in front of it. Separate boxes would have meant a rug always
+   painted over the feet standing on it. */
+.house {
+  margin-top: var(--space-4);
+  border-radius: var(--radius-large);
+  overflow: hidden;
+}
+.house-scene { display: block; width: 100%; height: auto; }
+
+.house-slot { margin-top: var(--space-4); }
+.house-slot-name {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+/* A piece you do not own yet is dimmed and says its price, rather than being
+   hidden — the room should show what it could be, not only what it is. */
+.house-slot .chip-locked { cursor: default; }
+/* Chips capitalize by default, which is right for the difficulty words they
+   were built for and wrong for a proper name: it turns "Rainy window" into
+   "Rainy Window" and the set into inconsistent Title Case. */
+.house-slot .chip { text-transform: none; }
+
+.decor-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.decor {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+.decor-art { flex: 0 0 auto; width: 46px; height: 46px; }
+.decor-art svg { width: 100%; height: 100%; }
+.decor-body { flex: 1 1 auto; min-width: 0; display: grid; }
+.decor-name { font-size: var(--text-sm); }
+.decor-blurb { font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-body); }
+.decor-buy {
+  flex: 0 0 auto;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  border: var(--border-width) solid var(--color-border);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.decor-buy:disabled { color: var(--color-text-muted); cursor: default; }
+.decor-buy:hover:not(:disabled) { background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+.decor-buy:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+/* ---- colourways -------------------------------------------------------------
+   Each tile previews the real mascot with the dye's three custom properties
+   set on `.dye-art`, so the swatch is the bird rather than a square of colour
+   that has to be trusted to match it. */
+.dye-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: var(--space-3);
+  list-style: none;
+  margin-top: var(--space-4);
+}
+
+.dye-button {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--ease-soft),
+              border-color var(--motion-fast) var(--motion-easing);
+}
+.dye-button:active { transform: scale(0.96); }
+.dye-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+/* Worn is disabled, so it must not read as unavailable — it is the one you
+   already chose. The ring says so and the opacity rule below exempts it. */
+.dye-button[data-worn='true'] {
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+.dye-button:disabled { cursor: default; }
+.dye-button:disabled[data-worn='false'] { opacity: 0.45; }
+
+.dye-art { width: 62px; height: 62px; display: block; }
+.dye-art svg { width: 100%; height: 100%; }
+.dye-name { font-size: var(--text-xs); text-align: center; line-height: var(--line-tight); }
+.dye-state { font-size: var(--text-xs); color: var(--color-text-muted); }
+.dye-button[data-worn='true'] .dye-state { color: var(--color-accent); }
+
+/* ---- goals, ideas and the areas grid ---------------------------------------
+   Everything here tints with `color-mix()` against `--color-accent` rather
+   than naming a colour. Six hardcoded area colours were the obvious way to
+   draw this and would have been the one grid on screen ignoring whichever
+   theme pack is on — the packs differ by palette, so a fixed palette is a
+   pack that cannot be switched off. See domain/rpg/selfCare.ts. */
+.area-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+
+.area-tile {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius-large);
+  border: var(--border-width) solid var(--color-border);
+  /* The fill strengthens with the day's progress, so a glance across the grid
+     reads as "which of these has had anything today". */
+  background: color-mix(in srgb, var(--color-accent) calc(var(--area-fill, 0%) * 0.18), var(--color-surface));
+  color: var(--color-text);
+  text-decoration: none;
+  transition: transform var(--motion-fast) var(--ease-soft),
+              background-color var(--motion-medium) var(--motion-easing);
+}
+.area-tile:active { transform: scale(0.985); }
+.area-tile:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.area-glyph { font-size: var(--text-xl); color: var(--color-accent); }
+.area-name { font-family: var(--font-display); font-size: var(--text-lg); line-height: var(--line-tight); }
+.area-count { font-size: var(--text-xs); color: var(--color-text-muted); }
+.area-blurb {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
+
+.area-bar {
+  margin-top: var(--space-2);
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
+  overflow: hidden;
+}
+.area-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-accent);
+  transition: width var(--motion-slow) var(--ease-soft);
+}
+
+.goal-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.goal-actions .primary { flex: 0 0 auto; }
+.goal-link {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+}
+.goal-link:hover, .goal-link:focus-visible { color: var(--color-accent); }
+
+.section-title .goal-area-glyph {
+  color: var(--color-accent);
+  margin-right: var(--space-2);
+  vertical-align: -0.1em;
+}
+
+.idea-list { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+
+.idea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+.idea-body { flex: 1 1 auto; min-width: 0; }
+.idea-title { font-size: var(--text-base); line-height: var(--line-body); }
+.idea-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.idea-area { display: inline-flex; align-items: center; gap: var(--space-1); }
+.idea-difficulty { text-transform: capitalize; }
+
+/* A tap target, not a glyph: this is the one control on the screen, and it is
+   hit with a thumb while scrolling a long list. */
+.idea-add {
+  flex: 0 0 auto;
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 999px;
+  border: var(--border-width) solid var(--color-border);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: var(--text-xl);
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--motion-easing),
+              transform var(--motion-fast) var(--ease-soft);
+}
+.idea-add:hover { background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+.idea-add:active { transform: scale(0.92); }
+.idea-add:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 
 /* ---- motion -----------------------------------------------------------------
    The app had backdrops and almost nothing else: five animated canvases behind

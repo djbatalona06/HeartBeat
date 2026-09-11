@@ -189,6 +189,17 @@ export interface Pet {
    * server's own key stops it being added to the shared total.
    */
   awardedXpIds?: string[];
+  /**
+   * What is placed in the birbhouse, one furniture id per slot.
+   *
+   * On the couple's pet rather than either avatar, because the house is the
+   * thing the two of you keep together — the same reasoning as the pet's own
+   * XP. Either partner can rearrange it and it changes for both. Optional, so
+   * every row already stored reads `undefined` and no schema version is spent;
+   * always read it through `normalizeHouse` in `domain/rpg/furniture.ts`, which
+   * drops pieces that have since been retired from the catalogue.
+   */
+  house?: Partial<Record<string, string>>;
 }
 
 export type QuestDifficulty = 'easy' | 'steady' | 'hard';
