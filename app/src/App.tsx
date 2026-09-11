@@ -7,6 +7,7 @@ import { MoodPage } from './features/mood/MoodPage';
 import { WorkPage } from './features/work/WorkPage';
 import { TasksPage } from './features/tasks/TasksPage';
 import { PartyPage } from './features/party/PartyPage';
+import { AssetsPage } from './features/assets/AssetsPage';
 import { StudyRoute } from './features/study/StudyRoute';
 import { ChatPanel } from './features/chat/ChatPanel';
 import { PairGate } from './features/pairing/PairGate';
@@ -98,9 +99,13 @@ export function App() {
                     <Route path="/activities" element={<ActivitiesPage />} />
                     <Route path="/shop" element={<PartyPage only={['shop']} title="Shop" />} />
                     <Route path="/friends" element={<FriendsPage />} />
-                    <Route path="/bag" element={<PartyPage only={['worn', 'colours', 'companions']} title="Bag" />} />
-                    <Route path="/birb" element={<PartyPage only={['house', 'adventures', 'companions', 'boss']} title="Birb" />} />
+                    {/* No /bag of its own: `main` grew AssetsPage, which is the
+                        same idea done properly, so the Bag tab points there.
+                        Worn and Colours move onto Birb, where dressing the bird
+                        sits next to its house and its adventures. */}
+                    <Route path="/birb" element={<PartyPage only={['worn', 'colours', 'house', 'adventures', 'companions', 'boss']} title="Birb" />} />
                     <Route path="/party" element={<PartyPage />} />
+                    <Route path="/assets" element={<AssetsPage />} />
                     {/* The cycle log is the last section of Mood now. The old
                         route is kept as a redirect rather than dropped: it is in
                         notification deep links, in the command menu, and quite

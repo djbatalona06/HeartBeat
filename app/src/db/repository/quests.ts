@@ -195,7 +195,7 @@ export async function startQuest(
 
     const quest = newQuest(shapeFor(template, difficulty), coupleId, today, id(),
       (day) => endOfDay(day, timeZone));
-    await db.quests.put(quest);
+    await db.quests.put({ ...quest, updatedAt: now() });
     return quest;
   });
 }
@@ -205,7 +205,7 @@ export async function retireQuest(questId: string): Promise<void> {
   await db.transaction('rw', [db.quests], async () => {
     const quest = await db.quests.get(questId);
     if (!quest || quest.completedAt || quest.retiredAt) return;
-    await db.quests.put(markRetired(quest, now()));
+    await db.quests.put({ ...markRetired(quest, now()), updatedAt: now() });
   });
 }
 
@@ -280,7 +280,7 @@ export async function reconcileQuests(
     const step = reckon(advance(fresh, measured), today);
 
     if (step.verb === 'complete') {
-      await db.quests.put(markComplete(step.quest, now()));
+      await db.quests.put({ ...markComplete(step.quest, now()), updatedAt: now() });
       // Named after the quest for the same reason the rungs are: an award id
       // the server has already seen is one it will not credit again.
       await awardPetXp(coupleId, `quest-${step.quest.id}`, step.award);
@@ -288,12 +288,14 @@ export async function reconcileQuests(
     }
 
     if (step.verb === 'expired') {
-      await db.quests.put(markRetired(step.quest, now()));
+      await db.quests.put({ ...markRetired(step.quest, now()), updatedAt: now() });
       return { quest: step.quest, awarded: 0, finished: false, expired: true };
     }
 
     // Running, or already settled by whoever got here first.
-    if (step.verb === 'running' && step.quest !== fresh) await db.quests.put(step.quest);
+    if (step.verb === 'running' && step.quest !== fresh) {
+      await db.quests.put({ ...step.quest, updatedAt: now() });
+    }
     return { quest: step.quest, awarded: 0, finished: false, expired: false };
   });
 }

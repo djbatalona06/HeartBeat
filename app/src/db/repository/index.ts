@@ -12,6 +12,7 @@
  * routing a sibling call through here would make the module graph cyclic.
  */
 export * from './achievements';
+export * from './assets';
 export * from './chat';
 export * from './cosmetics';
 export * from './entries';

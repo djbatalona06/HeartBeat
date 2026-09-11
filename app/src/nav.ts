@@ -79,6 +79,12 @@ export interface MenuGroup {
  * bird it is all for. Everything else is a place you go on purpose, which is
  * what the menu is.
  *
+ * Bag points at `/assets` rather than a section of Party. `main` grew a real
+ * holdings page while this branch was open — owned gear, companions, and the
+ * finished to-dos the app used to archive and forget — which is strictly more
+ * than the three Party sections this tab pointed at before. Its route keeps the
+ * name it shipped under; only the tab label is Finch's.
+ *
  * Friends is the partner, not a network. This app is for two people, so Tree
  * Town has one other house in it — that is a smaller feature than Finch's and
  * an honest one, rather than a social graph with nobody in it.
@@ -88,7 +94,7 @@ export const PRIMARY_TABS: Tab[] = [
   { to: '/quests', label: 'Quests', icon: 'sparkle', hint: 'Extra ways to earn, and the shelf' },
   { to: '/shop', label: 'Shop', icon: 'shop', hint: 'Gear, eggs, and what coins are for' },
   { to: '/friends', label: 'Friends', icon: 'friends', hint: 'Their birb, and something kind to send' },
-  { to: '/bag', label: 'Bag', icon: 'bag', hint: 'What you own and what you are wearing' },
+  { to: '/assets', label: 'Bag', icon: 'bag', hint: 'Gear, companions, and everything you finished' },
   { to: '/birb', label: 'Birb', icon: 'bird', hint: 'Companions, adventures, and the boss' },
 ];
 

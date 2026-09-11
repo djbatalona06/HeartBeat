@@ -47,7 +47,7 @@ Both Cloudflare pieces bind the **same D1 database**.
 All writes go through `app/src/db/repository/`. Components call repository functions; Dexie live queries drive re-renders. Nothing in `features/` touches the database directly.
 
 - **Local DB**: Dexie (IndexedDB), schema in `app/src/db/database.ts`
-- **Remote sync**: Cloudflare Worker (`worker/src/`) reads/writes D1; the app POSTs to `/api/*` Pages Functions in `app/functions/`
+- **Remote sync**: Cloudflare Worker (`worker/src/`) reads/writes D1; the app POSTs to `/api/*` Pages Functions in `app/functions/`. Two round trips, deliberately separate: `/api/entries` carries everything keyed by a **day** (mood, exercise, cycle, work, photos) and `/api/holdings` everything keyed by a **row** (inventory, pets, avatars, tasks, quests). They have their own watermarks in `Settings`, so one failing does not stall the other.
 - **Domain logic**: `app/src/domain/` — pure TypeScript, no React, no Dexie. Tests live beside each module (`*.test.ts`). Vitest is restricted to `*.test.ts` only; components are not unit-tested by design.
 
 ### Key domain modules
@@ -64,6 +64,11 @@ Two workflows deploy: `deploy.yml` (Pages, every push to `main`) and `worker-dep
 
 - `CLOUDFLARE_API_TOKEN` — must have **Cloudflare Pages: Edit** + **D1: Edit** + **Workers AI: Read** + **Workers Scripts: Edit** (the last one for `worker-deploy.yml`)
 - `CLOUDFLARE_ACCOUNT_ID` — from the Cloudflare dashboard sidebar
+
+Optional, and set on the **Pages project** rather than as repo secrets:
+`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` turn on GitHub account recovery.
+Unset is a supported configuration — the feature hides itself and the pairing
+code remains the only way into a couple either way. See §8 of `docs/DEPLOY.md`.
 
 The deploy step runs from `app/` so wrangler reads `app/wrangler.toml` for D1/Workers AI bindings. Deploying from the repo root would leave functions unbound and every `/api` call would 500.
 
