@@ -185,6 +185,13 @@ export interface Avatar {
    * couple: you dress your own bird.
    */
   dye?: string;
+  /**
+   * Places this member's bird has been, as `Place.id`s — see `locations.ts`.
+   * The arrival bounty is paid once, and this is what remembers that. Per
+   * member rather than per couple because energy is: you each send your own
+   * bird, so you each have your own atlas.
+   */
+  visited?: string[];
   updatedAt: number;
 }
 

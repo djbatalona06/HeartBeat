@@ -42,6 +42,7 @@ import {
   type HouseSlot,
 } from '../../domain/rpg/furniture';
 import { houseArt } from './art/house';
+import { PLACES, canTravel, nextPlace, travelCost } from '../../domain/rpg/locations';
 import { useTheme } from '../../themes/ThemeProvider';
 import { getMascot } from '../pet/mascots';
 import { BorderGlow } from '../../components/BorderGlow';
@@ -90,10 +91,10 @@ interface BossPayload {
  * it. `/party` passes nothing and still shows all of them.
  */
 export type PartySection =
-  'companions' | 'worn' | 'colours' | 'house' | 'shop' | 'boss' | 'achievements';
+  'companions' | 'worn' | 'colours' | 'house' | 'adventures' | 'shop' | 'boss' | 'achievements';
 
 export const ALL_SECTIONS: readonly PartySection[] =
-  ['companions', 'worn', 'colours', 'house', 'shop', 'boss', 'achievements'];
+  ['companions', 'worn', 'colours', 'house', 'adventures', 'shop', 'boss', 'achievements'];
 
 /**
  * The party: who is walking with you, what you are wearing, and the one fight
@@ -218,6 +219,25 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
             onWear={async (dyeId) => {
               const result = await wearDye(identity.memberId, identity.coupleId, dyeId);
               if (!result.ok) setMessage(result.reason ?? null);
+            }}
+          />
+          ) : null}
+
+          {only.includes('adventures') ? (
+          <Adventures
+            avatar={avatar}
+            owned={owned ?? []}
+            onGo={async (placeId) => {
+              // The roll is drawn here and handed in, so the repository and the
+              // domain both stay deterministic given their inputs.
+              const result = await startAdventure(
+                identity.memberId, identity.coupleId, placeId, Math.random(),
+              );
+              if (!result.ok) setMessage(result.reason ?? null);
+              else setMessage(
+                `${result.place}: came back with ${result.found}.`
+                + (result.bounty ? ` +${result.bounty} coins for getting there first.` : ''),
+              );
             }}
           />
           ) : null}
@@ -447,6 +467,78 @@ function Worn({ avatar, owned, onEquip, onUnequip, shopIsHere }: {
           +{bonus.heart} heart · +{bonus.luck} luck
         </p>
       </section>
+  );
+}
+
+/**
+ * Where to send the bird, and where it has already been.
+ *
+ * Locations unlock by level rather than by purchase: coins already have three
+ * things to buy, and a level had never bought anything at all. A place you
+ * cannot reach yet is shown anyway, with the level it opens at — the list is
+ * as much a reason to keep going as it is a menu.
+ */
+function Adventures({ avatar, owned, onGo }: {
+  avatar: Avatar;
+  owned: InventoryItem[];
+  onGo: (placeId: string) => void;
+}) {
+  const level = levelOf(avatar);
+  const sheet = sheetFor(avatar, gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned)));
+  const base = adventureCost(sheet.level, sheet.energy).energy;
+  const visited = avatar.visited ?? [];
+  const next = nextPlace(level);
+
+  return (
+    <section className="panel">
+      <h2 className="section-title">Adventures</h2>
+      <p className="section-sub">
+        {sheet.energy} energy. Somewhere new pays a bounty the first time;
+        after that they go for the trip.
+      </p>
+
+      <ul className="place-list">
+        {PLACES.map((place) => {
+          const verdict = canTravel(place, sheet.level, sheet.energy, base);
+          const locked = level < place.unlockLevel;
+          const been = visited.includes(place.id);
+          return (
+            <li className="place" key={place.id} data-locked={locked ? 'true' : 'false'}>
+              <div className="place-body">
+                <div className="place-name">
+                  {place.name}
+                  {been ? <span className="place-been" title="Been here">✓</span> : null}
+                </div>
+                <div className="place-blurb">{place.blurb}</div>
+              </div>
+              <button
+                type="button"
+                className="place-go"
+                disabled={!verdict.ok}
+                onClick={() => onGo(place.id)}
+                title={verdict.ok ? `${travelCost(place, base)} energy` : verdict.reason}
+                aria-label={verdict.ok ? `Go to ${place.name}` : `${place.name}: ${verdict.reason}`}
+              >
+                {/* Words, not a ⚡: a colour emoji is the one thing on screen
+                    that cannot take the theme, and icons.tsx rejects
+                    glyph-as-icon for exactly this reason. */}
+                {locked
+                  ? `Lv ${place.unlockLevel}`
+                  : `${travelCost(place, base)} energy`}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      {next ? (
+        <p className="section-sub">
+          {next.name} opens at level {next.unlockLevel}.
+        </p>
+      ) : (
+        <p className="section-sub">Everywhere is open. They have been busy.</p>
+      )}
+    </section>
   );
 }
 

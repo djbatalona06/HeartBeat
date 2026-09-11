@@ -3218,6 +3218,52 @@ body {
 .cycle-panel .cal-head { margin-top: var(--space-4); }
 .cycle-panel .cal-grid { margin-left: 0; margin-right: 0; }
 
+/* ---- adventures -------------------------------------------------------------
+   A place you cannot reach yet is dimmed rather than hidden, and its button
+   says the level instead of a cost: the list is as much a reason to keep
+   going as it is a menu. */
+.place-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.place {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+.place[data-locked='true'] { opacity: 0.5; }
+.place-body { flex: 1 1 auto; min-width: 0; }
+.place-name { font-size: var(--text-base); display: flex; align-items: center; gap: var(--space-2); }
+.place-been { color: var(--color-success); font-size: var(--text-sm); }
+.place-blurb {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+  margin-top: var(--space-1);
+}
+.place-go {
+  flex: 0 0 auto;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  border: var(--border-width) solid var(--color-border);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.place-go:disabled { color: var(--color-text-muted); cursor: default; }
+.place-go:hover:not(:disabled) { background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+.place-go:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
 /* ---- the birbhouse ----------------------------------------------------------
    One SVG, drawn in layers, so window and wall sit behind the bird and floor
    and perch in front of it. Separate boxes would have meant a rug always
