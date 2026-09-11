@@ -7,6 +7,7 @@ import { levelProgress } from '../../domain/xp';
 import { openDailies } from '../../domain/rpg/task';
 import { GEAR_SLOTS, SCHEDULED_TYPES, type Task } from '../../domain/rpg/types';
 import { gearById } from '../../domain/rpg/gear';
+import { dyeStyle } from '../../domain/rpg/dyes';
 import { useTheme } from '../../themes/ThemeProvider';
 import { getMascot } from '../pet/mascots';
 import { QuestBoard } from '../quests/QuestBoard';
@@ -93,10 +94,14 @@ export function DashboardPage() {
         </p>
       </header>
 
+      {/* The dye is three CSS custom properties on the wrapper, which is the
+          whole of how a colourway reaches the drawing — every mascot paints in
+          those and nothing else, so none of the five files knows dyes exist. */}
       <div
         className="home-mascot-standalone"
         data-mood={petMood}
         data-calm={calm ? 'true' : 'false'}
+        style={dyeStyle(avatar?.dye) as React.CSSProperties}
         role="img"
         aria-label={`${mascot.name} the ${mascot.species}, level ${progress.level} and ${petMood}`}
       >

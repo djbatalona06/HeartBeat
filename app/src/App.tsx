@@ -76,7 +76,7 @@ export function App() {
                     <Route path="/areas" element={<AreasPage />} />
                     <Route path="/shop" element={<PartyPage only={['shop']} title="Shop" />} />
                     <Route path="/friends" element={<FriendsPage />} />
-                    <Route path="/bag" element={<PartyPage only={['worn', 'companions']} title="Bag" />} />
+                    <Route path="/bag" element={<PartyPage only={['worn', 'colours', 'companions']} title="Bag" />} />
                     <Route path="/birb" element={<PartyPage only={['companions', 'boss']} title="Birb" />} />
                     <Route path="/party" element={<PartyPage />} />
                     {/* The cycle log is the last section of Mood now. The old

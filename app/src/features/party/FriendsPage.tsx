@@ -6,6 +6,7 @@ import { ensureIdentity, grantLifeEvent } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import { petKindById } from '../../domain/rpg/pets';
+import { dyeStyle } from '../../domain/rpg/dyes';
 import { getMascot } from '../pet/mascots';
 import { useTheme } from '../../themes/ThemeProvider';
 import { petArt } from './art/pets';
@@ -114,7 +115,14 @@ export function FriendsPage() {
           <section className="panel">
             <h2 className="section-title">{partner.displayName || 'Them'}</h2>
             <div className="friend-house">
-              <div className="friend-birb" role="img" aria-label={`${partner.displayName || 'Their'} birb`}>
+              {/* Their colourway, not yours — the dye lives on their avatar, so
+                  visiting shows the bird they actually dressed. */}
+              <div
+                className="friend-birb"
+                style={dyeStyle(partnerAvatar?.dye) as React.CSSProperties}
+                role="img"
+                aria-label={`${partner.displayName || 'Their'} birb`}
+              >
                 <mascot.Art mood="content" />
               </div>
               <dl className="friend-facts">

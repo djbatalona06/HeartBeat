@@ -179,6 +179,12 @@ export interface Avatar {
   gear: Partial<Record<GearSlot, string>>;
   /** The pet walking with you. Its own MP bar rides on this choice. */
   companionId?: string;
+  /**
+   * The colourway the birb is wearing — a `Dye.id` from `dyes.ts`, or absent
+   * for the one it hatched in. Purely cosmetic, and per member rather than per
+   * couple: you dress your own bird.
+   */
+  dye?: string;
   updatedAt: number;
 }
 

@@ -5,6 +5,7 @@ import { db, loadSettings } from '../../db/database';
 import {
   awardBossVictory,
   bossVictoryXp,
+  buyDye,
   buyEgg,
   buyGear,
   ensureIdentity,
@@ -16,6 +17,7 @@ import {
   spendPetMp,
   startAdventure,
   unequipSlot,
+  wearDye,
 } from '../../db/repository';
 import { flushPetXp } from '../../pwa/petSync';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
@@ -27,6 +29,9 @@ import { hpFraction, resolveBlow, victoryDropBonus, waitingOn, type BossState } 
 import { GEAR_SLOTS, type Avatar, type GearSlot } from '../../domain/rpg/types';
 import { findOwned, ownsItem, refineByItemId, type InventoryItem } from '../../domain/rpg/inventory';
 import { EGG_PRICE, GEAR_PRICE, REFINE_MAX, gearBonusWithRefinement, refinePrice } from '../../domain/rpg/shop';
+import { DEFAULT_DYE_ID, DYES, dyeStyle } from '../../domain/rpg/dyes';
+import { useTheme } from '../../themes/ThemeProvider';
+import { getMascot } from '../pet/mascots';
 import { BorderGlow } from '../../components/BorderGlow';
 import { AchievementShelf } from '../achievements/AchievementShelf';
 import { gearArt } from './art/gear';
@@ -63,19 +68,19 @@ interface BossPayload {
 }
 
 /**
- * The four things this page can show, and the order they read in.
+ * The things this page can show, and the order they read in.
  *
  * The tab bar gives Shop, Bag and Birb a screen each, and all three are
  * sections of this page — so they are selected here rather than copied into
  * three new files. Nothing forks: the identity effect, the three live queries
  * and the receipt are written once and every route gets the same ones, which
  * is what stops "the shop" behaving differently depending on how you reached
- * it. `/party` passes nothing and still shows all four.
+ * it. `/party` passes nothing and still shows all of them.
  */
-export type PartySection = 'companions' | 'worn' | 'shop' | 'boss' | 'achievements';
+export type PartySection = 'companions' | 'worn' | 'colours' | 'shop' | 'boss' | 'achievements';
 
 export const ALL_SECTIONS: readonly PartySection[] =
-  ['companions', 'worn', 'shop', 'boss', 'achievements'];
+  ['companions', 'worn', 'colours', 'shop', 'boss', 'achievements'];
 
 /**
  * The party: who is walking with you, what you are wearing, and the one fight
@@ -180,6 +185,21 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
             /* Worn no longer carries the shop with it, so it can no longer send
                you "below" to a panel that is on another tab now. */
             shopIsHere={only.includes('shop')}
+          />
+          ) : null}
+
+          {only.includes('colours') ? (
+          <Colours
+            avatar={avatar}
+            owned={owned ?? []}
+            onBuy={async (dyeId) => {
+              const result = await buyDye(identity.memberId, identity.coupleId, dyeId);
+              setMessage(result.ok ? 'Bought. Tap it again to put it on.' : result.reason ?? null);
+            }}
+            onWear={async (dyeId) => {
+              const result = await wearDye(identity.memberId, identity.coupleId, dyeId);
+              if (!result.ok) setMessage(result.reason ?? null);
+            }}
           />
           ) : null}
 
@@ -381,6 +401,73 @@ function Worn({ avatar, owned, onEquip, onUnequip, shopIsHere }: {
           +{bonus.heart} heart · +{bonus.luck} luck
         </p>
       </section>
+  );
+}
+
+/**
+ * Colourways, each shown on the actual bird rather than as a swatch.
+ *
+ * The preview is the real mascot component with the dye's three custom
+ * properties set on its wrapper — the same mechanism that dresses the bird for
+ * real, so what you see here cannot disagree with what you get. That works
+ * because every mascot paints only in `--color-text`, `--color-accent` and
+ * `--color-text-muted`; see `domain/rpg/dyes.ts`.
+ *
+ * One button per colourway, which buys it if it is not yours and wears it if it
+ * is. Two buttons on a tile this size would be two targets too small to hit,
+ * and the second one is never the one you want first.
+ */
+function Colours({ avatar, owned, onBuy, onWear }: {
+  avatar: Avatar;
+  owned: InventoryItem[];
+  onBuy: (dyeId: string) => void;
+  onWear: (dyeId: string) => void;
+}) {
+  const { theme } = useTheme();
+  const mascot = getMascot(theme.id);
+  const worn = avatar.dye ?? DEFAULT_DYE_ID;
+
+  return (
+    <section className="panel">
+      <h2 className="section-title">Colours</h2>
+      <p className="section-sub">
+        {avatar.coins} coins. Purely how {mascot.name} looks — a colourway changes
+        nothing you can do.
+      </p>
+
+      <ul className="dye-grid">
+        {DYES.map((dye) => {
+          const isOwned = dye.price === 0 || ownsItem(owned, dye.id);
+          const isWorn = worn === dye.id;
+          const afford = avatar.coins >= dye.price;
+          return (
+            <li key={dye.id} className="dye">
+              <button
+                type="button"
+                className="dye-button"
+                data-worn={isWorn ? 'true' : 'false'}
+                disabled={isWorn || (!isOwned && !afford)}
+                title={dye.blurb}
+                onClick={() => (isOwned ? onWear(dye.id) : onBuy(dye.id))}
+                aria-label={
+                  isWorn ? `${dye.name}, currently worn`
+                    : isOwned ? `Put ${dye.name} on`
+                      : `Buy ${dye.name} for ${dye.price} coins`
+                }
+              >
+                <span className="dye-art" style={dyeStyle(dye.id) as React.CSSProperties}>
+                  <mascot.Art mood="content" />
+                </span>
+                <span className="dye-name">{dye.name}</span>
+                <span className="dye-state">
+                  {isWorn ? 'Worn' : isOwned ? 'Wear it' : `${dye.price} coins`}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

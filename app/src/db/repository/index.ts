@@ -13,6 +13,7 @@
  */
 export * from './achievements';
 export * from './chat';
+export * from './cosmetics';
 export * from './entries';
 export * from './goals';
 export * from './identity';
