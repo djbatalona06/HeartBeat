@@ -51,6 +51,11 @@ export function SettingsPage() {
 
   const paired = Boolean(settings?.workerSecret && settings?.coupleId);
 
+  // A pick this render has made but the settings row has not caught up with.
+  // A ref rather than state: it must be readable by the effect below on the
+  // very render the pick causes, and changing it should not itself re-render.
+  const pendingTheme = useRef<string | null>(null);
+
   // The saved choice is the durable one; localStorage is what paints first. If
   // they disagree — a reinstall, a cleared browser — the saved id wins and is
   // written back, so the picker never shows a theme the app is not wearing.
@@ -58,16 +63,25 @@ export function SettingsPage() {
     if (!settings) return;
     const choice = reconcileTheme({
       stored: readStoredTheme(),
+      pending: pendingTheme.current,
       saved: settings.themeId,
       known: THEMES.map((t) => t.id),
       fallback: THEMES[0].id,
     });
+    // Landed: the row now says what was picked, so the pick stops being news
+    // and the two stores go back to answering for themselves.
+    if (pendingTheme.current !== null && settings.themeId === pendingTheme.current) {
+      pendingTheme.current = null;
+    }
     if (choice.themeId !== themeId) setThemeId(choice.themeId);
     if (choice.writeStorage) writeStoredTheme(choice.themeId);
     if (choice.writeSettings) void setThemeChoice(choice.themeId);
   }, [settings, themeId, setThemeId]);
 
   const chooseTheme = (id: string) => {
+    // Recorded before either write, because the re-render `setThemeId` causes
+    // reaches the effect above long before the settings write resolves.
+    pendingTheme.current = id;
     setThemeId(id);
     writeStoredTheme(id);
     void setThemeChoice(id);

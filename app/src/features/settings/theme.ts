@@ -18,6 +18,10 @@
  * That is why a saved value equal to the default never overrides a real choice
  * held in storage: the ambiguous one yields to the unambiguous one.
  *
+ * The third source is the pick itself. The two stores are both *records* of a
+ * past choice, and a choice made a moment ago is in neither of them yet — see
+ * `ThemeSources.pending`, and the Hello Kitty case it exists for.
+ *
  * DOM-free apart from the two storage helpers, which are the only functions in
  * here vitest does not call.
  */
@@ -37,6 +41,19 @@ export interface ThemeChoice {
 export interface ThemeSources {
   /** What localStorage holds, or null when it holds nothing or threw. */
   stored: string | null;
+  /**
+   * A choice made on this phone a moment ago, whose settings write has not
+   * come back through the live query yet. Null when nothing is in flight.
+   *
+   * Without this, picking the theme that happens to be the default could not
+   * be made to stick. `setThemeChoice` is a promise; the picker's own state
+   * change re-runs the reconcile before it resolves, so the row still holds
+   * the *previous* theme — a deliberate, non-default value, which the rule at
+   * the bottom of `reconcileTheme` then lets win. The pick was undone a frame
+   * after it was made, and only ever for the default theme, because for any
+   * other pick the stale row reads as ambiguous and yields.
+   */
+  pending?: string | null;
   /** What the settings row holds — already defaulted, so rarely undefined. */
   saved: string | undefined;
   /** Every theme id the build actually ships. */
@@ -45,7 +62,18 @@ export interface ThemeSources {
   fallback: string;
 }
 
-export function reconcileTheme({ stored, saved, known, fallback }: ThemeSources): ThemeChoice {
+export function reconcileTheme(
+  { stored, saved, known, fallback, pending = null }: ThemeSources,
+): ThemeChoice {
+  // A pick still settling outranks both stores: they are the record of what was
+  // chosen before, and this is what was chosen now. Nothing is written from
+  // here — the picker already wrote storage synchronously and has the settings
+  // write in flight — so this only keeps the answer steady until the row
+  // catches up and the ordinary rules below take over again.
+  if (pending !== null && known.includes(pending) && saved !== pending) {
+    return { themeId: pending, writeStorage: false, writeSettings: false };
+  }
+
   const storedOk = stored !== null && known.includes(stored);
   const savedOk = saved !== undefined && known.includes(saved);
 

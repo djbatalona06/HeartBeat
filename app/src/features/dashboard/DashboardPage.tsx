@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
-import { ensureIdentity, completeTask, seedStarterPlan } from '../../db/repository';
+import { ensureIdentity, completeTask, coupleVitals, seedStarterPlan } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { levelProgress } from '../../domain/xp';
 import { openDailies } from '../../domain/rpg/task';
@@ -11,6 +11,7 @@ import { dyeStyle } from '../../domain/rpg/dyes';
 import { useTheme } from '../../themes/ThemeProvider';
 import { getMascot } from '../pet/mascots';
 import { QuestBoard } from '../quests/QuestBoard';
+import { VitalsPanel, glowOf } from '../pet/VitalsPanel';
 import { gearArt } from '../party/art/gear';
 
 /**
@@ -72,6 +73,12 @@ export function DashboardPage() {
     () => (memberId ? db.avatars.get(memberId) : undefined),
     [memberId],
   );
+
+  // What the two of you have done, as opposed to what the pet has been given.
+  // One query for both the panel below and the glow on the mascot above it, so
+  // the two cannot disagree for a frame. Touches only the three entry tables —
+  // no `loadSettings`, which would re-fire this on its own sync rewrite.
+  const vitals = useLiveQuery(() => coupleVitals(day), [day]);
   const equippedIds = avatar ? GEAR_SLOTS.map((slot) => avatar.gear[slot]).filter(Boolean) as string[] : [];
 
   // `Pet.level` is carried forward from whoever last wrote the row and is never
@@ -101,7 +108,12 @@ export function DashboardPage() {
         className="home-mascot-standalone"
         data-mood={petMood}
         data-calm={calm ? 'true' : 'false'}
-        style={dyeStyle(avatar?.dye) as React.CSSProperties}
+        style={{
+          ...dyeStyle(avatar?.dye),
+          // The radiance, as 0..1. The pet never turns sad — it only loses its
+          // glow, and it comes back the moment either of you logs anything.
+          '--pet-radiance': vitals ? glowOf(vitals) : 1,
+        } as React.CSSProperties}
         role="img"
         aria-label={`${mascot.name} the ${mascot.species}, level ${progress.level} and ${petMood}`}
       >
@@ -120,6 +132,11 @@ export function DashboardPage() {
         </div>
         <p className="home-pet-blurb">{mascot.blurb}</p>
       </section>
+
+      {/* Directly under the pet, because it is the rest of the same sentence:
+          the bar above is what the two of you have been *given* — quests, boss
+          victories, tasks — and this is what you have *done*. */}
+      <VitalsPanel vitals={vitals} />
 
       <section className="home-today">
         <h2 className="section-title">Today</h2>

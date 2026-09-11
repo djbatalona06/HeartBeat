@@ -11,6 +11,10 @@ function reconcile(stored: string | null, saved: string | undefined) {
   return reconcileTheme({ stored, saved, known: KNOWN, fallback: FALLBACK });
 }
 
+function reconcilePending(pending: string | null, stored: string | null, saved: string) {
+  return reconcileTheme({ stored, pending, saved, known: KNOWN, fallback: FALLBACK });
+}
+
 describe('reconcileTheme', () => {
   it('writes nothing when both stores already agree', () => {
     expect(reconcile('pony', 'pony')).toEqual({
@@ -59,6 +63,36 @@ describe('reconcileTheme', () => {
       writeStorage: false,
       writeSettings: true,
     });
+  });
+
+  it('keeps a pick that is still settling, which is how kitty becomes selectable again', () => {
+    // The bug this is here for: from any other theme, picking Hello Kitty
+    // wrote storage synchronously and the settings row asynchronously. The
+    // re-render arrived first, so the row still said 'sponge' — a deliberate,
+    // non-default value, which won, and the pick was undone a frame after it
+    // was made. Only kitty could lose this way: it is the fallback, so in the
+    // other direction the stale row reads as ambiguous and yields.
+    expect(reconcilePending('kitty', 'kitty', 'sponge')).toEqual({
+      themeId: 'kitty',
+      writeStorage: false,
+      writeSettings: false,
+    });
+  });
+
+  it('stops deferring to the pick once the settings row carries it', () => {
+    expect(reconcilePending('kitty', 'kitty', 'kitty')).toEqual({
+      themeId: 'kitty',
+      writeStorage: false,
+      writeSettings: false,
+    });
+  });
+
+  it('ignores a pending id this build does not ship', () => {
+    expect(reconcilePending('vaporwave', 'sponge', 'sponge').themeId).toBe('sponge');
+  });
+
+  it('is the ordinary reconcile when nothing is in flight', () => {
+    expect(reconcilePending(null, 'kitty', 'sponge').themeId).toBe('sponge');
   });
 
   it('falls back and writes both when nothing usable is held anywhere', () => {
