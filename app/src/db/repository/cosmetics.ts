@@ -1,6 +1,7 @@
 import { db } from '../database';
 import type { CoupleId, MemberId } from '../../domain/types';
 import { DEFAULT_DYE_ID, dyeById } from '../../domain/rpg/dyes';
+import { clearSlot, furnitureById, placeIn, type HouseSlot } from '../../domain/rpg/furniture';
 import { canAfford } from '../../domain/rpg/shop';
 import { spend } from '../../domain/rpg/avatar';
 import { id, now } from './shared';
@@ -66,6 +67,98 @@ export async function buyDye(
       refine: 0,
       acquiredAt: now(),
       updatedAt: now(),
+    });
+    return { ok: true };
+  });
+}
+
+/**
+ * Buy a piece of furniture. Same shape as `buyDye`, and a duplicate is refused
+ * for the same reason: there is no second level of owning a rug.
+ *
+ * Bought by a member — coins are per member — into a house that is the
+ * couple's. That asymmetry is deliberate and is the point of buying it: you
+ * spend your own coins on a room you both see.
+ */
+export async function buyFurniture(
+  memberId: MemberId,
+  coupleId: CoupleId,
+  itemId: string,
+): Promise<PurchaseResult> {
+  const item = furnitureById(itemId);
+  if (!item) return { ok: false, reason: 'No such piece.' };
+
+  return db.transaction('rw', db.avatars, db.inventory, async () => {
+    const avatar = await getOrCreateAvatar(memberId, coupleId);
+    const owned = await db.inventory.where('[memberId+itemId]').equals([memberId, itemId]).first();
+    if (owned) return { ok: false, reason: 'Already yours — put it somewhere.' };
+
+    const affordCheck = canAfford(avatar.coins, item.price);
+    if (!affordCheck.ok) return { ok: false, reason: affordCheck.reason };
+
+    const paid = spend(avatar, { coins: item.price }, now());
+    if (!paid) return { ok: false, reason: 'Not enough coins.' };
+    await db.avatars.put(paid);
+
+    await db.inventory.put({
+      id: id(),
+      coupleId,
+      memberId,
+      itemId,
+      refine: 0,
+      acquiredAt: now(),
+      updatedAt: now(),
+    });
+    return { ok: true };
+  });
+}
+
+/**
+ * Place a piece, or clear a slot by passing `undefined` for `itemId`.
+ *
+ * Writes to the couple's `pet` row, so it lands for both of you. Ownership is
+ * checked against the *placing* member: a piece either of you bought can be
+ * placed by whoever bought it, which is the only reading that does not require
+ * a shared purse the app does not have.
+ *
+ * The write goes through `placeIn`/`clearSlot`, which normalize — so a retired
+ * catalogue id already sitting in the stored house is dropped on the next
+ * rearrange rather than being carried forward forever.
+ */
+export async function placeFurniture(
+  memberId: MemberId,
+  coupleId: CoupleId,
+  slot: HouseSlot,
+  itemId: string | undefined,
+): Promise<PurchaseResult> {
+  return db.transaction('rw', db.pet, db.inventory, async () => {
+    const pet = await db.pet.get(coupleId);
+
+    if (itemId) {
+      const item = furnitureById(itemId);
+      if (!item) return { ok: false, reason: 'No such piece.' };
+      if (item.slot !== slot) return { ok: false, reason: `${item.name} does not go there.` };
+      const owned = await db.inventory.where('[memberId+itemId]').equals([memberId, itemId]).first();
+      if (!owned) return { ok: false, reason: 'That one is not yours yet.' };
+    }
+
+    // Upserted with the same defaults `awardPetXp` uses, because the pet row is
+    // created lazily by whichever of the two happens first. On a fresh install
+    // that is often this: a couple can decorate the house before either of them
+    // has finished a task, and refusing there would have been a dead button
+    // with a confusing reason on it.
+    //
+    // No `updatedAt`: `Pet` carries none, because it is reconciled by the XP
+    // ledger rather than by last-write-wins like the other tables.
+    const house = itemId ? placeIn(pet?.house, itemId) : clearSlot(pet?.house, slot);
+    await db.pet.put({
+      coupleId,
+      level: pet?.level ?? 1,
+      xp: pet?.xp ?? 0,
+      mood: pet?.mood ?? 'content',
+      fedAt: pet?.fedAt ?? now(),
+      ...pet,
+      house,
     });
     return { ok: true };
   });

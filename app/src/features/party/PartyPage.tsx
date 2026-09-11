@@ -7,8 +7,10 @@ import {
   bossVictoryXp,
   buyDye,
   buyEgg,
+  buyFurniture,
   buyGear,
   ensureIdentity,
+  placeFurniture,
   getOrCreateAvatar,
   equipItem,
   markLoreSeen,
@@ -30,6 +32,16 @@ import { GEAR_SLOTS, type Avatar, type GearSlot } from '../../domain/rpg/types';
 import { findOwned, ownsItem, refineByItemId, type InventoryItem } from '../../domain/rpg/inventory';
 import { EGG_PRICE, GEAR_PRICE, REFINE_MAX, gearBonusWithRefinement, refinePrice } from '../../domain/rpg/shop';
 import { DEFAULT_DYE_ID, DYES, dyeStyle } from '../../domain/rpg/dyes';
+import {
+  FURNITURE,
+  HOUSE_SLOTS,
+  HOUSE_SLOT_NAMES,
+  furnitureForSlot,
+  normalizeHouse,
+  type House,
+  type HouseSlot,
+} from '../../domain/rpg/furniture';
+import { houseArt } from './art/house';
 import { useTheme } from '../../themes/ThemeProvider';
 import { getMascot } from '../pet/mascots';
 import { BorderGlow } from '../../components/BorderGlow';
@@ -77,10 +89,11 @@ interface BossPayload {
  * is what stops "the shop" behaving differently depending on how you reached
  * it. `/party` passes nothing and still shows all of them.
  */
-export type PartySection = 'companions' | 'worn' | 'colours' | 'shop' | 'boss' | 'achievements';
+export type PartySection =
+  'companions' | 'worn' | 'colours' | 'house' | 'shop' | 'boss' | 'achievements';
 
 export const ALL_SECTIONS: readonly PartySection[] =
-  ['companions', 'worn', 'colours', 'shop', 'boss', 'achievements'];
+  ['companions', 'worn', 'colours', 'house', 'shop', 'boss', 'achievements'];
 
 /**
  * The party: who is walking with you, what you are wearing, and the one fight
@@ -126,6 +139,12 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
       ? db.inventory.where('memberId').equals(identity.memberId).toArray()
       : ([] as InventoryItem[])),
     [identity?.memberId],
+  );
+  // The birbhouse is the couple's, so it is read off the shared pet row rather
+  // than either avatar — see domain/rpg/furniture.ts.
+  const pet = useLiveQuery(
+    async () => (identity ? db.pet.get(identity.coupleId) : undefined),
+    [identity?.coupleId],
   );
 
   useEffect(() => {
@@ -203,6 +222,22 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
           />
           ) : null}
 
+          {only.includes('house') ? (
+          <Birbhouse
+            house={(pet?.house ?? {}) as House}
+            owned={owned ?? []}
+            avatar={avatar}
+            onPlace={async (slot, itemId) => {
+              const result = await placeFurniture(identity.memberId, identity.coupleId, slot, itemId);
+              if (!result.ok) setMessage(result.reason ?? null);
+            }}
+            onClear={async (slot) => {
+              const result = await placeFurniture(identity.memberId, identity.coupleId, slot, undefined);
+              if (!result.ok) setMessage(result.reason ?? null);
+            }}
+          />
+          ) : null}
+
           {only.includes('shop') ? (
           <Shop
             avatar={avatar}
@@ -211,6 +246,17 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
               const result = await buyGear(identity.memberId, identity.coupleId, itemId);
               if (!result.ok) setMessage(result.reason ?? null);
               else if (result.refined) setMessage(`Refined to +${result.refined}.`);
+            }}
+          />
+          ) : null}
+
+          {only.includes('shop') ? (
+          <Decor
+            avatar={avatar}
+            owned={owned ?? []}
+            onBuy={async (itemId) => {
+              const result = await buyFurniture(identity.memberId, identity.coupleId, itemId);
+              setMessage(result.ok ? 'Bought. Place it on the Birb tab.' : result.reason ?? null);
             }}
           />
           ) : null}
@@ -405,6 +451,91 @@ function Worn({ avatar, owned, onEquip, onUnequip, shopIsHere }: {
 }
 
 /**
+ * The birbhouse: one room, drawn in layers, with the bird standing in it.
+ *
+ * The room is the couple's — it lives on the shared `pet` row — so rearranging
+ * it changes what both of you see. See the note at the top of
+ * `domain/rpg/furniture.ts`.
+ *
+ * Everything is drawn into one 100×100 SVG so the pieces share a coordinate
+ * space and can actually sit behind and in front of each other: window and
+ * wall behind the bird, floor and perch in front. Compositing separate boxes
+ * would have meant a rug that is always painted over the feet standing on it.
+ */
+function Birbhouse({ house, owned, avatar, onPlace, onClear }: {
+  house: House;
+  owned: InventoryItem[];
+  avatar: Avatar;
+  onPlace: (slot: HouseSlot, itemId: string) => void;
+  onClear: (slot: HouseSlot) => void;
+}) {
+  const { theme } = useTheme();
+  const mascot = getMascot(theme.id);
+  const placed = normalizeHouse(house);
+
+  return (
+    <section className="panel">
+      <h2 className="section-title">Birbhouse</h2>
+      <p className="section-sub">
+        Yours together — rearranging it changes what you both see.
+      </p>
+
+      <div className="house" role="img" aria-label="The birbhouse">
+        <svg viewBox="0 0 100 100" aria-hidden="true" className="house-scene">
+          <rect x="4" y="8" width="92" height="80" rx="6" fill="var(--color-surface-muted)" />
+          <path d="M4 76h92" stroke="var(--color-text-muted)" strokeWidth="1.2" opacity="0.5" />
+          {/* The whole room, then the bird on top of it. Nothing is drawn in
+              front of the character — see the note on HOUSE_SLOTS. */}
+          {HOUSE_SLOTS.map((slot) => {
+            const Art = houseArt(placed[slot]);
+            return Art ? <Art key={slot} /> : null;
+          })}
+          <g transform="translate(28 40) scale(0.44)" style={dyeStyle(avatar.dye) as React.CSSProperties}>
+            <mascot.Art mood="content" />
+          </g>
+        </svg>
+      </div>
+
+      {HOUSE_SLOTS.map((slot) => {
+        const options = furnitureForSlot(slot);
+        return (
+          <div className="house-slot" key={slot}>
+            <h3 className="house-slot-name">{HOUSE_SLOT_NAMES[slot]}</h3>
+            <div className="chips">
+              <button
+                type="button"
+                className={`chip ${placed[slot] ? '' : 'chip-on'}`}
+                aria-pressed={!placed[slot]}
+                onClick={() => onClear(slot)}
+              >
+                Bare
+              </button>
+              {options.map((item) => {
+                const isOwned = ownsItem(owned, item.id);
+                const isPlaced = placed[slot] === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`chip ${isPlaced ? 'chip-on' : ''} ${isOwned ? '' : 'chip-locked'}`}
+                    aria-pressed={isPlaced}
+                    title={isOwned ? item.blurb : `${item.blurb} — ${item.price} coins in the Shop.`}
+                    onClick={() => (isOwned ? onPlace(slot, item.id) : undefined)}
+                    disabled={!isOwned}
+                  >
+                    {item.name}{isOwned ? '' : ` · ${item.price}`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+/**
  * Colourways, each shown on the actual bird rather than as a swatch.
  *
  * The preview is the real mascot component with the dye's three custom
@@ -508,6 +639,60 @@ function Shop({ avatar, owned, onBuy }: {
                 <span className="shop-item-price">
                   {atCap ? 'Fully refined' : itemOwned ? `Refine · ${price}` : `${price} coins`}
                 </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * Furniture, sold here and placed on the Birb tab.
+ *
+ * Its own section rather than more rows in the gear grid, because a rug has no
+ * rarity, no stat bonus and no refine level — the three things every column of
+ * that grid is showing. Putting it there would have meant either four empty
+ * cells per row or four meaningless ones.
+ */
+function Decor({ avatar, owned, onBuy }: {
+  avatar: Avatar;
+  owned: InventoryItem[];
+  onBuy: (itemId: string) => void;
+}) {
+  return (
+    <section className="panel">
+      <h2 className="section-title">For the birbhouse</h2>
+      <p className="section-sub">
+        Bought with your coins, into a room you both see. Place them on the Birb tab.
+      </p>
+
+      <ul className="decor-list">
+        {FURNITURE.map((item) => {
+          const isOwned = ownsItem(owned, item.id);
+          const afford = avatar.coins >= item.price;
+          const Art = houseArt(item.id);
+          return (
+            <li className="decor" key={item.id}>
+              {/* The same fragment the room draws, shown in its own 100×100
+                  window so a piece positioned for the far wall is still
+                  visible in a list row. */}
+              <span className="decor-art" aria-hidden="true">
+                <svg viewBox="0 0 100 100">{Art ? <Art /> : null}</svg>
+              </span>
+              <span className="decor-body">
+                <span className="decor-name">{item.name}</span>
+                <span className="decor-blurb">{item.blurb}</span>
+              </span>
+              <button
+                type="button"
+                className="decor-buy"
+                disabled={isOwned || !afford}
+                onClick={() => onBuy(item.id)}
+                aria-label={isOwned ? `${item.name}, already owned` : `Buy ${item.name} for ${item.price} coins`}
+              >
+                {isOwned ? 'Owned' : item.price}
               </button>
             </li>
           );
