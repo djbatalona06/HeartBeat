@@ -1,3 +1,5 @@
+import { pickForDay } from '../day';
+
 /**
  * Acts of kindness: one small thing, for them or for anyone.
  *
@@ -53,9 +55,5 @@ export function actById(id: string | undefined): Act | undefined {
  * to go and do.
  */
 export function actForDay(day: string, who: Act['who']): Act {
-  const pool = actsFor(who);
-  const digits = day.replace(/\D/g, '');
-  let hash = 0;
-  for (const ch of digits) hash = (hash * 10 + Number(ch)) % 100000;
-  return pool[hash % pool.length];
+  return pickForDay(day, actsFor(who))!;
 }
