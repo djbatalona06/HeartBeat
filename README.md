@@ -24,7 +24,9 @@ permission prompt on a tap inside the installed app. If you decline by accident,
 the only way back is to delete the icon and add it again — so say yes.
 
 **4 · Tap the invite link.** One tap and the two phones are paired. No account,
-no password, no phone number.
+no password, no phone number. (If this deploy has sign-in switched on, you can
+also connect a GitHub or Google account afterwards — purely as a way back in if
+the phone is lost. It is never how you get *in*.)
 
 Android is simpler: Chrome will offer to install it, and notifications work
 without the Home Screen step.
@@ -81,7 +83,16 @@ roughly 180 KB, a profile photo to 64 KB — and both are readable only by the t
 devices paired to your couple, exactly like every other entry. If you would
 rather a photograph stayed on your phone, do not take it in the app.
 
-There are no accounts, no email addresses, no analytics, and no third parties.
+There are no accounts, no analytics, and no email addresses.
+
+There is **one optional third party**, and only if the person deploying it turns
+it on: sign-in with GitHub or Google, as a way back in if you lose your phone.
+It is off unless a client ID and secret are configured, and when it is off the
+app never contacts either company. Even switched on it is not a login — the
+pairing code is still the only way into a couple, and signing in with an account
+nobody connected gets you told so and nothing else. Google is asked for `openid`
+alone and GitHub for no scope at all, so what is stored is an opaque account id
+and never an address, a name or a photograph.
 
 Invite links expire after fifteen minutes and work exactly once. A couple is two
 people; a third join is refused.

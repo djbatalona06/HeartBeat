@@ -4293,9 +4293,13 @@ body {
 }
 .asset-streak { color: var(--color-accent); }
 
-/* ---- the GitHub block -------------------------------------------------------
-   Optional account recovery. The whole section is absent on a deploy with no
-   OAuth app, so none of this has an "unavailable" state to style. */
+/* ---- the recovery block -----------------------------------------------------
+   Optional account recovery, through GitHub or Google. The whole section is
+   absent on a deploy with no OAuth app at all, and a provider that is not
+   configured simply is not in the list, so none of this has an "unavailable"
+   state to style. The class names still say `github` because they were named
+   before there were two and renaming them would cost a study rebuild for
+   nothing. */
 
 .github-note {
   margin: var(--space-3) 0;
@@ -4323,6 +4327,14 @@ body {
   font-size: var(--text-xs);
   line-height: var(--line-body);
   color: var(--color-text-muted);
+}
+
+/* One provider per row, so two configured providers are two offers rather than
+   two buttons run together. */
+.recovery-provider + .recovery-provider {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: var(--border-width) solid var(--color-border);
 }
 
 /* The recovery link on Welcome. `.primary` is written for a button; as a link

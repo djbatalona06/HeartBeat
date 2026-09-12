@@ -76,6 +76,48 @@ Constraints that matter:
 - The invite alphabet omits `I`, `O`, `0` and `1`, because the code has to
   survive being read aloud or retyped when a link fails.
 
+### A way back in, and why it is not a login
+
+Pairing has one failure it cannot answer: a phone is lost or replaced, and the
+invite that put it in the couple was single-use and consumed months ago. The
+only recovery was for the *other* partner to start a fresh pairing — which made
+recovery impossible for whoever was holding the only phone.
+
+GitHub sign-in (migration `0012`) answers that, and Google (`0015`) answers it
+for the half of the couple who does not have a GitHub account. Both are
+optional, independently configured, and off unless a client id and secret are
+set. The shape is the same for both and every part of it is deliberate:
+
+- **Connecting requires a device already authenticated as that member.** Its
+  bearer is what says which member is being connected. This is the only way a
+  link is ever created, and it is what stops a sign-in from being a way *into*
+  a couple.
+- **Recovering returns exactly the member that was connected, and never creates
+  one.** Signing in with an account nobody connected gets you told so and
+  nothing else — no account, no empty couple, no offer to make one.
+- **The claim rotates the bearer, not the callback.** The obvious design has
+  the callback mint a token and park it for the app to collect, which leaves a
+  live plaintext bearer at rest for the length of the claim window. Rotating in
+  the claim means it is minted, hashed into `members`, and returned in one
+  response, and never exists at rest at all. `oauth_claims` has no token column
+  and a test asserts it never grows one.
+- **Neither provider can spend the other's state or claim.** Both tables carry
+  a `provider` column and both consuming statements filter on it. The crossing
+  is not obviously exploitable — the intent and member binding carry the
+  security — but that is a thin thing to rest an auth boundary on when the fix
+  is one column.
+- **Scopes are the minimum that identifies an account and nothing more**: empty
+  for GitHub, `openid` for Google. Neither stores an email address, and there is
+  no column for one. What is stored is GitHub's numeric id or Google's OIDC
+  `sub` — never a login or an address, either of which can be changed and later
+  claimed by somebody else, which would hand that person the account.
+
+`worker/src/githubAuth.test.ts` and `googleAuth.test.ts` run the exact SQL
+against real SQLite with the real migrations applied, for the reason
+`pairing.test.ts` states: every property here is a `WHERE` clause, a refused
+write and a write that changed nothing look identical from outside, so a bug in
+any of them is silent by construction.
+
 **Phone-number confirmation is deferred.** It needs a paid SMS provider, and for
 a two-person app the link flow already does the job. Revisit only if link
 sharing turns out to be genuinely awkward in practice.
