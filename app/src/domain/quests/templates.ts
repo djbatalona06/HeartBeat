@@ -34,6 +34,13 @@ export interface QuestTemplate {
   title: (target: number) => string;
   /** One line under the title. Says what counts, so nothing is a surprise. */
   blurb: string;
+  /**
+   * Paid on top of the dial. Only the reunion quest carries one, and it is a
+   * field rather than a special case in `shapeFor` so that the generosity is
+   * written down next to the quest it belongs to instead of being an accident
+   * of a low target.
+   */
+  bonusXp?: number;
 }
 
 /**
@@ -70,6 +77,9 @@ export function inWords(n: number): string {
 }
 
 const days = (n: number) => (n === 1 ? 'one day' : `${inWords(n)} days`);
+
+/** The one template that is not offered until something asks for it. */
+export const REUNION_TEMPLATE_ID = 'reunion';
 
 export const QUEST_TEMPLATES: readonly QuestTemplate[] = [
   {
@@ -144,6 +154,22 @@ export const QUEST_TEMPLATES: readonly QuestTemplate[] = [
     blurb: 'A day you added anything to the calendar. Barely a week at all.',
   },
 
+  // Gated: never on the ordinary board. `suggestQuests` puts this one up only
+  // when `reunion()` says neither of you has logged anything for days, and
+  // takes it back down once you have.
+  {
+    id: REUNION_TEMPLATE_ID,
+    measure: 'moodDays',
+    base: 2,
+    // Generous on purpose, and generous rather than *urgent*: the industry
+    // shape for a comeback reward is a countdown, and a countdown is a way of
+    // telling somebody who has had a hard fortnight that they are now also
+    // late. This just pays well and waits.
+    bonusXp: 120,
+    title: (t) => `Find your way back, ${days(t)}`,
+    blurb: 'One mood logged is one day. Nothing was lost while you were away.',
+  },
+
   // Advanced: harder than their counterpart at every difficulty, for a couple
   // who has been finishing quests early and wants the week to ask for more.
   {
@@ -196,7 +222,7 @@ export function shapeFor(template: QuestTemplate, difficulty: QuestDifficulty): 
     title: template.title(target),
     blurb: template.blurb,
     target,
-    xp: dial.xp,
+    xp: dial.xp + (template.bonusXp ?? 0),
     days: dial.days,
   };
 }

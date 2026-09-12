@@ -76,6 +76,48 @@ Constraints that matter:
 - The invite alphabet omits `I`, `O`, `0` and `1`, because the code has to
   survive being read aloud or retyped when a link fails.
 
+### A way back in, and why it is not a login
+
+Pairing has one failure it cannot answer: a phone is lost or replaced, and the
+invite that put it in the couple was single-use and consumed months ago. The
+only recovery was for the *other* partner to start a fresh pairing — which made
+recovery impossible for whoever was holding the only phone.
+
+GitHub sign-in (migration `0012`) answers that, and Google (`0015`) answers it
+for the half of the couple who does not have a GitHub account. Both are
+optional, independently configured, and off unless a client id and secret are
+set. The shape is the same for both and every part of it is deliberate:
+
+- **Connecting requires a device already authenticated as that member.** Its
+  bearer is what says which member is being connected. This is the only way a
+  link is ever created, and it is what stops a sign-in from being a way *into*
+  a couple.
+- **Recovering returns exactly the member that was connected, and never creates
+  one.** Signing in with an account nobody connected gets you told so and
+  nothing else — no account, no empty couple, no offer to make one.
+- **The claim rotates the bearer, not the callback.** The obvious design has
+  the callback mint a token and park it for the app to collect, which leaves a
+  live plaintext bearer at rest for the length of the claim window. Rotating in
+  the claim means it is minted, hashed into `members`, and returned in one
+  response, and never exists at rest at all. `oauth_claims` has no token column
+  and a test asserts it never grows one.
+- **Neither provider can spend the other's state or claim.** Both tables carry
+  a `provider` column and both consuming statements filter on it. The crossing
+  is not obviously exploitable — the intent and member binding carry the
+  security — but that is a thin thing to rest an auth boundary on when the fix
+  is one column.
+- **Scopes are the minimum that identifies an account and nothing more**: empty
+  for GitHub, `openid` for Google. Neither stores an email address, and there is
+  no column for one. What is stored is GitHub's numeric id or Google's OIDC
+  `sub` — never a login or an address, either of which can be changed and later
+  claimed by somebody else, which would hand that person the account.
+
+`worker/src/githubAuth.test.ts` and `googleAuth.test.ts` run the exact SQL
+against real SQLite with the real migrations applied, for the reason
+`pairing.test.ts` states: every property here is a `WHERE` clause, a refused
+write and a write that changed nothing look identical from outside, so a bug in
+any of them is silent by construction.
+
 **Phone-number confirmation is deferred.** It needs a paid SMS provider, and for
 a two-person app the link flow already does the job. Revisit only if link
 sharing turns out to be genuinely awkward in practice.
@@ -242,13 +284,54 @@ contraception.
 
 ## Themes
 
-Five packs. A theme reaches the UI only as CSS custom properties written to
-`documentElement`, so components reference `var(--color-accent)` and never
-import a theme object — switching theme repaints without re-rendering anything.
+Five packs, each with two palettes. A theme reaches the UI only as CSS custom
+properties written to `documentElement`, so components reference
+`var(--color-accent)` and never import a theme object — switching theme or mode
+repaints without re-rendering anything.
 
 `themes/tokens.test.ts` enforces WCAG AA contrast for body text on both the card
 surface and the page base, and for accent text on the accent fill. A theme with
 unreadable text cannot ship.
+
+### Light mode is a second palette, not a sixth pack
+
+The ask was that half of every theme be white-based. A single white theme would
+have satisfied the letter of that and left the other four exactly as dark as
+they were, so each pack carries a `light: ThemeVariant` instead and a
+Light/Dark/System control sits under the theme picker. System is the default and
+is not a third palette — it is a deferral to `prefers-color-scheme`, watched
+rather than read once so a phone on an automatic schedule flips the app at
+sunset.
+
+`Theme.colors`, `isLight` and `opaqueSurface` stayed at the top level rather
+than moving inside a variant, so nothing that already read a theme had to change
+to gain a light mode. `isLight` had been declared by all five packs since the
+beginning and read by nothing; this is its first consumer.
+
+Three things did not come for free:
+
+- **The contrast test is the reason this was safe to add.** A white ground is a
+  far easier place to put unreadable text than a dark one — a muted grey that
+  merely looked quiet on `#00171f` is invisible on `#ffffff` — so
+  `tokens.test.ts` now runs its four ratios over *both* palettes. Without that
+  loop the five new palettes would have been the only ones in the app nothing
+  was checking.
+- **The backdrops had to be told.** Every pack draws translucent fills over the
+  page, and translucent over black is dim while translucent over white is gone.
+  `BackdropProps` gains `light`, and each pack keeps a second small set of
+  constants: SpongeBob's bubble catchlight inverts from white to Prussian blue,
+  because on a white page there is no lamp overhead — the page *is* the light.
+- **`--shadow` is the one token that is not a colour and still has a ground
+  baked into it.** Every pack's is black at 0.5–0.6 alpha, which reads as depth
+  over ink and as a smudge over white. It is corrected in `themeToCssVars`
+  rather than in the stylesheet, because `applyTheme` writes every token as an
+  inline style on the root element and an inline style beats any
+  `:root[data-mode='light']` rule.
+
+My Little Pony is the most faithful of the five in light mode and the one that
+most wanted doing: Soft Pastels is five light tints and no dark at all, so the
+dark theme had to invent its two darkest values. The light one invents nothing
+but the ink.
 
 Backdrops are procedural canvas animations. They pause on `visibilitychange`,
 honour `prefers-reduced-motion`, and damp under Calm mode. Nothing third-party is
@@ -508,7 +591,7 @@ would serve it an hour late for the eight months Pacific is on daylight time.
 | A denied notification permission is unrecoverable without reinstall | Explain the stakes before prompting, in the setup guide and in-app |
 | Invite link leaks from a chat thread | Fifteen-minute expiry, single use, third join refused |
 | Push subscription silently expires | Re-subscribe on launch and re-upload the endpoint |
-| Theme added with unreadable text | Contrast enforced in CI by `tokens.test.ts` |
+| Theme added with unreadable text | Contrast enforced in CI by `tokens.test.ts`, over both palettes |
 | Photos make sync expensive | Photos never sync; they stay on-device by design |
 
 ## Order of work

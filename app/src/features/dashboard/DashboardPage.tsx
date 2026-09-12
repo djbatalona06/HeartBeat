@@ -12,6 +12,7 @@ import { useTheme } from '../../themes/ThemeProvider';
 import { getMascot } from '../pet/mascots';
 import { QuestBoard } from '../quests/QuestBoard';
 import { VitalsPanel, glowOf } from '../pet/VitalsPanel';
+import { TogetherPanel } from '../pet/TogetherPanel';
 import { FeedPanel } from '../party/FeedPanel';
 import { gearArt } from '../party/art/gear';
 
@@ -142,6 +143,8 @@ export function DashboardPage() {
           the bar above is what the two of you have been *given* — quests, boss
           victories, tasks — and this is what you have *done*. */}
       <VitalsPanel vitals={vitals} />
+
+      {settings?.coupleId ? <TogetherPanel coupleId={settings.coupleId} day={day} /> : null}
 
       <section className="home-today">
         <h2 className="section-title">Today</h2>

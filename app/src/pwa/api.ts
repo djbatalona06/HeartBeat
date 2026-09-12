@@ -116,6 +116,7 @@ export interface Health {
   vapidPublicKey?: string | null;
   /** Whether this deploy has a GitHub OAuth app configured. */
   github?: boolean;
+  google?: boolean;
 }
 
 /** Never throws: "is the backend up" must not itself fail loudly. */
@@ -437,27 +438,43 @@ export async function askAbout(question: string, token: string): Promise<string>
  * and the single-use invite that put it in the couple was consumed months ago.
  *
  * The round trip is three calls, because a redirect cannot be trusted to carry
- * a bearer token. `githubStart` asks for a URL, the browser goes to GitHub and
- * comes back to /#/settings?github=…&claim=…, and `githubClaim` exchanges that
- * one-time code for the result. See app/functions/api/auth/_github.ts.
+ * a bearer token. `providerStart` asks for a URL, the browser goes to the
+ * provider and comes back to /#/settings?<provider>=…&claim=…, and
+ * `providerClaim` exchanges that one-time code for the result.
+ *
+ * Two providers, one set of functions: GitHub is a developer's account and the
+ * two people this app is for are not both developers, so Google sits beside it.
+ * Both are optional and independently configured — a deploy may have neither,
+ * either, or both, and `configured` is how a screen finds out. See
+ * `app/functions/api/auth/_oauth.ts`.
  */
 
-export interface GitHubLink {
-  /** False when the deploy has no OAuth app. The UI hides itself on this. */
+/** The providers this app knows how to ask. Each is also its own route
+ *  prefix and its own query parameter on the way back. */
+export type AuthProvider = 'github' | 'google';
+
+export interface ProviderLink {
+  /** False when the deploy has no OAuth app for this provider. The UI hides
+   *  itself on this. */
   configured: boolean;
   linked: boolean;
+  /** Only GitHub has one. Google is asked for `openid` alone, which reveals no
+   *  login, no name and no address — so Settings says "connected" and stops. */
   githubLogin?: string;
 }
 
 /** Never throws, for the same reason `health` does not: a screen that cannot
  *  answer "is this available" should render without it, not fail. */
-export async function githubLink(token?: string): Promise<GitHubLink | null> {
+export async function providerLink(
+  provider: AuthProvider,
+  token?: string,
+): Promise<ProviderLink | null> {
   try {
-    const res = await fetch('/api/auth/github/link', {
+    const res = await fetch(`/api/auth/${provider}/link`, {
       headers: token ? authHeaders(token) : undefined,
     });
     if (!res.ok) return null;
-    return (await res.json()) as GitHubLink;
+    return (await res.json()) as ProviderLink;
   } catch {
     return null;
   }
@@ -470,11 +487,12 @@ export async function githubLink(token?: string): Promise<GitHubLink | null> {
  * only way a link is ever created. `recover` sends no token, and asserts
  * nothing about who it is.
  */
-export async function githubStart(
+export async function providerStart(
+  provider: AuthProvider,
   intent: 'link' | 'recover',
   token?: string,
 ): Promise<string> {
-  const res = await fetch('/api/auth/github/start', {
+  const res = await fetch(`/api/auth/${provider}/start`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -486,9 +504,12 @@ export async function githubStart(
   return ((await res.json()) as { url: string }).url;
 }
 
-export type GitHubClaim =
-  | { outcome: 'linked'; githubLogin: string }
-  | { outcome: 'recovered'; memberId: string; coupleId: string; token: string; githubLogin: string };
+export type ProviderClaim =
+  | { outcome: 'linked'; githubLogin?: string }
+  | {
+    outcome: 'recovered'; memberId: string; coupleId: string; token: string;
+    githubLogin?: string;
+  };
 
 /**
  * Exchange the one-time code the redirect came back with.
@@ -498,8 +519,12 @@ export type GitHubClaim =
  * recovery necessarily replaces it. That is the point of recovery and also its
  * safety property.
  */
-export async function githubClaim(claim: string, token?: string): Promise<GitHubClaim> {
-  const res = await fetch('/api/auth/github/claim', {
+export async function providerClaim(
+  provider: AuthProvider,
+  claim: string,
+  token?: string,
+): Promise<ProviderClaim> {
+  const res = await fetch(`/api/auth/${provider}/claim`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -508,11 +533,11 @@ export async function githubClaim(claim: string, token?: string): Promise<GitHub
     body: JSON.stringify({ claim }),
   });
   if (!res.ok) throw await errorFrom(res);
-  return (await res.json()) as GitHubClaim;
+  return (await res.json()) as ProviderClaim;
 }
 
-export async function githubUnlink(token: string): Promise<void> {
-  const res = await fetch('/api/auth/github/link', {
+export async function providerUnlink(provider: AuthProvider, token: string): Promise<void> {
+  const res = await fetch(`/api/auth/${provider}/link`, {
     method: 'DELETE',
     headers: authHeaders(token),
   });

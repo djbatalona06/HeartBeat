@@ -17,14 +17,30 @@ const CURRENTS = [
   'rgba(0, 52, 89, 0.28)',
 ];
 
-function AvatarBackdrop({ calm }: { calm: boolean }) {
+/**
+ * The same four depths, looked at from above the surface.
+ *
+ * The band order reverses with the ground: on ink, the pale line of surface
+ * light belongs at the top and the deep blue at the bottom. On white, the pale
+ * line is the one that disappears — so the light set drops it for the palette's
+ * ink black and darkens down the page instead of lightening up it.
+ */
+const CURRENTS_LIGHT = [
+  'rgba(0, 23, 31, 0.16)',
+  'rgba(0, 52, 89, 0.22)',
+  'rgba(0, 126, 167, 0.26)',
+  'rgba(0, 168, 232, 0.3)',
+];
+
+function AvatarBackdrop({ calm, light }: { calm: boolean; light: boolean }) {
+  const currents = light ? CURRENTS_LIGHT : CURRENTS;
   return Backdrop({
     still: calm,
     fps: 20,
     draw(ctx, w, h, t) {
       ctx.clearRect(0, 0, w, h);
       ctx.lineWidth = 2;
-      CURRENTS.forEach((hue, i) => {
+      currents.forEach((hue, i) => {
         ctx.beginPath();
         ctx.strokeStyle = hue;
         for (let x = 0; x <= w; x += 8) {
@@ -61,6 +77,27 @@ export const avatarTheme: Theme = {
     accentText: '#00171f',
     danger: '#ef6461',
     success: '#4fd1a5',
+  },
+  /**
+   * Deep Sea from above the surface instead of below it. `#ffffff` leads that
+   * palette as supplied and had nowhere to go in a dark theme; here it is the
+   * whole ground, and the ink black that was the page is the text.
+   */
+  light: {
+    isLight: true,
+    opaqueSurface: '#ffffff',
+    colors: {
+      base: '#f0f9fd',
+      surface: 'rgba(255, 255, 255, 0.95)',
+      surfaceMuted: 'rgba(209, 236, 248, 0.78)',
+      border: 'rgba(0, 52, 89, 0.2)',
+      text: '#00171f',
+      textMuted: '#325c6b',
+      accent: '#00a8e8',
+      accentText: '#00171f',
+      danger: '#b8302c',
+      success: '#0e6d52',
+    },
   },
   typography: {
     display: "'Outfit', system-ui, sans-serif",

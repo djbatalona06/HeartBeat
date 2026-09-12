@@ -320,3 +320,80 @@ picks up a real stamp within a day. Achievements are also still local-only.
 Recovery is not required for any of this — a phone that re-pairs by code gets
 the same restore. The link only removes the need for the *other* partner to be
 holding a working phone.
+
+## 9. Google sign-in (optional)
+
+**Entirely optional, and independent of §8.** A deploy may have neither
+provider, either one, or both. The six-character pairing code remains the *only*
+way into a couple in every case. If the two variables below are unset,
+`/api/health` reports `google: false`, the provider simply is not in the
+Settings list, and every route under `/api/auth/google/` answers `503` in words.
+
+### Why a second provider
+
+Everything §8 says about what this is — a second proof of *"I am this member"*,
+deliberately not a second way to become one — holds here word for word. The
+reason to have two is narrower: GitHub is a developer's account, and the two
+people this app is for are not both developers. A way back in that only one of
+them can realistically use is half a way back in.
+
+A member may connect both. They are two separate tables and two separate doors;
+neither knows about the other, and disconnecting one leaves the other working.
+
+### Create the OAuth client
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → a project →
+   **APIs & Services** → **OAuth consent screen**. External, and it only needs
+   the app name and a support email.
+2. **Credentials** → **Create credentials** → **OAuth client ID** → *Web
+   application*.
+3. **Authorised redirect URI**:
+   `https://heartbeat-eop.pages.dev/api/auth/google/callback`
+   This must match exactly. The app derives the same URL from the incoming
+   request rather than from configuration, so there is nothing to keep in step
+   — but Google compares it against what you type here.
+4. Copy the client ID and client secret.
+
+**Scopes: leave them empty.** The app requests `openid` and nothing else, which
+yields a stable `sub` and no email address, name or photograph. That is the
+whole identity this feature needs, and it is what lets `README.md` keep saying
+the app holds no email addresses. Adding `email` or `profile` on the consent
+screen would not make the app ask for them, but there is no reason to.
+
+You do not need to publish the consent screen or pass verification: with no
+sensitive scopes, adding the two people who will use it as **Test users** is
+enough, and a testing-mode app with only `openid` does not expire their
+consent in the way a sensitive-scope one does.
+
+### Add the two secrets
+
+These are **Pages project** secrets, not repository secrets and not additions
+to `CLOUDFLARE_API_TOKEN`:
+
+```bash
+npx wrangler pages secret put GOOGLE_CLIENT_ID     --project-name heartbeat-app
+npx wrangler pages secret put GOOGLE_CLIENT_SECRET --project-name heartbeat-app
+```
+
+Or in the dashboard: **Workers & Pages → heartbeat-app → Settings →
+Environment variables → Add (encrypt)**. Add them to Production; add them to
+Preview too if you want the feature on preview deployments, which have a
+different hostname and therefore need their own redirect URI registered.
+
+Confirm with:
+
+```bash
+curl -s https://heartbeat-eop.pages.dev/api/health | jq .google   # expect true
+```
+
+### Migration
+
+`google_links` comes from `worker/migrations/0015_google_link.sql`, which
+`worker-deploy.yml` applies before deploying like every other migration. It also
+adds a `provider` column to `oauth_states` and `oauth_claims`, defaulted to
+`'github'` so every row written before it keeps meaning what it meant. Nothing
+here needs a manual step.
+
+### What recovery brings back
+
+Exactly what §8 describes — the mechanism is shared, and only the proof differs.

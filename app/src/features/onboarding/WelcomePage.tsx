@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { saveSettings } from '../../db/database';
 import { installState, isIos } from '../../pwa/install';
-import { githubLink } from '../../pwa/api';
+import { providerLink } from '../../pwa/api';
 
 const REPO_URL = 'https://github.com/djbatalona06/HeartBeat';
 
@@ -25,7 +25,10 @@ export function WelcomePage() {
   const [recovery, setRecovery] = useState(false);
   useEffect(() => {
     let live = true;
-    void githubLink().then((link) => { if (live) setRecovery(Boolean(link?.configured)); });
+    void Promise.all([providerLink('github'), providerLink('google')]).then((links) => {
+      // Either provider being configured is enough to offer the way back in.
+      if (live) setRecovery(links.some((link) => link?.configured));
+    });
     return () => { live = false; };
   }, []);
   const state = installState();
