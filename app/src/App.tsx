@@ -32,6 +32,7 @@ import { SoundscapesPage } from './features/activities/SoundscapesPage';
 import { MovementsPage } from './features/activities/MovementsPage';
 import { QuizzesPage } from './features/activities/QuizzesPage';
 import { TimerPage } from './features/activities/TimerPage';
+import { SupportPage } from './features/activities/SupportPage';
 import { KindnessPage } from './features/activities/KindnessPage';
 import { FirstAidPage } from './features/activities/FirstAidPage';
 import { FriendsPage } from './features/party/FriendsPage';
@@ -96,6 +97,7 @@ export function App() {
                     <Route path="/activities/quizzes" element={<QuizzesPage />} />
                     <Route path="/activities/timer" element={<TimerPage />} />
                     <Route path="/activities/kindness" element={<KindnessPage />} />
+                    <Route path="/activities/support" element={<SupportPage />} />
                     <Route path="/activities/first-aid" element={<FirstAidPage />} />
                     <Route path="/activities" element={<ActivitiesPage />} />
                     <Route path="/shop" element={<PartyPage only={['shop']} title="Shop" />} />

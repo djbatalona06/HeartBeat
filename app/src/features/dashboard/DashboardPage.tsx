@@ -196,6 +196,8 @@ export function DashboardPage() {
           memberId={memberId}
           day={day}
           tracksCycle={settings?.tracksCycle === true}
+          shareCycleNudge={settings?.shareCycleNudge === true}
+          token={settings?.workerSecret}
         />
       ) : null}
     </div>

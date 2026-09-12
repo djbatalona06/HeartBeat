@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
 import { grantLifeEvent, putCheer } from '../../db/repository';
+import { postCycleNudge } from '../../pwa/api';
 import { buildFeed } from '../../domain/rpg/feed';
 import {
   LIFE_EVENT_LINES, LIFE_EVENT_NAMES, checkGrant,
@@ -35,9 +36,14 @@ interface Props {
   day: DayKey;
   /** Cycle logging is the person's own statement about whether it applies. */
   tracksCycle: boolean;
+  /** Whether this phone's owner has agreed to tell the other one. */
+  shareCycleNudge: boolean;
+  token?: string;
 }
 
-export function FeedPanel({ coupleId, memberId, day, tracksCycle }: Props) {
+export function FeedPanel({
+  coupleId, memberId, day, tracksCycle, shareCycleNudge, token,
+}: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [milestone, setMilestone] = useState<string | null>(null);
 
@@ -87,6 +93,15 @@ export function FeedPanel({ coupleId, memberId, day, tracksCycle }: Props) {
   async function log(kind: LifeEventKind, note?: string) {
     const result = await grantLifeEvent(coupleId, memberId, kind, day, { note });
     setMessage(result.ok ? 'Logged. The list can wait.' : result.reason ?? null);
+    if (!result.ok) return;
+
+    // A day one can tell the other phone, if this phone's owner has said it
+    // may. Deliberately not awaited into the outcome above: the grant is a
+    // local write that has to work with no signal, and a notification that did
+    // not go out is not a reason to tell somebody their log failed.
+    if (kind === 'period-start' && shareCycleNudge && token) {
+      void postCycleNudge(token, day).catch(() => {});
+    }
   }
 
   async function cheer(event: LifeEvent) {

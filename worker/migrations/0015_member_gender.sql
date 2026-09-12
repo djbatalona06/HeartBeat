@@ -1,0 +1,19 @@
+-- How each person describes themselves, so the app can tailor what it suggests
+-- — in particular, what it offers one of them about supporting the other.
+--
+-- A plain ADD COLUMN, exactly as 0006_member_profile.sql added the face, and
+-- deliberately not the table rebuild 0014_holdings_social.sql had to do: that
+-- one was widening a CHECK, which SQLite cannot alter in place. There is no
+-- CHECK here and there should not be one — `members` is referenced by foreign
+-- key from four other tables, and rebuilding it for a single column is a great
+-- deal of risk for no gain.
+--
+-- The column is therefore unconstrained at this level, and the four allowed
+-- values are enforced in app/functions/api/profile.ts before anything is ever
+-- bound. NULL means the question has not been answered, which is different
+-- from 'unstated' — that is somebody choosing not to say.
+--
+-- Only the coarse value lives here. Whatever a person writes in the "other"
+-- box stays in Settings on their own phone: nothing reads it as logic, so
+-- storing it on a server would widen what is held for no behaviour at all.
+ALTER TABLE members ADD COLUMN gender TEXT;

@@ -4364,3 +4364,47 @@ body {
    with them — so this reads as "not for you" rather than as a broken control. */
 .feed-cheer:disabled { cursor: default; }
 .feed-cheer:disabled:not(.feed-cheer-on) { opacity: 0.35; }
+
+/* ---- might help ------------------------------------------------------------
+   One panel per lane, and the lanes come from domain/support/lanes.ts rather
+   than from anything here. Quiet on purpose: this screen shows up on a day
+   somebody is already having a time of it, so it reads like a note rather than
+   a dashboard. */
+.support-lane + .support-lane { margin-top: var(--stack); }
+
+.support-quote {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.support-by { font-style: normal; }
+
+.support-list { list-style: none; margin-top: var(--space-3); }
+
+.support-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+.support-row:last-child { border-bottom: none; }
+
+/* A fixed box so "Do" and "Give" do not shunt the text to two different
+   left edges down the list. */
+.support-kind {
+  flex-shrink: 0;
+  width: 3rem;
+  font-size: var(--text-sm);
+  color: var(--color-accent);
+}
+.support-text { flex: 1; min-width: 0; }
+
+/* The four answers in the You block. Same pills as everywhere else; the row
+   wraps rather than scrolls, because four is few enough to see at once. */
+.set-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}

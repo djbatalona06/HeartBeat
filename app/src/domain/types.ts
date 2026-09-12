@@ -20,6 +20,22 @@ export type CoupleId = string;
  * offline like everything else. Newer `updatedAt` wins, the same rule sync uses
  * for every other row.
  */
+/**
+ * How someone describes themselves, in four answers.
+ *
+ * The first thing in this app to key off an attribute of a person rather than
+ * a choice they made — `tracksCycle` is deliberately worded "I log my cycle",
+ * not a gender — so it is worth being careful about. It is self-declared, it is
+ * read by exactly one function (`domain/support/lanes.ts`), and
+ * `'unstated'` is a real answer that selects the neutral content lane rather
+ * than a lesser version of the feature.
+ *
+ * Coarse on purpose. Whatever someone writes in the "other" box stays on their
+ * own phone (`Settings.genderNote`) and never reaches the server, because
+ * nothing reads it as logic and syncing it would only widen what is stored.
+ */
+export type Gender = 'male' | 'female' | 'other' | 'unstated';
+
 export interface Member {
   id: MemberId;
   coupleId: CoupleId;
@@ -30,6 +46,12 @@ export interface Member {
    * so it is answered in settings and only copied here for display.
    */
   tracksCycle: boolean;
+  /**
+   * Mirrors `Settings.gender`, and mirrored for one reason: content about
+   * supporting your partner has to know something about your partner. Only the
+   * coarse value crosses — never the free text behind `'other'`.
+   */
+  gender?: Gender;
   photoDataUri?: string;
   updatedAt: number;
 }
@@ -348,6 +370,25 @@ export interface Settings {
    * value and is never read for a decision; this field is the answer.
    */
   tracksCycle?: boolean;
+  /**
+   * Whether the person logging a cycle wants their partner told when they log
+   * a day one.
+   *
+   * On the *tracker's* phone, not the receiver's, and that is the whole design:
+   * it is their data, so they decide who learns it, and they can turn it off
+   * after a bad week without having a conversation about it. A partner cannot
+   * subscribe themselves to this.
+   */
+  shareCycleNudge?: boolean;
+  /**
+   * How this person describes themselves, and the free text behind "other".
+   *
+   * `gender` is mirrored to `Member` so the partner's phone can tailor what it
+   * suggests. `genderNote` is **never** synced and never sent to any endpoint —
+   * see the note on `Gender`.
+   */
+  gender?: Gender;
+  genderNote?: string;
   /**
    * The invite this phone last issued, kept so a reload does not lose a code
    * that is still good — the countdown on the Settings screen is drawn from
