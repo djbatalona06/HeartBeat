@@ -1,4 +1,5 @@
 import type { CoupleId, DayKey, MemberId } from '../types';
+import { pickForDay } from '../day';
 
 /**
  * Reflections: the written half of self-care, and the only table the whole
@@ -101,10 +102,7 @@ export function promptsOfKind(kind: Prompt['kind']): Prompt[] {
  * not silently swap the question out from under a half-written answer.
  */
 export function promptForDay(day: DayKey): Prompt {
-  const digits = day.replace(/\D/g, '');
-  let hash = 0;
-  for (const ch of digits) hash = (hash * 10 + Number(ch)) % 100000;
-  return PROMPTS[hash % PROMPTS.length];
+  return pickForDay(day, PROMPTS)!;
 }
 
 /** Newest first, which is the only order a journal is ever read in. */

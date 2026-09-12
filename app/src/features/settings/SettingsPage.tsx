@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
-import type { Member, Settings } from '../../domain/types';
+import type { Gender, Member, Settings } from '../../domain/types';
 import { useTheme } from '../../themes/ThemeProvider';
 import { THEMES } from '../../themes';
 import { fetchProfiles, health, pairJoin, pairStart, putProfile } from '../../pwa/api';
@@ -11,12 +11,15 @@ import { StudyLinkBlock } from './StudyLinkBlock';
 import { ComplimentBlock } from './ComplimentBlock';
 import { GitHubBlock } from './GitHubBlock';
 import {
+  MAX_GENDER_NOTE,
   clearPendingInvite,
   putMyProfile,
   saveMembersFromServer,
   savePairing,
   setCalmMode as storeCalmMode,
   setThemeChoice,
+  setGender,
+  setShareCycleNudge,
   setTracksCycle,
 } from '../../db/repository';
 import {
@@ -140,6 +143,8 @@ export function SettingsPage() {
         <p className="section-sub">{THEMES.find((t) => t.id === themeId)?.blurb}</p>
       </section>
 
+      <GenderBlock settings={settings} />
+
       <section className="set-block">
         <h2 className="section-title">Cycle</h2>
         <label className="set-toggle">
@@ -150,6 +155,21 @@ export function SettingsPage() {
           />
           <span>I log my cycle. Off means the page shows my partner&rsquo;s.</span>
         </label>
+        {/* Only offered to the person who logs, because it is their data and
+            so it is their call. A partner cannot switch this on for them. */}
+        {settings?.tracksCycle === true ? (
+          <label className="set-toggle">
+            <input
+              type="checkbox"
+              checked={settings?.shareCycleNudge === true}
+              onChange={(e) => void setShareCycleNudge(e.target.checked)}
+            />
+            <span>
+              Let them know when I log a day one, so they can be kind about it.
+              The notification never says what it is about.
+            </span>
+          </label>
+        ) : null}
         <p className="section-sub">
           The log itself, and its PIN, are at the foot of{' '}
           <Link to="/mood">the Mood screen</Link>. A PIN set there stays on this phone and
@@ -504,4 +524,73 @@ async function shrinkToSquare(chosen: File): Promise<string> {
     if (withinBudget(uri)) return uri;
   }
   return canvas.toDataURL('image/jpeg', 0.35);
+}
+
+/* ---- who you are ---------------------------------------------------------- */
+
+const GENDER_CHOICES: ReadonlyArray<{ value: Gender; label: string }> = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Other' },
+  { value: 'unstated', label: 'Prefer not to say' },
+];
+
+/**
+ * The one question this app asks about a person rather than about their day.
+ *
+ * Answering it changes what gets suggested and nothing else — see
+ * `domain/support/lanes.ts`, which is the only thing that reads it. Two
+ * details are load-bearing rather than decoration: "Prefer not to say" is a
+ * real choice that gets the same screen as everyone else rather than a lesser
+ * one, and the free text behind "Other" stays on this phone. The coarse answer
+ * is mirrored to the couple's row so the other phone can tailor what it offers;
+ * whatever somebody writes about themselves is not the app's to move.
+ */
+function GenderBlock({ settings }: { settings: Settings | undefined }) {
+  const chosen = settings?.gender;
+  const [note, setNote] = useState('');
+
+  // Seeded once the stored value arrives, and only when the field is empty, so
+  // typing is never overwritten by the live query re-firing underneath it.
+  useEffect(() => {
+    if (settings?.genderNote && !note) setNote(settings.genderNote);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings?.genderNote]);
+
+  return (
+    <section className="set-block">
+      <h2 className="section-title">You</h2>
+      <p className="section-sub">
+        Used to pick what the app suggests, and nothing else. You can change it
+        or leave it unanswered.
+      </p>
+      <div className="set-choices">
+        {GENDER_CHOICES.map((choice) => (
+          <button
+            key={choice.value}
+            type="button"
+            className={`chip ${chosen === choice.value ? 'chip-on' : ''}`}
+            aria-pressed={chosen === choice.value}
+            onClick={() => void setGender(choice.value, note)}
+          >
+            {choice.label}
+          </button>
+        ))}
+      </div>
+      {chosen === 'other' ? (
+        <>
+          <input
+            className="field"
+            value={note}
+            maxLength={MAX_GENDER_NOTE}
+            placeholder="In your own words, if you like"
+            aria-label="How you describe yourself"
+            onChange={(e) => setNote(e.target.value)}
+            onBlur={() => void setGender('other', note)}
+          />
+          <p className="section-sub">This one stays on this phone.</p>
+        </>
+      ) : null}
+    </section>
+  );
 }

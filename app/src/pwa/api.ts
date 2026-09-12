@@ -8,6 +8,7 @@
  */
 
 import { TranscribeError } from './micErrors';
+import type { Gender } from '../domain/types';
 
 export interface ChatMessage {
   id: string;
@@ -139,6 +140,8 @@ export interface WireMember {
    * cycle ownership is answered on the device rather than on the server.
    */
   tracksCycle?: boolean;
+  /** Served once answered; absent on a row where nobody has said. */
+  gender?: Gender;
   photoDataUri?: string;
   updatedAt: number;
   mine: boolean;
@@ -161,7 +164,7 @@ export async function fetchProfiles(token: string): Promise<WireMember[]> {
  */
 export async function putProfile(
   token: string,
-  patch: { displayName?: string; photoDataUri?: string | null },
+  patch: { displayName?: string; photoDataUri?: string | null; gender?: Gender },
 ): Promise<WireMember[]> {
   const res = await fetch('/api/profile', {
     method: 'PUT',
@@ -170,6 +173,23 @@ export async function putProfile(
   });
   if (!res.ok) throw await errorFrom(res);
   return ((await res.json()) as { members: WireMember[] }).members;
+}
+
+/**
+ * Tell both phones that a day one was logged.
+ *
+ * Best-effort by construction: the caller does not await a meaningful result
+ * and swallows failures. Logging the cycle is a local write that has to succeed
+ * on a train with no signal, and a notification that did not go out is not a
+ * reason to fail the thing the person actually did.
+ */
+export async function postCycleNudge(token: string, day: string): Promise<void> {
+  const res = await fetch('/api/cyclenudge', {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify({ day }),
+  });
+  if (!res.ok) throw await errorFrom(res);
 }
 
 /* ---- notifications -------------------------------------------------------- */

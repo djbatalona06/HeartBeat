@@ -9,6 +9,8 @@ import {
   savePairing,
   setCalmMode,
   setThemeChoice,
+  setGender,
+  setShareCycleNudge,
   setTracksCycle,
 } from './index';
 
@@ -183,5 +185,67 @@ describe('saveMembersFromServer', () => {
     ]);
     expect(applied).toBe(0);
     expect((await db.members.get(THEIRS))?.displayName).toBe('Alex');
+  });
+});
+
+describe('setGender', () => {
+  /**
+   * Two destinations and one of them is deliberately a dead end. The coarse
+   * answer is mirrored so the other phone can tailor what it suggests; the
+   * free text is not, because nothing reads it as logic and syncing it would
+   * only widen what is stored about somebody.
+   */
+  it('mirrors the answer to the member row, and keeps the words here', async () => {
+    await saveSettings({ memberId: MINE, coupleId: COUPLE });
+    await setGender('other', '  enby  ');
+
+    const settings = await loadSettings();
+    expect(settings.gender).toBe('other');
+    expect(settings.genderNote).toBe('enby');
+
+    expect((await db.members.get(MINE))?.gender).toBe('other');
+    expect((await db.members.get(MINE)) as unknown as Record<string, unknown>)
+      .not.toHaveProperty('genderNote');
+  });
+
+  it('drops the note when the answer is no longer "other"', async () => {
+    await saveSettings({ memberId: MINE, coupleId: COUPLE });
+    await setGender('other', 'enby');
+    await setGender('female');
+    expect((await loadSettings()).genderNote).toBeUndefined();
+  });
+
+  it('does not disturb the cycle answer it sits beside', async () => {
+    await saveSettings({ memberId: MINE, coupleId: COUPLE });
+    await setTracksCycle(true);
+    await setGender('female');
+    expect((await db.members.get(MINE))?.tracksCycle).toBe(true);
+  });
+
+  it('survives a served row that has not caught up yet', async () => {
+    await saveSettings({ memberId: MINE, coupleId: COUPLE });
+    await setGender('male');
+    // The partner's phone pushed a name before ever seeing our answer.
+    await saveMembersFromServer([
+      { id: MINE, coupleId: COUPLE, displayName: 'Sam', updatedAt: Date.now() + 1000 },
+    ]);
+    expect((await db.members.get(MINE))?.gender).toBe('male');
+  });
+});
+
+describe('setShareCycleNudge', () => {
+  /**
+   * Settings only. Whether somebody agreed to tell their partner is a decision
+   * about disclosure, not a fact about them, and the partner's device has no
+   * business being able to read whether it was made.
+   */
+  it('stays on this phone and never reaches the member row', async () => {
+    await saveSettings({ memberId: MINE, coupleId: COUPLE });
+    await setTracksCycle(true);
+    await setShareCycleNudge(true);
+
+    expect((await loadSettings()).shareCycleNudge).toBe(true);
+    expect((await db.members.get(MINE)) as unknown as Record<string, unknown>)
+      .not.toHaveProperty('shareCycleNudge');
   });
 });
