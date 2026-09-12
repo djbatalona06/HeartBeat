@@ -1,4 +1,4 @@
-import type { Theme } from './types';
+import type { Theme, ThemeMode, ThemeVariant } from './types';
 
 /**
  * The shared design language — Finch's *shape*, borrowed on purpose.
@@ -76,8 +76,32 @@ export const SHARED_TOKENS: Record<string, string> = {
  * The shared tokens go in first, so a pack that genuinely needs to override one
  * still can — but has to say so.
  */
-export function themeToCssVars(theme: Theme): Record<string, string> {
-  const c = theme.colors;
+/**
+ * The one token that is not a colour and still has a ground baked into it.
+ *
+ * Every pack's shadow is black at 0.5-0.6 alpha, which reads as depth over ink
+ * and as a smudge over white. It lives on `theme.shape` rather than on the
+ * palette because it is a shape decision, and the correction is identical for
+ * all five packs — so one value here rather than a tenth per-pack token.
+ *
+ * It has to be emitted from this function rather than overridden in the
+ * stylesheet: `applyTheme` writes every token as an inline style on the root
+ * element, and an inline style beats any `:root[data-mode='light']` rule.
+ */
+const LIGHT_SHADOW = '0 14px 30px rgba(24, 20, 34, 0.1)';
+
+/** A theme's dark palette, in the shape its light one already has. */
+export function darkVariantOf(theme: Theme): ThemeVariant {
+  return { isLight: theme.isLight, opaqueSurface: theme.opaqueSurface, colors: theme.colors };
+}
+
+/** The palette showing in `mode`. The one place the two are chosen between. */
+export function variantOf(theme: Theme, mode: ThemeMode): ThemeVariant {
+  return mode === 'light' ? theme.light : darkVariantOf(theme);
+}
+
+export function themeToCssVars(theme: Theme, mode: ThemeMode = 'dark'): Record<string, string> {
+  const c = variantOf(theme, mode).colors;
   return {
     ...SHARED_TOKENS,
     '--color-base': c.base,
@@ -101,16 +125,19 @@ export function themeToCssVars(theme: Theme): Record<string, string> {
     '--radius': theme.shape.radius,
     '--radius-large': theme.shape.radiusLarge,
     '--border-width': theme.shape.border,
-    '--shadow': theme.shape.shadow,
+    '--shadow': mode === 'light' ? LIGHT_SHADOW : theme.shape.shadow,
   };
 }
 
-export function applyTheme(theme: Theme, calm: boolean): void {
+export function applyTheme(theme: Theme, calm: boolean, mode: ThemeMode = 'dark'): void {
   const root = document.documentElement;
-  const vars = themeToCssVars(theme);
+  const vars = themeToCssVars(theme, mode);
   for (const [key, value] of Object.entries(vars)) root.style.setProperty(key, value);
   root.dataset.theme = theme.id;
   root.dataset.calm = calm ? 'true' : 'false';
+  // Read by the few rules that need to know — a shadow tuned for a dark ground
+  // is invisible on a white one — and by nothing that could have used a token.
+  root.dataset.mode = mode;
 }
 
 /** Relative luminance per WCAG 2.1, for the contrast test. */

@@ -242,13 +242,54 @@ contraception.
 
 ## Themes
 
-Five packs. A theme reaches the UI only as CSS custom properties written to
-`documentElement`, so components reference `var(--color-accent)` and never
-import a theme object — switching theme repaints without re-rendering anything.
+Five packs, each with two palettes. A theme reaches the UI only as CSS custom
+properties written to `documentElement`, so components reference
+`var(--color-accent)` and never import a theme object — switching theme or mode
+repaints without re-rendering anything.
 
 `themes/tokens.test.ts` enforces WCAG AA contrast for body text on both the card
 surface and the page base, and for accent text on the accent fill. A theme with
 unreadable text cannot ship.
+
+### Light mode is a second palette, not a sixth pack
+
+The ask was that half of every theme be white-based. A single white theme would
+have satisfied the letter of that and left the other four exactly as dark as
+they were, so each pack carries a `light: ThemeVariant` instead and a
+Light/Dark/System control sits under the theme picker. System is the default and
+is not a third palette — it is a deferral to `prefers-color-scheme`, watched
+rather than read once so a phone on an automatic schedule flips the app at
+sunset.
+
+`Theme.colors`, `isLight` and `opaqueSurface` stayed at the top level rather
+than moving inside a variant, so nothing that already read a theme had to change
+to gain a light mode. `isLight` had been declared by all five packs since the
+beginning and read by nothing; this is its first consumer.
+
+Three things did not come for free:
+
+- **The contrast test is the reason this was safe to add.** A white ground is a
+  far easier place to put unreadable text than a dark one — a muted grey that
+  merely looked quiet on `#00171f` is invisible on `#ffffff` — so
+  `tokens.test.ts` now runs its four ratios over *both* palettes. Without that
+  loop the five new palettes would have been the only ones in the app nothing
+  was checking.
+- **The backdrops had to be told.** Every pack draws translucent fills over the
+  page, and translucent over black is dim while translucent over white is gone.
+  `BackdropProps` gains `light`, and each pack keeps a second small set of
+  constants: SpongeBob's bubble catchlight inverts from white to Prussian blue,
+  because on a white page there is no lamp overhead — the page *is* the light.
+- **`--shadow` is the one token that is not a colour and still has a ground
+  baked into it.** Every pack's is black at 0.5–0.6 alpha, which reads as depth
+  over ink and as a smudge over white. It is corrected in `themeToCssVars`
+  rather than in the stylesheet, because `applyTheme` writes every token as an
+  inline style on the root element and an inline style beats any
+  `:root[data-mode='light']` rule.
+
+My Little Pony is the most faithful of the five in light mode and the one that
+most wanted doing: Soft Pastels is five light tints and no dark at all, so the
+dark theme had to invent its two darkest values. The light one invents nothing
+but the ink.
 
 Backdrops are procedural canvas animations. They pause on `visibilitychange`,
 honour `prefers-reduced-motion`, and damp under Calm mode. Nothing third-party is
@@ -508,7 +549,7 @@ would serve it an hour late for the eight months Pacific is on daylight time.
 | A denied notification permission is unrecoverable without reinstall | Explain the stakes before prompting, in the setup guide and in-app |
 | Invite link leaks from a chat thread | Fifteen-minute expiry, single use, third join refused |
 | Push subscription silently expires | Re-subscribe on launch and re-upload the endpoint |
-| Theme added with unreadable text | Contrast enforced in CI by `tokens.test.ts` |
+| Theme added with unreadable text | Contrast enforced in CI by `tokens.test.ts`, over both palettes |
 | Photos make sync expensive | Photos never sync; they stay on-device by design |
 
 ## Order of work

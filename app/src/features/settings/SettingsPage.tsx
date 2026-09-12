@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
 import type { Member, Settings } from '../../domain/types';
-import { useTheme } from '../../themes/ThemeProvider';
+import { useTheme, type ModePreference } from '../../themes/ThemeProvider';
+import { variantOf } from '../../themes/tokens';
 import { THEMES } from '../../themes';
 import { fetchProfiles, health, pairJoin, pairStart, putProfile } from '../../pwa/api';
 import { NotificationsBlock } from './NotificationsBlock';
@@ -36,10 +37,18 @@ import { PHOTO_BUDGET_BYTES, coverBox, formatKb, photoBytes, withinBudget } from
  * anything until two phones are joined, and until this screen existed there was
  * no way to do it from inside the app at all.
  */
+/** Light, dark, or whatever the phone says. Declared here rather than in the
+ *  theme layer because it is a list of labels, not a fact about a palette. */
+const MODE_CHOICES: { id: ModePreference; name: string }[] = [
+  { id: 'system', name: 'System' },
+  { id: 'light', name: 'Light' },
+  { id: 'dark', name: 'Dark' },
+];
+
 export function SettingsPage() {
   const settings = useLiveQuery(loadSettings, []);
   const members = useLiveQuery(() => db.members.toArray(), []);
-  const { themeId, setThemeId, calmMode, setCalmMode } = useTheme();
+  const { themeId, setThemeId, calmMode, setCalmMode, mode, modePreference, setModePreference } = useTheme();
 
   const [backend, setBackend] = useState<'checking' | 'up' | 'down'>('checking');
 
@@ -128,16 +137,39 @@ export function SettingsPage() {
               data-on={themeId === theme.id}
               onClick={() => chooseTheme(theme.id)}
             >
+              {/* The swatch shows the palette that would actually appear, so
+                  switching to Light does not leave five dark chips describing
+                  a screen that is now white. */}
               <span className="theme-swatch" aria-hidden="true">
-                <span style={{ background: theme.colors.base }} />
-                <span style={{ background: theme.colors.surface }} />
-                <span style={{ background: theme.colors.accent }} />
+                <span style={{ background: variantOf(theme, mode).colors.base }} />
+                <span style={{ background: variantOf(theme, mode).colors.surface }} />
+                <span style={{ background: variantOf(theme, mode).colors.accent }} />
               </span>
               <span className="theme-name">{theme.name}</span>
             </button>
           ))}
         </div>
         <p className="section-sub">{THEMES.find((t) => t.id === themeId)?.blurb}</p>
+
+        <div className="mode-row" role="radiogroup" aria-label="Light or dark">
+          {MODE_CHOICES.map((choice) => (
+            <button
+              key={choice.id}
+              type="button"
+              role="radio"
+              aria-checked={modePreference === choice.id}
+              className="mode-option"
+              data-on={modePreference === choice.id}
+              onClick={() => setModePreference(choice.id)}
+            >
+              {choice.name}
+            </button>
+          ))}
+        </div>
+        <p className="section-sub">
+          Every theme comes both ways. System follows your phone, so it turns
+          over when your phone does.
+        </p>
       </section>
 
       <section className="set-block">

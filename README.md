@@ -55,6 +55,12 @@ Five, switchable any time under Settings: Hello Kitty, SpongeBob, Naruto, The
 Last Airbender, My Little Pony. Each is a palette plus a hand-drawn animated
 backdrop. Every artwork is original — see [NOTICE.md](NOTICE.md).
 
+Each comes **both ways**: every theme has a dark palette and a white one, and a
+Light / Dark / System control under the picker chooses between them. System is
+the default and follows your phone, so it turns over when your phone does. The
+backdrops are drawn differently in each — a pale sparkle on a white page is not
+a subtle sparkle, it is an invisible one.
+
 Backdrops pause when the app is in the background, respect your phone's
 reduced-motion setting, and damp under **Calm mode**. Palette contrast is
 enforced by tests, so a theme cannot ship with text you can't read.
