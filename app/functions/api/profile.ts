@@ -34,17 +34,31 @@ const MAX_PHOTO_BYTES = 64 * 1024;
 /** Only what a canvas encodes. No SVG: that one is a document, not a picture. */
 const PHOTO_PATTERN = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 
+/**
+ * The four answers, checked here because the column has none.
+ *
+ * 0015 adds `gender` as a bare TEXT column — a CHECK would have meant
+ * rebuilding a table four others reference by foreign key, for one field. So
+ * this list is the constraint, and it has to be exhaustive: an unrecognised
+ * string is refused rather than stored, or the column stops meaning anything.
+ *
+ * The free text behind "other" is deliberately absent. It is not accepted by
+ * this endpoint at any key, because it never leaves the phone that typed it.
+ */
+const GENDERS = ['male', 'female', 'other', 'unstated'] as const;
+
 interface Row {
   id: string;
   couple_id: string;
   display_name: string;
+  gender: string | null;
   photo_data_uri: string | null;
   photo_key: string | null;
   updated_at: number;
 }
 
 const SELECT_MEMBERS =
-  `SELECT id, couple_id, display_name, photo_data_uri, photo_key, updated_at FROM members
+  `SELECT id, couple_id, display_name, gender, photo_data_uri, photo_key, updated_at FROM members
     WHERE couple_id = ? ORDER BY created_at ASC`;
 
 function toMember(row: Row, callerId: string) {
@@ -52,6 +66,9 @@ function toMember(row: Row, callerId: string) {
     id: row.id,
     coupleId: row.couple_id,
     displayName: row.display_name ?? '',
+    // Undefined rather than null when unanswered, so the merge on the client
+    // can tell "no answer yet" from "an answer that happens to be blank".
+    gender: row.gender ?? undefined,
     // Both, for now. `photoKey` is where a face lives; `photoDataUri` is what
     // rows written before the move to R2 still hold, and what a phone on the
     // older build still understands. The client prefers the key when it has one.
@@ -79,6 +96,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env }) => {
 
   const parsed = (await request.json().catch(() => ({}))) as {
     displayName?: unknown;
+    gender?: unknown;
     photoDataUri?: unknown;
     photoKey?: unknown;
   };
@@ -92,6 +110,14 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env }) => {
     if (name.length > MAX_DISPLAY_NAME) return json({ error: 'name too long' }, 400);
     sets.push('display_name = ?');
     binds.push(name);
+  }
+
+  if (parsed.gender !== undefined) {
+    if (!GENDERS.includes(parsed.gender as (typeof GENDERS)[number])) {
+      return json({ error: 'gender must be one of the four answers' }, 400);
+    }
+    sets.push('gender = ?');
+    binds.push(parsed.gender as string);
   }
 
   // null is "take it off", which is a different request from leaving the field

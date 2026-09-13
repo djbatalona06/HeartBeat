@@ -71,6 +71,12 @@ export const ACTIVITIES: readonly Activity[] = [
     icon: 'gift',
   },
   {
+    to: '/activities/support',
+    name: 'Might help',
+    hint: 'Suggestions for whoever is having the week',
+    icon: 'heart',
+  },
+  {
     to: '/activities/first-aid',
     name: 'First aid',
     hint: 'For a bad hour. Stores nothing',

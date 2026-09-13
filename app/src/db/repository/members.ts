@@ -1,5 +1,5 @@
 import { db, loadSettings, saveSettings } from '../database';
-import type { MemberId } from '../../domain/types';
+import type { Gender, MemberId } from '../../domain/types';
 import { now } from './shared';
 import { ensureIdentity } from './identity';
 import { rememberReportToken } from '../../pwa/crashReport';
@@ -30,12 +30,20 @@ export interface IncomingMember {
    * never arrives.
    */
   tracksCycle?: boolean;
+  /**
+   * Optional for a different reason: /api/profile *does* serve this one, but
+   * only once the person has answered. An unanswered row arrives without it.
+   */
+  gender?: Gender;
   photoDataUri?: string;
   updatedAt: number;
 }
 
 /** Longer than anyone's name, short enough that it cannot be used as a note. */
 export const MAX_DISPLAY_NAME = 40;
+
+/** Room for a word or a short phrase. It never leaves the phone regardless. */
+export const MAX_GENDER_NOTE = 60;
 
 /**
  * What pairing hands back, written in one place so no screen has to remember
@@ -96,6 +104,51 @@ export async function setTracksCycle(tracksCycle: boolean): Promise<void> {
     displayName: existing?.displayName ?? '',
     photoDataUri: existing?.photoDataUri,
     tracksCycle,
+    gender: existing?.gender,
+    updatedAt: now(),
+  });
+}
+
+/**
+ * Whether a day-one log tells the other phone.
+ *
+ * Settings-only and never mirrored: it is a decision about disclosure, not a
+ * fact about the person, and the partner's device has no business knowing
+ * whether it was made. The producer reads it on the tracker's own phone.
+ */
+export async function setShareCycleNudge(shareCycleNudge: boolean): Promise<void> {
+  await saveSettings({ shareCycleNudge });
+}
+
+/**
+ * How this person describes themselves, and — separately — what they wrote.
+ *
+ * Two destinations, on purpose. The coarse answer is mirrored onto `Member`
+ * so it can be pushed to the couple's row and read by the other phone, which
+ * is the only reason it leaves this device at all: content about supporting
+ * your partner has to know something about your partner.
+ *
+ * `note` is the free text behind "other" and goes **only** to Settings. It is
+ * never mirrored, never pushed, and never accepted by /api/profile. Nothing
+ * reads it as logic, so putting it on a server would widen what is stored
+ * about somebody in exchange for no behaviour whatsoever.
+ */
+export async function setGender(gender: Gender, note?: string): Promise<void> {
+  await saveSettings({
+    gender,
+    // Cleared when the answer is no longer "other", so a note cannot linger
+    // out of sight describing an answer the person has since changed.
+    genderNote: gender === 'other' ? note?.trim().slice(0, MAX_GENDER_NOTE) : undefined,
+  });
+  const { memberId, coupleId } = await ensureIdentity();
+  const existing = await db.members.get(memberId);
+  await db.members.put({
+    id: memberId,
+    coupleId,
+    displayName: existing?.displayName ?? '',
+    photoDataUri: existing?.photoDataUri,
+    tracksCycle: existing?.tracksCycle ?? false,
+    gender,
     updatedAt: now(),
   });
 }
@@ -121,6 +174,7 @@ export async function putMyProfile(patch: {
       .trim()
       .slice(0, MAX_DISPLAY_NAME),
     tracksCycle: settings.tracksCycle === true,
+    gender: settings.gender,
     photoDataUri: photo ?? undefined,
     updatedAt: now(),
   };
@@ -145,6 +199,10 @@ export async function saveMembersFromServer(rows: IncomingMember[]): Promise<num
       // The server does not serve this one, so a served row must not erase the
       // copy `setTracksCycle` mirrors here — otherwise saving a name blanks it.
       tracksCycle: row.tracksCycle ?? existing?.tracksCycle ?? false,
+      // Same guard, different cause: this one *is* served, but only after it
+      // has been answered, so an unanswered row must not erase a local answer
+      // that has not been pushed yet.
+      gender: row.gender ?? existing?.gender,
       photoDataUri: row.photoDataUri,
       updatedAt: row.updatedAt,
     });

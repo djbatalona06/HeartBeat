@@ -50,3 +50,24 @@ export function isoWeekOf(day: DayKey): number {
   firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
   return 1 + Math.round((date.getTime() - firstThursday.getTime()) / (7 * 86400000));
 }
+
+/**
+ * One item from a pool, chosen by the day rather than at random.
+ *
+ * Arithmetic, and that is the whole point: both phones land on the same
+ * suggestion with nothing synced between them, and reopening a screen does not
+ * reshuffle the thing you were about to go and do. The reflection prompt and
+ * the kindness suggestion each carried their own copy of these four lines
+ * before a third caller made the duplication worth naming — the arithmetic is
+ * unchanged, so every existing pick still resolves to what it always did.
+ *
+ * Only the digits, so the dashes in a day key do not skew the hash, and a
+ * modulo at each step so a far-future date cannot overflow into a float.
+ */
+export function pickForDay<T>(day: DayKey, pool: readonly T[]): T | undefined {
+  if (!pool.length) return undefined;
+  const digits = day.replace(/\D/g, '');
+  let hash = 0;
+  for (const ch of digits) hash = (hash * 10 + Number(ch)) % 100000;
+  return pool[hash % pool.length];
+}
