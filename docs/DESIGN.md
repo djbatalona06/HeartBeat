@@ -83,7 +83,7 @@ invite that put it in the couple was single-use and consumed months ago. The
 only recovery was for the *other* partner to start a fresh pairing — which made
 recovery impossible for whoever was holding the only phone.
 
-GitHub sign-in (migration `0012`) answers that, and Google (`0015`) answers it
+GitHub sign-in (migration `0012`) answers that, and Google (`0016`) answers it
 for the half of the couple who does not have a GitHub account. Both are
 optional, independently configured, and off unless a client id and secret are
 set. The shape is the same for both and every part of it is deliberate:

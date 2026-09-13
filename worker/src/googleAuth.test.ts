@@ -194,7 +194,7 @@ describe('the two providers', () => {
     expect(consumeClaim('k1', 'google')).toMatchObject({ outcome: 'recovered' });
   });
 
-  /** Every row written before 0015 was a GitHub round trip, and has to keep
+  /** Every row written before 0016 was a GitHub round trip, and has to keep
    *  meaning that rather than becoming unconsumable on deploy. */
   it('reads a row written before the column existed as GitHub\'s', () => {
     db.prepare(

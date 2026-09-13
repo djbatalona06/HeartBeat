@@ -79,7 +79,7 @@ export function redirectUriFor(request: Request): string {
 
 export interface GoogleUser {
   /** The OpenID Connect `sub`: stable for this client, forever, and not the
-   *  email address. See the note in migration 0015. */
+   *  email address. See the note in migration 0016. */
   id: string;
 }
 

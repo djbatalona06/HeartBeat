@@ -388,7 +388,7 @@ curl -s https://heartbeat-eop.pages.dev/api/health | jq .google   # expect true
 
 ### Migration
 
-`google_links` comes from `worker/migrations/0015_google_link.sql`, which
+`google_links` comes from `worker/migrations/0016_google_link.sql`, which
 `worker-deploy.yml` applies before deploying like every other migration. It also
 adds a `provider` column to `oauth_states` and `oauth_claims`, defaulted to
 `'github'` so every row written before it keeps meaning what it meant. Nothing
