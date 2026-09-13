@@ -1,6 +1,6 @@
 import { recordAuthEvent } from '../../_lib';
 import {
-  CLAIM_TTL_MS, LINK_UPSERT_SQL, RECOVER_LOOKUP_SQL, STATE_CONSUME_SQL,
+  CLAIM_INSERT_SQL, CLAIM_TTL_MS, LINK_UPSERT_SQL, RECOVER_LOOKUP_SQL, STATE_CONSUME_SQL,
   backToApp, githubApp, identify, randomKey, redirectUriFor, sweep,
   type GitHubEnv,
 } from '../_github';
@@ -33,7 +33,7 @@ export const onRequestGet: PagesFunction<GitHubEnv> = async ({ request, env }) =
   // Consumed by the read: the DELETE is what makes the state single-use, so a
   // replayed callback finds nothing however fast it arrives.
   const pending = await env.DB.prepare(STATE_CONSUME_SQL)
-    .bind(state, now)
+    .bind(state, now, 'github')
     .first<{ intent: string; member_id: string | null }>();
   if (!pending) return backToApp(request, { github: 'failed' });
 
@@ -76,11 +76,8 @@ export const onRequestGet: PagesFunction<GitHubEnv> = async ({ request, env }) =
       .first<{ member_id: string }>();
     if (linked?.member_id !== pending.member_id) return backToApp(request, { github: 'taken' });
 
-    await env.DB.prepare(
-      `INSERT INTO oauth_claims (code, outcome, member_id, couple_id, github_login, created_at, expires_at)
-       VALUES (?, 'linked', ?, ?, ?, ?, ?)`,
-    )
-      .bind(claim, pending.member_id, member.couple_id, user.login, now, expires)
+    await env.DB.prepare(CLAIM_INSERT_SQL)
+      .bind(claim, 'linked', pending.member_id, member.couple_id, user.login, now, expires, 'github')
       .run();
 
     await recordAuthEvent(
@@ -109,11 +106,8 @@ export const onRequestGet: PagesFunction<GitHubEnv> = async ({ request, env }) =
   // No token is minted here, and none is stored. The claim carries an identity
   // and the rotation happens when it is exchanged — see the note on
   // `oauth_claims` in migration 0012.
-  await env.DB.prepare(
-    `INSERT INTO oauth_claims (code, outcome, member_id, couple_id, github_login, created_at, expires_at)
-     VALUES (?, 'recovered', ?, ?, ?, ?, ?)`,
-  )
-    .bind(claim, link.member_id, link.couple_id, user.login, now, expires)
+  await env.DB.prepare(CLAIM_INSERT_SQL)
+    .bind(claim, 'recovered', link.member_id, link.couple_id, user.login, now, expires, 'github')
     .run();
 
   return backToApp(request, { github: 'recovered', claim });

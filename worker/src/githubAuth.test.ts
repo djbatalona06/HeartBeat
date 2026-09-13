@@ -67,11 +67,12 @@ describe('the OAuth state', () => {
 
   const start = (state: string, intent: string, member: string | null, expires = LATER) =>
     db.prepare(
-      'INSERT INTO oauth_states (state, intent, member_id, created_at, expires_at) VALUES (?,?,?,?,?)',
+      `INSERT INTO oauth_states (state, intent, member_id, created_at, expires_at, provider)
+       VALUES (?,?,?,?,?,'github')`,
     ).run(state, intent, member, NOW, expires);
 
   const consume = (state: string, at = NOW) =>
-    db.prepare(STATE_CONSUME_SQL).get(state, at) as
+    db.prepare(STATE_CONSUME_SQL).get(state, at, 'github') as
       { intent: string; member_id: string | null } | undefined;
 
   it('hands back the intent and member it was started with', () => {
@@ -119,12 +120,14 @@ describe('the claim code', () => {
 
   const park = (code: string, outcome: string, expires = LATER) =>
     db.prepare(
-      `INSERT INTO oauth_claims (code, outcome, member_id, couple_id, github_login, created_at, expires_at)
-       VALUES (?,?,?,?,?,?,?)`,
+      `INSERT INTO oauth_claims
+         (code, outcome, member_id, couple_id, github_login, created_at, expires_at, provider)
+       VALUES (?,?,?,?,?,?,?,'github')`,
     ).run(code, outcome, 'her', 'c1', 'octocat', NOW, expires);
 
   const consume = (code: string, at = NOW) =>
-    db.prepare(CLAIM_CONSUME_SQL).get(code, at) as { outcome: string; member_id: string } | undefined;
+    db.prepare(CLAIM_CONSUME_SQL).get(code, at, 'github') as
+      { outcome: string; member_id: string } | undefined;
 
   it('is single-use, like the state', () => {
     park('k1', 'recovered');

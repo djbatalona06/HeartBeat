@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { THEMES } from './index';
-import { SHARED_TOKENS, contrast, themeToCssVars } from './tokens';
+import { SHARED_TOKENS, contrast, darkVariantOf, themeToCssVars } from './tokens';
+import type { ThemeMode } from './types';
 
 /**
  * A theme that ships unreadable is worse than no theme, and it is very easy to
  * pick a pretty accent that fails against its own surface. These run in CI so
  * an unreadable palette cannot land.
+ *
+ * Every theme now has two palettes, and both go through the same four checks.
+ * That is the whole reason a light mode was safe to add: a white ground is a
+ * far easier place to put unreadable text than a dark one — a muted grey that
+ * looked merely quiet on `#00171f` is invisible on `#ffffff` — and without this
+ * loop the five new palettes would have been the only ones in the app nothing
+ * was checking.
  */
 describe('theme palettes', () => {
   it('has a unique id per theme', () => {
@@ -14,33 +22,66 @@ describe('theme palettes', () => {
   });
 
   for (const theme of THEMES) {
-    describe(theme.name, () => {
-      it('body text clears WCAG AA against the card surface', () => {
-        expect(contrast(theme.colors.text, theme.opaqueSurface)).toBeGreaterThanOrEqual(4.5);
+    const variants: { mode: ThemeMode; variant: ReturnType<typeof darkVariantOf> }[] = [
+      { mode: 'dark', variant: darkVariantOf(theme) },
+      { mode: 'light', variant: theme.light },
+    ];
+
+    for (const { mode, variant } of variants) {
+      describe(`${theme.name} (${mode})`, () => {
+        it('body text clears WCAG AA against the card surface', () => {
+          expect(contrast(variant.colors.text, variant.opaqueSurface)).toBeGreaterThanOrEqual(4.5);
+        });
+
+        it('muted text clears AA large against the card surface', () => {
+          // Muted text is only ever used at >=18px or bold, so 3:1 is the bar.
+          const value = variant.colors.textMuted.startsWith('#')
+            ? variant.colors.textMuted
+            : null;
+          if (!value) return; // rgba() muted tones are composited; covered visually
+          expect(contrast(value, variant.opaqueSurface)).toBeGreaterThanOrEqual(3);
+        });
+
+        it('accent text is legible on the accent fill', () => {
+          expect(contrast(variant.colors.accentText, variant.colors.accent))
+            .toBeGreaterThanOrEqual(4.5);
+        });
+
+        it('body text clears AA against the page base', () => {
+          expect(contrast(variant.colors.text, variant.colors.base)).toBeGreaterThanOrEqual(4.5);
+        });
+
+        it('emits every css variable the stylesheet consumes', () => {
+          const vars = themeToCssVars(theme, mode);
+          for (const key of ['--color-base', '--color-surface', '--color-text', '--color-accent', '--radius', '--motion-medium']) {
+            expect(vars[key], key).toBeTruthy();
+          }
+        });
+      });
+    }
+
+    describe(`${theme.name}`, () => {
+      it('is actually light in its light palette and dark in its dark one', () => {
+        // The ask was that half of every theme be white-based, and a `light`
+        // palette that quietly copied the dark one would satisfy every contrast
+        // check above while satisfying none of that.
+        expect(theme.isLight).toBe(false);
+        expect(theme.light.isLight).toBe(true);
+        expect(contrast(theme.light.colors.base, '#ffffff')).toBeLessThan(1.4);
+        expect(contrast(theme.colors.base, '#ffffff')).toBeGreaterThan(4.5);
       });
 
-      it('muted text clears AA large against the card surface', () => {
-        // Muted text is only ever used at >=18px or bold, so 3:1 is the bar.
-        const value = theme.colors.textMuted.startsWith('#')
-          ? theme.colors.textMuted
-          : null;
-        if (!value) return; // rgba() muted tones are composited; covered visually
-        expect(contrast(value, theme.opaqueSurface)).toBeGreaterThanOrEqual(3);
+      it('keeps its accent across both palettes, so it is one theme', () => {
+        expect(theme.light.colors.accent).toBe(theme.colors.accent);
       });
 
-      it('accent text is legible on the accent fill', () => {
-        expect(contrast(theme.colors.accentText, theme.colors.accent)).toBeGreaterThanOrEqual(4.5);
-      });
-
-      it('body text clears AA against the page base', () => {
-        expect(contrast(theme.colors.text, theme.colors.base)).toBeGreaterThanOrEqual(4.5);
-      });
-
-      it('emits every css variable the stylesheet consumes', () => {
-        const vars = themeToCssVars(theme);
-        for (const key of ['--color-base', '--color-surface', '--color-text', '--color-accent', '--radius', '--motion-medium']) {
-          expect(vars[key], key).toBeTruthy();
-        }
+      it('lightens the card shadow, which is not a colour and still has a ground', () => {
+        // Every pack's own shadow is black at half alpha or more — depth over
+        // ink, a smudge over white. It cannot be corrected in the stylesheet
+        // because `applyTheme` writes it as an inline style, so it has to come
+        // out of `themeToCssVars` different, and this is what says so.
+        expect(themeToCssVars(theme, 'dark')['--shadow']).toBe(theme.shape.shadow);
+        expect(themeToCssVars(theme, 'light')['--shadow']).not.toBe(theme.shape.shadow);
       });
     });
   }

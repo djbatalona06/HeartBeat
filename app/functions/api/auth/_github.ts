@@ -46,23 +46,15 @@ export function githubApp(env: GitHubEnv): GitHubApp | null {
   return { clientId, clientSecret };
 }
 
-/** How long a started sign-in stays valid. Long enough to authorise on a slow
- *  phone, short enough that an abandoned one is not lying around. */
-export const STATE_TTL_MS = 10 * 60 * 1000;
-
-/**
- * How long the app has to exchange a claim code. Deliberately tiny: the code
- * is in a URL the browser has just been redirected to, so it is in history,
- * and the only thing standing between that and a stranger is how quickly it
- * stops working.
- */
-export const CLAIM_TTL_MS = 60 * 1000;
-
-export function randomKey(): string {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
+/* The single-use state, the one-time claim, the sweep and the way back into the
+ * app are the same shape for both providers and now live in `_oauth.ts`.
+ * Re-exported here so every route and test that already imported them from this
+ * module keeps working, and so this file stays the place to read about what
+ * GitHub recovery *is*. */
+export {
+  CLAIM_CONSUME_SQL, CLAIM_INSERT_SQL, CLAIM_TTL_MS, STATE_CONSUME_SQL, STATE_INSERT_SQL,
+  STATE_TTL_MS, backToApp, randomKey, sweep,
+} from './_oauth';
 
 /**
  * The scope asked for is deliberately empty.
@@ -150,62 +142,7 @@ export async function identify(
   return { id: String(user.id), login: user.login ?? '' };
 }
 
-/**
- * Expired rows, cleared opportunistically.
- *
- * There is no cron here and adding one for two small tables would be more
- * moving parts than the problem deserves. Every sign-in sweeps, which is often
- * enough that the tables stay small and cheap enough that nobody waits on it.
- */
-export async function sweep(db: D1Database, now: number): Promise<void> {
-  try {
-    await db.batch([
-      db.prepare('DELETE FROM oauth_states WHERE expires_at < ?').bind(now),
-      db.prepare('DELETE FROM oauth_claims WHERE expires_at < ?').bind(now),
-    ]);
-  } catch (error) {
-    // A failed sweep is a slightly larger table, not a failed sign-in.
-    console.error('oauth sweep failed', error);
-  }
-}
-
-/**
- * Back to the app, with a result the SPA can read.
- *
- * The app is a hash router, so everything after `#` is the client's business
- * and never reaches a server — which is also why the claim code goes here
- * rather than in a query string that would be sent to the origin on every
- * subsequent navigation.
- */
-export function backToApp(request: Request, params: Record<string, string>): Response {
-  const app = new URL('/', request.url);
-  app.hash = `/settings?${new URLSearchParams(params)}`;
-  return Response.redirect(app.toString(), 302);
-}
-
-/* -- the statements, hoisted so they can be run against real SQLite -----------
- * Every security property this feature has is a WHERE clause, and none of them
- * is visible from the outside: a refused write and a write that happened to
- * change nothing look identical to the caller, so a bug in any of them is
- * silent by construction. `worker/src/githubAuth.test.ts` applies the real
- * migrations and runs these exact strings — the same arrangement
- * `pairing.test.ts` uses for the join race and `holdings.test.ts` for the
- * ownership guard, and for the same stated reason: a hand-written fake returns
- * whatever the test wants and proves nothing about what the database does.
- */
-
-/**
- * Consumed by the read. Single-use has to be enforced by the write and not by
- * a check somebody can race, so a replayed callback finds nothing however fast
- * it arrives — which is the entire job of the `state` parameter.
- */
-export const STATE_CONSUME_SQL =
-  'DELETE FROM oauth_states WHERE state = ? AND expires_at >= ? RETURNING intent, member_id';
-
-/** The same, for the code the redirect came back with. */
-export const CLAIM_CONSUME_SQL =
-  `DELETE FROM oauth_claims WHERE code = ? AND expires_at >= ?
-   RETURNING outcome, member_id, couple_id, github_login`;
+/* -- the statements — see the banner in `_oauth.ts` for why they are hoisted -- */
 
 /**
  * Connect a GitHub account to the member the bearer already proved.

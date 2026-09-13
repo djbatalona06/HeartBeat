@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { readGitHubReturn, shouldClaim } from './githubReturn';
+import { readRecoveryReturn, shouldClaim } from './recoveryReturn';
 
-const at = (query: string) => readGitHubReturn(new URLSearchParams(query));
+const at = (query: string) => readRecoveryReturn(new URLSearchParams(query));
 
 /**
  * The mapping between what the callback sends and what a person reads.
@@ -12,7 +12,7 @@ const at = (query: string) => readGitHubReturn(new URLSearchParams(query));
  * learned about renders as nothing at all, on the one screen somebody has
  * landed on specifically to find out what happened.
  */
-describe('readGitHubReturn', () => {
+describe('readRecoveryReturn', () => {
   it('says nothing at all on an ordinary visit to Settings', () => {
     expect(at('')).toBeNull();
     expect(at('other=1')).toBeNull();
@@ -70,5 +70,36 @@ describe('shouldClaim', () => {
   it('is false when there is nothing to exchange', () => {
     expect(shouldClaim(at('github=recovered'))).toBe(false);
     expect(shouldClaim(null)).toBe(false);
+  });
+});
+
+/**
+ * The second provider. One table serves both, so the thing worth pinning is
+ * that the provider is carried through and named in the copy — a Google
+ * failure that says "GitHub" is how somebody ends up looking for the wrong
+ * account.
+ */
+describe('two providers, one table', () => {
+  it('reads a Google return as Google', () => {
+    const back = at('google=linked&claim=abc');
+    expect(back?.provider).toBe('google');
+    expect(back?.message).toContain('Google');
+    expect(back?.message).not.toContain('GitHub');
+  });
+
+  it('still reads a GitHub return as GitHub', () => {
+    const back = at('github=unlinked');
+    expect(back?.provider).toBe('github');
+    expect(back?.message).toContain('GitHub');
+    expect(back?.message).not.toContain('Google');
+  });
+
+  it('exchanges a Google claim the same way', () => {
+    expect(shouldClaim(at('google=recovered&claim=abc'))).toBe(true);
+    expect(shouldClaim(at('google=failed&claim=abc'))).toBe(false);
+  });
+
+  it('says nothing when neither provider sent anything', () => {
+    expect(at('theme=kitty')).toBeNull();
   });
 });

@@ -82,9 +82,43 @@ export const AWARDS: Record<LogKind, Attributes> = {
  */
 export const TOGETHER_BOND = 10;
 
-export function attributesOf(logs: readonly DayLog[]): Attributes {
+/**
+ * Which members logged anything on each day.
+ *
+ * The one walk every derived number in this file starts from, and the same one
+ * `together.ts` starts from. It used to be written out twice here — once in
+ * `attributesOf` and once in `vitalsOf` — which is two places for the rule
+ * "a day both of you showed up" to be stated, and therefore two places for it
+ * to drift apart.
+ *
+ * A day with an empty `kinds` array is not a day anybody showed up on, so it
+ * never reaches the map.
+ */
+export function dayMembers(logs: readonly DayLog[]): Map<DayKey, Set<MemberId>> {
+  const members = new Map<DayKey, Set<MemberId>>();
+  for (const log of logs) {
+    if (log.kinds.length === 0) continue;
+    const seen = members.get(log.day) ?? new Set<MemberId>();
+    seen.add(log.memberId);
+    members.set(log.day, seen);
+  }
+  return members;
+}
+
+/** A day both of you logged something. The one definition of "together". */
+export function isDuoDay(members: ReadonlySet<MemberId>): boolean {
+  return members.size >= 2;
+}
+
+/**
+ * `members` is accepted so a caller that has already walked the log — `vitalsOf`
+ * below — does not pay for a second walk to get the same map back.
+ */
+export function attributesOf(
+  logs: readonly DayLog[],
+  members: Map<DayKey, Set<MemberId>> = dayMembers(logs),
+): Attributes {
   const total = { ...ZERO_ATTRIBUTES };
-  const membersByDay = new Map<DayKey, Set<MemberId>>();
 
   for (const log of logs) {
     for (const kind of log.kinds) {
@@ -94,14 +128,10 @@ export function attributesOf(logs: readonly DayLog[]): Attributes {
       total.serenity += award.serenity;
       total.bond += award.bond;
     }
-    if (log.kinds.length === 0) continue;
-    const seen = membersByDay.get(log.day) ?? new Set<MemberId>();
-    seen.add(log.memberId);
-    membersByDay.set(log.day, seen);
   }
 
-  for (const members of membersByDay.values()) {
-    if (members.size >= 2) total.bond += TOGETHER_BOND;
+  for (const seen of members.values()) {
+    if (isDuoDay(seen)) total.bond += TOGETHER_BOND;
   }
   return total;
 }
@@ -322,23 +352,17 @@ export const TOGETHER_WINDOW_DAYS = 7;
  * would walk the log five times to say one thing.
  */
 export function vitalsOf(logs: readonly DayLog[], today: DayKey): Vitals {
-  const members = new Map<DayKey, Set<MemberId>>();
-  for (const log of logs) {
-    if (log.kinds.length === 0) continue;
-    const seen = members.get(log.day) ?? new Set<MemberId>();
-    seen.add(log.memberId);
-    members.set(log.day, seen);
-  }
+  const members = dayMembers(logs);
 
   const logged = new Set(members.keys());
-  const togetherDays = [...members.values()].filter((set) => set.size >= 2).length;
+  const togetherDays = [...members.values()].filter(isDuoDay).length;
 
   const recent = new Set<MemberId>();
   for (const [day, seen] of members) {
     if (daysBetween(day, today) < TOGETHER_WINDOW_DAYS) for (const m of seen) recent.add(m);
   }
 
-  const attributes = attributesOf(logs);
+  const attributes = attributesOf(logs, members);
   const xp = totalXp(attributes);
   const streak = sharedStreak(logged, today, shieldsEarned(togetherDays));
 

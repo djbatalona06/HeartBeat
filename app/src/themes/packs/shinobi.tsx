@@ -11,13 +11,23 @@ import type { Theme } from '../types';
  */
 const EMBERS = ['#fb8b24', '#e36414'];
 
-function ShinobiBackdrop({ calm }: { calm: boolean }) {
+/** The same two embers, deepened for paper: on white the bright Princeton
+ *  orange loses most of its contrast, so the light pair steps toward the
+ *  palette's burnt end and the crimson violet the text is drawn in. */
+const EMBERS_LIGHT = ['#d2600c', '#9a031e'];
+
+/** Alpha, not colour, is what mostly fails on a white ground — a translucent
+ *  leaf over black is dim, over white it is gone. */
+const LEAF_ALPHA = { dark: 0.24, light: 0.4 };
+
+function ShinobiBackdrop({ calm, light }: { calm: boolean; light: boolean }) {
+  const palette = light ? EMBERS_LIGHT : EMBERS;
   const leaves = Array.from({ length: 26 }, (_, i) => ({
     x: ((i * 73) % 100) / 100,
     phase: (i * 1.31) % 6.28,
     speed: 0.05 + ((i * 3) % 8) / 200,
     size: 5 + ((i * 7) % 8),
-    ember: EMBERS[i % EMBERS.length],
+    ember: palette[i % palette.length],
   }));
 
   return Backdrop({
@@ -31,7 +41,7 @@ function ShinobiBackdrop({ calm }: { calm: boolean }) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(t * 1.1 + l.phase);
-        ctx.globalAlpha = 0.24;
+        ctx.globalAlpha = light ? LEAF_ALPHA.light : LEAF_ALPHA.dark;
         ctx.fillStyle = l.ember;
         ctx.beginPath();
         ctx.ellipse(0, 0, l.size, l.size * 0.44, 0, 0, Math.PI * 2);
@@ -65,6 +75,27 @@ export const shinobiTheme: Theme = {
     danger: '#9a031e',
     // The palette's one cool note, warmed just enough to read as "good".
     success: '#3eae9b',
+  },
+  /**
+   * Ink and paper, which is the other half of where this theme comes from: the
+   * orange keeps its whole strength, and the crimson violet that was the page
+   * becomes the writing on it.
+   */
+  light: {
+    isLight: true,
+    opaqueSurface: '#ffffff',
+    colors: {
+      base: '#fff6f0',
+      surface: 'rgba(255, 255, 255, 0.95)',
+      surfaceMuted: 'rgba(255, 226, 209, 0.75)',
+      border: 'rgba(154, 3, 30, 0.2)',
+      text: '#3a0927',
+      textMuted: '#7a4450',
+      accent: '#fb8b24',
+      accentText: '#2a0619',
+      danger: '#9a031e',
+      success: '#0e6d5e',
+    },
   },
   typography: {
     display: "'Outfit', system-ui, sans-serif",

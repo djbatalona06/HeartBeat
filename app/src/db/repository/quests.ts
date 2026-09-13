@@ -4,6 +4,7 @@ import { addDays, dayKey } from '../../domain/day';
 import { instantAt } from '../../domain/notify/schedule';
 import { id, now } from './shared';
 import { awardPetXp } from './petXp';
+import { reunionNow } from './together';
 
 
 /* ---- quests --------------------------------------------------------------- */
@@ -41,6 +42,7 @@ import {
 } from '../../domain/quests/engine';
 import {
   QUEST_TEMPLATES,
+  REUNION_TEMPLATE_ID,
   shapeFor,
   shapesAt,
   templateById,
@@ -167,7 +169,18 @@ export async function suggestQuests(today: DayKey): Promise<QuestSuggestion> {
   const { timeZone } = await loadSettings();
   const recent = (await daysByMeasure(timeZone, from, today)) as RecentDays;
   const difficulty = suggestDifficulty(recent);
-  return { difficulty, shapes: seedFrom(shapesAt(difficulty), recent, SEED_WINDOW_DAYS) };
+  const ordered = seedFrom(shapesAt(difficulty), recent, SEED_WINDOW_DAYS);
+
+  // The reunion quest is the one template `seedFrom` does not get to rank. It
+  // is off the board entirely until neither of you has logged anything for
+  // days, and first on it when that is true — a couple coming back to the app
+  // after a fortnight should not have to scroll past six ordinary weeks to
+  // find the one written for them.
+  const isReunion = (shape: QuestShape) => shape.templateId === REUNION_TEMPLATE_ID;
+  const rest = ordered.filter((shape) => !isReunion(shape));
+  const back = await reunionNow(today);
+
+  return { difficulty, shapes: back.offered ? [...ordered.filter(isReunion), ...rest] : rest };
 }
 
 /**

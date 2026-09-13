@@ -3,13 +3,15 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
 import type { Gender, Member, Settings } from '../../domain/types';
-import { useTheme } from '../../themes/ThemeProvider';
+import { useTheme, type ModePreference } from '../../themes/ThemeProvider';
+import { variantOf } from '../../themes/tokens';
+import { supportsHaptics } from '../../pwa/haptics';
 import { THEMES } from '../../themes';
 import { fetchProfiles, health, pairJoin, pairStart, putProfile } from '../../pwa/api';
 import { NotificationsBlock } from './NotificationsBlock';
 import { StudyLinkBlock } from './StudyLinkBlock';
 import { ComplimentBlock } from './ComplimentBlock';
-import { GitHubBlock } from './GitHubBlock';
+import { RecoveryBlock } from './RecoveryBlock';
 import {
   MAX_GENDER_NOTE,
   clearPendingInvite,
@@ -17,6 +19,7 @@ import {
   saveMembersFromServer,
   savePairing,
   setCalmMode as storeCalmMode,
+  setHaptics,
   setThemeChoice,
   setGender,
   setShareCycleNudge,
@@ -39,10 +42,18 @@ import { PHOTO_BUDGET_BYTES, coverBox, formatKb, photoBytes, withinBudget } from
  * anything until two phones are joined, and until this screen existed there was
  * no way to do it from inside the app at all.
  */
+/** Light, dark, or whatever the phone says. Declared here rather than in the
+ *  theme layer because it is a list of labels, not a fact about a palette. */
+const MODE_CHOICES: { id: ModePreference; name: string }[] = [
+  { id: 'system', name: 'System' },
+  { id: 'light', name: 'Light' },
+  { id: 'dark', name: 'Dark' },
+];
+
 export function SettingsPage() {
   const settings = useLiveQuery(loadSettings, []);
   const members = useLiveQuery(() => db.members.toArray(), []);
-  const { themeId, setThemeId, calmMode, setCalmMode } = useTheme();
+  const { themeId, setThemeId, calmMode, setCalmMode, mode, modePreference, setModePreference } = useTheme();
 
   const [backend, setBackend] = useState<'checking' | 'up' | 'down'>('checking');
 
@@ -112,7 +123,7 @@ export function SettingsPage() {
           paired: an unpaired one is exactly where "get back in" belongs, and
           it is the reason Settings stays open while unpaired at all. Renders
           nothing when the deploy has no OAuth app. */}
-      <GitHubBlock token={settings?.workerSecret} paired={paired} />
+      <RecoveryBlock token={settings?.workerSecret} paired={paired} />
 
       <section className="set-block">
         <h2 className="section-title">Theme</h2>
@@ -131,16 +142,39 @@ export function SettingsPage() {
               data-on={themeId === theme.id}
               onClick={() => chooseTheme(theme.id)}
             >
+              {/* The swatch shows the palette that would actually appear, so
+                  switching to Light does not leave five dark chips describing
+                  a screen that is now white. */}
               <span className="theme-swatch" aria-hidden="true">
-                <span style={{ background: theme.colors.base }} />
-                <span style={{ background: theme.colors.surface }} />
-                <span style={{ background: theme.colors.accent }} />
+                <span style={{ background: variantOf(theme, mode).colors.base }} />
+                <span style={{ background: variantOf(theme, mode).colors.surface }} />
+                <span style={{ background: variantOf(theme, mode).colors.accent }} />
               </span>
               <span className="theme-name">{theme.name}</span>
             </button>
           ))}
         </div>
         <p className="section-sub">{THEMES.find((t) => t.id === themeId)?.blurb}</p>
+
+        <div className="mode-row" role="radiogroup" aria-label="Light or dark">
+          {MODE_CHOICES.map((choice) => (
+            <button
+              key={choice.id}
+              type="button"
+              role="radio"
+              aria-checked={modePreference === choice.id}
+              className="mode-option"
+              data-on={modePreference === choice.id}
+              onClick={() => setModePreference(choice.id)}
+            >
+              {choice.name}
+            </button>
+          ))}
+        </div>
+        <p className="section-sub">
+          Every theme comes both ways. System follows your phone, so it turns
+          over when your phone does.
+        </p>
       </section>
 
       <GenderBlock settings={settings} />
@@ -182,6 +216,24 @@ export function SettingsPage() {
         <label className="set-toggle">
           <input type="checkbox" checked={calmMode} onChange={(e) => chooseCalm(e.target.checked)} />
           <span>Still backdrops, no drifting, no pulsing.</span>
+        </label>
+        {/* Its own switch rather than a second meaning for Calm: somebody can
+            want the animations and not the buzzing. Calm still wins over it —
+            a person who asked the app to stop moving did not mean "except in
+            my pocket", and reduced motion is an accessibility setting before
+            it is a taste. Absent means on, so nobody opts in to their phone
+            behaving normally. */}
+        <label className="set-toggle">
+          <input
+            type="checkbox"
+            checked={settings?.haptics !== false}
+            disabled={calmMode}
+            onChange={(e) => void setHaptics(e.target.checked)}
+          />
+          <span>
+            A short buzz when something lands.{' '}
+            {supportsHaptics() ? '' : 'This phone’s browser has no vibration, so it does nothing here.'}
+          </span>
         </label>
       </section>
 

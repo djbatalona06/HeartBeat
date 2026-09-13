@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Receipt, useReceipt } from '../../components/Receipt';
 import { QuestBoard } from '../quests/QuestBoard';
 import { db, loadSettings } from '../../db/database';
 import { VoiceInput } from '../../components/VoiceInput';
@@ -14,7 +15,6 @@ import {
   putTask,
   seedStarterPlan,
   settleTasks,
-  type CompletionReceipt,
 } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { isCompletedOn, isDue, toneFor, toneLine } from '../../domain/rpg/task';
@@ -53,8 +53,7 @@ export function TasksPage() {
   const timeZone = settings?.timeZone ?? DEFAULT_TIMEZONE;
   const day = todayKey(timeZone);
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
-  const [receipt, setReceipt] = useState<CompletionReceipt | null>(null);
-  const [note, setNote] = useState<string | null>(null);
+  const { receipt, show } = useReceipt();
 
   // The sheet has to exist before the first completion, or a fresh install
   // shows a page with no character on it and no way to tell that is temporary.
@@ -94,17 +93,17 @@ export function TasksPage() {
     [tasks],
   );
 
-  // A receipt is a moment, not a state. It clears itself.
-  useEffect(() => {
-    if (!receipt && !note) return;
-    const timer = setTimeout(() => { setReceipt(null); setNote(null); }, 4200);
-    return () => clearTimeout(timer);
-  }, [receipt, note]);
-
   async function onComplete(task: Task) {
     const result = await completeTask(task.id, day);
-    if (result) setReceipt(result);
-    else setNote('Already ticked off today. It comes back tomorrow.');
+    if (!result) {
+      show({ note: 'Already ticked off today. It comes back tomorrow.', haptic: 'error' });
+      return;
+    }
+    show({
+      payout: result.payout,
+      // Only when it actually moved, so the flourish keeps meaning something.
+      level: result.levelAfter > result.levelBefore ? result.levelAfter : undefined,
+    });
   }
 
   return (
@@ -140,7 +139,7 @@ export function TasksPage() {
         />
       ) : null}
 
-      <Receipt receipt={receipt} note={note} />
+      <Receipt content={receipt} />
     </div>
   );
 }
@@ -416,24 +415,5 @@ function AddTask({ onAdd }: {
         </button>
       </div>
     </form>
-  );
-}
-
-function Receipt({ receipt, note }: { receipt: CompletionReceipt | null; note: string | null }) {
-  if (!receipt && !note) return null;
-  return (
-    <div className="receipt" role="status">
-      {note ? <span>{note}</span> : null}
-      {receipt ? (
-        <>
-          <span className="receipt-payout">
-            +{receipt.payout.xp} XP · +{receipt.payout.energy} energy · +{receipt.payout.coins} coins
-          </span>
-          {receipt.levelAfter > receipt.levelBefore ? (
-            <span className="receipt-level">Level {receipt.levelAfter}.</span>
-          ) : null}
-        </>
-      ) : null}
-    </div>
   );
 }

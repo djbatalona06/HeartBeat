@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Receipt, useReceipt } from '../../components/Receipt';
 import { db, loadSettings } from '../../db/database';
 import { ensureIdentity, grantLifeEvent } from '../../db/repository';
 import { todayKey } from '../../domain/day';
@@ -29,7 +30,7 @@ export function FriendsPage() {
   const { theme } = useTheme();
   const settings = useLiveQuery(loadSettings, []);
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const { receipt, say } = useReceipt();
   const [note, setNote] = useState('');
 
   useEffect(() => {
@@ -38,11 +39,6 @@ export function FriendsPage() {
     return () => { live = false; };
   }, []);
 
-  useEffect(() => {
-    if (!message) return;
-    const timer = setTimeout(() => setMessage(null), 4200);
-    return () => clearTimeout(timer);
-  }, [message]);
 
   const memberId = settings?.memberId ?? identity?.memberId;
   const coupleId = settings?.coupleId ?? identity?.coupleId;
@@ -96,9 +92,9 @@ export function FriendsPage() {
       fromMemberId: memberId,
       note: note.trim() || undefined,
     });
-    if (!result.ok) { setMessage(result.reason ?? null); return; }
+    if (!result.ok) { say(result.reason ?? null, 'error'); return; }
     setNote('');
-    setMessage('Sent. They will find it waiting.');
+    say('Sent. They will find it waiting.');
   }
 
   return (
@@ -183,7 +179,7 @@ export function FriendsPage() {
         </>
       )}
 
-      {message ? <div className="receipt" role="status">{message}</div> : null}
+      <Receipt content={receipt} />
     </div>
   );
 }

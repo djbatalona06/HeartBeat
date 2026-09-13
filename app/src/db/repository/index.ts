@@ -27,4 +27,5 @@ export * from './photos';
 export * from './quests';
 export * from './reflections';
 export * from './rpg';
+export * from './together';
 export * from './vitals';

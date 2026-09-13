@@ -308,6 +308,17 @@ export interface Settings {
   /** Same arrangement: the picker holds it in React state, this outlives it. */
   calmMode: boolean;
   /**
+   * Whether the phone may buzz. Optional, and absent means **on**: nobody
+   * should have to opt in to their phone behaving normally, and a required
+   * boolean would have meant every existing row defaulting to `false` and every
+   * existing couple silently losing a feature they never turned off.
+   *
+   * Separate from `calmMode` rather than folded into it, because a person can
+   * want the animations and not the buzzing. Calm still overrides it — see
+   * `domain/feedback/haptics.ts`.
+   */
+  haptics?: boolean;
+  /**
    * Reminders. Both are absent until notifications are turned on from a tap,
    * which is the only way they can be turned on at all.
    */
