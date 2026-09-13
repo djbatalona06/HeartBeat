@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Receipt, useReceipt } from '../../components/Receipt';
 import { db, loadSettings } from '../../db/database';
 import {
   awardBossVictory,
@@ -111,7 +112,7 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
 }) {
   const settings = useLiveQuery(loadSettings, []);
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const { receipt, say } = useReceipt();
 
   // The sheet has to exist before the first completion, or a fresh install
   // shows a page with no character on it and no way to tell that is temporary.
@@ -148,11 +149,6 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
     [identity?.coupleId],
   );
 
-  useEffect(() => {
-    if (!message) return;
-    const timer = setTimeout(() => setMessage(null), 4200);
-    return () => clearTimeout(timer);
-  }, [message]);
 
   return (
     <div className="page">
@@ -182,13 +178,13 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
                 { rarity: Math.random(), species: Math.random() },
                 luck,
               );
-              if (!result.ok) { setMessage(result.reason ?? null); return; }
+              if (!result.ok) { say(result.reason ?? null, 'error'); return; }
               const name = petKindById(result.pet!.kindId)!.name;
-              setMessage(result.merged ? `Another ${name}. Two of the same found each other.` : `${name} hatched.`);
+              say(result.merged ? `Another ${name}. Two of the same found each other.` : `${name} hatched.`);
             }}
             onAdventure={async () => {
               const result = await startAdventure(identity.memberId, identity.coupleId);
-              setMessage(result.ok ? `Gone for ${result.hours} hours.` : result.reason ?? null);
+              say(result.ok ? `Gone for ${result.hours} hours.` : result.reason ?? null);
             }}
           />
           ) : null}
@@ -199,7 +195,7 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
             owned={owned ?? []}
             onEquip={async (itemId) => {
               const result = await equipItem(identity.memberId, identity.coupleId, itemId);
-              if (!result.ok) setMessage(result.reason ?? null);
+              if (!result.ok) say(result.reason ?? null, 'error');
             }}
             onUnequip={(slot) => unequipSlot(identity.memberId, identity.coupleId, slot)}
             /* Worn no longer carries the shop with it, so it can no longer send
@@ -214,11 +210,11 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
             owned={owned ?? []}
             onBuy={async (dyeId) => {
               const result = await buyDye(identity.memberId, identity.coupleId, dyeId);
-              setMessage(result.ok ? 'Bought. Tap it again to put it on.' : result.reason ?? null);
+              say(result.ok ? 'Bought. Tap it again to put it on.' : result.reason ?? null, result.ok ? 'success' : 'error');
             }}
             onWear={async (dyeId) => {
               const result = await wearDye(identity.memberId, identity.coupleId, dyeId);
-              if (!result.ok) setMessage(result.reason ?? null);
+              if (!result.ok) say(result.reason ?? null, 'error');
             }}
           />
           ) : null}
@@ -233,8 +229,8 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
               const result = await startAdventure(
                 identity.memberId, identity.coupleId, placeId, Math.random(),
               );
-              if (!result.ok) setMessage(result.reason ?? null);
-              else setMessage(
+              if (!result.ok) say(result.reason ?? null, 'error');
+              else say(
                 `${result.place}: came back with ${result.found}.`
                 + (result.bounty ? ` +${result.bounty} coins for getting there first.` : ''),
               );
@@ -249,11 +245,11 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
             avatar={avatar}
             onPlace={async (slot, itemId) => {
               const result = await placeFurniture(identity.memberId, identity.coupleId, slot, itemId);
-              if (!result.ok) setMessage(result.reason ?? null);
+              if (!result.ok) say(result.reason ?? null, 'error');
             }}
             onClear={async (slot) => {
               const result = await placeFurniture(identity.memberId, identity.coupleId, slot, undefined);
-              if (!result.ok) setMessage(result.reason ?? null);
+              if (!result.ok) say(result.reason ?? null, 'error');
             }}
           />
           ) : null}
@@ -264,8 +260,8 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
             owned={owned ?? []}
             onBuy={async (itemId) => {
               const result = await buyGear(identity.memberId, identity.coupleId, itemId);
-              if (!result.ok) setMessage(result.reason ?? null);
-              else if (result.refined) setMessage(`Refined to +${result.refined}.`);
+              if (!result.ok) say(result.reason ?? null, 'error');
+              else if (result.refined) say(`Refined to +${result.refined}.`);
             }}
           />
           ) : null}
@@ -276,7 +272,7 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
             owned={owned ?? []}
             onBuy={async (itemId) => {
               const result = await buyFurniture(identity.memberId, identity.coupleId, itemId);
-              setMessage(result.ok ? 'Bought. Place it on the Birb tab.' : result.reason ?? null);
+              say(result.ok ? 'Bought. Place it on the Birb tab.' : result.reason ?? null, result.ok ? 'success' : 'error');
             }}
           />
           ) : null}
@@ -290,7 +286,7 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
             token={settings?.workerSecret}
             onSpendMp={(amount) => spendMp(identity.memberId, identity.coupleId, amount)}
             onSpendPetMp={spendPetMp}
-            onMessage={setMessage}
+            onMessage={(text) => say(text)}
           />
           ) : null}
 
@@ -300,7 +296,7 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
         </>
       ) : null}
 
-      {message ? <div className="receipt" role="status">{message}</div> : null}
+      <Receipt content={receipt} />
     </div>
   );
 }

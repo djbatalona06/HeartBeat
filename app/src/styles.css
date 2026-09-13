@@ -4136,15 +4136,6 @@ body {
 .asset-shop-note { margin: var(--space-4) 0 0; }
 .asset-shop-note a { color: var(--color-accent); }
 
-.asset-message {
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius);
-  background: var(--color-surface-muted);
-  border: var(--border-width) solid var(--color-border);
-  font-size: var(--text-sm);
-  line-height: var(--line-body);
-}
-
 .asset-shelf + .asset-shelf { margin-top: var(--space-5); }
 
 .asset-shelf-name {

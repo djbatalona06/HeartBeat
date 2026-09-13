@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Receipt, useReceipt } from '../../components/Receipt';
 import {
   ensureIdentity, equipItem, getOrCreateAvatar, holdingsOf, setCompanion, unequipSlot,
 } from '../../db/repository';
@@ -31,16 +32,13 @@ import { petArt } from '../party/art/pets';
  * that can equip an item.
  */
 
-/** How long a confirmation stays up. Matches Party's own toast. */
-const MESSAGE_MS = 4200;
-
 function dateOf(at: number): string {
   return new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 export function AssetsPage() {
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const { receipt, say } = useReceipt();
 
   // The avatar has to exist before the shelves can know what level gates what.
   useEffect(() => {
@@ -52,11 +50,6 @@ export function AssetsPage() {
     return () => { live = false; };
   }, []);
 
-  useEffect(() => {
-    if (!message) return;
-    const timer = setTimeout(() => setMessage(null), MESSAGE_MS);
-    return () => clearTimeout(timer);
-  }, [message]);
 
   // One live query over all four tables rather than four. Dexie observes every
   // table the callback reads, so this stays reactive to a purchase, an equip
@@ -107,7 +100,7 @@ export function AssetsPage() {
         </p>
       </section>
 
-      {message ? <p className="asset-message" role="status">{message}</p> : null}
+      <Receipt content={receipt} />
 
       <section className="panel">
         <h2 className="section-title">Gear</h2>
@@ -125,7 +118,7 @@ export function AssetsPage() {
               shelf={shelf}
               onEquip={async (itemId) => {
                 const result = await equipItem(identity.memberId, identity.coupleId, itemId);
-                if (result && !result.ok) setMessage(result.reason ?? 'That would not go on.');
+                if (result && !result.ok) say(result.reason ?? 'That would not go on.', 'error');
               }}
               onUnequip={async (slot) => {
                 await unequipSlot(identity.memberId, identity.coupleId, slot);

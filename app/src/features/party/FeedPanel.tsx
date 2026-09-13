@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Receipt, useReceipt } from '../../components/Receipt';
 import { db } from '../../db/database';
 import { grantLifeEvent, putCheer } from '../../db/repository';
 import { postCycleNudge } from '../../pwa/api';
@@ -44,14 +45,9 @@ interface Props {
 export function FeedPanel({
   coupleId, memberId, day, tracksCycle, shareCycleNudge, token,
 }: Props) {
-  const [message, setMessage] = useState<string | null>(null);
+  const { receipt, say } = useReceipt();
   const [milestone, setMilestone] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!message) return;
-    const timer = setTimeout(() => setMessage(null), 4200);
-    return () => clearTimeout(timer);
-  }, [message]);
 
   // One live query for both halves. The cheers come back in a single `anyOf`
   // rather than a lookup per event: this re-fires on every cheer, and a query
@@ -92,7 +88,7 @@ export function FeedPanel({
 
   async function log(kind: LifeEventKind, note?: string) {
     const result = await grantLifeEvent(coupleId, memberId, kind, day, { note });
-    setMessage(result.ok ? 'Logged. The list can wait.' : result.reason ?? null);
+    say(result.ok ? 'Logged. The list can wait.' : result.reason ?? null, result.ok ? 'success' : 'error');
     if (!result.ok) return;
 
     // A day one can tell the other phone, if this phone's owner has said it
@@ -106,7 +102,7 @@ export function FeedPanel({
 
   async function cheer(event: LifeEvent) {
     const result = await putCheer(coupleId, memberId, event);
-    if (!result.ok) setMessage(result.reason ?? null);
+    if (!result.ok) say(result.reason ?? null, 'error');
   }
 
   return (
@@ -203,7 +199,7 @@ export function FeedPanel({
         </p>
       )}
 
-      {message ? <div className="receipt" role="status">{message}</div> : null}
+      <Receipt content={receipt} />
     </section>
   );
 }

@@ -26,6 +26,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 const STORAGE_KEY = 'heartbeat.theme';
 const MODE_KEY = 'heartbeat.mode';
+const CALM_KEY = 'heartbeat.calm';
 
 function readStored(): string {
   try {
@@ -48,9 +49,35 @@ function readStoredMode(): ModePreference {
   }
 }
 
+/**
+ * Calm mode was being written and never read.
+ *
+ * `setCalmMode` in `db/repository/members.ts` has always saved it to the
+ * settings row, and nothing has ever loaded it back: this state was
+ * `useState(false)` and its only writer was the Settings toggle. So Calm
+ * survived exactly as long as the tab did. Turn it on, reload, and the
+ * backdrops are drifting again — which is the opposite of what somebody asks
+ * for when they ask for stillness, and worse than never having offered it,
+ * because they had to go and find the switch to discover it had forgotten.
+ *
+ * Read from `localStorage` rather than from Dexie, for the reason `themeId` and
+ * the light/dark mode already are: it is synchronous, so the first paint is
+ * already calm instead of animating for a frame and then stopping — and it
+ * keeps this module free of a database import it has never needed. The settings
+ * row stays the durable copy that survives storage being cleared.
+ */
+function readStoredCalm(): boolean {
+  try {
+    return localStorage.getItem(CALM_KEY) === 'true';
+  } catch {
+    // Private mode and blocked site data throw here rather than returning null.
+    return false;
+  }
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [themeId, setThemeIdState] = useState(readStored);
-  const [calmMode, setCalmMode] = useState(false);
+  const [calmMode, setCalmModeState] = useState(readStoredCalm);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [modePreference, setModePreferenceState] = useState(readStoredMode);
   const [prefersDark, setPrefersDark] = useState(true);
@@ -93,6 +120,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, id);
     } catch {
       // A theme that cannot be remembered is still a theme that works today.
+    }
+  }
+
+  function setCalmMode(on: boolean): void {
+    setCalmModeState(on);
+    try {
+      localStorage.setItem(CALM_KEY, String(on));
+    } catch {
+      // A preference that cannot be remembered is still one that works today.
     }
   }
 

@@ -5,6 +5,7 @@ import { db, loadSettings } from '../../db/database';
 import type { Gender, Member, Settings } from '../../domain/types';
 import { useTheme, type ModePreference } from '../../themes/ThemeProvider';
 import { variantOf } from '../../themes/tokens';
+import { supportsHaptics } from '../../pwa/haptics';
 import { THEMES } from '../../themes';
 import { fetchProfiles, health, pairJoin, pairStart, putProfile } from '../../pwa/api';
 import { NotificationsBlock } from './NotificationsBlock';
@@ -18,6 +19,7 @@ import {
   saveMembersFromServer,
   savePairing,
   setCalmMode as storeCalmMode,
+  setHaptics,
   setThemeChoice,
   setGender,
   setShareCycleNudge,
@@ -214,6 +216,24 @@ export function SettingsPage() {
         <label className="set-toggle">
           <input type="checkbox" checked={calmMode} onChange={(e) => chooseCalm(e.target.checked)} />
           <span>Still backdrops, no drifting, no pulsing.</span>
+        </label>
+        {/* Its own switch rather than a second meaning for Calm: somebody can
+            want the animations and not the buzzing. Calm still wins over it —
+            a person who asked the app to stop moving did not mean "except in
+            my pocket", and reduced motion is an accessibility setting before
+            it is a taste. Absent means on, so nobody opts in to their phone
+            behaving normally. */}
+        <label className="set-toggle">
+          <input
+            type="checkbox"
+            checked={settings?.haptics !== false}
+            disabled={calmMode}
+            onChange={(e) => void setHaptics(e.target.checked)}
+          />
+          <span>
+            A short buzz when something lands.{' '}
+            {supportsHaptics() ? '' : 'This phone’s browser has no vibration, so it does nothing here.'}
+          </span>
         </label>
       </section>
 

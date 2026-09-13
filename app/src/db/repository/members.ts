@@ -89,6 +89,12 @@ export async function setCalmMode(calmMode: boolean): Promise<void> {
   await saveSettings({ calmMode });
 }
 
+/** Its own switch rather than a second meaning for Calm: somebody can want the
+ *  animations and not the buzzing. Calm still wins over it. */
+export async function setHaptics(haptics: boolean): Promise<void> {
+  await saveSettings({ haptics });
+}
+
 /**
  * Cycle ownership has one answer, and it is this one. `Member.tracksCycle` is
  * copied from it so the couple's rows are complete, and is never read back to
