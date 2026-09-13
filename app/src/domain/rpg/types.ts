@@ -186,6 +186,16 @@ export interface Avatar {
    */
   dye?: string;
   /**
+   * Eggs bought since the last epic or better, for the pity floor in
+   * `pets.ts`. Optional, and absent means zero: it rides this payload the way
+   * `dye` and `visited` already do, so it costs no migration and no Dexie
+   * version — `avatars` is indexed on `memberId, coupleId` and nothing else.
+   *
+   * Per member rather than per couple, because an egg is bought with one
+   * person's coins and a floor earned by one person's bad luck is theirs.
+   */
+  pity?: number;
+  /**
    * Places this member's bird has been, as `Place.id`s — see `locations.ts`.
    * The arrival bounty is paid once, and this is what remembers that. Per
    * member rather than per couple because energy is: you each send your own

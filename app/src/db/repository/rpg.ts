@@ -20,7 +20,9 @@ import { adventureCost } from '../../domain/rpg/stage';
 import { canTravel, findAt, isNewTo, placeById, travelCost } from '../../domain/rpg/locations';
 import { GOOD_VIBES_SENDER_GRANT, checkGrant, grantFor } from '../../domain/rpg/lifeEvents';
 import { equip, unequip } from '../../domain/rpg/gear';
-import { maxPetMp, petKindById, rankOf, rollKind, type PetInstance } from '../../domain/rpg/pets';
+import {
+  maxPetMp, nextPity, petKindById, rankOf, rollKind, type PetInstance,
+} from '../../domain/rpg/pets';
 import { refineByItemId } from '../../domain/rpg/inventory';
 import { DUPLICATE_PET_BOND, EGG_PRICE, canAfford, gearBonusWithRefinement } from '../../domain/rpg/shop';
 import { id, now } from './shared';
@@ -475,9 +477,14 @@ export async function buyEgg(
 
     const paid = spend(avatar, { coins: EGG_PRICE }, now());
     if (!paid) return { ok: false, reason: 'Not enough coins.' };
-    await db.avatars.put(paid);
 
-    const kind = rollKind(rolls.rarity, rolls.species, luck, victoryBonus);
+    // Rolled before the write, so the new pity count rides the same `put` the
+    // payment already makes rather than needing a second one. Inside the
+    // transaction either way, so a roll and its counter cannot come apart.
+    const pity = paid.pity ?? 0;
+    const kind = rollKind(rolls.rarity, rolls.species, luck, victoryBonus, pity);
+    await db.avatars.put({ ...paid, pity: nextPity(pity, kind.rarity) });
+
     const existing = await db.pets.where('[memberId+kindId]').equals([memberId, kind.id]).first();
 
     if (existing) {

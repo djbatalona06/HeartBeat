@@ -296,9 +296,78 @@ export function dropChances(luck: number, bonus = 0): Record<Rarity, number> {
   };
 }
 
-/** `roll` is a number in [0, 1). Passed in so the caller owns the randomness. */
-export function rollRarity(roll: number, luck: number, bonus = 0): Rarity {
-  const chances = dropChances(luck, bonus);
+/* ---- pity ------------------------------------------------------------------
+ * Insurance against a bad run, and nothing else.
+ */
+
+/**
+ * Eggs without an epic or better before one is guaranteed.
+ *
+ * Fifteen, and the number is chosen to do one job. The base chance of epic or
+ * better is 13%, so the expected wait is about eight eggs and the chance of
+ * going fifteen without is `0.87^15`, a little under one run in eight. So this
+ * **removes the bad tail without moving the median** — which is the whole
+ * honest purpose of a pity system, and the only version of it worth having.
+ *
+ * A hard floor on *godly* instead would need a counter in the thirties to mean
+ * anything at 3%, and at 120 coins an egg that is months away. A promise nobody
+ * lives to collect is not a promise.
+ *
+ * What this deliberately is not: a countdown, a second currency, or something
+ * that can be bought down. Nothing anywhere tells a couple their pity is about
+ * to do anything, because the point is that a bad run stops quietly, not that
+ * there is a new number to feel anxious about.
+ */
+export const PITY_AT = 15;
+
+/** The floor in force at this count, or null when there is none. */
+export function pityFloor(pity: number): Rarity | null {
+  return pity >= PITY_AT ? 'epic' : null;
+}
+
+/**
+ * The odds of the **next** egg, which is the only table worth showing anyone.
+ *
+ * `dropChances` answers "what are the odds in general". This answers "what are
+ * the odds for the pull this couple is about to make", and the difference is
+ * the whole reason publishing them is defensible: a pity system silently lifts
+ * the real rate above the printed one, so a screen showing a flat 10% next to a
+ * guarantee it does not mention is telling a small lie every fifteenth egg.
+ *
+ * At the floor, common and rare fall to zero and epic and godly are rescaled
+ * against each other. That keeps their *relative* weights exactly as they were,
+ * so pity never decides which of the two you get — it only rules out the two
+ * below them.
+ */
+export function chancesFor(luck: number, bonus = 0, pity = 0): Record<Rarity, number> {
+  const base = dropChances(luck, bonus);
+  if (!pityFloor(pity)) return base;
+
+  const tail = base.godly + base.epic;
+  // `dropChances` can only reach zero here through absurd inputs, and a divide
+  // by zero would poison every later comparison rather than throwing.
+  if (tail <= 0) return { common: 0, rare: 0, epic: 1, godly: 0 };
+  return { common: 0, rare: 0, epic: base.epic / tail, godly: base.godly / tail };
+}
+
+/**
+ * The counter after a hatch: cleared by an epic or better, and otherwise one
+ * higher. Pure, so the repository has no arithmetic of its own to get wrong.
+ */
+export function nextPity(pity: number, got: Rarity): number {
+  if (got === 'epic' || got === 'godly') return 0;
+  return Math.max(0, pity) + 1;
+}
+
+/**
+ * `roll` is a number in [0, 1). Passed in so the caller owns the randomness.
+ *
+ * Reads `chancesFor` rather than `dropChances`, which is what makes the floor
+ * apply without a branch here: at the floor the two bottom rarities are simply
+ * zero-width and unreachable.
+ */
+export function rollRarity(roll: number, luck: number, bonus = 0, pity = 0): Rarity {
+  const chances = chancesFor(luck, bonus, pity);
   // Rarest first, so the tail is what a high roll reaches.
   let ceiling = 0;
   for (const rarity of ['godly', 'epic', 'rare'] as Rarity[]) {
@@ -309,8 +378,14 @@ export function rollRarity(roll: number, luck: number, bonus = 0): Rarity {
 }
 
 /** Which of the four species, given a second independent roll. */
-export function rollKind(rarityRoll: number, speciesRoll: number, luck: number, bonus = 0): PetKind {
-  const pool = petKindsOfRarity(rollRarity(rarityRoll, luck, bonus));
+export function rollKind(
+  rarityRoll: number,
+  speciesRoll: number,
+  luck: number,
+  bonus = 0,
+  pity = 0,
+): PetKind {
+  const pool = petKindsOfRarity(rollRarity(rarityRoll, luck, bonus, pity));
   const index = Math.min(pool.length - 1, Math.floor(Math.max(0, speciesRoll) * pool.length));
   return pool[index];
 }

@@ -12,6 +12,10 @@ import {
   petKindsOfRarity,
   petSheet,
   rankOf,
+  PITY_AT,
+  chancesFor,
+  nextPity,
+  pityFloor,
   rollKind,
   rollRarity,
   type PetInstance,
@@ -243,5 +247,160 @@ describe('rolling a drop', () => {
   it('never rolls a species off the end of the pool', () => {
     expect(rollKind(0, 0.999999, 0)).toBeTruthy();
     expect(rollKind(0.999999, 1, 0)).toBeTruthy();
+  });
+});
+
+/* ---- pity -----------------------------------------------------------------
+ * Two properties carry this feature, and both fail silently.
+ *
+ * A pity that never fires is a comment. A pity that quietly lifts the real
+ * rate above the printed one turns the odds on screen into a lie — which is
+ * worse than not publishing them, because somebody is now relying on a number
+ * that is wrong.
+ */
+
+describe('pityFloor', () => {
+  it('holds off until exactly PITY_AT, not one egg earlier', () => {
+    expect(pityFloor(PITY_AT - 1)).toBeNull();
+    expect(pityFloor(PITY_AT)).toBe('epic');
+  });
+
+  it('stays in force past the threshold rather than lapsing', () => {
+    expect(pityFloor(PITY_AT + 40)).toBe('epic');
+  });
+
+  it('is not tripped by a negative count', () => {
+    expect(pityFloor(-5)).toBeNull();
+  });
+});
+
+describe('nextPity', () => {
+  it('clears on an epic or better, and only on those', () => {
+    expect(nextPity(9, 'epic')).toBe(0);
+    expect(nextPity(9, 'godly')).toBe(0);
+    expect(nextPity(9, 'rare')).toBe(10);
+    expect(nextPity(9, 'common')).toBe(10);
+  });
+
+  it('counts up from nothing, and never below it', () => {
+    expect(nextPity(0, 'common')).toBe(1);
+    expect(nextPity(-3, 'common')).toBe(1);
+  });
+});
+
+describe('chancesFor', () => {
+  it('is the ordinary table until the floor is reached', () => {
+    expect(chancesFor(0, 0, PITY_AT - 1)).toEqual(dropChances(0, 0));
+    expect(chancesFor(6, 0.25, 3)).toEqual(dropChances(6, 0.25));
+  });
+
+  it('rules out the bottom two at the floor, and still sums to one', () => {
+    const at = chancesFor(0, 0, PITY_AT);
+    expect(at.common).toBe(0);
+    expect(at.rare).toBe(0);
+    expect(at.epic + at.godly).toBeCloseTo(1, 10);
+  });
+
+  /** Pity rules out the two below epic. It does not get an opinion about
+   *  which of the two above you land on. */
+  it('keeps godly and epic in exactly their old proportion', () => {
+    const base = dropChances(0, 0);
+    const at = chancesFor(0, 0, PITY_AT);
+    expect(at.godly / at.epic).toBeCloseTo(base.godly / base.epic, 10);
+  });
+
+  it('never sums to more or less than one, at any luck or bonus', () => {
+    for (const luck of [0, 5, 20, 100]) {
+      for (const bonus of [0, 0.2, 0.3]) {
+        for (const pity of [0, PITY_AT]) {
+          const c = chancesFor(luck, bonus, pity);
+          const total = c.common + c.rare + c.epic + c.godly;
+          expect(total, `luck ${luck} bonus ${bonus} pity ${pity}`).toBeCloseTo(1, 10);
+        }
+      }
+    }
+  });
+});
+
+describe('rollRarity under pity', () => {
+  it('can only hand back an epic or a godly at the floor', () => {
+    const n = 2000;
+    for (let i = 0; i < n; i += 1) {
+      const got = rollRarity((i + 0.5) / n, 0, 0, PITY_AT);
+      expect(['epic', 'godly']).toContain(got);
+    }
+  });
+
+  /** The floor lifts; it must never pull a good roll down. */
+  it('never lowers a roll that was already epic or better', () => {
+    const n = 2000;
+    for (let i = 0; i < n; i += 1) {
+      const roll = (i + 0.5) / n;
+      const without = rollRarity(roll, 0, 0, 0);
+      if (without !== 'epic' && without !== 'godly') continue;
+      const withPity = rollRarity(roll, 0, 0, PITY_AT);
+      if (without === 'godly') expect(withPity).toBe('godly');
+      else expect(['epic', 'godly']).toContain(withPity);
+    }
+  });
+});
+
+describe('pity end to end', () => {
+  /** A cheap deterministic generator, so the run is reproducible and a failure
+   *  is a failure rather than a bad afternoon. */
+  function rng(seed: number): () => number {
+    let state = seed >>> 0;
+    return () => {
+      state = (state * 1664525 + 1013904223) >>> 0;
+      return state / 0x100000000;
+    };
+  }
+
+  /**
+   * The promise, exercised: walk a long run of eggs the way `buyEgg` does and
+   * assert that a couple is never made to sit through more than PITY_AT of
+   * them without something good.
+   */
+  it('never lets a run of PITY_AT eggs pass without an epic or better', () => {
+    const next = rng(20260913);
+    let pity = 0;
+    let sinceGood = 0;
+    let fired = 0;
+
+    for (let i = 0; i < 100_000; i += 1) {
+      const atFloor = pityFloor(pity) !== null;
+      const got = rollRarity(next(), 0, 0, pity);
+      if (atFloor) fired += 1;
+
+      if (got === 'epic' || got === 'godly') sinceGood = 0;
+      else sinceGood += 1;
+
+      expect(sinceGood).toBeLessThanOrEqual(PITY_AT);
+      pity = nextPity(pity, got);
+    }
+
+    // And it is actually doing something — a pity that never triggers across a
+    // hundred thousand eggs would pass the assertion above and mean nothing.
+    expect(fired).toBeGreaterThan(0);
+  });
+
+  /**
+   * The honesty property. The table the screen shows is `chancesFor`, so the
+   * empirical distribution of the next pull must match it — at the floor and
+   * away from it. If this drifts, the published odds have become a lie.
+   */
+  it('matches the odds it publishes, both at the floor and away from it', () => {
+    for (const pity of [0, PITY_AT]) {
+      const next = rng(7 + pity);
+      const want = chancesFor(0, 0, pity);
+      const seen: Record<string, number> = { common: 0, rare: 0, epic: 0, godly: 0 };
+      const n = 200_000;
+
+      for (let i = 0; i < n; i += 1) seen[rollRarity(next(), 0, 0, pity)] += 1;
+
+      for (const rarity of ['common', 'rare', 'epic', 'godly'] as const) {
+        expect(seen[rarity] / n, `${rarity} at pity ${pity}`).toBeCloseTo(want[rarity], 2);
+      }
+    }
   });
 });
