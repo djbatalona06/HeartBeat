@@ -16,6 +16,7 @@ export * from './assets';
 export * from './chat';
 export * from './cheers';
 export * from './cosmetics';
+export * from './encounters';
 export * from './entries';
 export * from './goals';
 export * from './identity';

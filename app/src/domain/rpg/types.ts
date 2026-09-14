@@ -202,6 +202,23 @@ export interface Avatar {
    * bird, so you each have your own atlas.
    */
   visited?: string[];
+  /**
+   * Enemies this member's bird has beaten at least once, as `Enemy.id`s — see
+   * `enemies.ts`. The first-win coin bounty is paid once, and this is what
+   * remembers that.
+   *
+   * Optional, and absent means none: it rides this payload exactly the way
+   * `dye`, `pity` and `visited` already do, which is why the overworld needs no
+   * Dexie version, no `REKEY_TABLES` entry and no new holding kind. `Avatar`
+   * already syncs as kind `avatar`, the payload is opaque JSON, and three short
+   * ids are nowhere near the wire limit.
+   *
+   * Per member rather than per couple, for the same reason `visited` is: a
+   * bounty earned by one person walking into the garden is theirs. The *shared*
+   * half of a victory is the pet's XP, and that travels by its own additive
+   * queue in `repository/petXp.ts`.
+   */
+  bested?: string[];
   updatedAt: number;
 }
 
