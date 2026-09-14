@@ -107,6 +107,11 @@ export const REKEY_TABLES: readonly TableRekey[] = [
   // `buildFeed`), so a re-cheer after pairing reads as one person, not two.
   { table: 'cheers', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   { table: 'pet', primaryKey: 'coupleId', memberFields: [], coupleFields: ['coupleId'] },
+  // Eve's Garden's world, the same shape as `pet`: its primary key *is* the
+  // couple id, so the row is moved rather than updated in place. Left out, a
+  // couple who paired after playing would find the garden reset to island 1
+  // stage 1 with every cleared stage stranded under an id nobody has.
+  { table: 'worldProgress', primaryKey: 'coupleId', memberFields: [], coupleFields: ['coupleId'] },
   // Couple-level, both of them: no memberId to move, and no slot to collide on
   // — pairing mints a fresh coupleId, so nothing is already sitting there.
   { table: 'quests', primaryKey: 'id', memberFields: [], coupleFields: ['coupleId'] },

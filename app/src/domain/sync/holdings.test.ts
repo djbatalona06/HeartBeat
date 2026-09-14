@@ -81,6 +81,9 @@ describe('the wire shape', () => {
       pet: () => ({ id: 'p1', updatedAt: AT }),
       task: () => ({ id: 't1', updatedAt: AT }),
       lifeEvent, cheer,
+      // Keyed by coupleId and carrying no `id` at all — the shape that makes
+      // `keyOf` more than `row.id`.
+      world: () => ({ coupleId: 'couple-1', island: 1, cleared: [], updatedAt: AT }),
     };
     for (const kind of HOLDING_KINDS) {
       const key = keyOf(kind, rows[kind]() as never);
@@ -120,15 +123,15 @@ describe('which kinds are writable, and which are merely visible', () => {
    * display decision. A test that let the two collapse back into each other
    * would let a display decision quietly hand out write permission.
    */
-  it('lets either of you write only the quest', () => {
-    expect(PARTNER_WRITABLE_KINDS).toEqual(['quest']);
+  it('lets either of you write only the quest and the shared world', () => {
+    expect(PARTNER_WRITABLE_KINDS).toEqual(['quest', 'world']);
     for (const kind of HOLDING_KINDS) {
-      expect(isPartnerWritable(kind), kind).toBe(kind === 'quest');
+      expect(isPartnerWritable(kind), kind).toBe(kind === 'quest' || kind === 'world');
     }
   });
 
-  it('shows both of you the quest, life events and cheers', () => {
-    expect(PARTNER_VISIBLE_KINDS).toEqual(['quest', 'lifeEvent', 'cheer']);
+  it('shows both of you the quest, life events, cheers and the world', () => {
+    expect(PARTNER_VISIBLE_KINDS).toEqual(['quest', 'lifeEvent', 'cheer', 'world']);
   });
 
   it('makes every writable kind visible, but not the reverse', () => {

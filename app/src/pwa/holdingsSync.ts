@@ -38,6 +38,7 @@ function storeFor(kind: HoldingKind) {
     case 'task': return db.tasks;
     case 'lifeEvent': return db.lifeEvents;
     case 'cheer': return db.cheers;
+    case 'world': return db.worldProgress;
   }
 }
 
@@ -65,6 +66,10 @@ async function collectPending(memberId: string, since: number): Promise<WireHold
   for (const kind of HOLDING_KINDS) {
     const rows = kind === 'quest'
       ? await db.quests.toArray()
+      : kind === 'world'
+        // Couple-level and keyed by coupleId, so — like the quest — there is no
+        // member index to read it by. There is exactly one row.
+        ? await db.worldProgress.toArray()
       : kind === 'lifeEvent'
         ? await db.lifeEvents.toArray()
         : kind === 'avatar'

@@ -19,8 +19,27 @@ const BASE = process.env.APP_BASE ?? '/';
 // and it is the only layout small enough to ship.
 const DOTNET_RELEASE = process.env.NODE_ENV !== 'development';
 
+const dotnetWasm = () =>
+  DotnetWasm({
+    projectName: 'HeartBeat.Game.Wasm',
+    projectRoot: '../game/HeartBeat.Game.Wasm',
+    configuration: DOTNET_RELEASE ? 'Release' : 'Debug',
+    targetFramework: 'net10.0',
+    isPublish: DOTNET_RELEASE,
+    logLevel: 'warn',
+  });
+
 export default defineConfig({
   base: BASE,
+  // The .NET runtime is imported by `engine/game.worker.ts`, and Vite bundles
+  // a worker in its own Rollup pass that does NOT inherit the plugins above.
+  // Without this the build fails at `_framework/dotnet.js` with "no known
+  // conditions" — Vite falling back to resolving the plugin's type-only shim
+  // package as if it were a real dependency.
+  worker: {
+    format: 'es',
+    plugins: () => [dotnetWasm()],
+  },
   build: {
     rollupOptions: {
       output: {
@@ -35,14 +54,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    DotnetWasm({
-      projectName: 'HeartBeat.Game.Wasm',
-      projectRoot: '../game/HeartBeat.Game.Wasm',
-      configuration: DOTNET_RELEASE ? 'Release' : 'Debug',
-      targetFramework: 'net10.0',
-      isPublish: DOTNET_RELEASE,
-      logLevel: 'warn',
-    }),
+    dotnetWasm(),
     VitePWA({
       registerType: 'prompt',
       injectRegister: null,
@@ -75,15 +87,20 @@ export default defineConfig({
         // it; see the trimming switches in HeartBeat.Game.Wasm.csproj.
         //
         // Same consequence, stated the same way: Eve's Garden needs one online
-        // visit before it works offline. The runtime is emitted under
-        // `assets/` with content hashes by the plugin, so both the `.wasm`
-        // payloads and the loader chunks are named here.
+        // visit before it works offline.
+        //
+        // Only one pattern is needed, and it is not the obvious one. The
+        // `.wasm` payloads are already out because `globPatterns` above never
+        // listed `wasm` — so the thing that actually leaks is
+        // `game.worker-*.js`, the worker chunk, which has the runtime's three
+        // loader scripts bundled into it and weighs 300 KB on its own. Naming
+        // the `.wasm` files here would look like the fix and change nothing.
+        //
+        // Check this with `npm run build` and read the entry count: it should
+        // stay at 15 entries / ~910 KiB.
         globIgnores: [
           'assets/phaser-*.js',
-          'assets/dotnet*',
-          'assets/*.wasm',
-          'assets/System.*',
-          'assets/HeartBeat.Game.Wasm*',
+          'assets/game.worker-*.js',
         ],
       },
       manifest: {
