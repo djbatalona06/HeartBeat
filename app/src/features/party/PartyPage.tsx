@@ -16,6 +16,7 @@ import {
   getOrCreateAvatar,
   equipItem,
   markLoreSeen,
+  openChestFor,
   setCompanion,
   spendMp,
   spendPetMp,
@@ -58,6 +59,11 @@ import { BorderGlow } from '../../components/BorderGlow';
 import { AchievementShelf } from '../achievements/AchievementShelf';
 import { gearArt } from './art/gear';
 import { petArt } from './art/pets';
+import { ChestAlcove } from './ChestAlcove';
+import { Purchases } from './Purchases';
+import { TIER_NAMES } from '../../domain/rpg/tiers';
+import { PRIZE_KIND_NAMES } from '../../domain/rpg/chests';
+import type { ChestOutcome } from '../../db/repository/chests';
 
 /**
  * How brightly a companion's card is lit, by how rare it is.
@@ -67,6 +73,37 @@ import { petArt } from './art/pets';
  * saying so. Mythic is the one rung that is not gold: it is white, because
  * after four rungs of getting warmer the only place left to go is brighter.
  */
+/**
+ * What a chest actually gave you, in one line.
+ *
+ * Four cases and they are genuinely different events: a new thing, a thing you
+ * already had made better, a companion whose bond deepened, and — the last
+ * resort — coins back because there was nothing left to deepen. Collapsing
+ * those into "you got a Paper Crown" would make the refund look like a bug.
+ */
+/**
+ * A member's luck, the one stat the odds read.
+ *
+ * The same three-line derivation four places on this page already make, pulled
+ * out because the chest row needs it too and a fifth copy is a fifth chance to
+ * forget refinement — which would quietly print odds nobody actually has.
+ */
+function luckOf(avatar: Avatar, owned: InventoryItem[]): number {
+  const level = levelOf(avatar);
+  const bonus = gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned));
+  return sheetFor(avatar, bonus).stats.luck;
+}
+
+function chestReceipt(result: Extract<ChestOutcome, { ok: true }>): string {
+  const what = `${TIER_NAMES[result.tier]} ${PRIZE_KIND_NAMES[result.kind].toLowerCase()}`;
+  if (result.refined !== undefined) return `${result.name} again — refined to +${result.refined}.`;
+  if (result.bonded !== undefined) return `${result.name} again. Closer by ${result.bonded}.`;
+  if (result.refunded !== undefined) {
+    return `${result.name} was already yours. ${result.refunded} coins back.`;
+  }
+  return `${result.name} — a ${what}.`;
+}
+
 const RARITY_GLOW: Record<Rarity, string[]> = {
   common: ['var(--color-border)', 'var(--color-surface-muted)', 'var(--color-border)'],
   rare: ['var(--color-accent)', 'var(--color-border)', 'var(--color-accent)'],
@@ -126,6 +163,8 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
   const day = todayKey(settings?.timeZone ?? 'America/Los_Angeles');
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
   const { receipt, say } = useReceipt();
+  /** One chest at a time. Two taps racing would spend twice and show once. */
+  const [opening, setOpening] = useState(false);
 
   // The sheet has to exist before the first completion, or a fresh install
   // shows a page with no character on it and no way to tell that is temporary.
@@ -267,42 +306,73 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
           />
           ) : null}
 
+          {/* The shop is the chests; everything you can simply buy is the
+              drawer under them. Four purchase panels stacked one after another
+              were the whole page, which put a screen about spending money in
+              front of somebody every time they came looking for a chest. */}
           {only.includes('shop') ? (
-          <Surprise
-            avatar={avatar}
-            owned={owned ?? []}
-            day={day}
-            onBuy={async () => {
-              const result = await buyOffer(identity.memberId, identity.coupleId, day);
-              say(
-                result.ok ? 'Bought, at today\u2019s price.' : result.reason ?? null,
-                result.ok ? 'success' : 'error',
-              );
+          <ChestAlcove
+            coins={avatar.coins}
+            luck={luckOf(avatar, owned ?? [])}
+            pity={avatar.chestPity ?? {}}
+            busy={opening}
+            onOpen={async (chestId) => {
+              if (opening) return;
+              setOpening(true);
+              try {
+                // The four rolls are drawn here and handed in, so the domain and
+                // the repository both stay deterministic given their inputs —
+                // the same arrangement `buyEgg` has.
+                const result = await openChestFor(
+                  identity.memberId, identity.coupleId, chestId,
+                  {
+                    tier: Math.random(),
+                    kind: Math.random(),
+                    stat: Math.random(),
+                    pick: Math.random(),
+                  },
+                );
+                if (!result.ok) { say(result.reason, 'error'); return; }
+                say(chestReceipt(result), 'success');
+              } finally {
+                setOpening(false);
+              }
             }}
           />
           ) : null}
 
           {only.includes('shop') ? (
-          <Shop
-            avatar={avatar}
-            owned={owned ?? []}
-            onBuy={async (itemId) => {
-              const result = await buyGear(identity.memberId, identity.coupleId, itemId);
-              if (!result.ok) say(result.reason ?? null, 'error');
-              else if (result.refined) say(`Refined to +${result.refined}.`);
-            }}
-          />
-          ) : null}
-
-          {only.includes('shop') ? (
-          <Decor
-            avatar={avatar}
-            owned={owned ?? []}
-            onBuy={async (itemId) => {
-              const result = await buyFurniture(identity.memberId, identity.coupleId, itemId);
-              say(result.ok ? 'Bought. Place it on the Birb tab.' : result.reason ?? null, result.ok ? 'success' : 'error');
-            }}
-          />
+          <Purchases>
+            <Surprise
+              avatar={avatar}
+              owned={owned ?? []}
+              day={day}
+              onBuy={async () => {
+                const result = await buyOffer(identity.memberId, identity.coupleId, day);
+                say(
+                  result.ok ? 'Bought, at today\u2019s price.' : result.reason ?? null,
+                  result.ok ? 'success' : 'error',
+                );
+              }}
+            />
+            <Shop
+              avatar={avatar}
+              owned={owned ?? []}
+              onBuy={async (itemId) => {
+                const result = await buyGear(identity.memberId, identity.coupleId, itemId);
+                if (!result.ok) say(result.reason ?? null, 'error');
+                else if (result.refined) say(`Refined to +${result.refined}.`);
+              }}
+            />
+            <Decor
+              avatar={avatar}
+              owned={owned ?? []}
+              onBuy={async (itemId) => {
+                const result = await buyFurniture(identity.memberId, identity.coupleId, itemId);
+                say(result.ok ? 'Bought. Place it on the Birb tab.' : result.reason ?? null, result.ok ? 'success' : 'error');
+              }}
+            />
+          </Purchases>
           ) : null}
 
           {only.includes('boss') ? (

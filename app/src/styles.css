@@ -5393,3 +5393,123 @@ body {
   .garden-flourish { animation: none; }
   .garden-flourish { opacity: 1; }
 }
+
+/* ---- the chest alcove ------------------------------------------------------
+   Three chests, the counter on the front of each, and the odds one tap behind.
+   The odds are never behind a purchase, which is the whole of what "published
+   odds" has to mean — see the header of ChestAlcove.tsx. */
+
+.chest-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-3);
+  list-style: none;
+  margin-top: var(--space-3);
+}
+
+.chest {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+/* The one chest whose guarantee is live tonight says so in the border as well
+   as in words, because that is the moment the promise is worth something. */
+.chest[data-floored] { border-color: var(--color-accent); }
+
+.chest-art { width: 100%; height: auto; max-height: 5rem; }
+.chest-name { font-size: var(--text-base); font-weight: 600; }
+.chest-blurb, .chest-pool, .chest-pity, .chest-odds-foot {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
+.chest-pool { text-transform: uppercase; letter-spacing: 0.04em; }
+.chest-pity[data-live] { color: var(--color-accent); font-weight: 600; }
+
+.chest-open {
+  margin-top: var(--space-2);
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chest-open:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.chest-odds-toggle {
+  min-height: var(--space-6);
+  padding: var(--space-1);
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.chest-odds { display: grid; gap: var(--space-1); }
+
+/* ---- the purchases drawer -------------------------------------------------- */
+
+.purchases { padding: 0; overflow: hidden; }
+
+.purchases-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-3);
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.purchases-head { display: grid; gap: 2px; flex: 1; }
+
+/* A chevron drawn from a rotated square, so there is no icon font and no extra
+   SVG for one triangle. */
+.purchases-chevron {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-right: 2px solid var(--color-text-muted);
+  border-bottom: 2px solid var(--color-text-muted);
+  transform: rotate(45deg);
+  transition: transform var(--motion-medium) var(--ease-soft);
+}
+.purchases[data-open] .purchases-chevron { transform: rotate(-135deg); }
+
+.purchases-body {
+  display: grid;
+  gap: var(--space-4);
+  padding: 0 var(--space-3) var(--space-3);
+  animation: purchases-open var(--motion-medium) var(--ease-soft);
+}
+/* The panels inside are already panels; nested borders read as a mistake, so
+   they lose their own frame and keep their spacing. */
+.purchases-body .panel {
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+@keyframes purchases-open {
+  from { opacity: 0; transform: translateY(-0.35rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .purchases-body { animation: none; }
+  .purchases-chevron { transition: none; }
+}
