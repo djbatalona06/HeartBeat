@@ -1,5 +1,9 @@
 import { GEAR_SLOTS, type GearSlot, type StatKey, type Stats } from './types';
 import { addStats } from './avatar';
+import { hash, roll } from '../hash';
+import {
+  TIERS, TIER_NAMES, passiveFor, statLevelFor, type Tier,
+} from './tiers';
 
 /**
  * Five slots, one item each. Gear is the only thing that breaks the
@@ -9,16 +13,20 @@ import { addStats } from './avatar';
  * choice rather than a build.
  */
 
-export type Rarity = 'common' | 'rare' | 'epic' | 'godly';
+/**
+ * Rarity *is* the tier ladder — one name for the idea, two words for it.
+ *
+ * `tiers.ts` owns the ladder because gear is no longer the only thing on it:
+ * companions, furniture and dyes all land on the same five rungs now, and a
+ * ladder owned by the gear module would have meant three modules importing
+ * `gear.ts` for a type that has nothing to do with gear. `Rarity` stays as the
+ * word this file and its callers have always used.
+ */
+export type Rarity = Tier;
 
-export const RARITIES: Rarity[] = ['common', 'rare', 'epic', 'godly'];
+export const RARITIES: readonly Rarity[] = TIERS;
 
-export const RARITY_NAMES: Record<Rarity, string> = {
-  common: 'Common',
-  rare: 'Rare',
-  epic: 'Epic',
-  godly: 'Godly',
-};
+export const RARITY_NAMES: Record<Rarity, string> = TIER_NAMES;
 
 /** What a slot is called on screen. The type's own members are lowercase. */
 export const SLOT_NAMES: Record<GearSlot, string> = {
@@ -38,6 +46,14 @@ export interface GearItem {
   /** Below this level the item can be held but not worn. */
   minLevel: number;
   bonus: Partial<Stats>;
+  /**
+   * Where in its tier's band this piece sits — see `TIER_STAT_LEVELS`. It is
+   * what the raid sheet reads (`raidStats.ts`); `bonus` is what the avatar
+   * sheet reads. Two readings of one rung, not two rungs.
+   */
+  statLevel: number;
+  /** The always-on percentage this piece carries. Zero for commons. */
+  passive: number;
 }
 
 /* -- what a rarity is worth -------------------------------------------------- */
@@ -51,28 +67,34 @@ export interface GearItem {
  * Two things rise together, and both are the point of a drop. The **total**
  * rises (1 → 4 → 8 → 13), so a rarer item is worth more; and the **spread**
  * rises (one stat → four), so a rarer item is worth more *in more ways*. A
- * common item does one thing. A godly one touches the whole sheet.
+ * common item does one thing. A legendary one touches the whole sheet.
+ *
+ * Mythic cannot spread further — there are only four stats — so it is the one
+ * rung that buys magnitude alone (20 points against legendary's 13), and the
+ * always-on passive in `tiers.ts` is what it buys instead of a fifth stat.
  */
 export const RARITY_BUDGET: Record<Rarity, number[]> = {
   common: [1],
   rare: [3, 1],
   epic: [5, 2, 1],
-  godly: [7, 3, 2, 1],
+  legendary: [7, 3, 2, 1],
+  mythic: [10, 5, 3, 2],
 };
 
 export const RARITY_MIN_LEVEL: Record<Rarity, number> = {
   common: 1,
   rare: 4,
   epic: 9,
-  godly: 16,
+  legendary: 16,
+  mythic: 25,
 };
 
 /**
  * Which stats a slot leans on, best first. Every slot lists all four, so a
- * godly item can spread across the whole sheet without any slot needing a
+ * legendary item can spread across the whole sheet without any slot needing a
  * special case.
  *
- * The orders are the reason two godly items are not the same item. Note that
+ * The orders are the reason two legendary items are not the same item. Note that
  * luck only ever nudges drop rarity and never a payout (`types.ts`), so the
  * luck-forward slots — the amulet especially — are a gambler's pick rather than
  * a strictly better one. Trading the amulet away for a second source of heart
@@ -117,6 +139,10 @@ interface GearEntry {
  * `head-paper-crown` is a helmet now, and renaming it would orphan it in every
  * stored `Avatar.gear`. Stats are not written here either; they come from the
  * rarity budget above, so the ladder cannot drift one item at a time.
+ *
+ * Five mythic pieces sit at the end, one per slot, added when the ladder grew a
+ * fifth rung. They are named for the same things the rest are: a house, a
+ * morning, a drive home.
  */
 const CATALOGUE: GearEntry[] = [
   // Helmet -------------------------------------------------------------------
@@ -126,7 +152,7 @@ const CATALOGUE: GearEntry[] = [
     blurb: 'Tied on the left. It has always been tied on the left.' },
   { id: 'head-stargazer-circlet', slot: 'helmet', name: "Stargazer's Circlet", rarity: 'epic',
     blurb: 'For the nights spent looking up from the car park.' },
-  { id: 'head-aurora-veil', slot: 'helmet', name: 'Aurora Veil', rarity: 'godly',
+  { id: 'head-aurora-veil', slot: 'helmet', name: 'Aurora Veil', rarity: 'legendary',
     blurb: 'The sky doing something rare, worn on the head.' },
 
   // Chestplate ---------------------------------------------------------------
@@ -136,7 +162,7 @@ const CATALOGUE: GearEntry[] = [
     blurb: 'Cream, with the flowers stitched rather than printed.' },
   { id: 'body-tidewalker-coat', slot: 'chestplate', name: 'Tidewalker Coat', rarity: 'epic',
     blurb: 'Salt-stiff at the hem from a beach in the winter.' },
-  { id: 'body-hearthweave', slot: 'chestplate', name: 'Hearthweave', rarity: 'godly',
+  { id: 'body-hearthweave', slot: 'chestplate', name: 'Hearthweave', rarity: 'legendary',
     blurb: 'Warm before you put it on. Nobody can explain it.' },
 
   // Boots --------------------------------------------------------------------
@@ -146,7 +172,7 @@ const CATALOGUE: GearEntry[] = [
     blurb: 'Green, a size too big, and entirely unbothered by rain.' },
   { id: 'boots-longstride', slot: 'boots', name: 'Longstride', rarity: 'epic',
     blurb: 'The pace that arrives on time without ever hurrying.' },
-  { id: 'boots-sunday-morning', slot: 'boots', name: 'Sunday Morning', rarity: 'godly',
+  { id: 'boots-sunday-morning', slot: 'boots', name: 'Sunday Morning', rarity: 'legendary',
     blurb: 'Nowhere to be, and the whole of it to walk.' },
 
   // Amulet -------------------------------------------------------------------
@@ -156,7 +182,7 @@ const CATALOGUE: GearEntry[] = [
     blurb: 'Flat, brittle, and completely irreplaceable.' },
   { id: 'charm-north-star', slot: 'amulet', name: 'North Star', rarity: 'epic',
     blurb: 'The one you can find without looking it up.' },
-  { id: 'charm-heartbeat', slot: 'amulet', name: 'Heartbeat', rarity: 'godly',
+  { id: 'charm-heartbeat', slot: 'amulet', name: 'Heartbeat', rarity: 'legendary',
     blurb: 'Audible through a jumper, at the right distance.' },
 
   // Weapon -------------------------------------------------------------------
@@ -166,15 +192,53 @@ const CATALOGUE: GearEntry[] = [
     blurb: 'Keeps a coal alive overnight, which is most of the trick.' },
   { id: 'weapon-comet-lance', slot: 'weapon', name: 'Comet Lance', rarity: 'epic',
     blurb: 'Points at the thing you have been avoiding.' },
-  { id: 'weapon-second-wind', slot: 'weapon', name: 'Second Wind', rarity: 'godly',
+  { id: 'weapon-second-wind', slot: 'weapon', name: 'Second Wind', rarity: 'legendary',
     blurb: 'Not a weapon. Wins fights anyway.' },
+
+  // Mythic -------------------------------------------------------------------
+  // One per slot, and every one of them an ordinary evening rather than an
+  // artefact. The ladder's top rung is the most-looked-at thing in the app, and
+  // a flaming sword at the top of it would say the whole app was about a
+  // flaming sword.
+  { id: 'head-porch-light', slot: 'helmet', name: 'Porch Light', rarity: 'mythic',
+    blurb: 'Left on for somebody who is still out. Worn as a halo, near enough.' },
+  { id: 'body-the-good-blanket', slot: 'chestplate', name: 'The Good Blanket', rarity: 'mythic',
+    blurb: 'There is a good one and there are the others. Everyone knows which.' },
+  { id: 'boots-the-drive-home', slot: 'boots', name: 'The Drive Home', rarity: 'mythic',
+    blurb: 'Knows the turns without being asked. Goes quiet at the last one.' },
+  { id: 'charm-spare-key', slot: 'amulet', name: 'Spare Key', rarity: 'mythic',
+    blurb: 'Cut for somebody. The whole of what it means is in the cutting of it.' },
+  { id: 'weapon-plain-sentence', slot: 'weapon', name: 'Plain Sentence', rarity: 'mythic',
+    blurb: 'Said once, without hedging. Nothing in the app hits harder.' },
 ];
 
-export const GEAR: GearItem[] = CATALOGUE.map((entry) => ({
-  ...entry,
-  minLevel: RARITY_MIN_LEVEL[entry.rarity],
-  bonus: bonusFor(entry.slot, entry.rarity),
-}));
+/**
+ * Where a named catalogue piece sits inside its own tier band.
+ *
+ * Hashed off the id rather than written out, for the reason the budget above is
+ * a table rather than twenty literals: twenty-five hand-picked stat levels
+ * would be twenty-five chances to put a common above an epic by accident. The
+ * hash is stable across devices and across releases — `hash` is FNV-1a and the
+ * id never changes — so the same Paper Crown is worth the same thing on both
+ * phones, which is the only property that actually matters here.
+ *
+ * Not random, and not meant to look it. It is a fixed catalogue; this is the
+ * arithmetic that fills a column nobody should have to type.
+ */
+export function catalogueStatLevel(id: string, rarity: Rarity): number {
+  return statLevelFor(rarity, roll(hash(id), 0));
+}
+
+export const GEAR: GearItem[] = CATALOGUE.map((entry) => {
+  const statLevel = catalogueStatLevel(entry.id, entry.rarity);
+  return {
+    ...entry,
+    minLevel: RARITY_MIN_LEVEL[entry.rarity],
+    bonus: bonusFor(entry.slot, entry.rarity),
+    statLevel,
+    passive: passiveFor(entry.rarity, statLevel),
+  };
+});
 
 const BY_ID = new Map(GEAR.map((item) => [item.id, item]));
 

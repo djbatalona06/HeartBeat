@@ -32,7 +32,8 @@ export const GEAR_PRICE: Record<Rarity, number> = {
   common: 30,
   rare: 90,
   epic: 220,
-  godly: 500,
+  legendary: 500,
+  mythic: 1100,
 };
 
 export const EGG_PRICE = 120;
@@ -52,7 +53,7 @@ export const DUPLICATE_PET_BOND = 15;
  * companion kind you already have — refines the one you have instead of
  * filling a slot nobody can wear two of at once.
  *
- * Capped at +5, and the same flat gain at every rarity. A godly item earns its
+ * Capped at +5, and the same flat gain at every rarity. A mythic item earns its
  * size from the rarity budget in `gear.ts`; refinement is a separate, smaller
  * ladder on top; so a refined common never catches a fresh epic, and the cap
  * keeps the ceiling a place a couple can actually reach and feel finished with.

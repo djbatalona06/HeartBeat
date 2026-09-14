@@ -16,6 +16,10 @@ import { PaperCat } from './PaperCat';
 import { RibbonCat } from './RibbonCat';
 import { InkCat } from './InkCat';
 import { LanternTailCat } from './LanternTailCat';
+import { TheOldGrey } from './TheOldGrey';
+import { HearthlightFairy } from './HearthlightFairy';
+import { TheLongPatient } from './TheLongPatient';
+import { HearthCat } from './HearthCat';
 
 /**
  * One portrait per companion kind. Companions had no artwork at all before
@@ -41,6 +45,10 @@ const ART: Record<string, ComponentType> = {
   'cat-rare': RibbonCat,
   'cat-epic': InkCat,
   'cat-godly': LanternTailCat,
+  'horse-mythic': TheOldGrey,
+  'fairy-mythic': HearthlightFairy,
+  'vampire-mythic': TheLongPatient,
+  'cat-mythic': HearthCat,
 };
 
 for (const kind of PET_KINDS) {

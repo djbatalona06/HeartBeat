@@ -99,8 +99,8 @@ describe('ownedInSlot', () => {
   });
 
   it('marks an item held below its level as locked rather than hiding it', () => {
-    const godly = GEAR.find((g) => g.slot === 'helmet' && g.rarity === 'godly')!;
-    const shelf = ownedInSlot([held(godly.id)], {}, 'helmet', 1);
+    const legendary = GEAR.find((g) => g.slot === 'helmet' && g.rarity === 'legendary')!;
+    const shelf = ownedInSlot([held(legendary.id)], {}, 'helmet', 1);
     expect(shelf).toHaveLength(1);
     expect(shelf[0].locked).toBe(true);
   });

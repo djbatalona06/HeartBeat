@@ -62,21 +62,25 @@ import { petArt } from './art/pets';
 /**
  * How brightly a companion's card is lit, by how rare it is.
  *
- * Gold is reserved for godly and appears nowhere else in the theme, so a godly
- * drop is recognisable across the room without a badge saying so.
+ * Gold is reserved for legendary and above and appears nowhere else in the
+ * theme, so a legendary drop is recognisable across the room without a badge
+ * saying so. Mythic is the one rung that is not gold: it is white, because
+ * after four rungs of getting warmer the only place left to go is brighter.
  */
 const RARITY_GLOW: Record<Rarity, string[]> = {
   common: ['var(--color-border)', 'var(--color-surface-muted)', 'var(--color-border)'],
   rare: ['var(--color-accent)', 'var(--color-border)', 'var(--color-accent)'],
   epic: ['var(--color-accent)', '#f5c85c', 'var(--color-accent)'],
-  godly: ['#f5c85c', 'var(--color-accent)', '#f5c85c'],
+  legendary: ['#f5c85c', 'var(--color-accent)', '#f5c85c'],
+  mythic: ['#fff6da', '#f5c85c', '#fff6da'],
 };
 
 const RARITY_INTENSITY: Record<Rarity, number> = {
   common: 0.4,
   rare: 0.7,
   epic: 1,
-  godly: 1.3,
+  legendary: 1.3,
+  mythic: 1.6,
 };
 
 interface BossPayload {
