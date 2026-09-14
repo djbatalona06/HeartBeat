@@ -5513,3 +5513,91 @@ body {
   .purchases-body { animation: none; }
   .purchases-chevron { transition: none; }
 }
+
+/* ---- the raid sheet -------------------------------------------------------- */
+
+.raid-stats, .raid-sources { list-style: none; display: grid; gap: var(--space-2); margin-top: var(--space-3); }
+
+.raid-stat {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.raid-stat-name { color: var(--color-text-muted); }
+.raid-stat-bar {
+  height: 0.5rem;
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+.raid-stat-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius);
+  background: var(--color-accent);
+  transition: width var(--motion-medium) var(--ease-soft);
+}
+.raid-stat-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+.raid-stat-passive { color: var(--color-accent); font-size: var(--text-xs); }
+/* The base sits under the bar rather than beside it: it is a footnote to the
+   total, and giving it a column of its own would make it look like a rival. */
+.raid-stat-base {
+  grid-column: 2 / -1;
+  margin-top: -2px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.raid-sources-title {
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.raid-source {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 var(--space-2);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+}
+.raid-source-name { font-weight: 600; }
+.raid-source-tier { font-size: var(--text-xs); color: var(--color-text-muted); }
+.raid-source[data-tier='legendary'] .raid-source-tier,
+.raid-source[data-tier='mythic'] .raid-source-tier { color: var(--color-accent); }
+.raid-source-level { grid-column: 1 / -1; font-size: var(--text-xs); color: var(--color-text-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .raid-stat-fill { transition: none; }
+}
+
+/* ---- the garden's other places --------------------------------------------- */
+
+/* Links rather than hotspots painted on the backdrop: a tappable region of a
+   background image has no focus ring, is invisible to a screen reader, and
+   moves whenever the art does. See the header of GardenPlaces.tsx. */
+.garden-places {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: var(--space-2);
+}
+
+.garden-place {
+  display: grid;
+  gap: 2px;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.garden-place-name { font-weight: 600; font-size: var(--text-sm); }
+.garden-place-hint { font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-body); }

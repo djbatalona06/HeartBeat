@@ -23,6 +23,7 @@ import type {
 import type { SceneHandle } from './scene/events';
 import { logActivity } from './logging';
 import { GardenBackdrop } from './GardenBackdrop';
+import { GardenPlaces } from './GardenPlaces';
 import { RaidGate } from './gate/RaidGate';
 import { Compass } from './Compass';
 import { WorldMap } from './WorldMap';
@@ -552,6 +553,8 @@ export function EveGardenPage() {
         onAct={(action) => { void onAct(action); }}
         onFlee={onFlee}
       />
+
+      <GardenPlaces companion={kit.mascot} onChangeCompanion={() => openGate(true)} />
 
       <p className="section-sub garden-hint">
         Arrow keys or WASD to walk; on a phone, tap a tile beside you. Walk into

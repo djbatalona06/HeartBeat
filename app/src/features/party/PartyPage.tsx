@@ -61,6 +61,7 @@ import { gearArt } from './art/gear';
 import { petArt } from './art/pets';
 import { ChestAlcove } from './ChestAlcove';
 import { Purchases } from './Purchases';
+import { RaidSheet } from './RaidSheet';
 import { TIER_NAMES } from '../../domain/rpg/tiers';
 import { PRIZE_KIND_NAMES } from '../../domain/rpg/chests';
 import type { ChestOutcome } from '../../db/repository/chests';
@@ -268,6 +269,19 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
               const result = await wearDye(identity.memberId, identity.coupleId, dyeId);
               if (!result.ok) say(result.reason ?? null, 'error');
             }}
+          />
+          ) : null}
+
+          {/* The raid sheet sits with the gear rather than in the garden: it is
+              the answer to "would the other boots be better", and that is a
+              question asked at the wardrobe, not mid-fight. */}
+          {only.includes('worn') ? (
+          <RaidSheet
+            avatar={avatar}
+            owned={owned ?? []}
+            petXp={pet?.xp ?? 0}
+            house={(pet?.house ?? {}) as House}
+            companion={(pets ?? []).find((p) => p.id === avatar.companionId)}
           />
           ) : null}
 

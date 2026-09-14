@@ -55,7 +55,14 @@ All writes go through `app/src/db/repository/`. Components call repository funct
 
 ### Key domain modules
 
-- `domain/xp.ts` — XP/level calculations for the shared pet
+- `domain/xp.ts` — XP/level calculations for the shared pet, 50 levels on a
+  four-band curve (the 2–10 band is byte-for-byte what shipped)
+- `domain/rpg/tiers.ts` — the Common→Mythic ladder every ownable thing lands on
+- `domain/rpg/raidStats.ts` — the seven raid stats; `loadout.ts` turns what a
+  couple owns into a sheet
+- `domain/rpg/companionSkills.ts` — one skill kit per mascot, keyed by theme id
+- `domain/rpg/raidGate.ts` — who stands in the arch, and when the gate opens
+- `domain/rpg/chests.ts` — three chests, three pity counters
 - `domain/quests/` — quest definitions, progress tracking, completion logic
 - `domain/achievements/` — achievement state derived from synced data
 - `domain/rpg/` — boss fights, party stats
@@ -86,6 +93,51 @@ Full deploy walkthrough: `docs/DEPLOY.md`
 - **`loadSettings()` inside live queries**: never call it inside a `useLiveQuery` callback — it triggers a sync rewrite that re-fires the query up to 20× per foreground cycle.
 - **Editing `app/src/styles.css` means running `npm run study:build` and committing `study/index.html`** — the study page inlines the whole stylesheet (`cssCodeSplit: false`), so any rule anywhere changes that committed artefact, and CI fails on `git diff --exit-code -- study/index.html`.
 - **Holdings sync has two kind lists, not one.** `PARTNER_WRITABLE_KINDS` (`domain/sync/holdings.ts`) is who may overwrite a row — a security property, mirrored in the `excluded.kind IN (...)` clause of `UPSERT_SQL` and pinned by a test that parses that clause. `PARTNER_VISIBLE_KINDS` is whose rows a device will apply locally. Life events and cheers are visible without being writable. Adding a kind to the visible list is a display decision; adding one to the writable list is a security decision.
+- **`Rarity` is `Tier`, and `'godly'` is gone.** The ladder is `common → rare →
+  epic → legendary → mythic` and lives in `domain/rpg/tiers.ts`, not in
+  `gear.ts`. Nothing stored carries a tier — gear and pets are catalogue lookups
+  by id — so the rename orphaned nothing, and the **ids were deliberately left
+  alone**: `horse-godly` is a legendary companion, and renaming it would lose
+  somebody a pet they had hatched. `normalizeTier` covers a token that reached a
+  device before the rename.
+- **Everything ownable carries a stat.** Gear, furniture, dyes and companions
+  all land on the tier ladder, and `loadout.test.ts` walks the real catalogues
+  to say so — add a cushion with no number behind it and that test fails.
+  Furniture and dyes take their rung from their existing **price**
+  (`tierForPrice`) rather than a hand-assigned tier, so the shop and the fight
+  cannot drift apart.
+- **A source's passive lands on its first raid stat and nowhere else**, and
+  passives stack with a 0.7 falloff and a 30% cap, **sorted before stacking**.
+  Unsorted, the same seven items are worth different amounts on two phones and
+  the two disagree about how hard a boss hit.
+- **The Raid Gate opens on every mount, and that is the design**, not a bug —
+  it is a ritual, and it opens with last time's companion already ringed so
+  re-entering is one tap. It is rendered *instead of* `EveGardenPage`'s garden
+  rather than over it, which is what keeps Phaser and the 3.5 MB WebAssembly
+  runtime from booting for a screen somebody backs out of. Both effects are
+  guarded on `companion`; keep them that way.
+- **A skill kit is character, not palette.** `companionSkills.test.ts` fails if
+  a rights holder's name appears anywhere in that file, the same guard
+  `pets.test.ts` and `mascots/roster.test.ts` already carry. Kits belong to the
+  five originals in `features/pet/mascots/`.
+- **Two lists hold the skill VFX together**: `companionSkills.ts` names a `vfx`
+  per skill, `scene/vfx.ts` maps it to one of five motions, and
+  `scene/vfx.test.ts` fails in both directions — an unmapped skill and a mapped
+  shape nobody casts.
+- **Chest pity is per chest**, stored on `Avatar.chestPity` (optional, no
+  migration). The rescale at a floor is `applyFloor` from `pets.ts`, not a
+  second copy. `chests.test.ts` asserts each window is reached between one run
+  in four and one in twenty — a window reached half the time is the real drop
+  rate wearing a second name.
+- **A paid chest must never hand back nothing.** Gear refines, a companion
+  deepens its bond, a cosmetic is refunded at list price;
+  `repository/chests.test.ts` drives sixty consecutive draws to prove it. The
+  odds module stops short of ownership on purpose — that is the repository's
+  question, and keeping it there is why the odds can be tested without a
+  database.
+- **Nothing in a Dexie transaction may `await` a non-Dexie promise.** A dynamic
+  `import()` inside `openChestFor` ended the transaction halfway through paying
+  for a chest; every module it needs is imported statically.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)
