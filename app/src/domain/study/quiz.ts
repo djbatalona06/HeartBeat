@@ -1,3 +1,4 @@
+import { hash } from '../hash';
 import type { Card, Deck } from './types';
 
 /**
@@ -83,15 +84,12 @@ export function scoreRun(answers: QuizAnswer[], limit: number = TIME_LIMIT_MS): 
  * A stable 32-bit hash (FNV-1a). Used only to lay the choices out, never for
  * anything that needs to be unguessable — the requirement is that one card
  * arranges its options the same way twice, not that nobody can predict it.
+ *
+ * The implementation moved to `domain/hash.ts` when the overworld encounter
+ * needed the same repeatability. Re-exported rather than relocated at the call
+ * sites, so this module's own tests keep importing it from here.
  */
-export function hash(text: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < text.length; i += 1) {
-    h ^= text.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
+export { hash };
 
 /**
  * Three distractors and the answer, in a fixed order.

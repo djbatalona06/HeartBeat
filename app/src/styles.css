@@ -4584,3 +4584,115 @@ body {
   gap: var(--space-2);
   margin-top: var(--space-3);
 }
+
+/* ---- the overworld -------------------------------------------------------- */
+
+/* The canvas sits in the page rather than fixed, so the tab bar and the chat
+   panel keep working over it. Phaser sizes the canvas itself; this only has to
+   give it somewhere to be and stop it stretching on a wide screen. */
+.overworld-stage {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-3) 0;
+  min-height: 40vh;
+}
+.overworld-stage canvas {
+  max-width: 100%;
+  height: auto;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  /* Keep 16x16 art crisp when the browser does the final scale, not just when
+     Phaser does — `pixelArt: true` covers the texture, this covers the element. */
+  image-rendering: pixelated;
+}
+.overworld-hint { margin-top: var(--space-2); }
+
+/* The fight. Over the world, not instead of it: the backdrop is deliberately
+   translucent so the garden stays visible behind the panel. */
+.encounter {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--color-base) 62%, transparent);
+}
+.encounter-card {
+  width: min(32rem, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+}
+.encounter-head h2 { margin: 0; }
+.encounter-blurb {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* The vigour line. Never styled as a warning — no danger colour, no icon, no
+   border. A quiet week reads as quiet, which is the whole point of vigour.ts. */
+.encounter-vigour {
+  margin: var(--space-3) 0;
+  font-size: var(--text-sm);
+  color: var(--color-accent);
+}
+.encounter-vigour.is-plain { color: var(--color-text-muted); }
+
+.encounter-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+.encounter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.encounter-bar-label { flex-shrink: 0; width: 8rem; }
+.encounter-bar-track {
+  flex: 1;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+.encounter-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  transition: width var(--motion-medium) var(--motion-easing);
+}
+.encounter-bar.is-them .encounter-bar-fill { background: var(--color-text-muted); }
+.encounter-bar-count {
+  flex-shrink: 0;
+  width: 5rem;
+  text-align: right;
+  color: var(--color-text-muted);
+}
+
+.encounter-log {
+  margin: var(--space-3) 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+.encounter-log li { padding: var(--space-1) 0; }
+.encounter-log li.is-them { color: var(--color-text-muted); }
+
+.encounter-actions,
+.encounter-done {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.encounter-done { flex-direction: column; align-items: flex-start; }
+.encounter-receipt { margin: 0; color: var(--color-accent); font-size: var(--text-sm); }

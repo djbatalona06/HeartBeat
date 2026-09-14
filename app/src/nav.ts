@@ -130,6 +130,7 @@ export const MENU_GROUPS: MenuGroup[] = [
     title: 'The app',
     tabs: [
       { to: '/party', label: 'Party', icon: 'sword', hint: 'Everything about the two of you at once' },
+      { to: '/overworld', label: 'Overworld', icon: 'sword', hint: 'The garden, and what is in it' },
       { to: '/settings', label: 'You', icon: 'person', hint: 'Pairing, theme, notifications' },
     ],
   },

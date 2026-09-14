@@ -51,6 +51,13 @@ Every graphic is original and generated from code:
   turntable in `gift/src/turntable.js`, are built from three.js primitives —
   extruded rounded rectangles, cylinders, capsules and cones. No model file or
   texture is loaded; the only images anywhere in the scene are the photographs.
+- The overworld's tiles, bird and creatures in `app/src/domain/rpg/sprites.ts`
+  are sixteen-by-sixteen grids of characters, written by hand and painted onto a
+  canvas at runtime. **No spritesheet, tileset or other image is loaded, and none
+  is bundled** — the engine drawing them is third-party code, listed below, but
+  every pixel it draws is this repository's own. The characters name roles rather
+  than colours, so the themes and dyes recolour them the way they recolour the
+  hand-drawn mascots.
 
 The photographs in `gift/src/photos/` are personal photographs belonging to the
 people in them.
@@ -62,6 +69,7 @@ people in them.
 | [three.js](https://threejs.org) (`gift/src/vendor/three.min.js`) | MIT — see `gift/src/vendor/three-LICENSE.txt` |
 | [Outfit](https://fonts.google.com/specimen/Outfit) | SIL Open Font License 1.1 |
 | [JetBrains Mono](https://www.jetbrains.com/lp/mono/) | SIL Open Font License 1.1 |
+| [Phaser 3](https://phaser.io) (`phaser`, the overworld only) | MIT |
 | React, Vite, Dexie, Workbox, Wrangler | MIT / Apache-2.0, per each package |
 
 ## The cycle page
