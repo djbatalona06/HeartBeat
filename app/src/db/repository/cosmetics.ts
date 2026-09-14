@@ -1,8 +1,9 @@
 import { db } from '../database';
-import type { CoupleId, MemberId } from '../../domain/types';
+import type { CoupleId, DayKey, MemberId } from '../../domain/types';
 import { DEFAULT_DYE_ID, dyeById } from '../../domain/rpg/dyes';
 import { clearSlot, furnitureById, placeIn, type HouseSlot } from '../../domain/rpg/furniture';
 import { canAfford } from '../../domain/rpg/shop';
+import { offerFor } from '../../domain/rpg/mysteryShop';
 import { spend } from '../../domain/rpg/avatar';
 import { id, now } from './shared';
 import { getOrCreateAvatar } from './rpg';
@@ -186,6 +187,60 @@ export async function wearDye(
     }
     const avatar = await getOrCreateAvatar(memberId, coupleId);
     await db.avatars.put({ ...avatar, dye: dyeId, updatedAt: now() });
+    return { ok: true };
+  });
+}
+
+/* ---- the daily offer -------------------------------------------------------
+ * `domain/rpg/mysteryShop.ts` decides what is on offer and what it costs. This
+ * is the one place it can be bought.
+ */
+
+/**
+ * Buy today's offer at today's price.
+ *
+ * **The day goes in; the price does not.** The obvious signature takes the
+ * offer, or its price, from the screen that rendered it — and a price that
+ * arrives as a prop is a price that can be wrong: a stale render across
+ * midnight, a component that computed it from a different day key, or simply a
+ * future edit that passes the list price by mistake. There is no server here to
+ * catch any of that, so the discount is derived again, inside the transaction
+ * that spends the coins.
+ *
+ * Beyond that it is `buyDye` and `buyFurniture` — the same duplicate refusal,
+ * the same `canAfford` then `spend`, the same inventory row — so a thing bought
+ * on offer is in every later respect a thing bought.
+ */
+export async function buyOffer(
+  memberId: MemberId,
+  coupleId: CoupleId,
+  day: DayKey,
+): Promise<PurchaseResult> {
+  const offer = offerFor(day);
+  if (!offer) return { ok: false, reason: 'Nothing on the shelf today.' };
+
+  return db.transaction('rw', db.avatars, db.inventory, async () => {
+    const avatar = await getOrCreateAvatar(memberId, coupleId);
+    const owned = await db.inventory
+      .where('[memberId+itemId]').equals([memberId, offer.id]).first();
+    if (owned) return { ok: false, reason: 'Already yours — the discount is no use.' };
+
+    const affordCheck = canAfford(avatar.coins, offer.price);
+    if (!affordCheck.ok) return { ok: false, reason: affordCheck.reason };
+
+    const paid = spend(avatar, { coins: offer.price }, now());
+    if (!paid) return { ok: false, reason: 'Not enough coins.' };
+    await db.avatars.put(paid);
+
+    await db.inventory.put({
+      id: id(),
+      coupleId,
+      memberId,
+      itemId: offer.id,
+      refine: 0,
+      acquiredAt: now(),
+      updatedAt: now(),
+    });
     return { ok: true };
   });
 }

@@ -10,6 +10,7 @@ import {
   buyEgg,
   buyFurniture,
   buyGear,
+  buyOffer,
   ensureIdentity,
   placeFurniture,
   getOrCreateAvatar,
@@ -24,9 +25,16 @@ import {
 } from '../../db/repository';
 import { flushPetXp } from '../../pwa/petSync';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
-import { GEAR, RARITY_NAMES, canEquip, gearForSlot, type GearItem, type Rarity } from '../../domain/rpg/gear';
+import {
+  GEAR, RARITIES, RARITY_NAMES, canEquip, gearForSlot, type GearItem, type Rarity,
+} from '../../domain/rpg/gear';
 import { adventureCost } from '../../domain/rpg/stage';
-import { petKindById, petSheet, type PetInstance } from '../../domain/rpg/pets';
+import {
+  PITY_AT, chancesFor, petKindById, petSheet, pityFloor, type PetInstance,
+} from '../../domain/rpg/pets';
+import { offerFor } from '../../domain/rpg/mysteryShop';
+import { todayKey } from '../../domain/day';
+import type { DayKey } from '../../domain/types';
 import { SKILLS, castBlockedBecause, skillById } from '../../domain/rpg/skills';
 import { hpFraction, resolveBlow, victoryDropBonus, waitingOn, type BossState } from '../../domain/rpg/boss';
 import { GEAR_SLOTS, type Avatar, type GearSlot } from '../../domain/rpg/types';
@@ -111,6 +119,7 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
   title?: string;
 }) {
   const settings = useLiveQuery(loadSettings, []);
+  const day = todayKey(settings?.timeZone ?? 'America/Los_Angeles');
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
   const { receipt, say } = useReceipt();
 
@@ -255,6 +264,21 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
           ) : null}
 
           {only.includes('shop') ? (
+          <Surprise
+            avatar={avatar}
+            owned={owned ?? []}
+            day={day}
+            onBuy={async () => {
+              const result = await buyOffer(identity.memberId, identity.coupleId, day);
+              say(
+                result.ok ? 'Bought, at today\u2019s price.' : result.reason ?? null,
+                result.ok ? 'success' : 'error',
+              );
+            }}
+          />
+          ) : null}
+
+          {only.includes('shop') ? (
           <Shop
             avatar={avatar}
             owned={owned ?? []}
@@ -384,6 +408,8 @@ function Companions({ avatar, pets, owned, onChoose, onSeeLore, onHatch, onAdven
           })}
         </ul>
       )}
+
+      <Odds luck={sheet.stats.luck} pity={avatar.pity ?? 0} />
 
       <div className="row">
         <button type="button" className="primary" disabled={avatar.coins < EGG_PRICE} onClick={onHatch}>
@@ -732,6 +758,102 @@ function Shop({ avatar, owned, onBuy }: {
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+/**
+ * What an egg is actually going to do, before anybody spends a hundred and
+ * twenty coins finding out.
+ *
+ * Reads `chancesFor` rather than `dropChances`, and the difference is the whole
+ * reason this screen is defensible: `dropChances` is the general table, and
+ * `chancesFor` is the table **for the next egg** with this member's luck and
+ * their pity floor already in it. A screen printing a flat 10% next to a
+ * guarantee it did not mention would be telling a small lie every fifteenth
+ * egg, which is worse than publishing nothing.
+ *
+ * The pity line is here for the same reason. A floor nobody can see is not a
+ * kindness, it is a hidden number — and said plainly it is also the thing that
+ * makes a bad run bearable while it is happening.
+ *
+ * Note the bonus is zero: `buyEgg` is called without a victory bonus at the one
+ * call site, so showing one would describe a roll the app does not make.
+ */
+function Odds({ luck, pity }: { luck: number; pity: number }) {
+  const chances = chancesFor(luck, 0, pity);
+  const floored = pityFloor(pity) !== null;
+
+  return (
+    <div className="odds">
+      <ul className="odds-table">
+        {RARITIES.map((rarity) => (
+          <li key={rarity} className="odds-row" data-rarity={rarity} data-none={chances[rarity] === 0}>
+            <span className="odds-name">{RARITY_NAMES[rarity]}</span>
+            <span className="odds-chance">{(chances[rarity] * 100).toFixed(1)}%</span>
+          </li>
+        ))}
+      </ul>
+      <p className="section-sub">
+        {/* At zero this must not read as "you just had an epic" to somebody
+            who has never hatched anything, so the two cases are worded apart. */}
+        {floored
+          ? `This one is guaranteed epic or better — ${PITY_AT} eggs without one.`
+          : pity === 0
+            ? `Epic or better guaranteed within ${PITY_AT} eggs.`
+            : `${pity} ${pity === 1 ? 'egg' : 'eggs'} since an epic. Guaranteed at ${PITY_AT}.`}
+        {luck > 0 ? ` Your luck is already folded in.` : ''}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The day's offer.
+ *
+ * No countdown, and that is a decision rather than an omission — see the banner
+ * in `domain/rpg/mysteryShop.ts`. A clock on a purchase is a device for
+ * stopping somebody thinking, and the coins here were earned by logging a mood.
+ * "Changes daily" is the whole of what a person needs to know.
+ */
+function Surprise({ avatar, owned, day, onBuy }: {
+  avatar: Avatar;
+  owned: InventoryItem[];
+  day: DayKey;
+  onBuy: () => void;
+}) {
+  const offer = offerFor(day);
+  if (!offer) return null;
+
+  const alreadyOwned = findOwned(owned, offer.id) !== undefined;
+  const afford = avatar.coins >= offer.price;
+
+  return (
+    <section className="panel">
+      <h2 className="section-title">Today&rsquo;s find</h2>
+      <p className="section-sub">
+        One thing, a third off, changing daily. Both of you see the same one.
+      </p>
+
+      <div className="surprise">
+        <div className="surprise-body">
+          <span className="surprise-name">{offer.name}</span>
+          <span className="surprise-blurb">{offer.blurb}</span>
+        </div>
+        <button
+          type="button"
+          className="primary"
+          disabled={alreadyOwned || !afford}
+          onClick={onBuy}
+        >
+          {alreadyOwned
+            ? 'Already yours'
+            : afford
+              ? `${offer.price} coins`
+              : `${offer.price - avatar.coins} more coins`}
+          {alreadyOwned ? null : <s className="surprise-was">{offer.listPrice}</s>}
+        </button>
+      </div>
     </section>
   );
 }

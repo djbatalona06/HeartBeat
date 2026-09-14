@@ -975,6 +975,86 @@ body {
 .slot { margin-top: var(--space-4); }
 .slot-name { font-size: var(--text-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
 
+/* ---- the odds, and the day's find -----------------------------------------
+   Published rather than hidden, which is the whole argument for having a pity
+   system at all: a floor nobody can see is a secret, and a percentage nobody
+   can see is worse than not having one. */
+.odds {
+  margin: var(--space-4) 0 var(--space-3);
+}
+
+.odds-table {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+/* Four equal columns, so the rarest reads as small by its number rather than
+   by being given less room than the others. */
+.odds-row {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid transparent;
+  text-align: center;
+}
+
+.odds-row[data-rarity='godly'] { border-color: var(--color-accent); }
+
+/* A rarity the next egg cannot produce — pity has ruled it out. Dimmed rather
+   than removed, so the table does not reflow and the absence is the point. */
+.odds-row[data-none='true'] { opacity: 0.45; }
+
+.odds-name {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.odds-chance {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.surprise {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+.surprise-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
+.surprise-name { font-weight: 600; }
+
+.surprise-blurb {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
+
+/* The old price, struck through beside the new one. The only comparison the
+   card makes, and there is no clock next to it on purpose. */
+.surprise-was {
+  margin-left: var(--space-2);
+  opacity: 0.6;
+  font-weight: 400;
+}
+
 /* ---- the shop --------------------------------------------------------------
    Every gear item, buyable with coins. A second purchase of something already
    owned refines it — see domain/rpg/shop.ts — rather than filling a slot

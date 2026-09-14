@@ -25,7 +25,7 @@ import {
 } from './index';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import { payoutFor } from '../../domain/rpg/task';
-import { maxPetMp, petKindById, rankOf } from '../../domain/rpg/pets';
+import { PITY_AT, maxPetMp, petKindById, rankOf } from '../../domain/rpg/pets';
 import { DUPLICATE_PET_BOND, EGG_PRICE, REFINE_MAX } from '../../domain/rpg/shop';
 import { STARTER_COINS } from '../../domain/rpg/types';
 import { xpForLevel } from '../../domain/xp';
@@ -576,5 +576,60 @@ describe('the ruling, at the storage layer', () => {
     const before = (await db.pet.get(COUPLE))!.xp;
     await addXp(COUPLE, -1000);
     expect((await db.pet.get(COUPLE))!.xp).toBe(before);
+  });
+});
+
+/* ---- pity, through the paid path ------------------------------------------
+ * The domain tests prove the floor arithmetic. This proves the counter is
+ * actually carried on the avatar and actually cleared — the two ways the
+ * feature can be correct in `pets.ts` and do nothing in the app.
+ */
+describe('buyEgg and the pity counter', () => {
+  const RICH = { coins: 100_000 };
+
+  async function fund(): Promise<void> {
+    const avatar = await getOrCreateAvatar(HER, COUPLE);
+    await db.avatars.put({ ...avatar, ...RICH, updatedAt: 1 });
+  }
+
+  async function pityNow(): Promise<number> {
+    return (await db.avatars.get(HER))?.pity ?? 0;
+  }
+
+  it('counts up on a common and clears on an epic or better', async () => {
+    await fund();
+    // A high rarity roll lands in the common band; a low one reaches godly.
+    await buyEgg(COUPLE, HER, { rarity: 0.99, species: 0.5 }, 0);
+    expect(await pityNow()).toBe(1);
+
+    await buyEgg(COUPLE, HER, { rarity: 0.99, species: 0.5 }, 0);
+    expect(await pityNow()).toBe(2);
+
+    await buyEgg(COUPLE, HER, { rarity: 0, species: 0.5 }, 0);
+    expect(await pityNow()).toBe(0);
+  });
+
+  it('honours the floor once the counter reaches it', async () => {
+    await fund();
+    for (let i = 0; i < PITY_AT; i += 1) {
+      await buyEgg(COUPLE, HER, { rarity: 0.99, species: 0.5 }, 0);
+    }
+    expect(await pityNow()).toBe(PITY_AT);
+
+    // The same roll that produced a common fifteen times running cannot now.
+    const result = await buyEgg(COUPLE, HER, { rarity: 0.99, species: 0.5 }, 0);
+    expect(result.ok).toBe(true);
+    const kind = petKindById(result.pet!.kindId)!;
+    expect(['epic', 'godly']).toContain(kind.rarity);
+    expect(await pityNow()).toBe(0);
+  });
+
+  it('does not move when the purchase is refused for want of coins', async () => {
+    const avatar = await getOrCreateAvatar(HER, COUPLE);
+    await db.avatars.put({ ...avatar, coins: 0, pity: 4, updatedAt: 1 });
+
+    const result = await buyEgg(COUPLE, HER, { rarity: 0.99, species: 0.5 }, 0);
+    expect(result.ok).toBe(false);
+    expect(await pityNow()).toBe(4);
   });
 });
