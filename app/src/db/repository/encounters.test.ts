@@ -161,7 +161,7 @@ describe('partyFor', () => {
 
   it('lifts vigour once something is logged', async () => {
     await db.moods.put({
-      id: 'mood-1', memberId: HER, day: DAY, energy: 4, stress: 2, affection: 5, updatedAt: 1,
+      id: 'mood-1', memberId: HER, day: DAY, hunger: 3, joy: 4, moody: 2, updatedAt: 1,
     });
     const party = await partyFor(HER, COUPLE, DAY);
     expect(party.vigour.plain).toBe(false);

@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react';
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { ThemeBackdrop, ThemeProvider } from './themes/ThemeProvider';
 import { DashboardPage } from './features/dashboard/DashboardPage';
@@ -18,6 +19,18 @@ import { OnboardingPage } from './features/onboarding/OnboardingPage';
 import { useSync } from './pwa/useSync';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CommandMenu } from './components/CommandMenu';
+
+/**
+ * The one lazy route in the app.
+ *
+ * Every other page is imported eagerly and loads instantly, so a blanket
+ * conversion would buy a flash of fallback on screens that do not need one.
+ * This page pulls in Phaser — over a megabyte, for one screen — so it is the
+ * single case where the split pays for itself. See `vite.config.ts`, which
+ * names the chunk and keeps it out of the service-worker precache.
+ */
+const OverworldPage = lazy(() => import('./features/rpg/OverworldPage')
+  .then((m) => ({ default: m.OverworldPage })));
 import { MenuSheet } from './components/MenuSheet';
 import { StatusHud } from './components/StatusHud';
 import { Icon } from './components/icons';
@@ -108,6 +121,12 @@ export function App() {
                         sits next to its house and its adventures. */}
                     <Route path="/birb" element={<PartyPage only={['worn', 'colours', 'house', 'adventures', 'companions', 'boss']} title="Birb" />} />
                     <Route path="/party" element={<PartyPage />} />
+                    <Route path="/overworld" element={(
+                      <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>
+                        <OverworldPage />
+                      </Suspense>
+                    )}
+                    />
                     <Route path="/assets" element={<AssetsPage />} />
                     {/* The cycle log is the last section of Mood now. The old
                         route is kept as a redirect rather than dropped: it is in
