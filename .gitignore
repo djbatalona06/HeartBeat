@@ -2,6 +2,9 @@ node_modules/
 dist/
 # The intermediate bundle for study/index.html. The artefact itself is committed.
 app/dist-standalone/
+# The overworld dev harness's own build. Never referenced by vite.config.ts,
+# never published — see src/harness.tsx.
+app/dist-harness/
 .wrangler/
 .shots/
 .claude/worktrees/

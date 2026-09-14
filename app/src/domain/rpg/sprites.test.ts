@@ -37,6 +37,19 @@ describe('SPRITES', () => {
     const drawn = Object.values(SPRITES).map((rows) => rows.join('\n'));
     expect(new Set(drawn).size).toBe(drawn.length);
   });
+
+  // `tile-water` used to be 13 of 16 rows solid 'a' — a loud accent barcode
+  // rather than a pond. `accent` is meant for a small glint or detail on a
+  // tile, never the majority fill, so pin the ratio directly: this is the
+  // regression test for that specific redraw.
+  it('never lets accent own more than a third of a tile', () => {
+    for (const [key, rows] of Object.entries(SPRITES)) {
+      if (!key.startsWith('tile-')) continue;
+      const chars = rows.join('').split('');
+      const accentShare = chars.filter((c) => c === 'a').length / chars.length;
+      expect(accentShare, key).toBeLessThan(1 / 3);
+    }
+  });
 });
 
 // The drift checks. These are why the data is TypeScript and not a PNG: a
