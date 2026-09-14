@@ -25,6 +25,8 @@ export interface StartOptions {
   stage: number;
   /** A `SpriteKey` from the C# monster, already resolved by the page. */
   monsterSprite: string;
+  /** The mascot that came through the Raid Gate, from `spriteKeyForTheme`. */
+  petSprite: string;
   /** Local hour, 0-23. Decides where the light is. */
   hour: number;
   /** True when the island is wearing its dark face. */
@@ -38,7 +40,8 @@ export function startGarden(
 ): SceneHandle {
   const scale = 3;
   const scene = new BattleGardenScene(
-    options.island, options.stage, options.monsterSprite, options.hour, options.dark, hooks,
+    options.island, options.stage, options.monsterSprite, options.petSprite,
+    options.hour, options.dark, hooks,
   );
 
   const game = new Phaser.Game({
@@ -75,6 +78,7 @@ export function startGarden(
 
   return {
     strike: (blow: Blow, effectiveness) => live()?.strike(blow, effectiveness) ?? Promise.resolve(),
+    skill: (vfx: string) => live()?.skill(vfx) ?? Promise.resolve(),
     defeat: () => live()?.defeat() ?? Promise.resolve(),
     withdraw: () => live()?.withdraw(),
     relight: (hour, dark) => live()?.relight(hour, dark),

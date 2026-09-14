@@ -5118,3 +5118,278 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .garden-victory-card { animation: none; }
 }
+
+/* ---- the Raid Gate --------------------------------------------------------
+   The threshold you cross on the way into Eve's Garden.
+
+   The whole layout is one grid whose geometry comes from two custom properties
+   each pedestal carries — `--gate-x` along the arch and `--gate-depth` into it,
+   both written by `archLayout` in domain/rpg/raidGate.ts. That is why the same
+   five buttons become a scrollable row on a phone with no branch in the
+   component: the arch is a stylesheet decision, and the domain only says where
+   things stand relative to each other. */
+
+.gate {
+  display: grid;
+  gap: var(--space-4);
+  /* Fill the shell rather than sitting in the middle of it: a threshold that
+     floats in a column of whitespace is a card, not a place. */
+  min-height: 60vh;
+  align-content: space-between;
+}
+
+.gate-scene {
+  position: relative;
+  min-height: min(52vh, 24rem);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  overflow: hidden;
+  background: var(--color-base);
+}
+
+.gate-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Three speeds. The parallax is the whole of what makes a flat drawing read as
+   somewhere you are standing, and it is three transforms rather than a physics
+   loop — the far layer barely moves, the near layer moves most. */
+.gate-layer { transform-origin: 50% 100%; }
+.gate-layer-far { animation: gate-drift-far 34s ease-in-out infinite alternate; }
+.gate-layer-mid { animation: gate-drift-mid 22s ease-in-out infinite alternate; }
+.gate-layer-near { animation: gate-drift-near 15s ease-in-out infinite alternate; }
+
+@keyframes gate-drift-far { from { transform: translateX(-0.4%); } to { transform: translateX(0.4%); } }
+@keyframes gate-drift-mid { from { transform: translateX(-1%); } to { transform: translateX(1%); } }
+@keyframes gate-drift-near { from { transform: translateX(-2%); } to { transform: translateX(2%); } }
+
+.gate-tether { animation: gate-pulse 4.5s ease-in-out infinite; }
+@keyframes gate-pulse { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } }
+
+/* The arch itself. A horizontal band of pedestals, scrollable when the screen
+   is too narrow to hold five at a readable size — which is most phones, and is
+   why this is a scroller rather than five things squeezed to nothing. */
+.gate-arch {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-4);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.gate-arch::-webkit-scrollbar { display: none; }
+
+.gate-pedestal {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  width: 8.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  /* Lifted by its place in the arch: the middle stands nearest and largest, the
+     ends sit back and slightly smaller. Both numbers come from the domain. */
+  transform: translateY(calc(var(--gate-depth, 0) * -0.9rem)) scale(var(--gate-scale, 1));
+  transition: transform var(--motion-medium) var(--ease-soft), opacity var(--motion-fast) linear;
+}
+.gate-pedestal[data-unavailable] { opacity: 0.45; cursor: not-allowed; }
+.gate-pedestal:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; border-radius: var(--radius); }
+
+.gate-figure {
+  display: block;
+  width: 4.5rem;
+  height: 4.5rem;
+  transition: transform var(--motion-medium) var(--ease-soft);
+}
+.gate-figure svg { width: 100%; height: 100%; }
+.gate-pedestal[data-selected] .gate-figure { transform: translateY(-0.35rem) scale(1.12); }
+
+/* The plinth each one stands on, and the ring of light that says which is
+   chosen. Drawn here rather than in the SVG so it can animate independently of
+   the backdrop's own drift. */
+.gate-plinth {
+  display: block;
+  width: 4rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: var(--color-surface-muted);
+  box-shadow: 0 0 0 0 var(--color-accent);
+  transition: box-shadow var(--motion-medium) var(--ease-soft);
+}
+.gate-pedestal[data-selected] .gate-plinth {
+  background: var(--color-accent);
+  box-shadow: 0 0 1.2rem 0.3rem var(--color-accent);
+}
+
+.gate-card {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  text-align: left;
+  transition: border-color var(--motion-fast) linear;
+}
+.gate-pedestal[data-selected] .gate-card { border-color: var(--color-accent); }
+
+.gate-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-1); }
+.gate-name { font-weight: 600; font-size: var(--text-sm); }
+.gate-rank { font-size: var(--text-xs); color: var(--color-text-muted); white-space: nowrap; }
+.gate-rank[data-tier='legendary'], .gate-rank[data-tier='mythic'] { color: var(--color-accent); }
+
+.gate-species { font-size: var(--text-xs); color: var(--color-text-muted); text-transform: capitalize; }
+
+.gate-leans { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
+.gate-lean {
+  padding: 1px var(--space-1);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+.gate-skill { margin-top: 2px; font-size: var(--text-xs); color: var(--color-accent); font-weight: 600; }
+.gate-foot, .gate-affinity {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
+
+/* Everything under the scene: who you picked, and the one button that commits
+   it. The confirm is what keeps the gate a threshold rather than a menu you
+   fall through — see the note in RaidGate.tsx. */
+.gate-foot-bar { display: grid; gap: var(--space-3); }
+.gate-words { display: grid; gap: var(--space-1); }
+.gate-title {
+  font-family: var(--font-display);
+  font-weight: var(--font-display-weight, 400);
+  letter-spacing: var(--font-display-tracking, 0);
+  font-size: var(--text-xl);
+  line-height: var(--line-tight);
+}
+.gate-greeting { font-size: var(--text-sm); line-height: var(--line-body); }
+.gate-level, .gate-refused { font-size: var(--text-xs); color: var(--color-text-muted); }
+.gate-refused { color: var(--color-danger); }
+
+.gate-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.gate-enter {
+  flex: 1 1 12rem;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: var(--radius);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.gate-enter:disabled { opacity: 0.5; cursor: not-allowed; }
+.gate-back {
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* ---- the garden behind the fight ------------------------------------------ */
+
+/* The backdrop sits behind the canvas, which is transparent for exactly this
+   reason. Absolutely placed against `.garden-stage-wrap`, which already
+   establishes a containing block. */
+.garden-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius);
+  pointer-events: none;
+}
+.garden-stage-wrap > *:not(.garden-backdrop) { position: relative; z-index: 1; }
+
+.garden-layer-sky { animation: gate-drift-far 40s ease-in-out infinite alternate; }
+.garden-layer-mid { animation: gate-drift-mid 26s ease-in-out infinite alternate; }
+.garden-layer-near { animation: gate-drift-near 18s ease-in-out infinite alternate; }
+.garden-tether { animation: gate-pulse 5s ease-in-out infinite; }
+.garden-rain { animation: garden-rain-fall 1.1s linear infinite; }
+
+@keyframes garden-rain-fall {
+  from { transform: translateY(-14px); }
+  to { transform: translateY(14px); }
+}
+
+/* Who came with you, and the way back to the arch. */
+.garden-companion {
+  margin-left: auto;
+  display: grid;
+  gap: 0;
+  min-height: var(--tap);
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: inherit;
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+}
+.garden-companion-name { font-weight: 600; font-size: var(--text-sm); }
+.garden-companion-swap { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+/* The name of a skill, the moment it goes off. Sits over the canvas and
+   disappears on its own — it is a flourish, not a status line. */
+.garden-flourish {
+  position: absolute;
+  top: var(--space-3);
+  left: 50%;
+  z-index: 2;
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  pointer-events: none;
+  animation: garden-flourish var(--motion-slow) var(--ease-soft) forwards;
+}
+
+@keyframes garden-flourish {
+  from { opacity: 0; transform: translate(-50%, 0.4rem); }
+  40% { opacity: 1; transform: translate(-50%, 0); }
+  to { opacity: 0; transform: translate(-50%, -0.6rem); }
+}
+
+/* Calm mode and the OS setting both stop the ambient drift. Nothing here
+   carries information, so there is nothing to replace it with — the scene
+   simply stands still, which is what the setting is asking for. */
+@media (prefers-reduced-motion: reduce) {
+  .gate-layer,
+  .gate-tether,
+  .garden-layer-sky,
+  .garden-layer-mid,
+  .garden-layer-near,
+  .garden-tether,
+  .garden-rain,
+  .garden-flourish { animation: none; }
+  .garden-flourish { opacity: 1; }
+}

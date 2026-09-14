@@ -27,6 +27,7 @@ export * from './members';
 export * from './petXp';
 export * from './photos';
 export * from './quests';
+export * from './raid';
 export * from './reflections';
 export * from './rpg';
 export * from './together';
