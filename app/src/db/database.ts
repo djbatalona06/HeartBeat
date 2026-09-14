@@ -11,6 +11,7 @@ import type { InventoryItem } from '../domain/rpg/inventory';
 import type { PetInstance } from '../domain/rpg/pets';
 import type { CardProgress, StudySession } from '../domain/study/types';
 import type { Reflection } from '../domain/selfcare/reflections';
+import type { WorldProgress } from '../domain/rpg/world';
 
 /**
  * The phone holds the whole record. The Worker keeps a copy so the other half
@@ -55,6 +56,9 @@ export class HeartBeatDB extends Dexie {
 
   // v8 — the journal behind Activities, and the self-care layer's only table.
   reflections!: Table<Reflection, string>;
+
+  // v10 — how far through Eve's Garden the couple have got.
+  worldProgress!: Table<WorldProgress, string>;
 
   constructor() {
     super('heartbeat');
@@ -168,6 +172,23 @@ export class HeartBeatDB extends Dexie {
       // order and a bounded ring can forget; one short row per event cannot do
       // either, and the table is a few bytes a day.
       lifeEventSettlements: 'eventId',
+    });
+
+    // v10 adds Eve's Garden's world progress: which island the couple are on
+    // and which monsters have fallen.
+    //
+    // Keyed by `coupleId` and holding nothing else keyed by a member, like
+    // `pet`. The world is the couple's — either of you may clear a stage and
+    // both of you should see it — which is why it syncs as a partner-writable
+    // holding kind rather than a per-member one. See PARTNER_WRITABLE_KINDS in
+    // domain/sync/holdings.ts, where widening that list is called out as a
+    // security decision; this is the second kind to earn it, and for the same
+    // reason the quest did.
+    //
+    // One row per couple, so there is no index worth adding: every read is
+    // `get(coupleId)`.
+    this.version(10).stores({
+      worldProgress: 'coupleId',
     });
   }
 }

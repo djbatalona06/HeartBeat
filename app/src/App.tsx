@@ -21,16 +21,26 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { CommandMenu } from './components/CommandMenu';
 
 /**
- * The one lazy route in the app.
+ * The two lazy routes in the app.
  *
  * Every other page is imported eagerly and loads instantly, so a blanket
  * conversion would buy a flash of fallback on screens that do not need one.
- * This page pulls in Phaser — over a megabyte, for one screen — so it is the
- * single case where the split pays for itself. See `vite.config.ts`, which
- * names the chunk and keeps it out of the service-worker precache.
+ * These two are the cases where the split pays for itself: the overworld pulls
+ * in Phaser — over a megabyte, for one screen — and Eve's Garden pulls in
+ * Phaser *and* the .NET WebAssembly runtime behind it, another 3.5 MB. See
+ * `vite.config.ts`, which names both chunks and keeps them out of the
+ * service-worker precache.
+ *
+ * `/overworld` is the older, walkable garden and is on its way out. It stays
+ * mounted until Eve's Garden has been played enough to trust, and goes together
+ * with `domain/rpg/encounter.ts` — one damage formula ships either way, since
+ * nothing in `features/eve-garden/` calls that module.
  */
 const OverworldPage = lazy(() => import('./features/rpg/OverworldPage')
   .then((m) => ({ default: m.OverworldPage })));
+
+const EveGardenPage = lazy(() => import('./features/eve-garden/EveGardenPage')
+  .then((m) => ({ default: m.EveGardenPage })));
 import { MenuSheet } from './components/MenuSheet';
 import { StatusHud } from './components/StatusHud';
 import { Icon } from './components/icons';
@@ -121,6 +131,12 @@ export function App() {
                         sits next to its house and its adventures. */}
                     <Route path="/birb" element={<PartyPage only={['worn', 'colours', 'house', 'adventures', 'companions', 'boss']} title="Birb" />} />
                     <Route path="/party" element={<PartyPage />} />
+                    <Route path="/eve-garden" element={(
+                      <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>
+                        <EveGardenPage />
+                      </Suspense>
+                    )}
+                    />
                     <Route path="/overworld" element={(
                       <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>
                         <OverworldPage />

@@ -4696,3 +4696,425 @@ body {
 }
 .encounter-done { flex-direction: column; align-items: flex-start; }
 .encounter-receipt { margin: 0; color: var(--color-accent); font-size: var(--text-sm); }
+
+/* ---- Eve's Garden ---------------------------------------------------------- */
+
+/* The garden is the battle page and the dashboard at once, so the layout job is
+   to keep three things legible over one canvas: where you are (the compass), how
+   you are (the cards), and what is happening (the log). Everything floats over
+   the canvas rather than boxing it in — a solid panel would hide the thing it is
+   about.
+
+   Every colour comes from the theme tokens, so the five packs and both their
+   variants recolour this for free, exactly as they recolour the sprites. There
+   is no hard-coded hex below. */
+
+.garden { position: relative; }
+
+.garden-top {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: var(--space-2);
+}
+
+/* The compass. The only navigation this page has, so it is a real button with a
+   real tap target rather than a decorative chip. */
+.garden-compass {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--motion-easing);
+}
+.garden-compass:hover,
+.garden-compass:focus-visible { border-color: var(--color-accent); }
+.garden-compass.is-dark { background: color-mix(in srgb, var(--color-base) 78%, transparent); }
+
+.garden-compass-rose {
+  font-size: var(--text-lg);
+  color: var(--color-accent);
+}
+.garden-compass-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.garden-compass-where {
+  font-family: var(--font-display);
+  letter-spacing: var(--font-display-tracking);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.garden-compass-stage { color: var(--color-text-muted); }
+.garden-compass-bar {
+  display: block;
+  width: 9rem;
+  max-width: 40vw;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+.garden-compass-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  transition: width var(--motion-medium) var(--motion-easing);
+}
+.garden-compass-percent {
+  margin-left: auto;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The canvas. Same treatment as the overworld's — Phaser sizes it, this only
+   gives it somewhere to be and stops it stretching on a wide screen. */
+.garden-stage {
+  display: flex;
+  justify-content: center;
+  min-height: 34vh;
+}
+.garden-stage canvas {
+  max-width: 100%;
+  height: auto;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  /* Keep 16x16 art crisp when the browser does the final scale, not just when
+     Phaser does — `pixelArt: true` covers the texture, this covers the element. */
+  image-rendering: pixelated;
+}
+
+.garden-stage-wrap {
+  position: relative;
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* The dashboard, as cards rather than a panel. */
+.garden-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-2);
+}
+.garden-card {
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+}
+.garden-card.is-dark { border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border)); }
+.garden-card h3 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.garden-card p {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+.garden-card-big {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  line-height: var(--line-tight);
+}
+.garden-card-bar {
+  height: 6px;
+  margin-bottom: var(--space-1);
+  border-radius: 3px;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+.garden-card-bar span {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  transition: width var(--motion-medium) var(--motion-easing);
+}
+
+/* The fight panel: who you are against, and what just happened. */
+.garden-battle {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+}
+.garden-foe-name {
+  margin: 0;
+  font-family: var(--font-display);
+  letter-spacing: var(--font-display-tracking);
+  font-size: var(--text-base);
+}
+.garden-foe-kind,
+.garden-foe-note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.garden-bar {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.garden-bar-label { color: var(--color-text-muted); }
+.garden-bar-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+.garden-bar-fill {
+  display: block;
+  height: 100%;
+  transition: width var(--motion-medium) var(--motion-easing);
+}
+/* The two sides read differently without relying on hue alone: yours is the
+   accent, theirs is muted ink. A red/green pair would fail for the people most
+   likely to be using a wellness tracker on a bad day. */
+.garden-bar-you .garden-bar-fill { background: var(--color-accent); }
+.garden-bar-foe .garden-bar-fill { background: var(--color-text-muted); }
+.garden-bar-value { font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
+
+.garden-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.garden-effects li {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+
+.garden-log {
+  max-height: 9rem;
+  margin: 0;
+  padding: 0 0 0 var(--space-3);
+  overflow-y: auto;
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+.garden-log li { margin-bottom: 2px; }
+.garden-log .is-them { color: var(--color-text-muted); }
+
+/* The action bar. Every button is a wellness log and a combat move at once,
+   which is the whole argument of the page, so it gets the most room. */
+.garden-actions { display: grid; gap: var(--space-2); }
+.garden-action-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.garden-action {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--motion-easing),
+    transform var(--motion-fast) var(--motion-easing);
+}
+.garden-action:hover:not(:disabled),
+.garden-action:focus-visible { border-color: var(--color-accent); }
+.garden-action:active:not(:disabled) { transform: translateY(1px); }
+.garden-action:disabled { opacity: 0.55; cursor: default; }
+.garden-action-name { font-weight: 600; }
+.garden-action-note { font-size: var(--text-sm); color: var(--color-text-muted); }
+/* Effectiveness is carried by a border, not a colour swap, so it survives every
+   pack and both variants. */
+.garden-action.is-strong { border-color: var(--color-success); }
+.garden-action.is-weak { border-color: color-mix(in srgb, var(--color-text-muted) 60%, transparent); }
+.garden-action.is-locked { opacity: 0.4; }
+
+.garden-flee {
+  justify-self: start;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.garden-flee:disabled { opacity: 0.5; cursor: default; }
+
+.garden-actions-hint,
+.garden-hint,
+.garden-note { margin-top: var(--space-2); }
+
+/* The world map, over the garden. */
+.garden-map-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--color-base) 70%, transparent);
+}
+.garden-map {
+  width: min(28rem, 100%);
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+}
+.garden-map-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.garden-map-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  letter-spacing: var(--font-display-tracking);
+  font-size: var(--text-lg);
+}
+.garden-map-close {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-xl);
+  line-height: 1;
+  cursor: pointer;
+}
+.garden-map-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  padding: 0;
+  list-style: none;
+}
+.garden-map-island {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.garden-map-island:disabled { opacity: 0.45; cursor: default; }
+.garden-map-island.is-here { border-color: var(--color-accent); }
+.garden-map-island.is-done .garden-map-number { color: var(--color-success); }
+.garden-map-number {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+}
+.garden-map-name { display: grid; gap: 2px; }
+.garden-map-note,
+.garden-map-element,
+.garden-map-foot {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.garden-map-foot { margin: 0; line-height: var(--line-body); }
+
+/* The victory banner, sliding down from the top. */
+.garden-victory {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-3);
+  pointer-events: none;
+}
+.garden-victory-card {
+  width: min(24rem, 100%);
+  margin-top: var(--shell-top, var(--space-3));
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+  animation: garden-drop var(--motion-medium) var(--motion-easing);
+}
+.garden-victory-card h2 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  letter-spacing: var(--font-display-tracking);
+  font-size: var(--text-lg);
+}
+.garden-victory-card p {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+.garden-victory-xp { color: var(--color-accent); font-weight: 600; }
+.garden-victory-go {
+  margin-top: var(--space-2);
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@keyframes garden-drop {
+  from { opacity: 0; transform: translateY(-0.75rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Calm mode turns off the one thing on this page that moves on its own. The
+   canvas has its own idle bob, which Phaser owns; this covers the DOM half. */
+@media (prefers-reduced-motion: reduce) {
+  .garden-victory-card { animation: none; }
+}

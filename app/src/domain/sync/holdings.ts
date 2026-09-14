@@ -2,6 +2,7 @@ import type { Avatar, Cheer, LifeEvent, Task } from '../rpg/types';
 import type { InventoryItem } from '../rpg/inventory';
 import type { PetInstance } from '../rpg/pets';
 import type { Quest } from '../types';
+import type { WorldProgress } from '../rpg/world';
 
 /**
  * Turning the RPG layer into rows and back.
@@ -21,19 +22,30 @@ import type { Quest } from '../types';
  */
 
 export const HOLDING_KINDS = [
-  'inventory', 'pet', 'avatar', 'quest', 'task', 'lifeEvent', 'cheer',
+  'inventory', 'pet', 'avatar', 'quest', 'task', 'lifeEvent', 'cheer', 'world',
 ] as const;
 export type HoldingKind = (typeof HOLDING_KINDS)[number];
 
 /**
  * Two properties that used to be one list, and are not the same property.
  *
- * **Writable** — either of you may overwrite the row. Only the quest: it is
- * taken on together, either of you can start or retire it, and both devices
- * have to converge on the same one. The rule is enforced server-side by the
- * `excluded.kind IN ('quest')` clause of `UPSERT_SQL`; this list is its client
- * mirror, and a test in `worker/src/holdings.test.ts` pins the two together by
- * parsing that clause rather than restating it.
+ * **Writable** — either of you may overwrite the row. Two kinds. The quest: it
+ * is taken on together, either of you can start or retire it, and both devices
+ * have to converge on the same one. And Eve's Garden's world: the island and
+ * the cleared-stage list belong to the couple, either of you may clear a stage,
+ * and a world that advanced on only one phone would not be a shared world.
+ *
+ * What makes the world safe to widen this list for is that its merge is not
+ * really last-write-wins over an opaque blob: `clearStage` only ever *appends*
+ * a monster id it does not already hold, so the two phones' rows converge
+ * rather than clobber. A phone that has been offline still loses nothing worse
+ * than a re-clear of a stage it already beat, which `clearStageFor` treats as
+ * a no-op.
+ *
+ * The rule is enforced server-side by the `excluded.kind IN ('quest', 'world')`
+ * clause of `UPSERT_SQL`; this list is its client mirror, and a test in
+ * `worker/src/holdings.test.ts` pins the two together by parsing that clause
+ * rather than restating it.
  *
  * **Visible** — a pulled row of this kind is applied here even though our
  * partner wrote it. Every writable kind is visible. Life events and cheers are
@@ -47,10 +59,10 @@ export type HoldingKind = (typeof HOLDING_KINDS)[number];
  * rows it did not make. Keeping them one list made the second look like the
  * first, which is exactly how that right gets granted by accident.
  */
-export const PARTNER_WRITABLE_KINDS: readonly HoldingKind[] = ['quest'];
+export const PARTNER_WRITABLE_KINDS: readonly HoldingKind[] = ['quest', 'world'];
 
 export const PARTNER_VISIBLE_KINDS: readonly HoldingKind[] = [
-  'quest', 'lifeEvent', 'cheer',
+  'quest', 'lifeEvent', 'cheer', 'world',
 ];
 
 export function isPartnerWritable(kind: HoldingKind): boolean {
@@ -61,9 +73,9 @@ export function isPartnerVisible(kind: HoldingKind): boolean {
   return PARTNER_VISIBLE_KINDS.includes(kind);
 }
 
-/** A local row of any of the seven kinds. All of them carry `updatedAt`. */
+/** A local row of any of the eight kinds. All of them carry `updatedAt`. */
 export type HoldingRow =
-  | InventoryItem | PetInstance | Avatar | Quest | Task | LifeEvent | Cheer;
+  | InventoryItem | PetInstance | Avatar | Quest | Task | LifeEvent | Cheer | WorldProgress;
 
 export interface WireHolding {
   /** The local primary key, carried through unchanged. */
@@ -90,6 +102,11 @@ export interface PulledHolding extends WireHolding {
  */
 export function keyOf(kind: HoldingKind, row: HoldingRow): string {
   if (kind === 'avatar') return (row as Avatar).memberId;
+  // Eve's Garden's world is the couple's and there is one row of it, so its
+  // primary key is the coupleId and it has no `id` at all — the same shape as
+  // `avatar`, one level up. Reading `row.id` here would push every couple's
+  // world under the key `undefined`.
+  if (kind === 'world') return (row as WorldProgress).coupleId;
   return (row as { id: string }).id;
 }
 

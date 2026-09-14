@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WasmMainJSPath>main.js</WasmMainJSPath>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!--
+      Required by unplugin-dotnet-wasm: emits a boot config a JS bundler can
+      read, instead of the runtime fetching its own manifest at load time.
+      Without it the plugin finds no manifests and silently bundles nothing.
+    -->
+    <WasmBundlerFriendlyBootConfig>true</WasmBundlerFriendlyBootConfig>
+
+    <!--
+      Size. This runtime ships to a phone that also carries Phaser, so every
+      switch that trims it is on:
+
+      InvariantGlobalization drops the ICU data file (~500 KB on its own). Safe
+      here because nothing in Core formats a date or compares a string
+      culture-sensitively - it is integers and ordinal lookups end to end.
+
+      PublishTrimmed + IL-linking the framework drops everything the game does
+      not call. TrimMode=full because we control every entry point: the only
+      way in is [JSExport], and the linker can see all of them.
+
+      Reflection-free JSON: Core's DTOs are serialised through a
+      JsonSerializerContext (Bridge.cs), so the reflection-based serialiser is
+      never rooted and the linker can discard it.
+    -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <EventSourceSupport>false</EventSourceSupport>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+    <WasmEnableSIMD>false</WasmEnableSIMD>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../HeartBeat.Game.Core/HeartBeat.Game.Core.csproj" />
+  </ItemGroup>
+
+</Project>

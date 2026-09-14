@@ -22,6 +22,16 @@ jobs:
           node-version: 22
           cache: npm
 
+      # Eve's Garden's rules are C# compiled to WebAssembly (`game/`). The
+      # wasm-tools workload carries the emscripten toolchain that emits it;
+      # without it the Vite build finds no .NET output and fails.
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install the wasm workload
+        run: dotnet workload install wasm-tools
+
       - name: Install
         run: npm ci
 

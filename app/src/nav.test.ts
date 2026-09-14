@@ -33,6 +33,13 @@ const NOT_ON_A_SURFACE = new Set([
   // Run before pairing is even the question, by FirstRunGate.
   '/welcome',
   '/onboarding',
+  // The older walkable garden, superseded by Eve's Garden at `/eve-garden`. It
+  // is deliberately mounted and deliberately unlinked: still reachable by URL
+  // for anyone comparing the two, off every surface so nobody finds it by
+  // accident. It comes out with `domain/rpg/encounter.ts` once the new garden
+  // has been played enough to trust — at which point this entry goes too, and
+  // this test is what will say so.
+  '/overworld',
 ]);
 
 describe('the navigation registry', () => {
