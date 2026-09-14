@@ -32,6 +32,22 @@ export interface GameClient {
   close(): void;
 }
 
+/**
+ * The C# side takes `int`, and JavaScript numbers are doubles.
+ *
+ * Anything outside int32 fails at the interop marshaller rather than in managed
+ * code, so it arrives as an unreadable string and looks like the whole runtime
+ * failed to boot. Clamping here means no caller can produce that: an XP total
+ * larger than int32 is already far past the top of the curve, and
+ * `Progression.LevelForXp` clamps to max level anyway.
+ */
+const INT32_MAX = 2147483647;
+
+function asInt(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(-INT32_MAX, Math.min(INT32_MAX, Math.trunc(value)));
+}
+
 class ClosedError extends Error {
   constructor() {
     super('the game worker was closed');
@@ -113,8 +129,10 @@ export function createGameClient(): GameClient {
 
     stage: (island, stage, theme) => json<StageDto>('stage', island, stage, theme),
 
+    // `seed` is deliberately not clamped: it crosses as a double, which is what
+    // `Api.ToSeed` expects and folds into a uint itself.
     beginBattle: (island, stage, theme, level, seed) =>
-      json<BattleDto>('beginBattle', island, stage, theme, level, seed),
+      json<BattleDto>('beginBattle', island, stage, theme, asInt(level), seed),
 
     // The battle state is handed straight back as the string it arrived as
     // would be cheaper, but re-serialising keeps `BattleDto` the only thing the
@@ -124,11 +142,11 @@ export function createGameClient(): GameClient {
     monsterMove: (battle) => json<BattleDto>('monsterMove', JSON.stringify(battle)),
 
     async progress(xp) {
-      return (await json<ProgressDto>('progress', xp))!;
+      return (await json<ProgressDto>('progress', asInt(xp)))!;
     },
 
     async award(activity, currentXp) {
-      return (await json<AwardDto>('award', activity, currentXp))!;
+      return (await json<AwardDto>('award', activity, asInt(currentXp)))!;
     },
 
     defeatXp: (island, stage) => send<number>('defeatXp', island, stage),

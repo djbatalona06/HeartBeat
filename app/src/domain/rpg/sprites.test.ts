@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { PALETTE_KEYS, SPRITES, SPRITE_SIZE, hasSprite, spriteFor } from './sprites';
+import {
+  ISLAND_1_SPRITE_KEYS, PALETTE_KEYS, SPRITES, SPRITE_SIZE, hasSprite, spriteFor,
+} from './sprites';
 import { TILE, TILE_KINDS, ZONES } from './zones';
 import { ENEMIES } from './enemies';
 
@@ -52,6 +54,39 @@ describe('SPRITES', () => {
   });
 });
 
+/**
+ * Eve's Garden's monsters.
+ *
+ * The seven keys are restated here rather than imported, because the list they
+ * have to match lives in C# — `SpriteKey` on each monster in
+ * `game/HeartBeat.Game.Core/Data/Island1.cs` — and TypeScript cannot read it.
+ * This is the same arrangement `HOLDING_KINDS` has with the endpoint's `KINDS`:
+ * two lists across a boundary, and a test as the only thing holding them
+ * together. A monster whose sprite key is renamed on one side fails here.
+ */
+describe("Eve's Garden island 1", () => {
+  it('draws all seven of island one', () => {
+    expect(ISLAND_1_SPRITE_KEYS).toHaveLength(7);
+    for (const key of ISLAND_1_SPRITE_KEYS) {
+      expect(hasSprite(key), key).toBe(true);
+      expect(spriteFor(key), key).toHaveLength(SPRITE_SIZE);
+    }
+  });
+
+  it('draws a heavier silhouette the further into the island you get', () => {
+    // The island's difficulty curve should be legible without reading a stat
+    // block, so the sprites get denser as the stages get harder. Stage 5 is the
+    // deliberate breather and is allowed to be the lightest thing on the island
+    // — which is exactly why this compares the two ends rather than every pair.
+    const painted = (key: string) =>
+      (spriteFor(key) ?? []).join('').split('').filter((c) => c !== '.').length;
+
+    expect(painted('sedentary-sentinel')).toBeGreaterThan(painted('sloth-sprout'));
+    expect(painted('couch-moss')).toBeGreaterThan(painted('dozing-beetle'));
+    expect(painted('dust-drifter')).toBeLessThan(painted('lie-in'));
+  });
+});
+
 // The drift checks. These are why the data is TypeScript and not a PNG: a
 // missing sprite is a failing test rather than a blank square in the garden.
 describe('coverage', () => {
@@ -86,6 +121,10 @@ describe('coverage', () => {
     const referenced = new Set<string>([
       ...TILE_KINDS.map((k) => k.sprite),
       ...ENEMIES.map((e) => e.id),
+      // Referred to from C#, not from anything TypeScript can follow: these
+      // are the `SpriteKey` values in Data/Island1.cs, baked by the Eve's
+      // Garden scene. Without them this check reads them as dead art.
+      ...ISLAND_1_SPRITE_KEYS,
       'bird-up', 'bird-down', 'bird-left', 'bird-right',
     ]);
     for (const key of Object.keys(SPRITES)) {

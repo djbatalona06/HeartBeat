@@ -1,8 +1,11 @@
 import { db } from '../database';
-import type { CoupleId } from '../../domain/types';
+import type { CoupleId, DayKey } from '../../domain/types';
+import { addDays, daysBetween } from '../../domain/day';
 import {
   clearStage, newWorldProgress, travelTo, type WorldProgress,
 } from '../../domain/rpg/world';
+import { FRESH_MOMENTUM, type Momentum } from '../../domain/rpg/diorama';
+import { dayLogs } from './vitals';
 import { now } from './shared';
 
 /**
@@ -58,4 +61,47 @@ export async function travelToIsland(
     await db.worldProgress.put(next);
     return next;
   });
+}
+
+/**
+ * The three numbers `diorama.variantFor` reads, gathered from the logs.
+ *
+ * Deliberately not filtered by member, for the same reason `dayLogs` is not:
+ * the garden is the couple's, and a week where one of them logged every day is
+ * not a quiet week. Filtering to "mine" here would be the bug that made the old
+ * pet bar a private number under a shared heading.
+ *
+ * Safe inside a `useLiveQuery`: it reads only the entry tables, so Dexie
+ * re-runs it when either phone logs something and at no other time. It does not
+ * call `loadSettings` — that would re-fire the query up to twenty times a
+ * foreground cycle — so the caller passes the day key in, already in the
+ * member's own timezone.
+ */
+export async function gardenMomentum(today: DayKey): Promise<Momentum> {
+  const logs = await dayLogs(today);
+  if (logs.length === 0) return FRESH_MOMENTUM;
+
+  const days = [...new Set(logs.map((log) => log.day))];
+  const daysSinceLog = Math.max(
+    0,
+    Math.min(...days.map((day) => daysBetween(day, today))),
+  );
+
+  const weekStart = addDays(today, -6);
+  const loggedDays = days.filter((day) => day >= weekStart && day <= today).length;
+
+  // Mood is averaged over the same week rather than over everything, so a good
+  // month cannot hide a hard week and one hard week cannot outlive itself.
+  const recent = await db.moods.where('day').aboveOrEqual(weekStart).toArray();
+  if (recent.length === 0) return { daysSinceLog, loggedDays };
+
+  const mean = (pick: (entry: (typeof recent)[number]) => number) =>
+    recent.reduce((sum, entry) => sum + pick(entry), 0) / recent.length;
+
+  return {
+    daysSinceLog,
+    loggedDays,
+    joy: mean((entry) => entry.joy),
+    moody: mean((entry) => entry.moody),
+  };
 }

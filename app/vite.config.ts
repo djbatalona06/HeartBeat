@@ -96,8 +96,12 @@ export default defineConfig({
         // loader scripts bundled into it and weighs 300 KB on its own. Naming
         // the `.wasm` files here would look like the fix and change nothing.
         //
-        // Check this with `npm run build` and read the entry count: it should
-        // stay at 15 entries / ~910 KiB.
+        // Check this with `npm run build` and read the entry count. It sits at
+        // 19 entries / ~946 KiB: the page chunks either garden splits out
+        // (EveGardenPage, bake, zones, the two `game` bootstraps) are a few KB
+        // each and belong in the precache, because they are what renders the
+        // "needs one online visit" message when the heavy parts are missing.
+        // The two that must never appear are named below.
         globIgnores: [
           'assets/phaser-*.js',
           'assets/game.worker-*.js',

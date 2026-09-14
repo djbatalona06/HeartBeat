@@ -130,7 +130,7 @@ export const MENU_GROUPS: MenuGroup[] = [
     title: 'The app',
     tabs: [
       { to: '/party', label: 'Party', icon: 'sword', hint: 'Everything about the two of you at once' },
-      { to: '/overworld', label: 'Overworld', icon: 'sword', hint: 'The garden, and what is in it' },
+      { to: '/eve-garden', label: "Eve's Garden", icon: 'sword', hint: 'The islands, and what stands on them' },
       { to: '/settings', label: 'You', icon: 'person', hint: 'Pairing, theme, notifications' },
     ],
   },
@@ -158,6 +158,10 @@ export const ALL_DESTINATIONS: Tab[] = [
  */
 export const ALIASES: Tab[] = [
   { to: '/mood', label: 'Cycle', icon: 'moon', hint: 'The log, at the foot of Mood' },
+  // The garden was `/overworld` before it became Eve's Garden. Anyone who
+  // bookmarked it, or typed it into the command menu out of habit, should still
+  // land somewhere rather than on a blank route.
+  { to: '/eve-garden', label: 'Overworld', icon: 'sword', hint: 'Now Eve\u2019s Garden' },
 ];
 
 /**

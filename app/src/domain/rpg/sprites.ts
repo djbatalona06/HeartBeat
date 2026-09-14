@@ -317,7 +317,185 @@ export const SPRITES: Record<string, Sprite> = {
     '.......oo.......',
     '................',
   ],
+
+  // --- Eve's Garden, island 1: Morning Meadow. ---
+  //
+  // The keys mirror `SpriteKey` on each monster in
+  // `game/HeartBeat.Game.Core/Data/Island1.cs`, which is the one string the two
+  // languages have to agree on. Nothing checks that agreement at compile time —
+  // C# does not import this file and this file does not import C# — so
+  // `sprites.test.ts` restates the seven keys and fails if one goes missing,
+  // and `IslandTests.EveryMonsterHasASpriteAndAtLeastOneAction` guards the
+  // other end.
+  //
+  // Drawn as silhouettes that get heavier down the island: the stage-1 sprout
+  // is small and open, the stage-7 boss fills the frame. A player who cannot
+  // read a stat block can still read that.
+
+  // Stage 1. A seedling that has not got up: two leaves folded over a
+  // round, shut-eyed bulb. The smallest silhouette on the island, so the first
+  // thing a new couple fights reads as something they can beat.
+  'sloth-sprout': [
+    '................',
+    '.......oo.......',
+    '......ollo......',
+    '.....olllo......',
+    '....ollllo......',
+    '.....oollo......',
+    '.......oo.......',
+    '.....oommoo.....',
+    '...oommmmmmoo...',
+    '..ommmmmmmmmmo..',
+    '..ommoommoommo..',
+    '..ommmmmmmmmmo..',
+    '..ommmmaammmmo..',
+    '...ommmmmmmmo...',
+    '....oooooooo....',
+    '.....oo..oo.....',
+  ],
+  // Stage 2. Curled in with its legs tucked under. Wider than the
+  // sprout and closed rather than drooping, which is what `Shell Up` looks
+  // like when it lands.
+  'dozing-beetle': [
+    '................',
+    '................',
+    '.....oooooo.....',
+    '...oommmmmmoo...',
+    '..ommllmmllmmo..',
+    '.ommmmmmmmmmmmo.',
+    '.ommoommmmoommo.',
+    '.ommmmmmmmmmmmo.',
+    '.ommllmmmmllmmo.',
+    '.ommmmmmmmmmmmo.',
+    '..ommmaaaammmo..',
+    '...oommmmmmoo...',
+    '.....oooooo.....',
+    '....o.o..o.o....',
+    '...o...o..o..o..',
+    '................',
+  ],
+  // Stage 3. The first monster drawn upward rather than outward -
+  // spines above a heavy base - because it is the first that can out-speed the
+  // player.
+  'snooze-thistle': [
+    '................',
+    '....o.....o.....',
+    '...oao...oao....',
+    '...oao...oao....',
+    '....oo.o.oo.....',
+    '.....oaoao......',
+    '....ooaaaoo.....',
+    '...ommaaammo....',
+    '..ommmaaammmo...',
+    '..ommoommoommo..',
+    '..ommmmmmmmmmo..',
+    '...ommmmmmmmo...',
+    '....oommmmoo....',
+    '......omo.......',
+    '......omo.......',
+    '.....ooooo......',
+  ],
+  // Stage 4, the semi-boss. A quilt with something under it, filling
+  // the frame edge to edge. It is the only Island 1 sprite that touches both
+  // side walls, which is the whole read: you cannot go round it.
+  'lie-in': [
+    '................',
+    '.....oooooo.....',
+    '...oollllllooo..',
+    '..ollllllllllo..',
+    '.olloollooollo..',
+    '.ollllllllllllo.',
+    'olllllllllllllo.',
+    'ollmmllmmllmmlo.',
+    'ollllllllllllllo',
+    'olmmllmmllmmlllo',
+    'ollllllllllllllo',
+    'ollmmllmmllmmllo',
+    '.olllllaallllo..',
+    '..oollllllloo...',
+    '....oooooooo....',
+    '................',
+  ],
+  // Stage 5, the breather. Deliberately the least solid thing here -
+  // scattered motes with gaps straight through it - so the recovery stage looks
+  // like one before the first turn is taken.
+  'dust-drifter': [
+    '................',
+    '.......o........',
+    '......olo.......',
+    '.....ollo...o...',
+    '....ollllo.olo..',
+    '...ollaallo.o...',
+    '...olaoolalo....',
+    '...ollaalllo....',
+    '....ollllo......',
+    '..o..oollo...o..',
+    '.olo...oo...olo.',
+    '..o.....o....o..',
+    '.....o.....o....',
+    '....olo...olo...',
+    '.....o.....o....',
+    '................',
+  ],
+  // Stage 6, the elite. The beetle's mass with the thistle's growth
+  // on top: a blocky torso under moss, standing on two stubs.
+  'couch-moss': [
+    '..oo........oo..',
+    '.ollo......ollo.',
+    '.ommo.oooo.ommo.',
+    '.ommooommmooommo',
+    '.ommmmmllmmmmmo.',
+    '.ommoommmmoommo.',
+    '.ommmmmmmmmmmmo.',
+    'oommmaammaammmoo',
+    'ommmmmmmmmmmmmmo',
+    'ommlmmmmmmmmlmmo',
+    'ommmmmmmmmmmmmmo',
+    '.ommmmmmmmmmmmo.',
+    '.oommmmmmmmmmoo.',
+    '...ooommmooo....',
+    '...oommo.ommo...',
+    '...oooo..oooo...',
+  ],
+  // Stage 7, the boss. Armoured, symmetrical, and the only sprite
+  // with a plate across its middle. It fills the frame top to bottom where the
+  // Lie-In only filled it side to side.
+  'sedentary-sentinel': [
+    '....oooooooo....',
+    '..oollllllloo...',
+    '.olloooooooollo.',
+    '.ollommmmmmollo.',
+    'ollommoaaommollo',
+    'ollommmaammmollo',
+    'olloommmmmmoollo',
+    'ollloooooooolllo',
+    'ollllllllllllllo',
+    'olmmllllllllmmlo',
+    'olmmllaaaallmmlo',
+    'olmmllaaaallmmlo',
+    'ollllllllllllllo',
+    '.ollllllllllllo.',
+    '.oollo....ollo..',
+    '..oooo....oooo..',
+  ],
 };
+
+/**
+ * Eve's Garden's monster sprites, island 1.
+ *
+ * Exported because this list is referenced from two places that cannot see each
+ * other. `BattleGardenScene` bakes exactly these, and `sprites.test.ts` holds
+ * them against the keys authored as `SpriteKey` in
+ * `game/HeartBeat.Game.Core/Data/Island1.cs` — a boundary TypeScript cannot
+ * typecheck across, so a restated list plus a test is the whole of the
+ * enforcement, exactly as with `HOLDING_KINDS` and the endpoint's `KINDS`.
+ *
+ * In island order, which is also the order they get heavier.
+ */
+export const ISLAND_1_SPRITE_KEYS = [
+  'sloth-sprout', 'dozing-beetle', 'snooze-thistle', 'lie-in',
+  'dust-drifter', 'couch-moss', 'sedentary-sentinel',
+] as const;
 
 const KEYS = new Set(Object.keys(SPRITES));
 
