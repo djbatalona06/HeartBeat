@@ -43,8 +43,15 @@ async function boot(): Promise<BridgeExports> {
     .withExitOnUnhandledError()
     .create();
 
-  const exports = await runtime.getAssemblyExports(runtime.getConfig().mainAssemblyName!);
-  const found = exports?.HeartBeat?.Game?.Wasm?.Bridge as BridgeExports | undefined;
+  // The export tree is dynamic, so the shape is asserted here — once — and then
+  // proven a line later: if the assertion is wrong, `found` is undefined or
+  // `Ping` is not a function, and both are caught below rather than surfacing as
+  // a confusing failure on the first real call.
+  const exports = await runtime.getAssemblyExports(
+    runtime.getConfig().mainAssemblyName!,
+  ) as { HeartBeat?: { Game?: { Wasm?: { Bridge?: BridgeExports } } } } | undefined;
+
+  const found = exports?.HeartBeat?.Game?.Wasm?.Bridge;
   if (!found) throw new Error('the game assembly exported no Bridge');
 
   // The readiness check, and the reason `Ping` outlived the build gate it was
