@@ -1,11 +1,23 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import DotnetWasm from 'unplugin-dotnet-wasm/vite';
 
 // Cloudflare Pages serves from the root of its subdomain. The service worker's
 // scope must match the base path exactly or registration fails silently on iOS,
 // so anything hosting this under a subpath has to set APP_BASE to match.
 const BASE = process.env.APP_BASE ?? '/';
+
+// Eve's Garden's rules live in C# (`game/`), compiled to WebAssembly and run in
+// a Web Worker. This plugin does not invoke MSBuild — it reads an output that
+// must already exist, so `npm run game:build` has to have run first. The npm
+// `build` script chains them; CI does the same. A missing output is a build
+// error rather than a silent no-op, which is the whole reason the boot config
+// is pinned to `WasmBundlerFriendlyBootConfig` in the csproj.
+//
+// Debug/Release pairs with build/publish: the publish layout is the trimmed one
+// and it is the only layout small enough to ship.
+const DOTNET_RELEASE = process.env.NODE_ENV !== 'development';
 
 export default defineConfig({
   base: BASE,
@@ -23,6 +35,14 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    DotnetWasm({
+      projectName: 'HeartBeat.Game.Wasm',
+      projectRoot: '../game/HeartBeat.Game.Wasm',
+      configuration: DOTNET_RELEASE ? 'Release' : 'Debug',
+      targetFramework: 'net10.0',
+      isPublish: DOTNET_RELEASE,
+      logLevel: 'warn',
+    }),
     VitePWA({
       registerType: 'prompt',
       injectRegister: null,
@@ -42,7 +62,29 @@ export default defineConfig({
         // one online visit before it works offline. Nothing else changes.
         // Workbox's default 2 MiB size limit would NOT have caught this —
         // minified Phaser is under it and would have been swallowed silently.
-        globIgnores: ['assets/phaser-*.js'],
+        //
+        // The .NET runtime is the same judgement call made twice. It is 3.5 MB
+        // raw / ~1.04 MB brotli — on its own larger than the entire precache
+        // above — and like Phaser it belongs to exactly one screen. Letting it
+        // in would more than double what every phone downloads on install,
+        // including the phones that never open Eve's Garden.
+        //
+        // Roughly a fifth of that is System.Text.Json, which the boundary in
+        // `game/HeartBeat.Game.Core/Api.cs` needs. It is source-generated
+        // rather than reflective precisely so the linker can drop the rest of
+        // it; see the trimming switches in HeartBeat.Game.Wasm.csproj.
+        //
+        // Same consequence, stated the same way: Eve's Garden needs one online
+        // visit before it works offline. The runtime is emitted under
+        // `assets/` with content hashes by the plugin, so both the `.wasm`
+        // payloads and the loader chunks are named here.
+        globIgnores: [
+          'assets/phaser-*.js',
+          'assets/dotnet*',
+          'assets/*.wasm',
+          'assets/System.*',
+          'assets/HeartBeat.Game.Wasm*',
+        ],
       },
       manifest: {
         id: BASE,

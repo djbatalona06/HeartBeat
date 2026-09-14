@@ -9,10 +9,13 @@
     "worker"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace app",
-    "build": "npm run build --workspace app",
-    "test": "npm run test --workspace app && npm run test --workspace worker",
+    "dev": "npm run game:build:debug && npm run dev --workspace app",
+    "build": "npm run game:build && npm run build --workspace app",
+    "test": "npm run test --workspace app && npm run test --workspace worker && npm run game:test",
     "typecheck": "npm run typecheck --workspace app && npm run typecheck --workspace worker",
+    "game:build": "node scripts/build-game.mjs",
+    "game:build:debug": "dotnet build game/HeartBeat.Game.Wasm/HeartBeat.Game.Wasm.csproj -c Debug",
+    "game:test": "dotnet test game/HeartBeat.Game.Tests/HeartBeat.Game.Tests.csproj",
     "check:config": "node scripts/check-config-sync.mjs",
     "study:build": "node scripts/build-study.mjs",
     "overworld:harness": "npm run overworld:harness --workspace app",
