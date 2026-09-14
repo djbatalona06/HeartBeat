@@ -15,6 +15,7 @@ export * from './achievements';
 export * from './assets';
 export * from './chat';
 export * from './cheers';
+export * from './chests';
 export * from './cosmetics';
 export * from './encounters';
 export * from './entries';
