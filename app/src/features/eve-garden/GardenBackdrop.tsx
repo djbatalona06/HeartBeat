@@ -1,4 +1,6 @@
 import { sunAt } from './gate/GateBackdrop';
+import { plotsAt, type Garden } from '../../domain/rpg/plots';
+import { GardenFlora } from './GardenFlora';
 
 /**
  * Eve's Garden, behind the fight.
@@ -46,9 +48,13 @@ export interface GardenBackdropProps {
   mood: number;
   /** How full the tether is, 0-1. The fountain fills with it. */
   resonance: number;
+  /** What is growing in the plots. */
+  garden: Garden;
+  /** The shared pet's level, which is what decides how much ground there is. */
+  petLevel: number;
 }
 
-export function GardenBackdrop({ hour, dark, mood, resonance }: GardenBackdropProps) {
+export function GardenBackdrop({ hour, dark, mood, resonance, garden, petLevel }: GardenBackdropProps) {
   const sun = sunAt(hour);
   const night = dark || sun.night;
   const warm = Math.min(1, Math.max(0, mood));
@@ -153,6 +159,10 @@ export function GardenBackdrop({ hour, dark, mood, resonance }: GardenBackdropPr
           strokeLinecap="round"
           opacity={0.25 + glow * 0.45}
         />
+
+        {/* The plots, and whatever is standing in them. Drawn in the near
+            layer so they sit in front of the tree line and move with it. */}
+        <GardenFlora garden={garden} plots={plotsAt(petLevel)} />
 
         {/* Flowers in the near field. Warm weeks open them; a hard week does
             not close them, it only cools the light — see the note on `mood`. */}

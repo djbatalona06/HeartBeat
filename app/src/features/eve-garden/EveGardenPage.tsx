@@ -2,13 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
 import {
-  awardPetXp, chooseRaidCompanion, clearStageFor, coupleVitals, ensureIdentity, gardenMomentum,
-  loadWorldProgress, openRaidGate, recordRaidRounds, travelToIsland,
+  awardPetXp, buyFlora, chooseRaidCompanion, clearStageFor, coupleVitals, ensureIdentity,
+  gardenMomentum, loadWorldProgress, openChestFor, openRaidGate, ownedFlora, plantFlora,
+  recordRaidRounds, travelToIsland,
 } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { levelForXp } from '../../domain/xp';
+import { milestonesAt } from '../../domain/rpg/milestones';
 import { spriteKeyForTheme } from '../../domain/rpg/sprites';
 import { RADIANCE_FULL } from '../../domain/rpg/vitals';
+import { levelOf, sheetFor } from '../../domain/rpg/avatar';
+import { gearBonusWithRefinement } from '../../domain/rpg/shop';
+import { refineByItemId } from '../../domain/rpg/inventory';
+import type { Garden } from '../../domain/rpg/plots';
 import { fireSkill, kitFor, turnFor } from '../../domain/rpg/companionSkills';
 import type { GateCard, GateVerdict } from '../../domain/rpg/raidGate';
 import { variantFor } from '../../domain/rpg/diorama';
@@ -24,6 +30,7 @@ import type { SceneHandle } from './scene/events';
 import { logActivity } from './logging';
 import { GardenBackdrop } from './GardenBackdrop';
 import { GardenPlaces } from './GardenPlaces';
+import { GardenDrawer } from './GardenDrawer';
 import { RaidGate } from './gate/RaidGate';
 import { Compass } from './Compass';
 import { WorldMap } from './WorldMap';
@@ -118,6 +125,21 @@ export function EveGardenPage() {
     () => (coupleId ? loadWorldProgress(coupleId) : undefined),
     [coupleId],
   );
+  // The wallet, the bag and what is already in the ground. Read here rather
+  // than inside the drawer so the drawer stays a component that is handed
+  // things — the same arrangement every other panel on this page has.
+  const avatar = useLiveQuery(
+    () => (memberId ? db.avatars.get(memberId) : undefined),
+    [memberId],
+  );
+  const bag = useLiveQuery(
+    () => (memberId ? db.inventory.where('memberId').equals(memberId).toArray() : []),
+    [memberId],
+  );
+  const planted = useLiveQuery(
+    () => (memberId ? ownedFlora(memberId) : []),
+    [memberId],
+  );
 
   const world: WorldProgress = stored ?? newWorldProgress(coupleId ?? 'unpaired', Date.now());
   const theme: DioramaTheme = momentum ? variantFor(momentum) : 'Light';
@@ -172,6 +194,9 @@ export function EveGardenPage() {
 
   const petXp = pet?.xp ?? 0;
   const petLevel = levelForXp(petXp);
+  /** Both ids resolved. The drawer writes, so it must not render before it
+   *  knows who is writing — a planted rose keyed to `undefined` is a lost one. */
+  const identityReady = Boolean(memberId && coupleId);
   const kit = useMemo(() => kitFor(companion ?? undefined), [companion]);
   const petSprite = spriteKeyForTheme(companion ?? undefined);
 
@@ -184,6 +209,16 @@ export function EveGardenPage() {
    * one on screen.
    */
   const resonance = Math.min(1, Math.max(0, 1 - (momentum?.daysSinceLog ?? 0) / 7));
+
+  const garden = (pet?.plots ?? {}) as Garden;
+  /** Luck, derived the one way the whole app derives it — including refinement,
+   *  because odds printed without it are odds nobody actually has. */
+  const luck = avatar
+    ? sheetFor(
+      avatar,
+      gearBonusWithRefinement(avatar.gear, levelOf(avatar), refineByItemId(bag ?? [])),
+    ).stats.luck
+    : 0;
 
   /* ---- the worker ---- */
 
@@ -333,13 +368,29 @@ export function EveGardenPage() {
     const next = game ? await game.progress(petXp + ended.xpOwed) : null;
     if (next) setProgress(next);
 
+    /**
+     * What the *pet's* level crossing was worth, if it crossed one.
+     *
+     * Deliberately read off `domain/xp.ts` rather than off the C# progress
+     * above. Those are two different numbers on purpose — C# owns the combat
+     * rank that gates the action bar and is pinned by the island simulation,
+     * while the pet's level is the fifty-rung curve the couple actually climbs
+     * — and the milestones hang off the second one. Taking the reward line
+     * from the first would have announced a plot opening on the wrong level.
+     */
+    const petLevelBefore = levelForXp(petXp);
+    const petLevelAfter = levelForXp(petXp + ended.xpOwed);
+    const crossed = petLevelAfter > petLevelBefore
+      ? milestonesAt(petLevelAfter)
+      : [];
+
     setVictory({
       monster: foe,
       xp: ended.xpOwed,
-      leveledUp: Boolean(next && progress && next.level > progress.level),
-      level: next?.level ?? progress?.level ?? 1,
-      rewardText: next && progress && next.level > progress.level
-        ? `Level ${next.level}.`
+      leveledUp: petLevelAfter > petLevelBefore,
+      level: petLevelAfter,
+      rewardText: crossed.length > 0
+        ? crossed.map((entry) => `${entry.name}. ${entry.blurb}`).join(' ')
         : '',
     });
     void after;
@@ -521,6 +572,8 @@ export function EveGardenPage() {
           dark={dark}
           mood={vitals ? vitals.radiance / RADIANCE_FULL : 0.6}
           resonance={resonance}
+          garden={garden}
+          petLevel={petLevel}
         />
 
         {/* The canvas sits inside the page rather than fixed or portalled, so the
@@ -553,6 +606,38 @@ export function EveGardenPage() {
         onAct={(action) => { void onAct(action); }}
         onFlee={onFlee}
       />
+
+      {/* The alcove and the plots, in the garden. The plan asked for the chest
+          alcove to be part of the garden's architecture rather than a separate
+          screen, and this is the same ChestAlcove the Shop tab renders — not a
+          copy, because two sets of published odds is two chances to publish a
+          number that is not the number. */}
+      {identityReady && (
+        <GardenDrawer
+          garden={garden}
+          petLevel={petLevel}
+          coins={avatar?.coins ?? 0}
+          luck={luck}
+          chestPity={avatar?.chestPity ?? {}}
+          ownedFlora={planted ?? []}
+          busy={busy !== 'idle'}
+          onPlant={async (plotId, floraId) => {
+            const result = await plantFlora(memberId!, coupleId!, plotId, floraId);
+            if (!result.ok) setNote(result.reason ?? null);
+          }}
+          onBuyFlora={async (floraId) => {
+            const result = await buyFlora(memberId!, coupleId!, floraId);
+            setNote(result.ok ? null : result.reason ?? null);
+          }}
+          onOpenChest={async (chestId) => {
+            const result = await openChestFor(memberId!, coupleId!, chestId, {
+              tier: Math.random(), kind: Math.random(),
+              stat: Math.random(), pick: Math.random(),
+            });
+            setNote(result.ok ? `${result.name}.` : result.reason);
+          }}
+        />
+      )}
 
       <GardenPlaces companion={kit.mascot} onChangeCompanion={() => openGate(true)} />
 

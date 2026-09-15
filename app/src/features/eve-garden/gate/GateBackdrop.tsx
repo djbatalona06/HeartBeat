@@ -101,6 +101,22 @@ export function GateBackdrop({ hour, dark, resonance }: GateBackdropProps) {
           fill="var(--color-surface)"
           opacity="0.9"
         />
+        {/* What the trees actually throw. Two soft pools, leaning away from
+            wherever the sun is — which is why they are computed from `sun.x`
+            rather than drawn once and left. A tree with no shadow reads as a
+            sticker on the sky. */}
+        <g opacity={night ? 0.12 : 0.2}>
+          <ellipse
+            cx={62 + (200 - sun.x) * 0.16} cy="240"
+            rx={54} ry={11}
+            fill="var(--color-base)"
+          />
+          <ellipse
+            cx={338 + (200 - sun.x) * 0.16} cy="234"
+            rx={50} ry={10}
+            fill="var(--color-base)"
+          />
+        </g>
         <path
           className="gate-tether"
           d="M-10 238 Q100 220 200 232 Q300 244 410 224"

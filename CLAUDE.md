@@ -63,6 +63,9 @@ All writes go through `app/src/db/repository/`. Components call repository funct
 - `domain/rpg/companionSkills.ts` — one skill kit per mascot, keyed by theme id
 - `domain/rpg/raidGate.ts` — who stands in the arch, and when the gate opens
 - `domain/rpg/chests.ts` — three chests, three pity counters
+- `domain/rpg/milestones.ts` — what each of the 50 levels is actually worth
+- `domain/rpg/plots.ts` — the garden's ground (earned, not bought) and what
+  grows in it
 - `domain/quests/` — quest definitions, progress tracking, completion logic
 - `domain/achievements/` — achievement state derived from synced data
 - `domain/rpg/` — boss fights, party stats
@@ -138,6 +141,25 @@ Full deploy walkthrough: `docs/DEPLOY.md`
 - **Nothing in a Dexie transaction may `await` a non-Dexie promise.** A dynamic
   `import()` inside `openChestFor` ended the transaction halfway through paying
   for a chest; every module it needs is imported statically.
+- **Garden plots are earned, not bought.** `milestones.ts` opens them by pet
+  level; `plots.ts` turns that into ground. `normalizeGarden` drops a plant in
+  ground the couple's level no longer reaches — real rather than theoretical,
+  because the plot ladder is derived from pet XP and pet XP is reconciled
+  against the server, so a device can briefly hold a garden ahead of the level
+  it can prove. `plantFlora` derives the level **inside** the transaction for
+  the same reason; never take it as an argument.
+- **The garden does not use the birbhouse catalogue.** A rainy window and a
+  round rug do not go outdoors. `FLORA` is the garden's own, and nothing in it
+  is mythic — the top rung should be something you won, and `KIND_TIERS` in
+  `chests.ts` reads the catalogue to work that out for itself.
+- **There are two level numbers and they are different on purpose.** C# owns
+  the combat rank that gates the action bar, pinned by `IslandTests`; the pet's
+  level is the fifty-rung curve in `domain/xp.ts` that the couple climbs.
+  Milestones hang off the second. `EveGardenPage`'s victory banner reads the
+  pet's, because the first would announce a plot opening on the wrong level.
+- **`ChestAlcove` has one implementation, rendered twice.** The Shop tab and
+  `GardenDrawer` both use it. Do not fork it — two sets of published odds is
+  two chances to publish a number that is not the number.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)
