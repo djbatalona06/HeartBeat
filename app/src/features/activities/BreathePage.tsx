@@ -9,6 +9,7 @@ import {
   type Pattern,
 } from '../../domain/selfcare/breathing';
 import { useTheme } from '../../themes/ThemeProvider';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 
 /**
  * Breathing, counted.
@@ -108,9 +109,7 @@ export function BreathePage() {
         </p>
 
         <div className="row">
-          <button type="button" className="primary" onClick={() => setRunning(!running)}>
-            {running ? 'Pause' : at.cycles || elapsed ? 'Carry on' : 'Start'}
-          </button>
+          <PrimaryAction onClick={() => setRunning(!running)}>{running ? 'Pause' : at.cycles || elapsed ? 'Carry on' : 'Start'}</PrimaryAction>
           {elapsed > 0 ? (
             <button type="button" className="chip" onClick={stop}>Stop</button>
           ) : null}

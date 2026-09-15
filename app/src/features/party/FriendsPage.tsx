@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Receipt, useReceipt } from '../../components/Receipt';
+import { useToast } from '../../ui/Toast';
 import { db, loadSettings } from '../../db/database';
 import { ensureIdentity, grantLifeEvent } from '../../db/repository';
 import { todayKey } from '../../domain/day';
@@ -12,6 +12,7 @@ import { GOOD_VIBES_PER_SENDER_PER_DAY } from '../../domain/rpg/lifeEvents';
 import { getMascot } from '../pet/mascots';
 import { useTheme } from '../../themes/ThemeProvider';
 import { petArt } from './art/pets';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 
 /**
  * Tree Town, with one other house in it.
@@ -30,7 +31,7 @@ export function FriendsPage() {
   const { theme } = useTheme();
   const settings = useLiveQuery(loadSettings, []);
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
-  const { receipt, say } = useReceipt();
+  const { say } = useToast();
   const [note, setNote] = useState('');
 
   useEffect(() => {
@@ -165,21 +166,14 @@ export function FriendsPage() {
               aria-label="A note to send with it"
               onChange={(event) => setNote(event.target.value)}
             />
-            <button
-              type="button"
-              className="primary"
+            <PrimaryAction
               disabled={vibesLeft === 0}
-              onClick={sendVibes}
-            >
-              {vibesLeft === 0
+              onClick={sendVibes}>{vibesLeft === 0
                 ? `That is ${GOOD_VIBES_PER_SENDER_PER_DAY} for today`
-                : `Send good vibes (${vibesLeft} left)`}
-            </button>
+                : `Send good vibes (${vibesLeft} left)`}</PrimaryAction>
           </section>
         </>
       )}
-
-      <Receipt content={receipt} />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { AREA_IDS, DIFFICULTY_WEIGHT, type AreaId, type Task, type TaskDifficult
 import { Icon } from '../../components/icons';
 import { TaskRow } from '../tasks/TasksPage';
 import { Screen } from '../../ui/layout/Screen';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 
 const DIFFICULTIES = Object.keys(DIFFICULTY_WEIGHT) as TaskDifficulty[];
 
@@ -127,9 +128,7 @@ function AddGoal({ onAdd }: {
 
   if (!open) {
     return (
-      <button type="button" className="primary" onClick={() => setOpen(true)}>
-        Write your own goal
-      </button>
+      <PrimaryAction onClick={() => setOpen(true)}>Write your own goal</PrimaryAction>
     );
   }
 

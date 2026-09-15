@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Receipt, useReceipt } from '../../components/Receipt';
+import { useToast } from '../../ui/Toast';
 import { db, loadSettings } from '../../db/database';
 import {
   awardBossVictory,
@@ -65,6 +65,8 @@ import { RaidSheet } from './RaidSheet';
 import { TIER_NAMES } from '../../domain/rpg/tiers';
 import { PRIZE_KIND_NAMES } from '../../domain/rpg/chests';
 import type { ChestOutcome } from '../../db/repository/chests';
+import { SecondaryAction } from '../../ui/SecondaryAction';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 
 /**
  * How brightly a companion's card is lit, by how rare it is.
@@ -163,7 +165,7 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
   const settings = useLiveQuery(loadSettings, []);
   const day = todayKey(settings?.timeZone ?? 'America/Los_Angeles');
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
-  const { receipt, say } = useReceipt();
+  const { say } = useToast();
   /** One chest at a time. Two taps racing would spend twice and show once. */
   const [opening, setOpening] = useState(false);
 
@@ -407,8 +409,6 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
           {only.includes('achievements') ? <AchievementShelf coupleId={identity.coupleId} /> : null}
         </>
       ) : null}
-
-      <Receipt content={receipt} />
     </div>
   );
 }
@@ -478,9 +478,7 @@ function Companions({ avatar, pets, owned, onChoose, onSeeLore, onHatch, onAdven
                 {pet.loreSeenAt ? (
                   <p className="pet-lore">{view.kind.lore}</p>
                 ) : (
-                  <button type="button" className="quiet" onClick={() => onSeeLore(pet.id)}>
-                    Read who this is
-                  </button>
+                  <SecondaryAction onClick={() => onSeeLore(pet.id)}>Read who this is</SecondaryAction>
                 )}
 
                 <button
@@ -505,11 +503,9 @@ function Companions({ avatar, pets, owned, onChoose, onSeeLore, onHatch, onAdven
             ? `${EGG_PRICE - avatar.coins} more coins for an egg`
             : `Hatch an egg · ${EGG_PRICE} coins`}
         </button>
-        <button type="button" className="quiet" onClick={onAdventure}>
-          {cost.shortBy > 0
+        <SecondaryAction onClick={onAdventure}>{cost.shortBy > 0
             ? `${cost.shortBy} more energy`
-            : `Adventure · ${cost.energy} energy, ${cost.hours}h`}
-        </button>
+            : `Adventure · ${cost.energy} energy, ${cost.hours}h`}</SecondaryAction>
       </div>
       <p className="section-sub">
         A kind you already have does not queue a second — it folds into the
@@ -1136,9 +1132,7 @@ function Boss({ avatar, pets, owned, workerUrl, token, onSpendMp, onSpendPetMp, 
 
           {boss.state === 'fighting' ? (
             <>
-              <button type="button" className="primary" disabled={busy} onClick={() => attack()}>
-                Hit it for {resolveBlow(sheet.stats).damage}
-              </button>
+              <PrimaryAction disabled={busy} onClick={() => attack()}>Hit it for {resolveBlow(sheet.stats).damage}</PrimaryAction>
               <div className="chips">
                 {SKILLS.map((skill) => (
                   <button

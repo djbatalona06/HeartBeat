@@ -5,6 +5,7 @@ import { loadSettings } from '../../db/database';
 import { addReflection, ensureIdentity } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { QUIZZES, answeredCount, summarise, type Quiz } from '../../domain/selfcare/quizzes';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 
 /**
  * Short reflective sets that end up in the journal.
@@ -133,9 +134,7 @@ export function QuizzesPage() {
             aria-label="Your answers"
           />
           <div className="row">
-            <button type="button" className="primary" disabled={!draft.trim()} onClick={save}>
-              Save it
-            </button>
+            <PrimaryAction disabled={!draft.trim()} onClick={save}>Save it</PrimaryAction>
             <button type="button" className="chip" onClick={() => setDraft(null)}>
               Back
             </button>

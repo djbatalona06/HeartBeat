@@ -9,6 +9,7 @@ import {
   CAPTION_MAX, NAME_MAX, blankRow, cleanCaption, isWorthSaving, summarise, toRows, toSets,
   type SetRow,
 } from './workout';
+import { SecondaryAction } from '../../ui/SecondaryAction';
 
 /**
  * The Move screen: what you did, in your own words, with proof.
@@ -190,7 +191,7 @@ export function ExercisePage() {
           ))}
         </ul>
 
-        <button type="button" className="quiet" onClick={addRow}>Add a set</button>
+        <SecondaryAction onClick={addRow}>Add a set</SecondaryAction>
         <p className="set-total">{summarise(sets)}</p>
       </section>
 

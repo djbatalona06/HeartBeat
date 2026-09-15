@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MOVE_SETS, moveAt, setSeconds, type MoveSet } from '../../domain/selfcare/movements';
 import { clock, useElapsed } from './useElapsed';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 
 /**
  * Short movement sets, counted through one at a time.
@@ -57,9 +58,7 @@ export function MovementsPage() {
         </p>
 
         <div className="row">
-          <button type="button" className="primary" onClick={() => setRunning(!running)}>
-            {running ? 'Pause' : elapsed > 0 && !finished ? 'Carry on' : 'Start'}
-          </button>
+          <PrimaryAction onClick={() => setRunning(!running)}>{running ? 'Pause' : elapsed > 0 && !finished ? 'Carry on' : 'Start'}</PrimaryAction>
           {elapsed > 0 ? (
             <button
               type="button"

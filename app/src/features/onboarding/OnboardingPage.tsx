@@ -8,6 +8,8 @@ import { THEMES } from '../../themes';
 import { getMascot } from '../pet/mascots';
 import { gearById } from '../../domain/rpg/gear';
 import { gearArt } from '../party/art/gear';
+import { SecondaryAction } from '../../ui/SecondaryAction';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 
 /** A small, common thing to start with — see grantStarterItem. Chosen rather
  *  than rolled, so every install's first item is one this page can describe
@@ -162,12 +164,12 @@ export function OnboardingPage() {
 
       <div className="onboarding-nav">
         {index > 0 ? (
-          <button type="button" className="quiet" onClick={back}>Back</button>
+          <SecondaryAction onClick={back}>Back</SecondaryAction>
         ) : <span />}
         {step === 'pair' ? (
-          <button type="button" className="primary" onClick={finish}>Pair the two phones</button>
+          <PrimaryAction onClick={finish}>Pair the two phones</PrimaryAction>
         ) : (
-          <button type="button" className="primary" onClick={next}>Continue</button>
+          <PrimaryAction onClick={next}>Continue</PrimaryAction>
         )}
       </div>
 

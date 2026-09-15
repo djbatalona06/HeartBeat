@@ -10,6 +10,8 @@ import type {
 import type { QuizAnswer, QuizResult } from '../../domain/study/quiz';
 import type { StudyReceipt, StudyStore } from '../../db/studyStore';
 import { DAILY_CARD_CAP } from '../../domain/study/payout';
+import { SecondaryAction } from '../../ui/SecondaryAction';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 
 /**
  * The study screen, and the only component in the app that is mounted twice:
@@ -236,17 +238,10 @@ function DeckPicker({ progress, day, onStart }: {
             <p className="deck-blurb">{deck.blurb}</p>
             <p className="deck-state">{stateLine(due, fresh, deck.cards.length)}</p>
             <div className="row">
-              <button
-                type="button"
-                className="primary"
+              <PrimaryAction
                 onClick={() => onStart(deck, 'review')}
-                disabled={due === 0 && fresh === 0}
-              >
-                {due > 0 ? 'Review' : 'Start'}
-              </button>
-              <button type="button" className="quiet" onClick={() => onStart(deck, 'quiz')}>
-                Quiz
-              </button>
+                disabled={due === 0 && fresh === 0}>{due > 0 ? 'Review' : 'Start'}</PrimaryAction>
+              <SecondaryAction onClick={() => onStart(deck, 'quiz')}>Quiz</SecondaryAction>
             </div>
           </section>
         );
@@ -522,9 +517,7 @@ function QuizRun({ stage, store, day, onStage, onDone }: {
       {answered ? (
         <>
           <p className="card-why">{card.why}</p>
-          <button type="button" className="primary" onClick={() => void next()}>
-            {stage.index + 1 >= stage.queue.length ? 'Finish' : 'Next'}
-          </button>
+          <PrimaryAction onClick={() => void next()}>{stage.index + 1 >= stage.queue.length ? 'Finish' : 'Next'}</PrimaryAction>
         </>
       ) : null}
     </>
@@ -571,7 +564,7 @@ function Summary({ stage, onAgain }: {
         </div>
       </section>
 
-      <button type="button" className="primary" onClick={onAgain}>Back to the decks</button>
+      <PrimaryAction onClick={onAgain}>Back to the decks</PrimaryAction>
     </>
   );
 }

@@ -35,6 +35,7 @@ import {
 } from './pairing';
 import { reconcileTheme, readStoredTheme, writeStoredTheme } from './theme';
 import { PHOTO_BUDGET_BYTES, coverBox, formatKb, photoBytes, withinBudget } from './photo';
+import { SecondaryAction } from '../../ui/SecondaryAction';
 
 /**
  * Pairing, the theme picker, and the two of you.
@@ -504,14 +505,9 @@ function Partner({
             placeholder="What they call you"
           />
           <div className="who-actions">
-            <button
-              type="button"
-              className="quiet"
+            <SecondaryAction
               disabled={busy}
-              onClick={() => file.current?.click()}
-            >
-              {mine?.photoDataUri ? 'Change photo' : 'Add a photo'}
-            </button>
+              onClick={() => file.current?.click()}>{mine?.photoDataUri ? 'Change photo' : 'Add a photo'}</SecondaryAction>
             {mine?.photoDataUri ? (
               <button
                 type="button"

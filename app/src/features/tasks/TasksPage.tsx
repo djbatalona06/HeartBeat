@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Receipt, useReceipt } from '../../components/Receipt';
+import { useToast } from '../../ui/Toast';
 import { QuestBoard } from '../quests/QuestBoard';
 import { db, loadSettings } from '../../db/database';
 import { VoiceInput } from '../../components/VoiceInput';
@@ -31,6 +31,7 @@ import {
 } from '../../domain/rpg/types';
 import { DEFAULT_TIMEZONE } from '../../domain/types';
 import { taskArt } from '../quests/art';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 
 const DIFFICULTIES = Object.keys(DIFFICULTY_WEIGHT) as TaskDifficulty[];
 
@@ -53,7 +54,7 @@ export function TasksPage() {
   const timeZone = settings?.timeZone ?? DEFAULT_TIMEZONE;
   const day = todayKey(timeZone);
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
-  const { receipt, show } = useReceipt();
+  const { show } = useToast();
 
   // The sheet has to exist before the first completion, or a fresh install
   // shows a page with no character on it and no way to tell that is temporary.
@@ -138,8 +139,6 @@ export function TasksPage() {
           onAdd={(draft) => putTask({ ...identity, ...draft }, day)}
         />
       ) : null}
-
-      <Receipt content={receipt} />
     </div>
   );
 }
@@ -326,9 +325,7 @@ function AddTask({ onAdd }: {
   if (!open) {
     return (
       <>
-        <button type="button" className="primary" onClick={() => setOpen(true)}>
-          Add something
-        </button>
+        <PrimaryAction onClick={() => setOpen(true)}>Add something</PrimaryAction>
         <VoiceInput
           onTranscript={applyTranscript}
           label="Say it instead"
