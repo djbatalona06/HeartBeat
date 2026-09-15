@@ -5,6 +5,7 @@ import { todayKey } from '../../domain/day';
 import { AREAS, areaProgress } from '../../domain/rpg/selfCare';
 import { SCHEDULED_TYPES, type Task } from '../../domain/rpg/types';
 import { Icon } from '../../components/icons';
+import { Screen } from '../../ui/layout/Screen';
 
 /**
  * Six areas of a life, and how much of each one today has had.
@@ -34,12 +35,7 @@ export function AreasPage() {
   );
 
   return (
-    <div className="page">
-      <header className="page-head">
-        <h1 className="page-title">Self-care areas</h1>
-        <p className="page-sub">Where your goals are pointed, and where they are not.</p>
-      </header>
-
+    <Screen title="Self-care areas" sub="Where your goals are pointed, and where they are not.">
       {/* Above the grid, not below it. Trailing prose on this screen ran
           underneath the floating chat pill, which is fixed over the foot of
           every page — and an instruction for tapping a tile reads better
@@ -74,6 +70,6 @@ export function AreasPage() {
           );
         })}
       </div>
-    </div>
+    </Screen>
   );
 }

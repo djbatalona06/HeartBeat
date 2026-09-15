@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Icon } from '../../components/icons';
 import { ACTIVITIES } from './catalogue';
+import { Screen } from '../../ui/layout/Screen';
 
 /**
  * The activities hub: a grid of the things to do that are not a task.
@@ -17,12 +18,7 @@ import { ACTIVITIES } from './catalogue';
  */
 export function ActivitiesPage() {
   return (
-    <div className="page">
-      <header className="page-head">
-        <h1 className="page-title">Activities</h1>
-        <p className="page-sub">Small things to do. None of them take long.</p>
-      </header>
-
+    <Screen title="Activities" sub="Small things to do. None of them take long.">
       <div className="activity-grid">
         {ACTIVITIES.map((activity) => (
           <Link className="activity" to={activity.to} key={activity.to}>
@@ -32,6 +28,6 @@ export function ActivitiesPage() {
           </Link>
         ))}
       </div>
-    </div>
+    </Screen>
   );
 }

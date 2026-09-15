@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ThemeBackdrop, ThemeProvider } from './themes/ThemeProvider';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { SettingsPage } from './features/settings/SettingsPage';
@@ -15,6 +15,7 @@ import { PairGate } from './features/pairing/PairGate';
 import { usePairing } from './features/pairing/usePairing';
 import { FirstRunGate } from './features/onboarding/FirstRunGate';
 import { RouteNotFound } from './features/errors/NotHere';
+import { BottomNav } from './ui/layout/BottomNav';
 import { WelcomePage } from './features/onboarding/WelcomePage';
 import { OnboardingPage } from './features/onboarding/OnboardingPage';
 import { useSync } from './pwa/useSync';
@@ -44,7 +45,6 @@ const EveGardenPage = lazy(() => import('./features/eve-garden/EveGardenPage')
   .then((m) => ({ default: m.EveGardenPage })));
 import { MenuSheet } from './components/MenuSheet';
 import { StatusHud } from './components/StatusHud';
-import { Icon } from './components/icons';
 import { QuestsPage } from './features/quests/QuestsPage';
 import { GoalsPage } from './features/goals/GoalsPage';
 import { GoalIdeasPage } from './features/goals/GoalIdeasPage';
@@ -60,7 +60,7 @@ import { SupportPage } from './features/activities/SupportPage';
 import { KindnessPage } from './features/activities/KindnessPage';
 import { FirstAidPage } from './features/activities/FirstAidPage';
 import { FriendsPage } from './features/party/FriendsPage';
-import { OPEN_WHILE_UNPAIRED, PRIMARY_TABS } from './nav';
+import { OPEN_WHILE_UNPAIRED } from './nav';
 
 
 export function App() {
@@ -189,41 +189,9 @@ export function App() {
               phone's own — a solo first run earns and spends both — so there is
               nothing here that waits on a second person. */}
           <StatusHud />
-          <TabBar locked={ready && !paired} />
+          <BottomNav locked={ready && !paired} />
         </HashRouter>
       </ThemeProvider>
     </ErrorBoundary>
-  );
-}
-
-/**
- * The six, across the bottom, as a grid.
- *
- * A grid of six equal columns rather than a flex row, so every tab is exactly
- * one sixth of the width whatever its label happens to be — "Home" and
- * "Friends" get the same target, and the bar does not shift under the thumb
- * when the active label grows. It replaces a vertical rail that had grown to
- * eight and could not have taken fourteen; see the note at the top of `nav.ts`.
- *
- * Every tab keeps its label, at every width. The rail hid all but the active
- * one below 640px because a 64px column had no room; six across the bottom of
- * even a small phone does.
- */
-function TabBar({ locked }: { locked: boolean }) {
-  return (
-    <nav className="tabbar" aria-label="Sections">
-      {PRIMARY_TABS.map((tab) => (
-        <NavLink
-          key={tab.to}
-          to={tab.to}
-          end={tab.to === '/'}
-          className="tabbar-tab"
-          data-locked={locked && !OPEN_WHILE_UNPAIRED.includes(tab.to) ? 'true' : undefined}
-        >
-          <span className="tabbar-glyph"><Icon name={tab.icon} /></span>
-          <span className="tabbar-label">{tab.label}</span>
-        </NavLink>
-      ))}
-    </nav>
   );
 }

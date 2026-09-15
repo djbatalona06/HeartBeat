@@ -5,6 +5,7 @@ import { ensureIdentity } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { QuestBoard } from './QuestBoard';
 import { AchievementShelf } from '../achievements/AchievementShelf';
+import { Screen } from '../../ui/layout/Screen';
 
 /**
  * The two things that pay for showing up over time, on one screen.
@@ -34,18 +35,13 @@ export function QuestsPage() {
   const coupleId = settings?.coupleId ?? identity?.coupleId;
 
   return (
-    <div className="page">
-      <header className="page-head">
-        <h1 className="page-title">Quests</h1>
-        <p className="page-sub">Extra ways to earn, and what they added up to.</p>
-      </header>
-
+    <Screen title="Quests" sub="Extra ways to earn, and what they added up to.">
       {coupleId ? (
         <>
           <QuestBoard coupleId={coupleId} day={todayKey(timeZone)} timeZone={timeZone} />
           <AchievementShelf coupleId={coupleId} />
         </>
       ) : null}
-    </div>
+    </Screen>
   );
 }
