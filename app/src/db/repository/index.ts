@@ -19,6 +19,7 @@ export * from './chests';
 export * from './cosmetics';
 export * from './encounters';
 export * from './entries';
+export * from './garden';
 export * from './goals';
 export * from './identity';
 export * from './inventory';

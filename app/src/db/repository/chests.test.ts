@@ -87,10 +87,10 @@ describe('what lands', () => {
 
   it('hatches a companion rather than filing it in the bag', async () => {
     await withCoins(9000);
-    // At epic the gilded chest offers only gear and companions — neither
-    // cosmetic catalogue reaches that rung — so the back half of the kind roll
-    // is the companion.
-    const result = await openChestFor(HER, COUPLE, 'gilded', rolls({ kind: 0.9, tier: 0.9 }));
+    // At epic the gilded chest offers gear, companions and things to plant, in
+    // that order and in roughly 44/44/12 — so the middle of the kind roll is
+    // the companion.
+    const result = await openChestFor(HER, COUPLE, 'gilded', rolls({ kind: 0.6, tier: 0.9 }));
     expect(result.ok).toBe(true);
     expect(result.ok && result.kind).toBe('companion');
     if (result.ok && result.kind === 'companion') {
@@ -135,7 +135,7 @@ describe('duplicates', () => {
     await withCoins(500_000);
     let bondedOnce = false;
     for (let i = 0; i < 60 && !bondedOnce; i += 1) {
-      const result = await openChestFor(HER, COUPLE, 'gilded', rolls({ kind: 0.9, tier: 0.9 }));
+      const result = await openChestFor(HER, COUPLE, 'gilded', rolls({ kind: 0.6, tier: 0.9 }));
       if (result.ok && result.bonded !== undefined) {
         bondedOnce = true;
         const pet = (await db.pets.where('memberId').equals(HER).toArray())

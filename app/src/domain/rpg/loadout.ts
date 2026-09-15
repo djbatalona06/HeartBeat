@@ -4,9 +4,11 @@ import { REFINE_MAX, REFINE_GAIN } from './shop';
 import { furnitureById, normalizeHouse, type House } from './furniture';
 import { dyeById } from './dyes';
 import { petKindById, rankOf, type PetInstance } from './pets';
+import { milestoneStats } from './milestones';
+import { floraById, floraTier, normalizeGarden, plotById, type Garden } from './plots';
 import {
-  FURNITURE_RAID_ORDER, GEAR_RAID_ORDER, SPECIES_RAID_ORDER, raidSheet, sourceStatLevel,
-  tierForPrice, type RaidSheet, type RaidStatKey, type StatSource,
+  FURNITURE_RAID_ORDER, GEAR_RAID_ORDER, SPECIES_RAID_ORDER, RAID_STATS, raidSheet,
+  sourceStatLevel, tierForPrice, type RaidSheet, type RaidStatKey, type StatSource,
 } from './raidStats';
 
 /**
@@ -55,6 +57,8 @@ export interface Loadout {
   dyeId?: string;
   /** The companion taken into the raid. */
   companion?: PetInstance;
+  /** What is growing in the garden's plots. */
+  garden?: Garden;
 }
 
 /**
@@ -191,13 +195,77 @@ function tierForStatLevel(statLevel: number) {
   return 'common' as const;
 }
 
+/**
+ * What is growing in the garden, as sources.
+ *
+ * Read through `normalizeGarden`, so a plant in a plot this couple has not
+ * levelled into contributes nothing — the plot ladder is derived from pet XP
+ * and pet XP is reconciled against the server, so a device really can hold a
+ * garden briefly ahead of the level it can prove.
+ *
+ * A plot's *position* decides what the thing planted in it is for. That is the
+ * one real idea in this function: pondside is Recovery because it is by the
+ * water, not because of what you put there, so moving a bench is a decision
+ * rather than a re-skin.
+ */
+export function floraSources(garden: Garden | undefined, petLevel: number): StatSource[] {
+  const planted = normalizeGarden(garden, petLevel);
+  const out: StatSource[] = [];
+  for (const [plotId, floraId] of Object.entries(planted)) {
+    const plot = plotById(plotId);
+    const flora = floraById(floraId);
+    if (!plot || !flora) continue;
+    const tier = floraTier(flora);
+    out.push({
+      id: flora.id,
+      label: `${flora.name}, ${plot.name.toLowerCase()}`,
+      tier,
+      statLevel: sourceStatLevel(flora.id, tier),
+      order: plot.order,
+    });
+  }
+  return out;
+}
+
+/**
+ * The flat points the level curve itself has handed over.
+ *
+ * Folded in as a source rather than added to the totals afterwards, so it
+ * appears on the raid sheet's provenance list like everything else. Its tier is
+ * `common`, which means it carries **no passive** — deliberately: a milestone
+ * grant is a floor under a couple who own nothing, and a floor that also
+ * multiplied everything above it would make the wardrobe pointless.
+ *
+ * Its `order` is whatever the milestones actually granted, biggest first, so
+ * `dealStatLevel` reproduces the grants rather than re-spreading them into
+ * stats no milestone ever mentioned.
+ */
+export function milestoneSource(petLevel: number): StatSource | undefined {
+  const granted = milestoneStats(petLevel);
+  const order = RAID_STATS
+    .filter((key) => (granted[key] ?? 0) > 0)
+    .sort((a, b) => (granted[b] ?? 0) - (granted[a] ?? 0));
+  if (order.length === 0) return undefined;
+
+  return {
+    id: 'milestones',
+    label: 'Levels, earned',
+    tier: 'common',
+    statLevel: order.reduce((sum, key) => sum + (granted[key] ?? 0), 0),
+    order,
+  };
+}
+
 /** Everything at once. The one call a screen or a fight should need. */
 export function loadoutSheet(loadout: Loadout): RaidSheet {
   const sources: StatSource[] = [
     petSource(loadout.petLevel),
     ...gearSources(loadout.equipped, loadout.memberLevel, loadout.refineByItemId),
     ...furnitureSources(loadout.house),
+    ...floraSources(loadout.garden, loadout.petLevel),
   ];
+  const milestones = milestoneSource(loadout.petLevel);
+  if (milestones) sources.push(milestones);
   const dye = dyeSource(loadout.dyeId);
   if (dye) sources.push(dye);
   const companion = companionSource(loadout.companion);

@@ -175,8 +175,11 @@ describe('the whole sheet', () => {
       dyeId: DYES[1].id,
       companion: pet(PET_KINDS[0].id),
     });
+    // Level 12 has crossed the level-10 milestone, so the curve's own grant is
+    // a source too — it appears on the sheet's provenance list like everything
+    // else rather than being quietly added to the totals.
     expect(sheet.sources.map((s) => s.id)).toEqual([
-      'shared-pet', helmet.id, rug.id, DYES[1].id, PET_KINDS[0].id,
+      'shared-pet', helmet.id, rug.id, 'milestones', DYES[1].id, PET_KINDS[0].id,
     ]);
   });
 

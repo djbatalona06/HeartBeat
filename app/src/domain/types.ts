@@ -222,6 +222,15 @@ export interface Pet {
    * drops pieces that have since been retired from the catalogue.
    */
   house?: Partial<Record<string, string>>;
+  /**
+   * What is growing in the garden's plots, one flora id per plot.
+   *
+   * On the couple's pet for the same reason the house is: the garden is the
+   * thing the two of you keep together. Unlike the house, the *ground* is not
+   * bought — plots open as the pet levels (`domain/rpg/milestones.ts`), which
+   * is what makes the garden fill out at the rate the two of you do.
+   */
+  plots?: Partial<Record<string, string>>;
 }
 
 export type QuestDifficulty = 'easy' | 'steady' | 'hard';
