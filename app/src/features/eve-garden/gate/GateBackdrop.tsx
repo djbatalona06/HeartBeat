@@ -1,3 +1,5 @@
+import { sunAt } from '../../../domain/scene/schedule';
+
 /**
  * The threshold: two trees, the light between them, and the tether.
  *
@@ -19,20 +21,6 @@ export interface GateBackdropProps {
   dark: boolean;
   /** How full the tether is, 0-1. Drawn as the glow along the thread. */
   resonance: number;
-}
-
-/** Where the sun sits across the day, as a point in the viewBox. */
-export function sunAt(hour: number): { x: number; y: number; night: boolean } {
-  // Six in the morning at the left edge, six in the evening at the right, and
-  // below the horizon either side of that. Tied to real local time, which is
-  // what makes opening the app at 2am look like 2am.
-  const t = Math.min(1, Math.max(0, (hour - 6) / 12));
-  return {
-    x: 60 + t * 280,
-    // A shallow arc: highest at noon, low at both ends.
-    y: 120 - Math.sin(t * Math.PI) * 70,
-    night: hour < 6 || hour >= 19,
-  };
 }
 
 export function GateBackdrop({ hour, dark, resonance }: GateBackdropProps) {

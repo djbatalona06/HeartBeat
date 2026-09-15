@@ -144,7 +144,34 @@ body {
    been edited into something else entirely — this is a live view of whatever
    Tasks currently has due today, not a separate list of its own. */
 
-.home-today { margin-top: var(--stack); }
+/* A card now, where it used to be bare text on the page background.
+
+   That was survivable while the background was a pack canvas painting a few
+   motifs at 0.16 alpha. It stops being survivable with the garden behind it:
+   "Today" and every task title on this list sat directly on a sun. `--glass`
+   is the token Phase 0 added for exactly this and had no consumer until now,
+   and `--hairline` gives the card an edge without the flat 1px border the
+   theme audit is trying to get rid of.
+
+   It is also the better design independently — the most important list on the
+   screen had less visual weight than the pet card above it.
+
+   Budget note for the theme audit: this is the fourth blurred surface that can
+   be on screen at once on home, after `.tabbar`, `.menu-button` and
+   `.status-hud`. The other three are chrome-sized; this one is card-sized and
+   sits directly over the garden, which is the case the blur is actually for —
+   at 82% a tree silhouette behind a task title stays a legible shape, and a
+   shape behind words is harder to read than a wash is. Worth re-checking on a
+   real phone before adding a fifth. */
+.home-today {
+  margin-top: var(--stack);
+  padding: var(--space-4);
+  background: var(--glass);
+  border: var(--border-width) solid var(--hairline);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+}
 
 .home-today-list { list-style: none; margin-top: var(--space-3); }
 
@@ -5722,6 +5749,80 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   font: inherit;
   cursor: pointer;
 }
+
+/* ---- the garden on the home screen -----------------------------------------
+   The same SVG as the one behind the fight, promoted to the whole viewport.
+   It takes the slot the pack canvases occupy on every other route — fixed,
+   inset, z-index `--z-scene` — because exactly one backdrop paints at a time
+   and which one is decided in features/home/SceneBackdrop.tsx, not here. */
+
+.home-scene {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-scene);
+  pointer-events: none;
+  /* The sky above the drawing.
+
+     `fit="ground"` sits the garden on the floor of the viewport at its own
+     shape, which on a phone leaves the top two thirds empty. Flat base up
+     there reads as a wall, so this is the faintest wash of the theme's accent
+     fading to base — and it has to *reach* base before the garden's own sky
+     begins, because that sky starts at an opaque base and any difference at
+     the join is a visible horizon line in the wrong place. */
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-accent) 7%, var(--color-base)) 0,
+    var(--color-base) 55%
+  );
+}
+
+/* The garden is authored to fill a box; on the home screen the box is the
+   window. `slice` on the SVG's own preserveAspectRatio keeps the drawing from
+   stretching on a tall phone — it crops instead, which is what a camera does. */
+.home-scene .garden-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+/* The garden's own sky is opaque `--color-base` at its top edge, so it covers
+   the wash above exactly where it starts. Nothing to blend, nothing to line up
+   — which is the reason `fit="ground"` was worth a prop rather than a second
+   copy of the drawing cropped differently. */
+
+/* The ground under the words.
+
+   Top and bottom, transparent through the middle. The page header and the tab
+   bar are where bare text meets the scene; everything between them is a card
+   with its own surface, and veiling that middle would have cost the garden for
+   nothing. `--scrim` rather than a hand-mixed rgba, so it follows the theme —
+   and `themes/veil.test.ts` composites this exact strength over every colour
+   the garden can paint to prove the text on top still clears AA. 72% is close
+   to the floor; read that test before lowering it. */
+.home-scene-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    var(--scrim) 0,
+    transparent 28%,
+    transparent 64%,
+    var(--scrim) 100%
+  );
+}
+
+/* Calm and the OS setting both stand the scene still. The reduced-motion block
+   further down already covers the garden's own layers; this is the other half,
+   because `data-calm` is the app's own quiet switch and the pack backdrops
+   have always honoured it (`Backdrop({ still: calm })`). A garden that keeps
+   drifting after you asked the app to settle is the setting not working. */
+.home-scene[data-calm='true'] .garden-layer-sky,
+.home-scene[data-calm='true'] .garden-layer-mid,
+.home-scene[data-calm='true'] .garden-layer-near,
+.home-scene[data-calm='true'] .garden-tether,
+.home-scene[data-calm='true'] .garden-rain { animation: none; }
 
 /* ---- the garden behind the fight ------------------------------------------ */
 

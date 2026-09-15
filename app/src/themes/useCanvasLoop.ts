@@ -9,6 +9,23 @@ export interface CanvasLoop {
 }
 
 /**
+ * When the app started, rather than when this canvas did.
+ *
+ * Every pack drives its motion from `t` through a `sin` or a modulo, so a `t`
+ * that jumps backwards snaps every bow, leaf and bubble to wherever it stood at
+ * zero. That used to be invisible because the backdrop mounted once and stayed:
+ * the only thing that ever remounted it was a theme change, where a jump is
+ * hidden by everything else changing at the same moment.
+ *
+ * It stopped being invisible when the backdrop moved inside the router and
+ * became a switch — home paints the couple's garden, every other route paints
+ * the pack — so now it remounts on the single most common navigation in the
+ * app. Anchoring the clock to the page instead of to the mount means the
+ * motifs are wherever they would have been, which is the whole illusion.
+ */
+const EPOCH = performance.now();
+
+/**
  * Runs a backdrop's paint loop against a full-bleed canvas, resizing with the
  * window and pausing whenever the page is hidden — a backdrop that keeps
  * animating in a background tab is pure battery drain on a phone.
@@ -27,7 +44,7 @@ export function useCanvasLoop(loop: CanvasLoop): React.RefObject<HTMLCanvasEleme
     let raf = 0;
     let stopped = false;
     let last = 0;
-    const start = performance.now();
+    const start = EPOCH;
 
     function size(): void {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
