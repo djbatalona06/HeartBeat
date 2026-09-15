@@ -36,6 +36,20 @@ export interface ThemeShape {
   radiusLarge: string;
   border: string;
   shadow: string;
+  /**
+   * The shadow's colour on its own, without the offsets.
+   *
+   * A field rather than something parsed back out of `shadow`, because reading
+   * a colour out of a CSS shadow string means a regex that works until the
+   * first pack writes two shadows or uses a named colour. Two values that must
+   * agree is the cost; a parser that silently returns the wrong colour is the
+   * alternative.
+   *
+   * It exists so a rule that wants depth in its own shape — a soft glow under a
+   * sheet, a pressed state — can reach for `var(--shadow-color)` instead of
+   * inventing another black.
+   */
+  shadowColor: string;
 }
 
 export interface BackdropProps {

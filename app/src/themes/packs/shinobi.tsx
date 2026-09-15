@@ -83,10 +83,10 @@ export const shinobiTheme: Theme = {
    */
   light: {
     isLight: true,
-    opaqueSurface: '#ffffff',
+    opaqueSurface: '#FDFCFB',
     colors: {
       base: '#fff6f0',
-      surface: 'rgba(255, 255, 255, 0.95)',
+      surface: 'rgba(253, 252, 251, 0.95)',
       surfaceMuted: 'rgba(255, 226, 209, 0.75)',
       border: 'rgba(154, 3, 30, 0.2)',
       text: '#3a0927',
@@ -110,6 +110,7 @@ export const shinobiTheme: Theme = {
     radiusLarge: '14px',
     border: '1px',
     shadow: '0 16px 34px rgba(20, 2, 12, 0.6)',
+    shadowColor: 'rgba(20, 2, 12, 0.6)',
   },
   Backdrop: ShinobiBackdrop,
 };

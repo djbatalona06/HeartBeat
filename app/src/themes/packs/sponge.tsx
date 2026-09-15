@@ -19,7 +19,7 @@ import type { Theme } from '../types';
  * other way up rather than a second one.
  */
 const SPONGE_WATER = {
-  dark: { rim: 'rgba(252, 163, 17, 0.26)', catch: 'rgba(255, 255, 255, 0.38)' },
+  dark: { rim: 'rgba(252, 163, 17, 0.26)', catch: 'rgba(247, 247, 250, 0.38)' },
   light: { rim: 'rgba(201, 125, 6, 0.42)', catch: 'rgba(20, 33, 61, 0.22)' },
 };
 
@@ -64,16 +64,24 @@ export const spongeTheme: Theme = {
   isLight: false,
   opaqueSurface: '#121e38',
   colors: {
-    // Black & Gold Elegance, mapped whole: black is the page, Prussian blue
-    // the raised surface, gold the one thing that asks to be pressed.
-    base: '#000000',
+    // Black & Gold Elegance, mapped whole: near-black is the page, Prussian
+    // blue the raised surface, gold the one thing that asks to be pressed.
+    //
+    // "Near-black" rather than black, and near-white rather than white, because
+    // no token in this app is allowed to be either — see `tokens.test.ts`. The
+    // elegance survives the change: `#0B0B12` against `#F7F7FA` is 18.3:1,
+    // where the pure pair was 21:1, and neither number is anywhere near the
+    // 4.5:1 that would make this a readability question. What it buys is a
+    // page that has somewhere darker to go and ink that is not a hole.
+    base: '#0B0B12',
     surface: 'rgba(20, 33, 61, 0.92)',
     surfaceMuted: 'rgba(30, 46, 82, 0.7)',
     border: 'rgba(252, 163, 17, 0.22)',
-    text: '#ffffff',
+    text: '#F7F7FA',
     textMuted: 'rgba(229, 229, 229, 0.62)',
     accent: '#fca311',
-    accentText: '#000000',
+    // Warm near-black on the gold, keeping the warmth the gold wants. 9.2:1.
+    accentText: '#1A1206',
     danger: '#e5484d',
     success: '#3fbf7f',
   },
@@ -85,16 +93,16 @@ export const spongeTheme: Theme = {
    */
   light: {
     isLight: true,
-    opaqueSurface: '#ffffff',
+    opaqueSurface: '#FDFCFB',
     colors: {
       base: '#f1f2f5',
-      surface: 'rgba(255, 255, 255, 0.96)',
+      surface: 'rgba(253, 252, 251, 0.96)',
       surfaceMuted: 'rgba(229, 229, 229, 0.8)',
       border: 'rgba(20, 33, 61, 0.18)',
       text: '#14213d',
       textMuted: '#4d5870',
       accent: '#fca311',
-      accentText: '#000000',
+      accentText: '#1A1206',
       danger: '#b8161c',
       success: '#1c6f45',
     },
@@ -111,7 +119,10 @@ export const spongeTheme: Theme = {
     radius: '16px',
     radiusLarge: '26px',
     border: '1px',
-    shadow: '0 16px 36px rgba(0, 0, 0, 0.6)',
+    // Tinted to the new base rather than pure black — the other four packs
+    // already tint theirs, so this was the one shadow out of step.
+    shadow: '0 16px 36px rgba(11, 11, 18, 0.62)',
+    shadowColor: 'rgba(11, 11, 18, 0.62)',
   },
   Backdrop: SpongeBackdrop,
 };

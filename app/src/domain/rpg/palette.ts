@@ -26,6 +26,15 @@ import { luminance } from '../../themes/tokens';
  * pack ever needing to know the overworld exists.
  */
 
+/**
+ * The two poles of the blend, not colours anything is painted.
+ *
+ * `paletteFrom` below only ever mixes *toward* one of these, and never past
+ * 0.85, so no sprite is ever pure white or pure black. They are the ends of a
+ * number line rather than design tokens, which is why the no-pure-black rule in
+ * `themes/tokens.test.ts` does not reach them: that rule asks what a theme
+ * *emits*, and these are never emitted.
+ */
 const WHITE = '#ffffff';
 const BLACK = '#000000';
 

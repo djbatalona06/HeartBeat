@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { THEMES, getTheme } from './index';
+import { contrast } from './tokens';
 
 /**
  * Which supplied palette each theme is built from.
@@ -26,12 +27,25 @@ const PALETTES = {
   deepSea: ['#ffffff', '#00171f', '#003459', '#007ea7', '#00a8e8'],
 } as const;
 
-/** Which theme draws from which, and which single colour it leads with. */
+/**
+ * Which theme draws from which, and which single colour it leads with.
+ *
+ * `softened` records the one place a brief was deliberately departed from.
+ * Black & Gold supplied a literal `#000000`, and no token in this app is
+ * allowed to be pure black any more — see the top of `tokens.test.ts` for why.
+ * So sponge sits on `#0B0B12`, which is that black with somewhere left to go.
+ *
+ * It is a flag here rather than a quietly-edited expected value because those
+ * are not the same thing. Editing the hex would make this file agree with the
+ * code and stop holding it to anything; the flag keeps the brief on record,
+ * says the departure was a decision, and still checks the result is the
+ * palette's dark rather than some other dark.
+ */
 const ASSIGNMENT = [
-  { id: 'sponge', palette: 'blackAndGold', accent: '#fca311', base: '#000000' },
-  { id: 'shinobi', palette: 'fiery', accent: '#fb8b24', base: null },
-  { id: 'avatar', palette: 'deepSea', accent: '#00a8e8', base: '#00171f' },
-  { id: 'pony', palette: 'softPastels', accent: '#c8b6ff', base: null },
+  { id: 'sponge', palette: 'blackAndGold', accent: '#fca311', base: '#000000', softened: true },
+  { id: 'shinobi', palette: 'fiery', accent: '#fb8b24', base: null, softened: false },
+  { id: 'avatar', palette: 'deepSea', accent: '#00a8e8', base: '#00171f', softened: false },
+  { id: 'pony', palette: 'softPastels', accent: '#c8b6ff', base: null, softened: false },
 ] as const;
 
 /** Every hex in a theme's colours, lowercased, including those inside rgba(). */
@@ -41,7 +55,7 @@ function hexesOf(id: string): string[] {
 }
 
 describe('palette assignment', () => {
-  for (const { id, palette, accent, base } of ASSIGNMENT) {
+  for (const { id, palette, accent, base, softened } of ASSIGNMENT) {
     describe(`${id} draws from ${palette}`, () => {
       it('leads with the palette\'s own accent', () => {
         expect(getTheme(id).colors.accent.toLowerCase()).toBe(accent);
@@ -56,8 +70,26 @@ describe('palette assignment', () => {
        * a palette that never had one.
        */
       it(base ? 'sits on a colour the palette supplied' : 'needed a dark invented for it', () => {
-        if (base) expect(getTheme(id).colors.base.toLowerCase()).toBe(base);
-        else expect(PALETTES[palette]).not.toContain(getTheme(id).colors.base.toLowerCase());
+        const actual = getTheme(id).colors.base.toLowerCase();
+        if (!base) {
+          expect(PALETTES[palette]).not.toContain(actual);
+          return;
+        }
+        if (!softened) {
+          expect(actual).toBe(base);
+          return;
+        }
+        /**
+         * Softened off pure black, and still the palette's own dark.
+         *
+         * Both halves matter. It must no longer *be* the supplied black, or
+         * the no-pure-black rule did not happen; and it must be within a
+         * hair of it, or "softened" has become cover for repainting the
+         * theme. 1.2:1 is well under the 1.4:1 this file's sibling already
+         * uses to mean "the same colour, near enough".
+         */
+        expect(actual, `${id} is still the literal palette black`).not.toBe(base);
+        expect(contrast(actual, base), `${id} drifted off ${base}`).toBeLessThan(1.2);
       });
     });
   }

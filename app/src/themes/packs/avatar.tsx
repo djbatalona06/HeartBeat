@@ -11,7 +11,7 @@ import type { Theme } from '../types';
  * where light would actually reach.
  */
 const CURRENTS = [
-  'rgba(255, 255, 255, 0.14)',
+  'rgba(244, 250, 252, 0.14)',
   'rgba(0, 168, 232, 0.20)',
   'rgba(0, 126, 167, 0.20)',
   'rgba(0, 52, 89, 0.28)',
@@ -71,7 +71,7 @@ export const avatarTheme: Theme = {
     surface: 'rgba(0, 52, 89, 0.92)',
     surfaceMuted: 'rgba(0, 70, 116, 0.7)',
     border: 'rgba(0, 168, 232, 0.24)',
-    text: '#ffffff',
+    text: '#F4FAFC',
     textMuted: 'rgba(186, 222, 238, 0.68)',
     accent: '#00a8e8',
     accentText: '#00171f',
@@ -85,10 +85,10 @@ export const avatarTheme: Theme = {
    */
   light: {
     isLight: true,
-    opaqueSurface: '#ffffff',
+    opaqueSurface: '#FDFCFB',
     colors: {
       base: '#f0f9fd',
-      surface: 'rgba(255, 255, 255, 0.95)',
+      surface: 'rgba(253, 252, 251, 0.95)',
       surfaceMuted: 'rgba(209, 236, 248, 0.78)',
       border: 'rgba(0, 52, 89, 0.2)',
       text: '#00171f',
@@ -112,6 +112,7 @@ export const avatarTheme: Theme = {
     radiusLarge: '20px',
     border: '1px',
     shadow: '0 18px 38px rgba(0, 8, 12, 0.6)',
+    shadowColor: 'rgba(0, 8, 12, 0.6)',
   },
   Backdrop: AvatarBackdrop,
 };

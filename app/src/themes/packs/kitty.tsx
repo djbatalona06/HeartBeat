@@ -130,10 +130,10 @@ export const kittyTheme: Theme = {
    */
   light: {
     isLight: true,
-    opaqueSurface: '#ffffff',
+    opaqueSurface: '#FDFCFB',
     colors: {
       base: '#fff5f8',
-      surface: 'rgba(255, 255, 255, 0.94)',
+      surface: 'rgba(253, 252, 251, 0.94)',
       surfaceMuted: 'rgba(255, 226, 236, 0.75)',
       border: 'rgba(197, 46, 101, 0.2)',
       text: '#3a1020',
@@ -157,6 +157,7 @@ export const kittyTheme: Theme = {
     radiusLarge: '22px',
     border: '1px',
     shadow: '0 18px 40px rgba(10, 3, 7, 0.5)',
+    shadowColor: 'rgba(10, 3, 7, 0.5)',
   },
   Backdrop: KittyBackdrop,
 };
