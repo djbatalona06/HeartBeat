@@ -497,6 +497,159 @@ body {
   padding: 0;
 }
 
+/* ---- ui components ---------------------------------------------------------
+   The library from `app/src/ui/`. `.primary`, `.quiet`, `.chip` and `.empty`
+   are deliberately absent: those rules already exist further down and already
+   look right, and the components wrap them rather than repainting them. Only
+   the genuinely new shapes are here. */
+
+.tilecard {
+  display: block;
+  width: 100%;
+  text-align: start;
+  padding: var(--space-4);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--hairline);
+  box-shadow: var(--shadow);
+  color: inherit;
+  text-decoration: none;
+  /* A card that is a button must not inherit the UA's button font. */
+  font: inherit;
+}
+
+a.tilecard, button.tilecard { cursor: pointer; }
+a.tilecard:focus-visible, button.tilecard:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.tilecard-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.tilecard-glyph { display: grid; place-items: center; color: var(--color-accent); }
+.tilecard-title { margin: 0; font-size: var(--text-base); font-weight: 600; }
+.tilecard-aside { margin-inline-start: auto; color: var(--color-text-muted); font-size: var(--text-sm); }
+.tilecard-body { display: grid; gap: var(--space-2); }
+
+/* The log variant is pressed far more than it is read, so it gets the room. */
+.tilecard-log { min-height: calc(var(--tap) * 1.5); }
+.tilecard-companion { display: grid; justify-items: center; text-align: center; }
+
+/* A secondary action, as a row. The element follows the behaviour — see
+   `ListRow.tsx` — so this styles a link, a button and a div identically. */
+.listrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+}
+
+a.listrow, button.listrow { cursor: pointer; }
+a.listrow:hover, button.listrow:hover { background: color-mix(in srgb, var(--color-text) 6%, transparent); }
+.listrow:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.listrow-inert { cursor: default; }
+.listrow + .listrow { border-top: var(--border-width) solid var(--hairline); border-radius: 0; }
+
+.listrow-glyph { display: grid; place-items: center; color: var(--color-accent); flex: none; }
+.listrow-text { display: grid; gap: 2px; min-width: 0; }
+.listrow-label { font-size: var(--text-base); }
+.listrow-hint { font-size: var(--text-sm); color: var(--color-text-muted); }
+.listrow-value { margin-inline-start: auto; color: var(--color-text-muted); font-size: var(--text-sm); flex: none; }
+
+/* One number, with enough around it to know what it is. No `+`, and nothing
+   to buy — see the note in `StatChip.tsx`. */
+.statchip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 999px;
+  background: var(--glass);
+  border: var(--border-width) solid var(--hairline);
+  color: inherit;
+  font: inherit;
+}
+
+button.statchip { cursor: pointer; min-height: var(--tap); }
+.statchip:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.statchip-value { font-size: var(--text-base); font-weight: 600; }
+.statchip-label { font-size: var(--text-xs); color: var(--color-text-muted); }
+.statchip-trend[data-dir='up'] { color: var(--color-success); }
+/* Not danger. A number going down here is a quiet week, not a failure. */
+.statchip-trend[data-dir='down'] { color: var(--color-text-muted); }
+
+.empty-glyph { font-size: var(--text-2xl); line-height: 1; display: block; margin-bottom: var(--space-2); }
+
+.skeleton-lines { display: grid; gap: var(--space-2); }
+.skeleton-line[data-short='true'] { width: 60%; }
+.skeleton-block { width: 100%; aspect-ratio: 3 / 2; }
+
+/* A hexagon from `clip-path`, and a ring from one conic gradient. No image, so
+   nothing to re-export per theme — see `ProgressHex.tsx`. */
+.progress-hex {
+  position: relative;
+  width: 5.5rem;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+
+.progress-hex-ring,
+.progress-hex-face {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+.progress-hex-ring {
+  background: conic-gradient(
+    var(--color-accent) var(--hex-fill, 0%),
+    color-mix(in srgb, var(--color-text) 14%, transparent) var(--hex-fill, 0%)
+  );
+}
+
+/* Inset, so the ring behind it shows as a border of the same shape — one clip
+   path instead of two that have to agree. */
+.progress-hex-face {
+  inset: 4px;
+  background: var(--color-surface);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--font-display-weight);
+}
+
+/* One host for every receipt. Above the tab bar and below nothing. */
+.toast-host {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-3));
+  z-index: var(--z-toast);
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  /* The region exists while empty so a screen reader is already watching it;
+     an empty fixed box must not eat taps meant for the page under it. */
+  pointer-events: none;
+  width: min(var(--shell-max), calc(100vw - var(--space-5)));
+}
+
 /* ---- tiles ----------------------------------------------------------------
    The dashboard is a ring now, so nothing renders these today. They stay
    because `components/Tile.tsx` is still a working component and the next
@@ -799,6 +952,13 @@ body {
    this file: 640 is a large phone, which still gets the thumb treatment. */
 .menu-panel {
   position: fixed;
+  /* The panel used to be a *child* of the scrim, so it painted above it for
+     free. `Sheet` renders the two as siblings — which the panel is happy with,
+     being `position: fixed` and positioned against the viewport either way —
+     but a positioned sibling after a `z-index: 5` scrim has `z-index: auto`,
+     and would render behind it. This is the whole reason Phase 0 wrote the
+     z-scale down. */
+  z-index: var(--z-sheet);
   left: max(env(safe-area-inset-left), var(--space-2));
   right: max(env(safe-area-inset-right), var(--space-2));
   bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-2));

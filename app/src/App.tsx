@@ -16,6 +16,7 @@ import { usePairing } from './features/pairing/usePairing';
 import { FirstRunGate } from './features/onboarding/FirstRunGate';
 import { RouteNotFound } from './features/errors/NotHere';
 import { BottomNav } from './ui/layout/BottomNav';
+import { ToastHost } from './ui/Toast';
 import { WelcomePage } from './features/onboarding/WelcomePage';
 import { OnboardingPage } from './features/onboarding/OnboardingPage';
 import { useSync } from './pwa/useSync';
@@ -82,6 +83,7 @@ export function App() {
         {/* HashRouter, not BrowserRouter: notification deep links and a cold
             reload both have to resolve without a server-side rewrite rule. */}
         <HashRouter>
+          <ToastHost>
           <main className="shell">
             {/* Outside PairGate, and asks a different question: not whether
                 there are two of you, but whether the one of you here has met
@@ -190,6 +192,7 @@ export function App() {
               nothing here that waits on a second person. */}
           <StatusHud />
           <BottomNav locked={ready && !paired} />
+          </ToastHost>
         </HashRouter>
       </ThemeProvider>
     </ErrorBoundary>
