@@ -15,6 +15,7 @@ import { VitalsPanel, glowOf } from '../pet/VitalsPanel';
 import { TogetherPanel } from '../pet/TogetherPanel';
 import { FeedPanel } from '../party/FeedPanel';
 import { gearArt } from '../party/art/gear';
+import { Screen } from '../../ui/layout/Screen';
 
 /**
  * Home. What the pet is doing, and what is left to do today.
@@ -99,14 +100,7 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="page">
-      <header className="page-head">
-        <h1 className="page-title">HeartBeat</h1>
-        <p className="page-sub">
-          {settings?.coupleId ? 'Paired' : 'Not paired yet'} · {day}
-        </p>
-      </header>
-
+    <Screen title="HeartBeat" sub={<>{settings?.coupleId ? 'Paired' : 'Not paired yet'} · {day}</>}>
       {/* The dye is three CSS custom properties on the wrapper, which is the
           whole of how a colourway reaches the drawing — every mascot paints in
           those and nothing else, so none of the five files knows dyes exist. */}
@@ -203,6 +197,6 @@ export function DashboardPage() {
           token={settings?.workerSecret}
         />
       ) : null}
-    </div>
+    </Screen>
   );
 }

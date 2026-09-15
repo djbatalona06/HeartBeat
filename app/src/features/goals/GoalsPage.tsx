@@ -8,6 +8,7 @@ import { AREAS, areaById } from '../../domain/rpg/selfCare';
 import { AREA_IDS, DIFFICULTY_WEIGHT, type AreaId, type Task, type TaskDifficulty } from '../../domain/rpg/types';
 import { Icon } from '../../components/icons';
 import { TaskRow } from '../tasks/TasksPage';
+import { Screen } from '../../ui/layout/Screen';
 
 const DIFFICULTIES = Object.keys(DIFFICULTY_WEIGHT) as TaskDifficulty[];
 
@@ -53,16 +54,12 @@ export function GoalsPage() {
   }
 
   return (
-    <div className="page">
-      <header className="page-head">
-        <h1 className="page-title">Goals</h1>
-        <p className="page-sub">
-          {live.length
-            ? `${live.filter((g) => g.lastCompletedOn === day).length} of ${live.length} done today.`
-            : 'Nothing set yet — the ideas list is a good place to start.'}
-        </p>
-      </header>
-
+    <Screen
+      title="Goals"
+      sub={live.length
+        ? `${live.filter((g) => g.lastCompletedOn === day).length} of ${live.length} done today.`
+        : 'Nothing set yet — the ideas list is a good place to start.'}
+    >
       <div className="goal-actions">
         <Link className="primary" to="/goals/ideas">Browse ideas</Link>
         <Link className="goal-link" to="/areas">See all areas →</Link>
@@ -115,7 +112,7 @@ export function GoalsPage() {
       ) : null}
 
       {note ? <p className="section-sub" role="status">{note}</p> : null}
-    </div>
+    </Screen>
   );
 }
 
