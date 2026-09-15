@@ -14,6 +14,7 @@ import { ChatPanel } from './features/chat/ChatPanel';
 import { PairGate } from './features/pairing/PairGate';
 import { usePairing } from './features/pairing/usePairing';
 import { FirstRunGate } from './features/onboarding/FirstRunGate';
+import { RouteNotFound } from './features/errors/NotHere';
 import { WelcomePage } from './features/onboarding/WelcomePage';
 import { OnboardingPage } from './features/onboarding/OnboardingPage';
 import { useSync } from './pwa/useSync';
@@ -156,7 +157,12 @@ export function App() {
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="/welcome" element={<WelcomePage />} />
                     <Route path="/onboarding" element={<OnboardingPage />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    {/* Not a redirect. `<Navigate to="/" />` sent an unknown
+                        hash silently home, which reads as the app having
+                        swallowed the tap rather than as the address being
+                        wrong — and it hid every typo'd deep link from a
+                        notification instead of reporting one. */}
+                    <Route path="*" element={<RouteNotFound />} />
                   </Routes>
                 </ErrorBoundary>
               </PairGate>

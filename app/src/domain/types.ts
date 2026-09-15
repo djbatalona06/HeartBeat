@@ -328,6 +328,20 @@ export interface Settings {
    */
   haptics?: boolean;
   /**
+   * Skip the animated fight in Eve's Garden and read it in the log instead.
+   *
+   * Optional, absent meaning **off**, so nobody's garden changes shape because
+   * a field was added. It short-circuits the Phaser import entirely rather than
+   * playing the scene faster — the engine result is identical either way,
+   * because C# owns the rules and the canvas was only ever the picture.
+   *
+   * The same code path the page falls back to when the Phaser chunk will not
+   * load, which is deliberate: one text mode, entered either by choice or by
+   * necessity, so the one somebody lands on in a tunnel is the one that has
+   * been used on purpose by somebody else.
+   */
+  resolveQuickly?: boolean;
+  /**
    * Reminders. Both are absent until notifications are turned on from a tap,
    * which is the only way they can be turned on at all.
    */

@@ -2972,6 +2972,119 @@ body {
 
 .crash-button:focus-visible { outline: 2px solid var(--color-text, #fff3f7); outline-offset: 3px; }
 
+/* ---- nothing here ----------------------------------------------------------
+   The dead-end page: an address that does not exist, a scene that would not
+   load, a subpage that gave up. A sibling of `.crash` above rather than a reuse
+   of it — `.crash` names a literal beside every token because the case it
+   exists for includes the theme engine itself throwing, and at that point no
+   custom property has been written. This page is reached with the app healthy,
+   so it can trust its tokens like every other screen does. */
+.nothere {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 60dvh;
+  padding: var(--space-6) var(--space-4) var(--shell-bottom-clear);
+  text-align: center;
+}
+
+/* The fox needs a box: `.home-mascot-art` is `width/height: 100%`, so without a
+   sized parent it collapses to nothing. Sized in `rem` and capped by `vw` so it
+   stays a drawing and never becomes the whole screen at 320px. */
+.nothere-mascot {
+  width: min(11rem, 44vw);
+  aspect-ratio: 1;
+  /* The breathing animation comes free with `.home-mascot-art`, and stops on
+     its own under reduced motion via the global rule near the tab bar. */
+}
+
+:root[data-calm='true'] .nothere-mascot .home-mascot-art { animation: none; }
+
+.nothere-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--font-display-weight);
+  line-height: var(--line-tight);
+  color: var(--color-text);
+}
+
+.nothere-body {
+  max-width: 34ch;
+  margin: 0;
+  font-size: var(--text-base);
+  line-height: var(--line-body);
+  color: var(--color-text-muted);
+}
+
+.nothere-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+.nothere-button {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: var(--space-3) var(--space-5);
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.nothere-button-quiet {
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
+  color: var(--color-text);
+}
+
+.nothere-button:focus-visible { outline: 2px solid var(--color-text); outline-offset: 3px; }
+
+/* ---- skeletons -------------------------------------------------------------
+   Shown where an empty box used to be. The garden's worst bug was that a stage
+   which had failed and a stage which was still loading rendered the same
+   nothing, so "loading" now has to look like something. */
+.skeleton {
+  border-radius: var(--radius);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-text) 6%, transparent),
+    color-mix(in srgb, var(--color-text) 13%, transparent),
+    color-mix(in srgb, var(--color-text) 6%, transparent)
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+.skeleton-gate { width: 100%; height: 42vh; min-height: 12rem; }
+.skeleton-stage { width: 100%; aspect-ratio: 11 / 7; }
+.skeleton-line { width: 100%; height: var(--space-4); }
+.skeleton-line-short { width: 60%; }
+
+@keyframes skeleton-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* A shimmer is motion, and this app's two motion switches both mean it. A still
+   skeleton still says "something is coming", which is the whole job. */
+:root[data-calm='true'] .skeleton { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+
 /* ---- the study app link --------------------------------------------------- */
 /* Sits under notifications in Settings and borrows its rhythm, so the two read
    as one column rather than as two designs that happen to be stacked. */
@@ -4977,6 +5090,28 @@ body {
 .garden-actions-hint,
 .garden-hint,
 .garden-note { margin-top: var(--space-2); }
+
+/* A fault the garden survives — a picture that would not load, a move that did
+   not land. Deliberately a card rather than the full-page `.nothere`: the
+   screen still works, and an apology louder than the problem teaches people to
+   distrust a working screen. */
+.garden-note-fault {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  border-inline-start: 3px solid var(--color-accent);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+  color: var(--color-text-muted);
+}
+
+.garden-note-title { font-weight: 600; color: var(--color-text); }
+
+.garden-note-retry {
+  display: inline-block;
+  margin-inline-start: var(--space-2);
+  /* Inherits `.quiet`; only the inline placement is new. */
+}
 
 /* The world map, over the garden. */
 .garden-map-backdrop {

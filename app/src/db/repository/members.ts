@@ -96,6 +96,21 @@ export async function setHaptics(haptics: boolean): Promise<void> {
 }
 
 /**
+ * Read the fight in Eve's Garden instead of watching it.
+ *
+ * Kept beside Calm because it is the same kind of choice — how much motion a
+ * screen is allowed — but it is not the same switch. Calm damps animation the
+ * app is already running; this one declines to fetch the engine that would run
+ * it, which is a megabyte and a WebGL context rather than a preference.
+ *
+ * It never touches a result. C# owns the rules and the canvas was only ever the
+ * picture, so the same fight is fought either way.
+ */
+export async function setResolveQuickly(resolveQuickly: boolean): Promise<void> {
+  await saveSettings({ resolveQuickly });
+}
+
+/**
  * Cycle ownership has one answer, and it is this one. `Member.tracksCycle` is
  * copied from it so the couple's rows are complete, and is never read back to
  * decide anything — see the note on Settings.tracksCycle.

@@ -20,6 +20,7 @@ import {
   savePairing,
   setCalmMode as storeCalmMode,
   setHaptics,
+  setResolveQuickly,
   setThemeChoice,
   setGender,
   setShareCycleNudge,
@@ -233,6 +234,22 @@ export function SettingsPage() {
           <span>
             A short buzz when something lands.{' '}
             {supportsHaptics() ? '' : 'This phone’s browser has no vibration, so it does nothing here.'}
+          </span>
+        </label>
+        {/* Beside Calm because it is the same kind of question, and separate
+            from it because it is a different cost: Calm damps motion the app is
+            already running, this declines to download the engine that would run
+            it. The fight is identical either way — the rules live in C#, and
+            the canvas was only ever the picture. */}
+        <label className="set-toggle">
+          <input
+            type="checkbox"
+            checked={settings?.resolveQuickly === true}
+            onChange={(e) => void setResolveQuickly(e.target.checked)}
+          />
+          <span>
+            Read fights in Eve’s Garden instead of watching them. Skips the
+            animation and its download; the outcome is the same.
           </span>
         </label>
       </section>

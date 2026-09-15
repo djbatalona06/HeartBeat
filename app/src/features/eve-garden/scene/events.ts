@@ -47,6 +47,18 @@ export interface SceneHandle {
   withdraw(): void;
   /** Re-light the scene for a new hour or a changed diorama variant. */
   relight(hour: number, dark: boolean): void;
+  /**
+   * Stop and restart the render loop without losing the scene.
+   *
+   * For `visibilitychange`: a backgrounded tab kept a rAF loop and an Arcade
+   * physics step running over a canvas nobody was looking at, which on a phone
+   * is battery spent on nothing. Distinct from `destroy` on purpose — coming
+   * back to a garden that had been torn down would mean re-reading the stage
+   * and rebuilding the canvas, and the pet would jump back to its spawn tile
+   * mid-walk.
+   */
+  pause(): void;
+  resume(): void;
   /** Full teardown, including the WebGL context. */
   destroy(): void;
 }
