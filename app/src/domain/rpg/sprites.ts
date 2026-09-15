@@ -262,6 +262,108 @@ export const SPRITES: Record<string, Sprite> = {
     '................',
   ],
 
+  // --- the five mascots, as they stand in the garden ---
+  //
+  // One per theme, keyed by `Theme.id` with a `mascot-` prefix, so
+  // `spriteForTheme` is a string concatenation rather than a second table that
+  // can fall out of step with the roster. The player's sprite used to be
+  // `bird-right` whoever you had chosen at the gate, which made the Raid Gate
+  // a menu that changed nothing you could see.
+  //
+  // Drawn as silhouettes rather than as detail: sixteen pixels of fox has room
+  // for ears, a snout and a tail and for nothing else, and the four that read
+  // at arm's length are exactly those.
+  'mascot-pony': [
+    '................',
+    '.............a..',
+    '............a...',
+    '...........aa...',
+    '......ooo..oo...',
+    '.....ollloooo...',
+    '....ollllllllo..',
+    '....ollllllllo..',
+    '...ommmmmmmmo...',
+    '..ommmmmmmmo....',
+    '..omllllllmo....',
+    '..ommmmmmmmo....',
+    '...oooooooooo...',
+    '....o..o.o..o...',
+    '....o..o.o..o...',
+    '................',
+  ],
+  'mascot-avatar': [
+    '................',
+    '................',
+    '...........oooo.',
+    '..........ollllo',
+    '..........olaalo',
+    '.........ollllo.',
+    '....oooooollo...',
+    '...ommmmmmmo....',
+    '..ommllllmmo....',
+    '..ommmmmmmo.....',
+    '...ommmmmo......',
+    '..oommmmmoo.....',
+    '.olllooooollo...',
+    '.ollo.....ollo..',
+    '..oo.......oo...',
+    '................',
+  ],
+  'mascot-sponge': [
+    '................',
+    '................',
+    '...oooooooooo...',
+    '..ollllllllllo..',
+    '..ollaollolllo..',
+    '..ollllllllllo..',
+    '..olloollllolo..',
+    '..ollllllllllo..',
+    '..ollollolallo..',
+    '..ollllllllllo..',
+    '..ollolllloolo..',
+    '..ollllllllllo..',
+    '...oooooooooo...',
+    '....o.o..o.o....',
+    '....o.o..o.o....',
+    '................',
+  ],
+  'mascot-kitty': [
+    '................',
+    '................',
+    '....oo......oo..',
+    '...ollo....ollo.',
+    '...olllooooollo.',
+    '..aollllllllllo.',
+    '.aaolaollolallo.',
+    '..aollllllllllo.',
+    '...ollloollollo.',
+    '...ommmmmmmmmo..',
+    '..ommmlllllmmo..',
+    '..ommmmmmmmmmo..',
+    '...ooooooooooo..',
+    '....o.oo.oo.o...',
+    '....o.oo.oo.o...',
+    '................',
+  ],
+  'mascot-shinobi': [
+    '................',
+    '.....o.......o..',
+    '....olo.....olo.',
+    '....ollo...ollo.',
+    '....ollloooollo.',
+    '...ollalllallo..',
+    '...ollllllllllo.',
+    '...olllloollllo.',
+    '....ollllllllo..',
+    '..ooommmmmmmo...',
+    '.omlommmmmmmo...',
+    '.omlommmmmmmo...',
+    '.omlooooooooo...',
+    '..ooo.o.o.o.o...',
+    '......o.o.o.o...',
+    '................',
+  ],
+
   // --- the three in the garden ---
   'foe-snail': [
     '................',
@@ -502,6 +604,18 @@ const KEYS = new Set(Object.keys(SPRITES));
 /** Total: an unknown key is `undefined` rather than a throw or a green box. */
 export function spriteFor(key: string): Sprite | undefined {
   return SPRITES[key];
+}
+
+/**
+ * The sprite a theme's mascot walks in. Falls back the same way `getMascot`
+ * does, so a theme id left in storage by an older build still gets a body
+ * rather than an empty tile.
+ */
+export const FALLBACK_MASCOT_SPRITE = 'mascot-kitty';
+
+export function spriteKeyForTheme(themeId: string | undefined): string {
+  const key = `mascot-${themeId ?? ''}`;
+  return hasSprite(key) ? key : FALLBACK_MASCOT_SPRITE;
 }
 
 export function hasSprite(key: string): boolean {

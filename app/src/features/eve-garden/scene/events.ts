@@ -32,6 +32,15 @@ export type Blow = 'player-hits' | 'monster-hits';
 export interface SceneHandle {
   /** Play one exchange. Resolves when the animation is done. */
   strike(blow: Blow, effectiveness: 'weak' | 'plain' | 'strong'): Promise<void>;
+  /**
+   * Play a companion's skill, named by its `vfx` key.
+   *
+   * Deliberately takes the key rather than a shape: the scene owns the mapping
+   * (`scene/vfx.ts`), so adding a skill needs no change on this boundary and
+   * the domain never learns what a particle is. Resolves when it is done, so a
+   * skill and the swing behind it can be paced apart rather than overlapping.
+   */
+  skill(vfx: string): Promise<void>;
   /** The monster is down: fade it out and leave the ground clear. */
   defeat(): Promise<void>;
   /** The fight ended without a win. Walk the pet back to its spawn tile. */

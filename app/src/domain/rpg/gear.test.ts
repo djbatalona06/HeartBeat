@@ -70,7 +70,7 @@ describe('the gear catalogue', () => {
 
 /**
  * Rarity has to mean two things at once, or it is just a colour. A rarer item
- * is worth more *and* touches more stats — the second is what makes a godly
+ * is worth more *and* touches more stats — the second is what makes a legendary
  * drop feel different in kind rather than merely larger.
  */
 describe('rarity', () => {
@@ -83,10 +83,28 @@ describe('rarity', () => {
     }
   });
 
-  it('touches one more stat at each step up', () => {
+  /**
+   * Spread rises one stat per rung until the sheet runs out of stats. There
+   * are four, so legendary is where the spread ladder ends and mythic is the
+   * one rung that has nowhere further to spread — it buys magnitude and an
+   * always-on passive instead (`tiers.ts`). Written as "never narrower than
+   * the rung below, and capped at the number of stats" rather than as a
+   * literal count, so the rule survives a sixth rung.
+   */
+  it('touches one more stat at each step up, until it has touched them all', () => {
     for (const slot of GEAR_SLOTS) {
       for (let i = 0; i < RARITIES.length; i += 1) {
-        expect(spread(bonusFor(slot, RARITIES[i])), `${slot} ${RARITIES[i]}`).toBe(i + 1);
+        const want = Math.min(i + 1, STAT_KEYS.length);
+        expect(spread(bonusFor(slot, RARITIES[i])), `${slot} ${RARITIES[i]}`).toBe(want);
+      }
+    }
+  });
+
+  it('never gets narrower going up the ladder', () => {
+    for (const slot of GEAR_SLOTS) {
+      for (let i = 1; i < RARITIES.length; i += 1) {
+        expect(spread(bonusFor(slot, RARITIES[i])))
+          .toBeGreaterThanOrEqual(spread(bonusFor(slot, RARITIES[i - 1])));
       }
     }
   });

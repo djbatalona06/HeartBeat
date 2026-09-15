@@ -186,6 +186,15 @@ export interface Avatar {
    */
   dye?: string;
   /**
+   * Draws since the last payout, per chest — the counters behind the pity
+   * floors in `chests.ts`. One per chest rather than one shared, because a bad
+   * run on the cheap chest is not insurance you have paid for on the dear one.
+   *
+   * Optional and absent means zero, and it rides this payload for exactly the
+   * reason `pity` below does: no migration, no Dexie version.
+   */
+  chestPity?: Record<string, number>;
+  /**
    * Eggs bought since the last epic or better, for the pity floor in
    * `pets.ts`. Optional, and absent means zero: it rides this payload the way
    * `dye` and `visited` already do, so it costs no migration and no Dexie

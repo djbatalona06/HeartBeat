@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ISLAND_1_SPRITE_KEYS, PALETTE_KEYS, SPRITES, SPRITE_SIZE, hasSprite, spriteFor,
+  FALLBACK_MASCOT_SPRITE, ISLAND_1_SPRITE_KEYS, PALETTE_KEYS, SPRITES, SPRITE_SIZE,
+  hasSprite, spriteFor, spriteKeyForTheme,
 } from './sprites';
+import { COMPANION_KITS } from './companionSkills';
 import { TILE, TILE_KINDS, ZONES } from './zones';
 import { ENEMIES } from './enemies';
 
@@ -110,6 +112,20 @@ describe('coverage', () => {
     }
   });
 
+  it('draws every mascot that can be taken through the gate', () => {
+    for (const kit of COMPANION_KITS) {
+      const key = spriteKeyForTheme(kit.themeId);
+      expect(key, kit.themeId).toBe(`mascot-${kit.themeId}`);
+      expect(hasSprite(key), key).toBe(true);
+    }
+  });
+
+  it('falls back to a body rather than an empty tile for a theme it has lost', () => {
+    expect(spriteKeyForTheme('a-theme-that-was-removed')).toBe(FALLBACK_MASCOT_SPRITE);
+    expect(spriteKeyForTheme(undefined)).toBe(FALLBACK_MASCOT_SPRITE);
+    expect(hasSprite(FALLBACK_MASCOT_SPRITE)).toBe(true);
+  });
+
   it('draws the bird facing all four ways', () => {
     for (const facing of ['bird-up', 'bird-down', 'bird-left', 'bird-right']) {
       expect(hasSprite(facing), facing).toBe(true);
@@ -126,6 +142,9 @@ describe('coverage', () => {
       // Garden scene. Without them this check reads them as dead art.
       ...ISLAND_1_SPRITE_KEYS,
       'bird-up', 'bird-down', 'bird-left', 'bird-right',
+      // One per mascot, resolved by `spriteKeyForTheme` off the theme id, so
+      // nothing in TypeScript names them as literals for this to follow.
+      ...COMPANION_KITS.map((kit) => spriteKeyForTheme(kit.themeId)),
     ]);
     for (const key of Object.keys(SPRITES)) {
       expect(referenced.has(key), `${key} is drawn but never used`).toBe(true);

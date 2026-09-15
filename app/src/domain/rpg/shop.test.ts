@@ -21,7 +21,7 @@ describe('GEAR_PRICE', () => {
     for (const rarity of RARITIES) expect(GEAR_PRICE[rarity]).toBeGreaterThan(0);
     expect(GEAR_PRICE.common).toBeLessThan(GEAR_PRICE.rare);
     expect(GEAR_PRICE.rare).toBeLessThan(GEAR_PRICE.epic);
-    expect(GEAR_PRICE.epic).toBeLessThan(GEAR_PRICE.godly);
+    expect(GEAR_PRICE.epic).toBeLessThan(GEAR_PRICE.legendary);
   });
 });
 
@@ -85,7 +85,7 @@ describe('refinePrice', () => {
   });
 
   it('a rarer item refines for more at the same level', () => {
-    expect(refinePrice('common', 0)).toBeLessThan(refinePrice('godly', 0));
+    expect(refinePrice('common', 0)).toBeLessThan(refinePrice('legendary', 0));
   });
 });
 
@@ -141,9 +141,9 @@ describe('gearBonusWithRefinement', () => {
   });
 
   it('still respects the level gate: an unworn-because-too-low item contributes nothing', () => {
-    const godly = GEAR.find((g) => g.rarity === 'godly' && g.slot === 'helmet')!;
-    const equipped = { helmet: godly.id };
-    const bonus = gearBonusWithRefinement(equipped, 1, { [godly.id]: 5 });
+    const legendary = GEAR.find((g) => g.rarity === 'legendary' && g.slot === 'helmet')!;
+    const equipped = { helmet: legendary.id };
+    const bonus = gearBonusWithRefinement(equipped, 1, { [legendary.id]: 5 });
     expect(bonus).toEqual({ strength: 0, insight: 0, heart: 0, luck: 0 });
   });
 });
@@ -169,7 +169,7 @@ describe('what a new member can afford on day one', () => {
 
   it('cannot reach an epic, so the ceiling still has to be earned', () => {
     expect(canAfford(STARTER_COINS, GEAR_PRICE.epic).ok).toBe(false);
-    expect(canAfford(STARTER_COINS, GEAR_PRICE.godly).ok).toBe(false);
+    expect(canAfford(STARTER_COINS, GEAR_PRICE.legendary).ok).toBe(false);
   });
 
   it('can reach a rare, so breadth is a real trade against depth', () => {

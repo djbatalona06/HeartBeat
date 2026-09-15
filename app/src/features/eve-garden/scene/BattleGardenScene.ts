@@ -6,6 +6,7 @@ import {
 } from '../../../domain/rpg/arena';
 import { lightingAt } from '../../../domain/rpg/diorama';
 import { bakeAll } from '../../rpg/overworld/bake';
+import { shapeFor } from './vfx';
 import type { Blow, SceneHooks } from './events';
 
 /**
@@ -44,6 +45,8 @@ const STEP_MS = 140;
 const STRIKE_MS = 400;
 const HURT_MS = 300;
 const DEFEAT_MS = 800;
+/** How long a companion's skill holds the screen before the swing behind it. */
+const SKILL_MS = 520;
 
 /** How far a struck sprite is knocked, in pixels before scaling. */
 const KNOCKBACK = 5;
@@ -54,6 +57,12 @@ export class BattleGardenScene extends Phaser.Scene {
   private readonly hooks: SceneHooks;
   private arena: Arena;
   private monsterSprite: string;
+  /**
+   * Whoever came through the Raid Gate. The player used to be `bird-right`
+   * whatever had been chosen, which made the gate a menu that changed nothing
+   * anybody could see.
+   */
+  private petSprite: string;
   private hour: number;
   private dark: boolean;
 
@@ -75,6 +84,7 @@ export class BattleGardenScene extends Phaser.Scene {
     island: number,
     stage: number,
     monsterSprite: string,
+    petSprite: string,
     hour: number,
     dark: boolean,
     hooks: SceneHooks,
@@ -82,6 +92,7 @@ export class BattleGardenScene extends Phaser.Scene {
     super(BattleGardenScene.KEY);
     this.arena = arenaFor(island, stage);
     this.monsterSprite = monsterSprite;
+    this.petSprite = petSprite;
     this.hour = hour;
     this.dark = dark;
     this.hooks = hooks;
@@ -124,7 +135,7 @@ export class BattleGardenScene extends Phaser.Scene {
 
     this.tile = { ...this.arena.spawn };
     this.pet = this.add
-      .image(this.tile.x * size, this.tile.y * size, 'bird-right')
+      .image(this.tile.x * size, this.tile.y * size, this.petSprite)
       .setOrigin(0, 0)
       .setDepth(10);
 
@@ -198,8 +209,10 @@ export class BattleGardenScene extends Phaser.Scene {
     if (this.moving || this.engaged) return;
     const next = { x: this.tile.x + dx, y: this.tile.y + dy };
 
-    const facing = dy < 0 ? 'bird-up' : dy > 0 ? 'bird-down' : dx < 0 ? 'bird-left' : 'bird-right';
-    this.pet.setTexture(facing);
+    // Each mascot is drawn once, facing right, and turned by flipping rather
+    // than by four sprites apiece. Twenty more 16x16 grids to maintain would
+    // buy a back view of a sponge, which nobody has ever wanted to see.
+    if (dx !== 0) this.pet.setFlipX(dx < 0);
 
     // Walking *into* the monster is how a fight starts, so its tile is not
     // walkable even though the ground under it is.
@@ -276,6 +289,131 @@ export class BattleGardenScene extends Phaser.Scene {
           this.time.delayedCall(HURT_MS / 3, () => this.applyLighting());
         },
       });
+    });
+  }
+
+  /**
+   * A companion's skill, as one of five motions.
+   *
+   * `scene/vfx.ts` decides which motion a skill's `vfx` key maps to; this plays
+   * it. Everything is drawn from primitives in the theme's accent, so a skill
+   * needs no texture and a new one needs no art — which is the only reason ten
+   * skills can each have their own flourish without ten files to maintain.
+   */
+  skill(vfx: string): Promise<void> {
+    if (!this.pet) return Promise.resolve();
+    const shape = shapeFor(vfx);
+    const size = this.size;
+    const at = { x: this.pet.x + size / 2, y: this.pet.y + size / 2 };
+    const foeAt = this.foe
+      ? { x: this.foe.x + size / 2, y: this.foe.y + size / 2 }
+      : { x: at.x + size * 3, y: at.y };
+    const accent = 0xffffff;
+
+    return new Promise((resolve) => {
+      const done = () => resolve();
+
+      switch (shape) {
+        case 'bolt': {
+          // Something crossing the gap. The one shape that actually travels,
+          // and the reason it reads as an attack rather than as an aura.
+          const bolt = this.add
+            .rectangle(at.x, at.y, this.zoom * 3, this.zoom, accent, 0.95)
+            .setDepth(13);
+          this.tweens.add({
+            targets: bolt,
+            x: foeAt.x,
+            y: foeAt.y,
+            duration: SKILL_MS * 0.6,
+            ease: 'Quad.easeIn',
+            onComplete: () => {
+              bolt.destroy();
+              this.flash(foeAt, accent, done);
+            },
+          });
+          return;
+        }
+
+        case 'ring': {
+          const ring = this.add
+            .circle(at.x, at.y, size * 0.4)
+            .setStrokeStyle(this.zoom, accent, 0.9)
+            .setFillStyle(0, 0)
+            .setDepth(11);
+          this.tweens.add({
+            targets: ring,
+            scale: 2.4,
+            alpha: 0,
+            duration: SKILL_MS,
+            ease: 'Quad.easeOut',
+            onComplete: () => { ring.destroy(); done(); },
+          });
+          return;
+        }
+
+        case 'shield': {
+          // Held in front of you, on the side the monster is on.
+          const towards = foeAt.x >= at.x ? 1 : -1;
+          const guard = this.add
+            .arc(at.x + towards * size * 0.35, at.y, size * 0.55, -60, 60, false)
+            .setStrokeStyle(this.zoom * 1.5, accent, 0.9)
+            .setFillStyle(0, 0)
+            .setDepth(11);
+          guard.setScale(towards, 1);
+          this.tweens.add({
+            targets: guard,
+            alpha: 0,
+            scaleY: 1.25,
+            duration: SKILL_MS,
+            ease: 'Sine.easeOut',
+            onComplete: () => { guard.destroy(); done(); },
+          });
+          return;
+        }
+
+        case 'motes': {
+          // Something opening around you, and the only one that goes upward —
+          // which is what makes rest and gratitude read differently from a hit.
+          const motes = Array.from({ length: 7 }, (_, i) => {
+            const dot = this.add
+              .rectangle(
+                at.x + (i - 3) * this.zoom * 2.2,
+                at.y + this.zoom * 2,
+                this.zoom, this.zoom, accent, 0.9,
+              )
+              .setDepth(12);
+            this.tweens.add({
+              targets: dot,
+              y: dot.y - size * (0.8 + i * 0.08),
+              alpha: 0,
+              duration: SKILL_MS + i * 40,
+              ease: 'Sine.easeOut',
+              onComplete: () => dot.destroy(),
+            });
+            return dot;
+          });
+          this.time.delayedCall(SKILL_MS + 7 * 40, () => { void motes; done(); });
+          return;
+        }
+
+        case 'burst':
+        default: {
+          this.flash(at, accent, done);
+        }
+      }
+    });
+  }
+
+  /** A short bloom at a point, used as the landing of a bolt and as a burst. */
+  private flash(at: { x: number; y: number }, colour: number, done: () => void): void {
+    const bloom = this.add.circle(at.x, at.y, this.size * 0.25, colour, 0.8).setDepth(13);
+    this.tweens.add({
+      targets: bloom,
+      scale: 2.2,
+      alpha: 0,
+      duration: SKILL_MS * 0.5,
+      ease: 'Quad.easeOut',
+      onComplete: () => { bloom.destroy(); done(); },
     });
   }
 

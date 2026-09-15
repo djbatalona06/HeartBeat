@@ -1,12 +1,18 @@
 import type { CoupleId, MemberId } from '../types';
 import type { Rarity } from './gear';
 import { RARITIES } from './gear';
+import { tierRank, tiersAtOrAbove } from './tiers';
 import type { SkillEffect } from './skills';
 
 /**
- * Sixteen pets: four species at four rarities. Each hatches with a short lore
+ * Twenty pets: four species at five tiers. Each hatches with a short lore
  * briefing that is revealed **only on hatch** — an egg tells you nothing, which
  * is the whole of why an egg is worth having.
+ *
+ * The four ids ending `-godly` are legendary companions. The tier was renamed
+ * when mythic was added above it (`tiers.ts`); the ids were not, because a
+ * couple's stored `pets` row names its companion by id and renaming one would
+ * lose them a pet they had hatched. A pet is not a row to be tidied.
  *
  * A pet carries its own MP bar, separate from yours and grown by rank rather
  * than by level, and spends it on a skill only it has. That is what makes the
@@ -71,7 +77,7 @@ export const PET_KINDS: PetKind[] = [
       blurb: 'The moment a long thing starts going the other way.', effect: { damage: 2, shield: 12 } },
   },
   {
-    id: 'horse-godly', species: 'horse', rarity: 'godly', name: 'Comet-Maned', baseMp: 22,
+    id: 'horse-godly', species: 'horse', rarity: 'legendary', name: 'Comet-Maned', baseMp: 22,
     lore: 'Seen twice in one lifetime, which is once more than is usual.',
     skill: { id: 'long-return', name: 'Long Return', mpCost: 14, minRank: 4,
       blurb: 'Gone for years. Comes back on the day it said it would.',
@@ -99,7 +105,7 @@ export const PET_KINDS: PetKind[] = [
       effect: { shield: 24, heal: 10 } },
   },
   {
-    id: 'fairy-godly', species: 'fairy', rarity: 'godly', name: 'Aurora Fairy', baseMp: 24,
+    id: 'fairy-godly', species: 'fairy', rarity: 'legendary', name: 'Aurora Fairy', baseMp: 24,
     lore: 'Only ever appears when two people are already looking up together.',
     skill: { id: 'both-looking-up', name: 'Both Looking Up', mpCost: 15, minRank: 4,
       blurb: 'The rare thing, and the witness to it.', effect: { heal: 34, shield: 20 } },
@@ -125,7 +131,7 @@ export const PET_KINDS: PetKind[] = [
       blurb: 'Work done where there is no credit for it.', effect: { damage: 2.2 } },
   },
   {
-    id: 'vampire-godly', species: 'vampire', rarity: 'godly', name: 'Eclipse Vampire', baseMp: 24,
+    id: 'vampire-godly', species: 'vampire', rarity: 'legendary', name: 'Eclipse Vampire', baseMp: 24,
     lore: 'Waited four hundred years for four minutes and says it was worth it.',
     skill: { id: 'four-minutes', name: 'Four Minutes', mpCost: 16, minRank: 4,
       blurb: 'Everything, spent at once, on purpose.', effect: { damage: 3.2 } },
@@ -152,11 +158,44 @@ export const PET_KINDS: PetKind[] = [
       blurb: 'Gets on everything. Nobody minds.', effect: { damage: 1.9, heal: 12 } },
   },
   {
-    id: 'cat-godly', species: 'cat', rarity: 'godly', name: 'Lantern-Tail Cat', baseMp: 23,
+    id: 'cat-godly', species: 'cat', rarity: 'legendary', name: 'Lantern-Tail Cat', baseMp: 23,
     lore: 'Walks ahead on the dark part of the road and does not look back to check.',
     skill: { id: 'walks-ahead', name: 'Walks Ahead', mpCost: 15, minRank: 4,
       blurb: 'Certain that you are following, which turns out to be the help.',
       effect: { damage: 2.4, shield: 22, heal: 14 } },
+  },
+
+  // Mythic --------------------------------------------------------------------
+  // One per species, at the rung above legendary. Each one is the quietest
+  // member of its species rather than the loudest, which is the whole joke and
+  // also the design: the strongest thing in this app is never the biggest.
+  {
+    id: 'horse-mythic', species: 'horse', rarity: 'mythic', name: 'The Old Grey', baseMp: 30,
+    lore: 'Has carried both of you, separately, years before you met. Says nothing about it.',
+    skill: { id: 'carried-you-both', name: 'Carried You Both', mpCost: 18, minRank: 5,
+      blurb: 'Was there for the parts the other one did not see.',
+      effect: { damage: 3.4, heal: 26, shield: 18 } },
+  },
+  {
+    id: 'fairy-mythic', species: 'fairy', rarity: 'mythic', name: 'Hearthlight Fairy', baseMp: 32,
+    lore: 'Lives in the pilot light, and is the reason the house is warm in the morning.',
+    skill: { id: 'still-lit', name: 'Still Lit', mpCost: 19, minRank: 5,
+      blurb: 'Small, constant, and the whole of why nothing froze.',
+      effect: { heal: 44, shield: 30, energy: 6 } },
+  },
+  {
+    id: 'vampire-mythic', species: 'vampire', rarity: 'mythic', name: 'The Long Patient', baseMp: 31,
+    lore: 'Outlived everyone it was afraid of. Did it by waiting, which nobody believes.',
+    skill: { id: 'outlasted', name: 'Outlasted', mpCost: 20, minRank: 5,
+      blurb: 'Not stronger. Simply still here when the other thing was not.',
+      effect: { damage: 4, shield: 16 } },
+  },
+  {
+    id: 'cat-mythic', species: 'cat', rarity: 'mythic', name: 'Hearth Cat', baseMp: 30,
+    lore: 'Chose the house. Nobody chose it, and it has never once been asked to leave.',
+    skill: { id: 'chose-the-house', name: 'Chose the House', mpCost: 18, minRank: 5,
+      blurb: 'Arrived, stayed, and made the place a home by doing only that.',
+      effect: { damage: 2.8, heal: 30, shield: 26 } },
   },
 ];
 
@@ -251,10 +290,11 @@ export function petSheet(pet: PetInstance): PetSheet {
 
 /** The rate before luck or a victory touches it. */
 export const BASE_DROP_CHANCES: Record<Rarity, number> = {
-  common: 0.62,
+  common: 0.612,
   rare: 0.25,
   epic: 0.1,
-  godly: 0.03,
+  legendary: 0.03,
+  mythic: 0.008,
 };
 
 export const LUCK_PER_POINT = 0.01;
@@ -289,10 +329,8 @@ export function dropChances(luck: number, bonus = 0): Record<Rarity, number> {
   }
 
   return {
+    ...(raised as Record<Rarity, number>),
     common: Math.max(0, 1 - rest),
-    rare: raised.rare,
-    epic: raised.epic,
-    godly: raised.godly,
   };
 }
 
@@ -304,25 +342,62 @@ export function dropChances(luck: number, bonus = 0): Record<Rarity, number> {
  * Eggs without an epic or better before one is guaranteed.
  *
  * Fifteen, and the number is chosen to do one job. The base chance of epic or
- * better is 13%, so the expected wait is about eight eggs and the chance of
- * going fifteen without is `0.87^15`, a little under one run in eight. So this
+ * better is 13.8%, so the expected wait is about seven eggs and the chance of
+ * going fifteen without is `0.862^15`, a little under one run in ten. So this
  * **removes the bad tail without moving the median** — which is the whole
  * honest purpose of a pity system, and the only version of it worth having.
  *
- * A hard floor on *godly* instead would need a counter in the thirties to mean
- * anything at 3%, and at 120 coins an egg that is months away. A promise nobody
- * lives to collect is not a promise.
+ * A hard floor on *mythic* instead would need a counter in the hundreds to mean
+ * anything at 0.8%, and at 120 coins an egg that is years away. A promise
+ * nobody lives to collect is not a promise.
  *
  * What this deliberately is not: a countdown, a second currency, or something
  * that can be bought down. Nothing anywhere tells a couple their pity is about
  * to do anything, because the point is that a bad run stops quietly, not that
  * there is a new number to feel anxious about.
+ *
+ * `chests.ts` runs three more counters of exactly this shape, one per chest,
+ * and imports `applyFloor` below rather than writing the rescale a second time.
  */
 export const PITY_AT = 15;
 
+/** What an egg's pity is a floor on. */
+export const PITY_TIER: Rarity = 'epic';
+
 /** The floor in force at this count, or null when there is none. */
 export function pityFloor(pity: number): Rarity | null {
-  return pity >= PITY_AT ? 'epic' : null;
+  return pity >= PITY_AT ? PITY_TIER : null;
+}
+
+/**
+ * A chance table with everything below `floor` removed and the rest rescaled
+ * against each other.
+ *
+ * The rescale is what makes a floor honest: it keeps the surviving tiers'
+ * **relative** weights exactly as they were, so pity never decides *which* of
+ * the good outcomes you get — it only rules out the bad ones. A floor that
+ * flattened the tail instead would be quietly handing out mythics.
+ *
+ * Exported because the chests need the identical operation on their own pools,
+ * and two copies of a rescale is two chances to get a divide-by-zero wrong.
+ */
+export function applyFloor(
+  chances: Record<Rarity, number>,
+  floor: Rarity,
+): Record<Rarity, number> {
+  const kept = tiersAtOrAbove(floor);
+  const tail = kept.reduce((sum, tier) => sum + (chances[tier] ?? 0), 0);
+
+  const out = Object.fromEntries(RARITIES.map((tier) => [tier, 0])) as Record<Rarity, number>;
+  // The tail can only reach zero through absurd inputs, and a divide by zero
+  // would poison every later comparison rather than throwing. The floor itself
+  // is the safe answer: it is the thing that was promised.
+  if (tail <= 0) {
+    out[floor] = 1;
+    return out;
+  }
+  for (const tier of kept) out[tier] = (chances[tier] ?? 0) / tail;
+  return out;
 }
 
 /**
@@ -334,20 +409,13 @@ export function pityFloor(pity: number): Rarity | null {
  * the real rate above the printed one, so a screen showing a flat 10% next to a
  * guarantee it does not mention is telling a small lie every fifteenth egg.
  *
- * At the floor, common and rare fall to zero and epic and godly are rescaled
- * against each other. That keeps their *relative* weights exactly as they were,
- * so pity never decides which of the two you get — it only rules out the two
- * below them.
+ * At the floor, common and rare fall to zero and the three tiers above them are
+ * rescaled against each other — see `applyFloor`.
  */
 export function chancesFor(luck: number, bonus = 0, pity = 0): Record<Rarity, number> {
   const base = dropChances(luck, bonus);
-  if (!pityFloor(pity)) return base;
-
-  const tail = base.godly + base.epic;
-  // `dropChances` can only reach zero here through absurd inputs, and a divide
-  // by zero would poison every later comparison rather than throwing.
-  if (tail <= 0) return { common: 0, rare: 0, epic: 1, godly: 0 };
-  return { common: 0, rare: 0, epic: base.epic / tail, godly: base.godly / tail };
+  const floor = pityFloor(pity);
+  return floor ? applyFloor(base, floor) : base;
 }
 
 /**
@@ -355,7 +423,7 @@ export function chancesFor(luck: number, bonus = 0, pity = 0): Record<Rarity, nu
  * higher. Pure, so the repository has no arithmetic of its own to get wrong.
  */
 export function nextPity(pity: number, got: Rarity): number {
-  if (got === 'epic' || got === 'godly') return 0;
+  if (tierRank(got) >= tierRank(PITY_TIER)) return 0;
   return Math.max(0, pity) + 1;
 }
 
@@ -368,11 +436,13 @@ export function nextPity(pity: number, got: Rarity): number {
  */
 export function rollRarity(roll: number, luck: number, bonus = 0, pity = 0): Rarity {
   const chances = chancesFor(luck, bonus, pity);
-  // Rarest first, so the tail is what a high roll reaches.
+  // Rarest first, so the tail is what a high roll reaches. Walked off
+  // `RARITIES` rather than a written-out list, so a sixth rung would need no
+  // edit here — the list and the ladder cannot fall out of step.
   let ceiling = 0;
-  for (const rarity of ['godly', 'epic', 'rare'] as Rarity[]) {
-    ceiling += chances[rarity];
-    if (roll < ceiling) return rarity;
+  for (let i = RARITIES.length - 1; i > 0; i -= 1) {
+    ceiling += chances[RARITIES[i]];
+    if (roll < ceiling) return RARITIES[i];
   }
   return 'common';
 }

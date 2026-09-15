@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RARITIES, type Rarity } from './gear';
+import { tierRank } from './tiers';
 import {
   BASE_DROP_CHANCES,
   MAX_PET_RANK,
@@ -39,9 +40,9 @@ function pet(over: Partial<PetInstance> = {}): PetInstance {
   };
 }
 
-describe('the sixteen pets', () => {
-  it('is exactly four species at four rarities', () => {
-    expect(PET_KINDS).toHaveLength(16);
+describe('the twenty pets', () => {
+  it('is exactly four species at five tiers', () => {
+    expect(PET_KINDS).toHaveLength(20);
     for (const species of SPECIES) {
       const rarities = PET_KINDS.filter((p) => p.species === species).map((p) => p.rarity);
       expect(new Set(rarities), species).toEqual(new Set(RARITIES));
@@ -50,14 +51,14 @@ describe('the sixteen pets', () => {
   });
 
   it('gives every pet a unique id and a unique name', () => {
-    expect(new Set(PET_KINDS.map((p) => p.id)).size).toBe(16);
-    expect(new Set(PET_KINDS.map((p) => p.name)).size).toBe(16);
+    expect(new Set(PET_KINDS.map((p) => p.id)).size).toBe(20);
+    expect(new Set(PET_KINDS.map((p) => p.name)).size).toBe(20);
   });
 
   /** An egg tells you nothing. That is the whole of why an egg is worth having. */
   it('gives every pet its own lore, and none of it repeats', () => {
     for (const kind of PET_KINDS) expect(kind.lore.length, kind.id).toBeGreaterThan(20);
-    expect(new Set(PET_KINDS.map((p) => p.lore)).size).toBe(16);
+    expect(new Set(PET_KINDS.map((p) => p.lore)).size).toBe(20);
   });
 
   it('names no collectible after anybody else\'s character', () => {
@@ -109,8 +110,8 @@ describe('a pet\'s own MP bar', () => {
 
   it('gives every pet a skill nobody else has', () => {
     const ids = PET_KINDS.map((p) => p.skill.id);
-    expect(new Set(ids).size).toBe(16);
-    expect(new Set(PET_KINDS.map((p) => p.skill.name)).size).toBe(16);
+    expect(new Set(ids).size).toBe(20);
+    expect(new Set(PET_KINDS.map((p) => p.skill.name)).size).toBe(20);
   });
 });
 
@@ -187,13 +188,13 @@ describe('drop chances', () => {
   it('gets rarer with luck, and only with luck', () => {
     const plain = dropChances(0);
     const lucky = dropChances(20);
-    expect(lucky.godly).toBeGreaterThan(plain.godly);
+    expect(lucky.legendary).toBeGreaterThan(plain.legendary);
     expect(lucky.epic).toBeGreaterThan(plain.epic);
     expect(lucky.common).toBeLessThan(plain.common);
   });
 
   it('stops climbing once luck is absurd, rather than promising certainty', () => {
-    expect(dropChances(10_000).godly).toBe(dropChances(45).godly);
+    expect(dropChances(10_000).legendary).toBe(dropChances(45).legendary);
     expect(dropChances(10_000).common).toBeGreaterThan(0);
   });
 
@@ -205,7 +206,7 @@ describe('drop chances', () => {
     for (const bonus of [0.2, 0.25, 0.3]) {
       const plain = dropChances(12);
       const after = dropChances(12, bonus);
-      for (const rarity of ['rare', 'epic', 'godly'] as Rarity[]) {
+      for (const rarity of ['rare', 'epic', 'legendary'] as Rarity[]) {
         expect(after[rarity], `${rarity} @ ${bonus}`).toBeCloseTo(plain[rarity] * (1 + bonus), 10);
       }
       expect(after.common).toBeLessThan(plain.common);
@@ -215,12 +216,12 @@ describe('drop chances', () => {
 
 describe('rolling a drop', () => {
   it('reads the tail first, so a low roll is the rarest outcome', () => {
-    expect(rollRarity(0, 0)).toBe('godly');
+    expect(rollRarity(0, 0)).toBe('mythic');
     expect(rollRarity(0.999, 0)).toBe('common');
   });
 
   it('lands on each rarity in proportion over many rolls', () => {
-    const counts: Record<string, number> = { common: 0, rare: 0, epic: 0, godly: 0 };
+    const counts: Record<string, number> = Object.fromEntries(RARITIES.map((t) => [t, 0]));
     const n = 20_000;
     for (let i = 0; i < n; i += 1) counts[rollRarity((i + 0.5) / n, 0)] += 1;
     for (const rarity of RARITIES) {
@@ -277,7 +278,7 @@ describe('pityFloor', () => {
 describe('nextPity', () => {
   it('clears on an epic or better, and only on those', () => {
     expect(nextPity(9, 'epic')).toBe(0);
-    expect(nextPity(9, 'godly')).toBe(0);
+    expect(nextPity(9, 'legendary')).toBe(0);
     expect(nextPity(9, 'rare')).toBe(10);
     expect(nextPity(9, 'common')).toBe(10);
   });
@@ -298,15 +299,15 @@ describe('chancesFor', () => {
     const at = chancesFor(0, 0, PITY_AT);
     expect(at.common).toBe(0);
     expect(at.rare).toBe(0);
-    expect(at.epic + at.godly).toBeCloseTo(1, 10);
+    expect(at.epic + at.legendary + at.mythic).toBeCloseTo(1, 10);
   });
 
   /** Pity rules out the two below epic. It does not get an opinion about
    *  which of the two above you land on. */
-  it('keeps godly and epic in exactly their old proportion', () => {
+  it('keeps legendary and epic in exactly their old proportion', () => {
     const base = dropChances(0, 0);
     const at = chancesFor(0, 0, PITY_AT);
-    expect(at.godly / at.epic).toBeCloseTo(base.godly / base.epic, 10);
+    expect(at.legendary / at.epic).toBeCloseTo(base.legendary / base.epic, 10);
   });
 
   it('never sums to more or less than one, at any luck or bonus', () => {
@@ -314,7 +315,7 @@ describe('chancesFor', () => {
       for (const bonus of [0, 0.2, 0.3]) {
         for (const pity of [0, PITY_AT]) {
           const c = chancesFor(luck, bonus, pity);
-          const total = c.common + c.rare + c.epic + c.godly;
+          const total = RARITIES.reduce((sum, tier) => sum + c[tier], 0);
           expect(total, `luck ${luck} bonus ${bonus} pity ${pity}`).toBeCloseTo(1, 10);
         }
       }
@@ -323,11 +324,11 @@ describe('chancesFor', () => {
 });
 
 describe('rollRarity under pity', () => {
-  it('can only hand back an epic or a godly at the floor', () => {
+  it('can only hand back epic or better at the floor', () => {
     const n = 2000;
     for (let i = 0; i < n; i += 1) {
       const got = rollRarity((i + 0.5) / n, 0, 0, PITY_AT);
-      expect(['epic', 'godly']).toContain(got);
+      expect(['epic', 'legendary', 'mythic']).toContain(got);
     }
   });
 
@@ -337,10 +338,9 @@ describe('rollRarity under pity', () => {
     for (let i = 0; i < n; i += 1) {
       const roll = (i + 0.5) / n;
       const without = rollRarity(roll, 0, 0, 0);
-      if (without !== 'epic' && without !== 'godly') continue;
+      if (tierRank(without) < tierRank('epic')) continue;
       const withPity = rollRarity(roll, 0, 0, PITY_AT);
-      if (without === 'godly') expect(withPity).toBe('godly');
-      else expect(['epic', 'godly']).toContain(withPity);
+      expect(tierRank(withPity)).toBeGreaterThanOrEqual(tierRank(without));
     }
   });
 });
@@ -372,7 +372,7 @@ describe('pity end to end', () => {
       const got = rollRarity(next(), 0, 0, pity);
       if (atFloor) fired += 1;
 
-      if (got === 'epic' || got === 'godly') sinceGood = 0;
+      if (tierRank(got) >= tierRank('epic')) sinceGood = 0;
       else sinceGood += 1;
 
       expect(sinceGood).toBeLessThanOrEqual(PITY_AT);
@@ -393,12 +393,12 @@ describe('pity end to end', () => {
     for (const pity of [0, PITY_AT]) {
       const next = rng(7 + pity);
       const want = chancesFor(0, 0, pity);
-      const seen: Record<string, number> = { common: 0, rare: 0, epic: 0, godly: 0 };
+      const seen: Record<string, number> = Object.fromEntries(RARITIES.map((t) => [t, 0]));
       const n = 200_000;
 
       for (let i = 0; i < n; i += 1) seen[rollRarity(next(), 0, 0, pity)] += 1;
 
-      for (const rarity of ['common', 'rare', 'epic', 'godly'] as const) {
+      for (const rarity of RARITIES) {
         expect(seen[rarity] / n, `${rarity} at pity ${pity}`).toBeCloseTo(want[rarity], 2);
       }
     }

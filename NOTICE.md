@@ -25,7 +25,7 @@ palettes, in the way someone might say a room is painted "sunflower".
 
 ### Collectible pets
 
-The RPG layer has sixteen collectible pets. **None of them is named after, or
+The RPG layer has twenty collectible pets. **None of them is named after, or
 drawn from, any character belonging to anyone above.** A character you *collect*
 is a stronger claim than a palette label, so the line is drawn well short of it:
 the four species are Horse, Fairy, Vampire and **Ribbon Cat**, and the Ribbon

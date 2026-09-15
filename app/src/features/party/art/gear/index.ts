@@ -20,6 +20,11 @@ import { WoodenSpoon } from './WoodenSpoon';
 import { EmberBrand } from './EmberBrand';
 import { CometLance } from './CometLance';
 import { SecondWind } from './SecondWind';
+import { PorchLight } from './PorchLight';
+import { TheGoodBlanket } from './TheGoodBlanket';
+import { TheDriveHome } from './TheDriveHome';
+import { SpareKey } from './SpareKey';
+import { PlainSentence } from './PlainSentence';
 
 /**
  * One drawing per catalogue item — see `art/pets/index.ts` for the sibling
@@ -49,6 +54,11 @@ const ART: Record<string, ComponentType> = {
   'weapon-ember-brand': EmberBrand,
   'weapon-comet-lance': CometLance,
   'weapon-second-wind': SecondWind,
+  'head-porch-light': PorchLight,
+  'body-the-good-blanket': TheGoodBlanket,
+  'boots-the-drive-home': TheDriveHome,
+  'charm-spare-key': SpareKey,
+  'weapon-plain-sentence': PlainSentence,
 };
 
 for (const item of GEAR) {

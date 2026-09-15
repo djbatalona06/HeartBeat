@@ -454,7 +454,7 @@ describe('companions', () => {
     const first = await hatchPet(COUPLE, HER, { rarity: 0, species: 0.1 }, 0);
     const second = await hatchPet(COUPLE, HER, { rarity: 0, species: 0.1 }, 0);
     expect(first.kindId).toBe(second.kindId);
-    expect(petKindById(first.kindId)!.rarity).toBe('godly');
+    expect(petKindById(first.kindId)!.rarity).toBe('mythic');
     expect(first.bond).toBe(0);
     expect(first.mp).toBe(0);
   });
@@ -598,7 +598,7 @@ describe('buyEgg and the pity counter', () => {
 
   it('counts up on a common and clears on an epic or better', async () => {
     await fund();
-    // A high rarity roll lands in the common band; a low one reaches godly.
+    // A high rarity roll lands in the common band; a low one reaches legendary.
     await buyEgg(COUPLE, HER, { rarity: 0.99, species: 0.5 }, 0);
     expect(await pityNow()).toBe(1);
 
@@ -620,7 +620,7 @@ describe('buyEgg and the pity counter', () => {
     const result = await buyEgg(COUPLE, HER, { rarity: 0.99, species: 0.5 }, 0);
     expect(result.ok).toBe(true);
     const kind = petKindById(result.pet!.kindId)!;
-    expect(['epic', 'godly']).toContain(kind.rarity);
+    expect(['epic', 'legendary']).toContain(kind.rarity);
     expect(await pityNow()).toBe(0);
   });
 

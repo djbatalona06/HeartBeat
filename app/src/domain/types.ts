@@ -222,6 +222,15 @@ export interface Pet {
    * drops pieces that have since been retired from the catalogue.
    */
   house?: Partial<Record<string, string>>;
+  /**
+   * What is growing in the garden's plots, one flora id per plot.
+   *
+   * On the couple's pet for the same reason the house is: the garden is the
+   * thing the two of you keep together. Unlike the house, the *ground* is not
+   * bought — plots open as the pet levels (`domain/rpg/milestones.ts`), which
+   * is what makes the garden fill out at the rate the two of you do.
+   */
+  plots?: Partial<Record<string, string>>;
 }
 
 export type QuestDifficulty = 'easy' | 'steady' | 'hard';
@@ -347,6 +356,28 @@ export interface Settings {
   /** Words this couple does not want to see. A candidate carrying one is
    *  dropped rather than shown, because seeing it at all is the harm. */
   complimentBlocked?: string[];
+  /**
+   * The companion taken through the Raid Gate — a `Theme.id`, and the key both
+   * `MASCOT_ROSTER` and `COMPANION_KITS` use. It is the active character theme
+   * for the garden: the sprite, the skill kit and the VFX all read off it.
+   *
+   * Local rather than synced, and deliberately. Two people can walk into the
+   * same garden behind different companions, and one partner picking the ink
+   * fox should not change who the other one is playing.
+   */
+  raidCompanionId?: string;
+  /**
+   * Rounds fought alongside each companion, keyed by theme id — the affinity
+   * ledger behind the ranks on the gate cards. Only ever rises; see
+   * `withAffinity` in `domain/rpg/raidGate.ts`.
+   */
+  raidAffinity?: Record<string, number>;
+  /**
+   * Whether this device has been through the gate before. It changes only the
+   * wording of the greeting — the gate itself opens every time, because it is
+   * a ritual rather than a first-run prompt.
+   */
+  raidGateVisited?: boolean;
   onboarded: boolean;
   /**
    * Sync watermarks.
