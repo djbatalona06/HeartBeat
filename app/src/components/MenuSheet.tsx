@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { MENU_GROUPS, OPEN_WHILE_UNPAIRED } from '../nav';
 import { Icon } from './icons';
+import { Sheet } from '../ui/Sheet';
 
 /**
  * The three-line button, and the grid of everywhere the six tabs are not.
@@ -17,16 +18,19 @@ import { Icon } from './icons';
  * **downward** from the button like any other menu. See `.menu-panel` in
  * styles.css for the two rules; 768px is the line.
  *
- * Built here rather than pulled in, for the reason `CommandMenu` and
- * `DeadlinePicker` were: this stylesheet is hand-written and driven by a
- * runtime theme engine, and a component library would arrive with its own.
- * The scrim, the escape key and the click-out are `CommandMenu`'s, because a
- * second dialog behaving differently from the first is worse than either.
+ * The scrim, the escape key and the click-out now come from `ui/Sheet`, which
+ * is the same argument this file used to make about copying `CommandMenu` —
+ * "a second dialog behaving differently from the first is worse than either" —
+ * taken one step further: one implementation rather than a careful copy. Sheet
+ * adds the focus trap none of the three had, so Tab can no longer walk out of
+ * the panel into the page behind the scrim.
+ *
+ * The paint stays here. Sheet takes both class names as props precisely so the
+ * direction-flip above survives: a component that imposed its own panel would
+ * take it away.
  */
 export function MenuSheet({ locked }: { locked: boolean }) {
   const [open, setOpen] = useState(false);
-  const button = useRef<HTMLButtonElement>(null);
-  const panel = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
   const close = useCallback(() => setOpen(false), []);
@@ -36,25 +40,9 @@ export function MenuSheet({ locked }: { locked: boolean }) {
   // are already on should close it too, and that fires no navigation.
   useEffect(() => { setOpen(false); }, [location.pathname]);
 
-  useEffect(() => {
-    if (!open) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') { close(); button.current?.focus(); }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, close]);
-
-  // Focus moves into the panel on open. Without this the menu opens behind the
-  // keyboard user, who is still on the button with nothing to tab into.
-  useEffect(() => {
-    if (open) panel.current?.querySelector('a')?.focus();
-  }, [open]);
-
   return (
     <>
       <button
-        ref={button}
         type="button"
         className="menu-button"
         aria-label={open ? 'Close menu' : 'Open menu'}
@@ -65,38 +53,34 @@ export function MenuSheet({ locked }: { locked: boolean }) {
         <Icon name="menu" />
       </button>
 
-      {open ? (
-        <div className="menu-scrim" onClick={close}>
-          <div
-            ref={panel}
-            className="menu-panel"
-            role="menu"
-            aria-label="Everywhere else"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {MENU_GROUPS.map((group) => (
-              <section className="menu-group" key={group.title}>
-                <h2 className="menu-group-title">{group.title}</h2>
-                <div className="menu-grid">
-                  {group.tabs.map((tab) => (
-                    <NavLink
-                      key={tab.to}
-                      to={tab.to}
-                      role="menuitem"
-                      className="menu-item"
-                      data-locked={locked && !OPEN_WHILE_UNPAIRED.includes(tab.to) ? 'true' : undefined}
-                    >
-                      <span className="menu-item-glyph"><Icon name={tab.icon} /></span>
-                      <span className="menu-item-label">{tab.label}</span>
-                      <span className="menu-item-hint">{tab.hint}</span>
-                    </NavLink>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        </div>
-      ) : null}
+      <Sheet
+        open={open}
+        onClose={close}
+        label="Everywhere else"
+        scrimClassName="menu-scrim"
+        panelClassName="menu-panel"
+      >
+        {MENU_GROUPS.map((group) => (
+          <section className="menu-group" key={group.title}>
+            <h2 className="menu-group-title">{group.title}</h2>
+            <div className="menu-grid">
+              {group.tabs.map((tab) => (
+                <NavLink
+                  key={tab.to}
+                  to={tab.to}
+                  role="menuitem"
+                  className="menu-item"
+                  data-locked={locked && !OPEN_WHILE_UNPAIRED.includes(tab.to) ? 'true' : undefined}
+                >
+                  <span className="menu-item-glyph"><Icon name={tab.icon} /></span>
+                  <span className="menu-item-label">{tab.label}</span>
+                  <span className="menu-item-hint">{tab.hint}</span>
+                </NavLink>
+              ))}
+            </div>
+          </section>
+        ))}
+      </Sheet>
     </>
   );
 }
