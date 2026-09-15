@@ -104,10 +104,10 @@ export const ponyTheme: Theme = {
    */
   light: {
     isLight: true,
-    opaqueSurface: '#ffffff',
+    opaqueSurface: '#FDFCFB',
     colors: {
       base: '#fbf7ff',
-      surface: 'rgba(255, 255, 255, 0.95)',
+      surface: 'rgba(253, 252, 251, 0.95)',
       surfaceMuted: 'rgba(231, 198, 255, 0.5)',
       border: 'rgba(98, 82, 158, 0.22)',
       text: '#2a2450',
@@ -131,6 +131,7 @@ export const ponyTheme: Theme = {
     radiusLarge: '28px',
     border: '1px',
     shadow: '0 18px 40px rgba(6, 4, 16, 0.58)',
+    shadowColor: 'rgba(6, 4, 16, 0.58)',
   },
   Backdrop: PonyBackdrop,
 };

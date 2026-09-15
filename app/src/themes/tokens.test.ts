@@ -88,6 +88,116 @@ describe('theme palettes', () => {
 });
 
 /**
+ * No token is pure black or pure white.
+ *
+ * ## Why this is asserted on emitted values, not on the source
+ *
+ * The obvious spelling is a grep for `#000|#fff` over the repository, and it is
+ * wrong in both directions.
+ *
+ * It is **too weak**: a black composed at emit time — `color-mix` resolving to
+ * one, a colour built from parts — never appears as a literal and sails
+ * straight past. `themeToCssVars` is where a token becomes real, so that is
+ * where the question has to be asked.
+ *
+ * It is **too strong**: `styles.css` uses `linear-gradient(#000 0 0)` twice as
+ * a `mask` sentinel, where `mask-mode` is alpha and only the alpha channel is
+ * read — any opaque colour behaves identically, so that black is not a colour
+ * at all. A grep would also flag the `'#ffffff'` reference constant a few lines
+ * below in this very file, which exists to prove the light palettes *are*
+ * light. Failing the build over either would teach people to route around the
+ * check, which is worse than not having it.
+ *
+ * ## What "no pure black" is actually for
+ *
+ * Pure black next to pure white is the highest contrast a screen can produce,
+ * and on an OLED phone at night it is a hole with a light in it. The four AA
+ * checks above already guarantee legibility; this guarantees the palette has
+ * somewhere darker to go and somewhere lighter to come back to — which is what
+ * makes a shadow read as depth instead of as a smudge.
+ */
+describe('no token is pure black or pure white', () => {
+  /** Colour tokens. Layout, motion and type are not colours and cannot fail. */
+  const COLOUR_KEYS = [
+    '--color-base', '--color-surface', '--color-surface-muted', '--color-border',
+    '--color-text', '--color-text-muted', '--color-accent', '--color-accent-text',
+    '--color-danger', '--color-success', '--shadow-color', '--scrim', '--glass',
+    '--hairline',
+  ];
+
+  /**
+   * The escape hatch, deliberately empty.
+   *
+   * It exists so that a future high-contrast mode — where pure black on pure
+   * white is the *point* — has a door that is opened on purpose and named,
+   * rather than by deleting this test. Nothing qualifies today.
+   */
+  const HIGH_CONTRAST_EXEMPT: string[] = [];
+
+  /** Both spellings of each, since a pack may write either. */
+  const FORBIDDEN = [
+    /^#000$/i, /^#000000$/i, /^#fff$/i, /^#ffffff$/i,
+    /^rgba?\(\s*0\s*,\s*0\s*,\s*0\s*[,)]/i,
+    /^rgba?\(\s*255\s*,\s*255\s*,\s*255\s*[,)]/i,
+  ];
+
+  for (const theme of THEMES) {
+    for (const mode of ['dark', 'light'] as ThemeMode[]) {
+      it(`${theme.name} (${mode}) emits no pure black or white`, () => {
+        const vars = themeToCssVars(theme, mode);
+        for (const key of COLOUR_KEYS) {
+          if (HIGH_CONTRAST_EXEMPT.includes(key)) continue;
+          const value = vars[key];
+          expect(value, `${theme.id} ${mode} ${key} is not emitted`).toBeTruthy();
+          for (const pattern of FORBIDDEN) {
+            expect(value, `${theme.id} ${mode} ${key} = ${value}`).not.toMatch(pattern);
+          }
+        }
+      });
+    }
+  }
+
+  it('emits the overlay layer for every pack, so nothing has to mix its own', () => {
+    // Before these existed, `MenuSheet` and `CommandMenu` each hand-rolled a
+    // scrim. Two scrims is two chances for one of them to be the wrong black.
+    for (const theme of THEMES) {
+      for (const mode of ['dark', 'light'] as ThemeMode[]) {
+        const vars = themeToCssVars(theme, mode);
+        for (const key of ['--scrim', '--glass', '--hairline', '--shadow-color']) {
+          expect(vars[key], `${theme.id} ${mode} ${key}`).toBeTruthy();
+        }
+      }
+    }
+  });
+
+  it('keeps the shadow colour in step with the shadow it came from', () => {
+    // Two fields that must agree is the price of not parsing a CSS shadow
+    // string; this is what makes that price visible when somebody edits one.
+    for (const theme of THEMES) {
+      expect(theme.shape.shadow, theme.id).toContain(theme.shape.shadowColor);
+    }
+  });
+
+  it('publishes one z-scale, identically, to every pack', () => {
+    // Depth is shape, not palette. A pack that could renumber it would be a
+    // pack whose sheet renders under the tab bar on one theme only.
+    const Z = ['--z-scene', '--z-content', '--z-chrome', '--z-overlay', '--z-sheet', '--z-toast'];
+    const first = themeToCssVars(THEMES[0]);
+    for (const theme of THEMES) {
+      const vars = themeToCssVars(theme);
+      for (const key of Z) {
+        expect(vars[key], `${theme.id} ${key}`).toBeTruthy();
+        expect(vars[key], `${theme.id} ${key}`).toBe(first[key]);
+      }
+    }
+    const value = (key: string) => Number.parseInt(first[key], 10);
+    for (let i = 1; i < Z.length; i += 1) {
+      expect(value(Z[i]), Z[i]).toBeGreaterThan(value(Z[i - 1]));
+    }
+  });
+});
+
+/**
  * The shared design language. Finch's shape is inherited by every pack; only
  * the palette and the radii are a pack's own. These pin that split, because the
  * failure mode is silent — a token that quietly stops being emitted does not

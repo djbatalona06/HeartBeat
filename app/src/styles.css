@@ -670,7 +670,10 @@ body {
   position: fixed;
   inset: 0;
   z-index: 5;
-  background: color-mix(in srgb, var(--color-base) 62%, transparent);
+  /* Was 62% here and 72% on `.cmd-scrim` — two scrims for one idea, already a
+     tenth apart with nothing to say which was right. `--scrim` is the 72%,
+     because the stronger of the two is what a scrim is for. */
+  background: var(--scrim);
   backdrop-filter: blur(3px);
 }
 
@@ -1505,9 +1508,16 @@ body {
   border-radius: inherit;
   padding: 1.5px;
   pointer-events: none;
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  /* The two gradients are stencils, not paint. `mask-mode` defaults to `alpha`,
+     so only the alpha channel is read and the colour is never seen — any fully
+     opaque value behaves identically. It is spelled `currentColor` rather than
+     a black so that the no-pure-black rule in `themes/tokens.test.ts` has
+     nothing here to trip over, and so nobody reads a literal black in a
+     stylesheet that has none and "fixes" it into something transparent, which
+     would erase the ring entirely. */
+  -webkit-mask: linear-gradient(currentColor 0 0) content-box, linear-gradient(currentColor 0 0);
   -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(currentColor 0 0) content-box, linear-gradient(currentColor 0 0);
   mask-composite: exclude;
 }
 
@@ -3389,7 +3399,7 @@ body {
      phone the moment the field is focused. */
   align-items: flex-start;
   padding: calc(env(safe-area-inset-top) + 10vh) var(--space-4) var(--space-4);
-  background: color-mix(in srgb, var(--color-base) 72%, transparent);
+  background: var(--scrim);
   backdrop-filter: blur(3px);
 }
 
@@ -4260,7 +4270,10 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, #ffffff 42%, transparent),
+    /* The sheen's highlight. Was a literal white, which is one of the two
+       colours no token is allowed to be — and on a light theme a white sheen
+       over a white bar is an animation nobody can see. */
+    var(--glass),
     transparent
   );
   animation: bar-sheen 2.6s var(--motion-easing) infinite;

@@ -66,6 +66,25 @@ export const SHARED_TOKENS: Record<string, string> = {
   // The gap between stacked cards. Finch's breathing room is mostly this one
   // number, and it is the first thing to raise when a screen feels crowded.
   '--stack': '18px',
+
+  /**
+   * Depth, as one scale rather than a number per rule.
+   *
+   * These codify what the stylesheet already does instead of renumbering it:
+   * content sits at 1, the fixed chrome at the low single digits, and the two
+   * overlays that must cover the tab bar were already at 40 and 45. Writing
+   * them down is what stops the next overlay being `z-index: 9999` because
+   * nobody could tell what it had to beat.
+   *
+   * `--z-scene` is 0 on purpose: the theme backdrop and, later, the garden on
+   * the home screen are painted *behind* everything and never compete with it.
+   */
+  '--z-scene': '0',
+  '--z-content': '1',
+  '--z-chrome': '6',
+  '--z-overlay': '40',
+  '--z-sheet': '45',
+  '--z-toast': '50',
 };
 
 /**
@@ -89,6 +108,9 @@ export const SHARED_TOKENS: Record<string, string> = {
  * element, and an inline style beats any `:root[data-mode='light']` rule.
  */
 const LIGHT_SHADOW = '0 14px 30px rgba(24, 20, 34, 0.1)';
+
+/** The same correction as a bare colour, for `--shadow-color`. */
+const LIGHT_SHADOW_COLOR = 'rgba(24, 20, 34, 0.1)';
 
 /** A theme's dark palette, in the shape its light one already has. */
 export function darkVariantOf(theme: Theme): ThemeVariant {
@@ -126,6 +148,23 @@ export function themeToCssVars(theme: Theme, mode: ThemeMode = 'dark'): Record<s
     '--radius-large': theme.shape.radiusLarge,
     '--border-width': theme.shape.border,
     '--shadow': mode === 'light' ? LIGHT_SHADOW : theme.shape.shadow,
+    '--shadow-color': mode === 'light' ? LIGHT_SHADOW_COLOR : theme.shape.shadowColor,
+
+    /**
+     * The overlay layer, which every component used to mix for itself.
+     *
+     * All three are `color-mix` over palette tokens rather than fixed rgba, so
+     * they follow the theme the way everything else does — a scrim that was
+     * `rgba(0, 0, 0, 0.5)` is a smudge over a white page and invisible over a
+     * dark one, which is the same mistake `--shadow` above already corrects.
+     *
+     * `--glass` carries real weight later: it is what keeps a card legible
+     * over the live garden on the home screen, where the ground behind it
+     * moves and cannot be reasoned about at authoring time.
+     */
+    '--scrim': `color-mix(in srgb, ${c.base} 72%, transparent)`,
+    '--glass': `color-mix(in srgb, ${c.surface} 82%, transparent)`,
+    '--hairline': `color-mix(in srgb, ${c.text} 14%, transparent)`,
   };
 }
 

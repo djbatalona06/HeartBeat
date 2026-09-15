@@ -16,8 +16,15 @@ import type { MascotMood } from './roster';
  * put a light source on it at all. Anywhere else it would just be a hole.
  */
 
-/** Highlights are a light source, not a tint, so they sit in one place. */
-const HIGHLIGHT = '#ffffff';
+/**
+ * Highlights are a light source, not a tint, so they sit in one place.
+ *
+ * Near-white rather than white, under the same rule as the palettes: nothing in
+ * this app paints pure white. It costs nothing visually — every use below is
+ * between 0.28 and 0.9 opacity over a body that is already `--color-text`, so
+ * the highlight was never reaching full white on screen anyway.
+ */
+const HIGHLIGHT = '#FDFCFB';
 
 /**
  * A catchlight only lands on an eye that is a filled shape. `happy` and
