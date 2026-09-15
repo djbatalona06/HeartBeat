@@ -27,6 +27,10 @@ import type {
   ActionDto, BattleDto, DioramaTheme, IslandDto, MonsterDto, ProgressDto,
 } from './engine/types';
 import type { SceneHandle } from './scene/events';
+import {
+  blocksPlay, faultCopy, faultFrom, needsTextMode, type GardenFault,
+} from './fault';
+import { NotHere } from '../errors/NotHere';
 import { logActivity } from './logging';
 import { GardenBackdrop } from './GardenBackdrop';
 import { GardenPlaces } from './GardenPlaces';
@@ -165,6 +169,23 @@ export function EveGardenPage() {
   >(null);
   const [note, setNote] = useState<string | null>(null);
 
+  /**
+   * What is broken, if anything — and separate from `note`, which is the
+   * drawer's own feedback ("Rose planted.", "Not enough coins.") and is as
+   * often good news as bad.
+   *
+   * See `fault.ts` for why this replaced three `.catch(() => {})`. The short
+   * version: one of them swallowed the failure that left the canvas unmounted,
+   * so the screen's worst bug had no way of reaching the screen.
+   */
+  const [fault, setFault] = useState<GardenFault | null>(null);
+  /** Bumped by "Try again". In every effect's deps, so retrying re-runs them. */
+  const [reload, setReload] = useState(0);
+  const retry = useCallback(() => {
+    setFault(null);
+    setReload((n) => n + 1);
+  }, []);
+
   /* ---- the gate ---- */
 
   const [gate, setGate] = useState<{ cards: GateCard[]; verdict: GateVerdict } | null>(null);
@@ -185,11 +206,17 @@ export function EveGardenPage() {
     let live = true;
     openRaidGate({ askedToChange })
       .then((next) => { if (live) { setGate(next); setCompanion(null); } })
-      .catch(() => {});
+      // The earliest thing that can fail, and it used to fail silently: `gate`
+      // stayed null and the screen waited on it forever. Now that waiting has a
+      // skeleton, staying silent here would be a prettier version of the same
+      // bug rather than a fix for it.
+      .catch((error) => { if (live) setFault(faultFrom('gate', error)); });
     return () => { live = false; };
   }, []);
 
-  useEffect(() => openGate(false), [openGate]);
+  // `reload` is in the deps so "Try again" on a gate fault actually re-opens the
+  // gate. `openGate` itself is stable, so this only ever re-runs on a retry.
+  useEffect(() => openGate(false), [openGate, reload]);
 
   const onEnter = useCallback((themeId: string) => {
     setCompanion(themeId);
@@ -251,9 +278,7 @@ export function EveGardenPage() {
       .then(() => game.progress(TOP_OF_THE_CURVE))
       .then((top) => { if (live) setAllActions(top.actions); })
       .catch((error) => {
-        if (live && !isClosed(error)) {
-          setNote('The garden could not wake up. It needs one online visit before it works offline.');
-        }
+        if (live) setFault(faultFrom('engine', error));
       });
 
     return () => {
@@ -261,7 +286,7 @@ export function EveGardenPage() {
       game.close();
       client.current = null;
     };
-  }, [companion]);
+  }, [companion, reload]);
 
   /* ---- level and unlocked actions, recomputed when the pet's XP moves ---- */
 
@@ -271,9 +296,12 @@ export function EveGardenPage() {
     let live = true;
     game.progress(petXp)
       .then((next) => { if (live) setProgress(next); })
-      .catch(() => {});
+      // Was `.catch(() => {})`. A silent failure here empties the action bar,
+      // which looks like a level that unlocked nothing rather than like a
+      // screen that did not load.
+      .catch((error) => { if (live) setFault(faultFrom('stage', error)); });
     return () => { live = false; };
-  }, [petXp]);
+  }, [petXp, reload]);
 
   /* ---- which monster is standing on this stage ---- */
 
@@ -283,9 +311,18 @@ export function EveGardenPage() {
     let live = true;
     game.stage(island, stage, theme)
       .then((dto) => { if (live) setMonster(dto?.monster ?? null); })
-      .catch(() => {});
+      /**
+       * **This is the one that hid the bug.**
+       *
+       * It was `.catch(() => {})`. `sprite` below is `monster?.spriteKey` and
+       * `sprite` gates the Phaser mount, so a rejection here left `monster`
+       * null, left `sprite` undefined, and the canvas never mounted — with no
+       * note and no `aria-busy` to say so. An empty `.garden-stage` is exactly
+       * what loading looks like, so the screen sat there forever looking busy.
+       */
+      .catch((error) => { if (live) setFault(faultFrom('stage', error)); });
     return () => { live = false; };
-  }, [island, stage, theme]);
+  }, [island, stage, theme, reload]);
 
   /* ---- the canvas ---- */
 
@@ -294,7 +331,9 @@ export function EveGardenPage() {
     if (!game || !progress || !monster) return;
     game.beginBattle(island, stage, theme, progress.level, Date.now())
       .then((next) => setBattle(next))
-      .catch(() => {});
+      // Was silent, which made walking into a monster and having nothing happen
+      // indistinguishable from having missed the tile.
+      .catch((error) => setFault(faultFrom('round', error)));
   }, [island, stage, theme, progress, monster]);
 
   // The scene is rebuilt when the stage or the island's face changes, and at no
@@ -307,7 +346,25 @@ export function EveGardenPage() {
 
   const sprite = monster?.spriteKey;
 
+  /**
+   * Whether the fight is read rather than watched.
+   *
+   * Two entrances, one room. Somebody who turned "Resolve quickly" on in
+   * Settings gets it deliberately; somebody whose Phaser chunk would not load
+   * gets it as a fallback. Deliberately the same path — `crate.js:1127` in the
+   * gift makes the argument, that "a fallback that behaves differently is a
+   * second thing to learn", and the version used on purpose by one person is
+   * the version that has been proven for the other.
+   *
+   * It costs almost nothing: `BattleLog` and `ActionBar` are already pure DOM
+   * with no Phaser import, and `BattleLog` is already rendered on every visit.
+   */
+  const textMode = settings?.resolveQuickly === true || needsTextMode(fault);
+
   useEffect(() => {
+    // Chosen text mode never reaches for the chunk at all, so the megabyte is
+    // not merely unused — it is not fetched.
+    if (textMode) return undefined;
     if (!sprite || !companion || !host.current) return undefined;
     let live = true;
 
@@ -327,14 +384,34 @@ export function EveGardenPage() {
           { onEngage: () => engageRef.current() },
         );
       })
-      .catch(() => { if (live) setNote('The garden would not open. Try again in a moment.'); });
+      // Not fatal, and that is the point: the engine is fine, so the fight is
+      // fine. `needsTextMode` turns this into the DOM battle rather than an
+      // apology.
+      .catch((error) => { if (live) setFault(faultFrom('scene', error)); });
 
     return () => {
       live = false;
       scene.current?.destroy();
       scene.current = null;
     };
-  }, [island, stage, sprite, petSprite, companion, dark]);
+  }, [island, stage, sprite, petSprite, companion, dark, textMode, reload]);
+
+  /**
+   * Stop rendering while the tab is hidden.
+   *
+   * A backgrounded garden kept a rAF loop and an Arcade physics step running
+   * over a canvas nobody could see. `sleep`/`wake` rather than teardown, so
+   * coming back does not re-read the stage or walk the pet home — see
+   * `SceneHandle.pause`.
+   */
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden) scene.current?.pause();
+      else scene.current?.resume();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
 
   /* ---- a round ---- */
 
@@ -460,7 +537,7 @@ export function EveGardenPage() {
 
       if (theirs.outcome !== 'Fighting') await finish(theirs, foe);
     } catch (error) {
-      if (!isClosed(error)) setNote('That move did not land. The garden is still here.');
+      setFault(faultFrom('round', error));
     } finally {
       setBusy('idle');
     }
@@ -530,8 +607,44 @@ export function EveGardenPage() {
    * `onCancel` is absent on a first visit on purpose: there is nothing behind
    * the gate yet to go back to, and a dead "Not yet" is worse than none.
    */
+  /**
+   * A fault with nothing behind it, as the whole screen.
+   *
+   * **Before the gate branch below, deliberately.** `blocksPlay` covers the
+   * gate failing to open, and the gate branch renders a skeleton whenever
+   * `gate` is null — so checking this second would show a spinner for a gate
+   * that is never coming, which is the exact bug this whole change is about.
+   *
+   * It is the same page the unknown-route handler uses, because "this did not
+   * load" and "this is not here" are the same news to the person reading it.
+   */
+  if (blocksPlay(fault)) {
+    const copy = faultCopy(fault!);
+    return (
+      <NotHere
+        title={copy.title}
+        body={copy.body}
+        onRetry={copy.retry ? retry : undefined}
+        homeTo="#/"
+        homeLabel="Back to the app"
+      />
+    );
+  }
+
   if (!companion) {
-    if (!gate) return <section className="page garden" aria-busy="true" />;
+    // Was an empty `<section aria-busy>`, which is a blank screen with a
+    // promise attached. The skeleton says the same thing to a screen reader and
+    // something to everyone else.
+    if (!gate) {
+      return (
+        <section className="page garden" aria-busy="true">
+          <p className="visually-hidden" role="status">Opening the gate…</p>
+          <div className="skeleton skeleton-gate" aria-hidden="true" />
+          <div className="skeleton skeleton-line" aria-hidden="true" />
+          <div className="skeleton skeleton-line skeleton-line-short" aria-hidden="true" />
+        </section>
+      );
+    }
     return (
       <RaidGate
         cards={gate.cards}
@@ -569,6 +682,22 @@ export function EveGardenPage() {
 
       {note && <p className="section-sub garden-note">{note}</p>}
 
+      {/* A fault the garden survives. Inline and quiet, because the screen still
+          works — a full-page apology for a missing picture would be louder than
+          the problem. `role="status"` so it is announced without stealing focus
+          mid-fight. */}
+      {fault && !blocksPlay(fault) && (
+        <p className="garden-note garden-note-fault" role="status">
+          <span className="garden-note-title">{faultCopy(fault).title}</span>{' '}
+          {faultCopy(fault).body}
+          {faultCopy(fault).retry && (
+            <button type="button" className="quiet garden-note-retry" onClick={retry}>
+              Try the picture again
+            </button>
+          )}
+        </p>
+      )}
+
       <div className="garden-stage-wrap">
         {/* Behind the canvas, which is transparent so this shows through — see
             the header of `GardenBackdrop`. */}
@@ -586,8 +715,21 @@ export function EveGardenPage() {
         />
 
         {/* The canvas sits inside the page rather than fixed or portalled, so the
-            tab bar, the status strip and the chat panel all keep working over it. */}
-        <div className="garden-stage" ref={host} aria-label={islandName} role="img" />
+            tab bar, the status strip and the chat panel all keep working over it.
+
+            Three states now, not one. In text mode there is no host at all —
+            which is also what keeps the effect above from mounting, since it
+            bails on `host.current`. While the engine is still answering there
+            is a skeleton, because the empty host and a loading host used to be
+            the same pixels. */}
+        {textMode ? null : sprite ? (
+          <div className="garden-stage" ref={host} aria-label={islandName} role="img" />
+        ) : (
+          <div className="garden-stage" aria-busy="true">
+            <div className="skeleton skeleton-stage" aria-hidden="true" />
+            <p className="visually-hidden" role="status">Waking the garden…</p>
+          </div>
+        )}
 
         {/* The companions you did not bring, living here anyway. Over the
             backdrop and under the canvas, which is where a background animal

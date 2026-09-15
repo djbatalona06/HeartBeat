@@ -82,6 +82,11 @@ export function startGarden(
     defeat: () => live()?.defeat() ?? Promise.resolve(),
     withdraw: () => live()?.withdraw(),
     relight: (hour, dark) => live()?.relight(hour, dark),
+    // `loop.sleep()` rather than `scene.pause()`: it stops the game loop itself,
+    // so the rAF callback and the physics step both stop rather than the scene
+    // being skipped inside a loop that keeps running.
+    pause: () => game.loop.sleep(),
+    resume: () => game.loop.wake(),
     // `destroy(true)` removes the canvas and releases the WebGL context.
     // Leaving the context alive across route changes is how a phone runs out of
     // them after half a dozen navigations.
