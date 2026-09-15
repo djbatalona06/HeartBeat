@@ -31,6 +31,7 @@ import { logActivity } from './logging';
 import { GardenBackdrop } from './GardenBackdrop';
 import { GardenPlaces } from './GardenPlaces';
 import { GardenDrawer } from './GardenDrawer';
+import { GardenHabitat } from './GardenHabitat';
 import { RaidGate } from './gate/RaidGate';
 import { Compass } from './Compass';
 import { WorldMap } from './WorldMap';
@@ -140,6 +141,10 @@ export function EveGardenPage() {
     () => (memberId ? ownedFlora(memberId) : []),
     [memberId],
   );
+  const residents = useLiveQuery(
+    () => (memberId ? db.pets.where('memberId').equals(memberId).toArray() : []),
+    [memberId],
+  );
 
   const world: WorldProgress = stored ?? newWorldProgress(coupleId ?? 'unpaired', Date.now());
   const theme: DioramaTheme = momentum ? variantFor(momentum) : 'Light';
@@ -172,6 +177,9 @@ export function EveGardenPage() {
   /** Once-a-raid skills already spent. Cleared when a new raid is entered. */
   const spent = useRef<Set<string>>(new Set());
   const [flourish, setFlourish] = useState<string | null>(null);
+  /** Bumped every time a log lands, so the habitat reacts to the couple doing
+   *  something. State rather than a ref: the reaction *is* a re-render. */
+  const [pulse, setPulse] = useState(0);
 
   const openGate = useCallback((askedToChange = false) => {
     let live = true;
@@ -470,6 +478,7 @@ export function EveGardenPage() {
 
     if (action.activity) {
       setBusy('logging');
+      setPulse((n) => n + 1);
       try {
         await logActivity(action.activity, memberId, day);
         // One award per activity per day, so tapping "Log Mood" eight times in a
@@ -579,6 +588,17 @@ export function EveGardenPage() {
         {/* The canvas sits inside the page rather than fixed or portalled, so the
             tab bar, the status strip and the chat panel all keep working over it. */}
         <div className="garden-stage" ref={host} aria-label={islandName} role="img" />
+
+        {/* The companions you did not bring, living here anyway. Over the
+            backdrop and under the canvas, which is where a background animal
+            belongs. */}
+        <GardenHabitat
+          pets={residents ?? []}
+          activeKindId={avatar?.companionId
+            ? (residents ?? []).find((p) => p.id === avatar.companionId)?.kindId
+            : undefined}
+          pulse={pulse}
+        />
 
         {flourish && (
           <p className="garden-flourish" role="status" key={flourish}>

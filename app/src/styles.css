@@ -5694,3 +5694,65 @@ body {
 .plot-choice-note { font-size: var(--text-xs); color: var(--color-text-muted); }
 
 .plot-next { margin-top: var(--space-3); }
+
+/* ---- the habitat -----------------------------------------------------------
+   The companions you did not take through the gate, living here anyway. Over
+   the backdrop and under the canvas, which is where a background animal
+   belongs — they do not fight and cannot be walked into, so they are DOM
+   rather than five more baked textures per theme. */
+
+.garden-habitat {
+  position: absolute;
+  inset: auto 0 var(--space-2);
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-3);
+  pointer-events: none;
+}
+
+.garden-resident {
+  display: block;
+  width: 2.1rem;
+  height: 2.1rem;
+  opacity: 0.55;
+  /* Two animations at once: a slow drift along its own lane, and a single hop
+     that plays when React remounts the habitat on a log. Each figure gets its
+     own pace and delay, so six of them read as six animals rather than as one
+     animation played six times. */
+  animation:
+    resident-roam var(--resident-pace, 6s) ease-in-out var(--resident-delay, 0s) infinite alternate,
+    resident-react var(--motion-slow) var(--ease-soft) var(--resident-delay, 0s) 1;
+}
+.garden-resident svg { width: 100%; height: 100%; }
+/* The one that came through the gate stands a little forward, so the habitat
+   says who is out with you without a label. */
+.garden-resident[data-active] {
+  width: 2.7rem;
+  height: 2.7rem;
+  opacity: 0.9;
+}
+
+@keyframes resident-roam {
+  from { transform: translate(-0.5rem, 0); }
+  to { transform: translate(0.5rem, -0.15rem); }
+}
+
+@keyframes resident-react {
+  0% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-0.5rem) scale(1.1); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* A phone at the narrow end has a canvas and a tab bar to fit; six idle
+   animals is the first thing that should go. */
+@media (max-width: 24rem) {
+  .garden-habitat { gap: var(--space-2); }
+  .garden-resident { width: 1.6rem; height: 1.6rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garden-resident { animation: none; }
+}
