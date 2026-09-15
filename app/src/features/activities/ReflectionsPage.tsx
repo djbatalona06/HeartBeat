@@ -19,6 +19,7 @@ import {
   type Prompt,
   type Reflection,
 } from '../../domain/selfcare/reflections';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 
 /**
  * The journal.
@@ -101,9 +102,7 @@ export function ReflectionsPage() {
         />
 
         <div className="row">
-          <button type="button" className="primary" disabled={!body.trim()} onClick={save}>
-            Save
-          </button>
+          <PrimaryAction disabled={!body.trim()} onClick={save}>Save</PrimaryAction>
           <button type="button" className="chip" onClick={() => setPicking(!picking)}>
             {picking ? 'Close' : 'Another question'}
           </button>

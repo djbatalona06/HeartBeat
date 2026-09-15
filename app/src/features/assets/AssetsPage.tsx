@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Receipt, useReceipt } from '../../components/Receipt';
+import { useToast } from '../../ui/Toast';
 import {
   ensureIdentity, equipItem, getOrCreateAvatar, holdingsOf, setCompanion, unequipSlot,
 } from '../../db/repository';
@@ -38,7 +38,7 @@ function dateOf(at: number): string {
 
 export function AssetsPage() {
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
-  const { receipt, say } = useReceipt();
+  const { say } = useToast();
 
   // The avatar has to exist before the shelves can know what level gates what.
   useEffect(() => {
@@ -99,8 +99,6 @@ export function AssetsPage() {
           New gear and eggs are bought on <Link to="/party">Party</Link>.
         </p>
       </section>
-
-      <Receipt content={receipt} />
 
       <section className="panel">
         <h2 className="section-title">Gear</h2>

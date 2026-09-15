@@ -8,6 +8,8 @@ import { savePairing } from '../../db/repository';
 import {
   PROVIDER_NAMES, readRecoveryReturn, shouldClaim, type RecoveryReturn,
 } from './recoveryReturn';
+import { SecondaryAction } from '../../ui/SecondaryAction';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 
 /**
  * Optional account recovery, through GitHub or Google.
@@ -182,33 +184,18 @@ export function RecoveryBlock({ token, paired }: RecoveryBlockProps) {
                   {name} connected
                   {link.githubLogin ? <> as <strong>{link.githubLogin}</strong></> : null}.
                 </p>
-                <button
-                  type="button"
-                  className="quiet"
+                <SecondaryAction
                   onClick={() => disconnect(provider)}
-                  disabled={busy}
-                >
-                  Disconnect {name}
-                </button>
+                  disabled={busy}>Disconnect {name}</SecondaryAction>
               </>
             ) : paired ? (
-              <button
-                type="button"
-                className="primary"
+              <PrimaryAction
                 onClick={() => go(provider, 'link')}
-                disabled={busy}
-              >
-                Connect {name}
-              </button>
+                disabled={busy}>Connect {name}</PrimaryAction>
             ) : (
-              <button
-                type="button"
-                className="primary"
+              <PrimaryAction
                 onClick={() => go(provider, 'recover')}
-                disabled={busy}
-              >
-                Get back in with {name}
-              </button>
+                disabled={busy}>Get back in with {name}</PrimaryAction>
             )}
           </div>
         );

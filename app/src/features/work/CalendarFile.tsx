@@ -3,6 +3,8 @@ import { db } from '../../db/database';
 import { putWorkEvents } from '../../db/repository';
 import { parseCalendarCsv, toCalendarCsv, type CsvPreview } from '../../domain/calendar/csv';
 import { todayKey } from '../../domain/day';
+import { SecondaryAction } from '../../ui/SecondaryAction';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 
 /**
  * The calendar's file end: a CSV in, a CSV out.
@@ -180,15 +182,10 @@ export function CalendarFile({ memberId, timeZone }: { memberId: string | null; 
           ) : null}
 
           <div className="row">
-            <button
-              type="button"
-              className="primary"
+            <PrimaryAction
               disabled={busy || preview.events.length === 0}
-              onClick={() => void bringIn()}
-            >
-              Bring them in
-            </button>
-            <button type="button" className="quiet" onClick={clear}>Not now</button>
+              onClick={() => void bringIn()}>Bring them in</PrimaryAction>
+            <SecondaryAction onClick={clear}>Not now</SecondaryAction>
           </div>
         </div>
       ) : (
@@ -205,12 +202,8 @@ export function CalendarFile({ memberId, timeZone }: { memberId: string | null; 
             />
           </label>
           <div className="row">
-            <button type="button" className="quiet" disabled={busy} onClick={() => void saveFile()}>
-              Save a copy
-            </button>
-            <button type="button" className="quiet" disabled={busy} onClick={() => void copyOut()}>
-              Copy it instead
-            </button>
+            <SecondaryAction disabled={busy} onClick={() => void saveFile()}>Save a copy</SecondaryAction>
+            <SecondaryAction disabled={busy} onClick={() => void copyOut()}>Copy it instead</SecondaryAction>
           </div>
         </div>
       )}

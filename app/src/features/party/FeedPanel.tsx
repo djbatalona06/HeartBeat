@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Receipt, useReceipt } from '../../components/Receipt';
+import { useToast } from '../../ui/Toast';
 import { db } from '../../db/database';
 import { grantLifeEvent, putCheer } from '../../db/repository';
 import { postCycleNudge } from '../../pwa/api';
@@ -45,7 +45,7 @@ interface Props {
 export function FeedPanel({
   coupleId, memberId, day, tracksCycle, shareCycleNudge, token,
 }: Props) {
-  const { receipt, say } = useReceipt();
+  const { say } = useToast();
   const [milestone, setMilestone] = useState<string | null>(null);
 
 
@@ -198,8 +198,6 @@ export function FeedPanel({
             : 'Nothing logged yet. A hard day, a good day, or a good vibe sent — they land here.'}
         </p>
       )}
-
-      <Receipt content={receipt} />
     </section>
   );
 }

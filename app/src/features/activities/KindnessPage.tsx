@@ -5,6 +5,7 @@ import { db, loadSettings } from '../../db/database';
 import { ensureIdentity, grantLifeEvent } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { actForDay, actsFor } from '../../domain/selfcare/kindness';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 
 /**
  * One small thing, for them or for anyone.
@@ -70,14 +71,9 @@ export function KindnessPage() {
       <section className="panel">
         <h2 className="section-title">For them, today</h2>
         <p className="kind-today">{todayForThem.text}</p>
-        <button
-          type="button"
-          className="primary"
+        <PrimaryAction
           disabled={!partner}
-          onClick={() => void send(todayForThem.text)}
-        >
-          {partner ? 'I did it — send them a good vibe' : 'Pair a second phone to send'}
-        </button>
+          onClick={() => void send(todayForThem.text)}>{partner ? 'I did it — send them a good vibe' : 'Pair a second phone to send'}</PrimaryAction>
         {note ? <p className="section-sub" role="status">{note}</p> : null}
       </section>
 
