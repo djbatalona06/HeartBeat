@@ -37,12 +37,61 @@ export const QUIET_DAYS = 2;
 /** The default hour, local, if Settings has never been asked. */
 export const DEFAULT_HOUR = 20;
 
+/**
+ * The hours a phone should stay silent, local time.
+ *
+ * Named for night rather than quiet because `QUIET_DAYS` above already means
+ * something else — how long a couple may be away before the app says anything —
+ * and two constants called quiet that measure different things is how somebody
+ * eventually uses the wrong one.
+ *
+ * ## Why this is needed at all
+ *
+ * The hour picker in Settings offers all twenty-four, so somebody could set
+ * their daily reminder to three in the morning and the app would dutifully wake
+ * them every night. Nothing stopped it. That is a direct contradiction of the
+ * posture this whole module is built around — one gentle reminder a day is
+ * kind; the same reminder at 03:00 is the app being the reason you are awake.
+ *
+ * ## Moved, never dropped
+ *
+ * A nudge landing in the window is pushed to `NIGHT_UNTIL` rather than deleted.
+ * Deleting it would silently lose the only reminder for that day, which is a
+ * worse answer than one that arrives with breakfast — and a setting that
+ * quietly does nothing is the kind people report as a bug years later.
+ */
+export const NIGHT_FROM = 22;
+export const NIGHT_UNTIL = 8;
+
+/** Inside the silent window. Wraps midnight, which is the whole subtlety. */
+export function isNightHour(hour: number): boolean {
+  const h = Math.floor(hour);
+  return h >= NIGHT_FROM || h < NIGHT_UNTIL;
+}
+
+/**
+ * The two things this app will ever push, and they are not the same promise.
+ *
+ * - **daily** — "how was today?", at the hour you chose.
+ * - **away** — one line, once, after a gap longer than `QUIET_DAYS`.
+ *
+ * They are separately switchable because they carry different weight. The daily
+ * one is an invitation you asked for. The away one is the app noticing you were
+ * gone, and however kindly it is worded, some people will not want anything
+ * noticing that — which is a completely reasonable thing to want, and not a
+ * reason to make them turn off reminders altogether.
+ */
+export const NUDGE_KINDS = ['daily', 'away'] as const;
+
+export type NudgeKind = (typeof NUDGE_KINDS)[number];
+
 export interface Nudge {
   /**
    * Stable for a given member, day and kind, which is what makes a full replace
    * idempotent: posting the same plan twice writes the same primary keys.
    */
   key: string;
+  kind: NudgeKind;
   fireAt: number;
   title: string;
   body: string;
@@ -61,6 +110,11 @@ export interface NudgePlan {
   loggedDays: readonly DayKey[];
   /** The last day either of them did anything, if there is one. */
   lastTogether?: DayKey;
+  /**
+   * Which kinds this person still wants. Absent means all of them, so an older
+   * caller that predates the switches keeps behaving exactly as it did.
+   */
+  kinds?: Partial<Record<NudgeKind, boolean>>;
 }
 
 /**
@@ -151,35 +205,46 @@ export function horizonDays(today: DayKey, hours: number = HORIZON_HOURS): DayKe
  */
 export function planNudges(input: NudgePlan): Nudge[] {
   const logged = new Set(input.loggedDays);
+  const wants = (kind: NudgeKind) => input.kinds?.[kind] !== false;
   const out: Nudge[] = [];
 
-  for (const day of horizonDays(input.today)) {
-    // Nothing to remind them of on a day they have already dealt with.
-    if (logged.has(day)) continue;
+  // The hour the reminder will actually land on, which is not always the hour
+  // that was asked for. A 03:00 choice becomes 08:00: see `NIGHT_FROM`. Done
+  // once here rather than per day, because the window is about the clock and
+  // does not vary across the horizon.
+  const hour = isNightHour(input.hour) ? NIGHT_UNTIL : input.hour;
 
-    const fireAt = instantAt(day, input.hour, input.timeZone);
-    // A reminder whose moment has passed is not a reminder; it is a push
-    // notification arriving the instant the cron next runs.
-    if (fireAt <= input.now) continue;
+  if (wants('daily')) {
+    for (const day of horizonDays(input.today)) {
+      // Nothing to remind them of on a day they have already dealt with.
+      if (logged.has(day)) continue;
 
-    out.push({
-      key: `${input.memberId}:daily:${day}`,
-      fireAt,
-      title: 'How was today?',
-      body: 'A minute on the app, whenever suits.',
-      path: '/#/mood',
-    });
+      const fireAt = instantAt(day, hour, input.timeZone);
+      // A reminder whose moment has passed is not a reminder; it is a push
+      // notification arriving the instant the cron next runs.
+      if (fireAt <= input.now) continue;
+
+      out.push({
+        key: `${input.memberId}:daily:${day}`,
+        kind: 'daily',
+        fireAt,
+        title: 'How was today?',
+        body: 'A minute on the app, whenever suits.',
+        path: '/#/mood',
+      });
+    }
   }
 
   // One line about having been away, and only one, on the first day of the
   // horizon. Repeating it daily would make the app something to feel bad about.
   const away = input.lastTogether ? dayGap(input.lastTogether, input.today) : null;
-  if (away !== null && away > QUIET_DAYS) {
+  if (wants('away') && away !== null && away > QUIET_DAYS) {
     const first = out[0];
     if (first) {
       out[0] = {
         ...first,
         key: `${input.memberId}:away:${input.today}`,
+        kind: 'away',
         title: 'Still here',
         body: 'Nothing is lost while you are away. Come back when you like.',
         path: '/#/',

@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_HOUR,
   HORIZON_HOURS,
+  NIGHT_FROM,
+  NIGHT_UNTIL,
+  NUDGE_KINDS,
   QUIET_DAYS,
+  isNightHour,
   horizonDays,
   instantAt,
   lastTogetherDay,
@@ -239,5 +243,119 @@ describe('loggedDaysFrom', () => {
   it('is empty when nothing has been logged', () => {
     expect(loggedDaysFrom([], [])).toEqual([]);
     expect(loggedDaysFrom()).toEqual([]);
+  });
+});
+
+describe('the night window', () => {
+  it('covers the small hours and wraps midnight', () => {
+    const quiet = Array.from({ length: 24 }, (_, h) => h).filter(isNightHour);
+    expect(quiet).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 22, 23]);
+  });
+
+  it('opens at NIGHT_FROM and closes at NIGHT_UNTIL, inclusive of neither edge', () => {
+    expect(isNightHour(NIGHT_FROM - 1)).toBe(false);
+    expect(isNightHour(NIGHT_FROM)).toBe(true);
+    expect(isNightHour(NIGHT_UNTIL - 1)).toBe(true);
+    expect(isNightHour(NIGHT_UNTIL)).toBe(false);
+  });
+
+  it('leaves the default hour alone', () => {
+    // If the default ever moves into the window, every reminder in the app
+    // silently relocates to breakfast. Worth failing loudly for.
+    expect(isNightHour(DEFAULT_HOUR)).toBe(false);
+  });
+
+  it('floors a fractional hour rather than falling through', () => {
+    expect(isNightHour(NIGHT_FROM + 0.5)).toBe(true);
+    expect(isNightHour(NIGHT_UNTIL - 0.5)).toBe(true);
+  });
+});
+
+describe('planNudges and the night window', () => {
+  const night: NudgePlan = {
+    memberId: 'm1',
+    timeZone: LONDON,
+    hour: 3,
+    today: '2026-06-15',
+    now: Date.UTC(2026, 5, 15, 8),
+    loggedDays: [],
+    lastTogether: '2026-06-15',
+  };
+
+  /**
+   * The gap this closes. The hour picker offers all twenty-four, so somebody
+   * could pick 03:00 and the app would wake them every night — which is the
+   * exact opposite of the posture the rest of this module is built on.
+   */
+  it('moves a small-hours reminder to the morning instead of firing at 3am', () => {
+    for (const nudge of planNudges(night)) {
+      expect(wallClock(nudge.fireAt, LONDON)).toBe(`${String(NIGHT_UNTIL).padStart(2, '0')}:00`);
+    }
+  });
+
+  it('moves a late-evening one too, not only the ones after midnight', () => {
+    const late = planNudges({ ...night, hour: 23 });
+    expect(late.length).toBeGreaterThan(0);
+    for (const nudge of late) {
+      expect(wallClock(nudge.fireAt, LONDON)).toBe(`${String(NIGHT_UNTIL).padStart(2, '0')}:00`);
+    }
+  });
+
+  /**
+   * Moved, never dropped. Deleting the nudge would silently lose the only
+   * reminder for that day, and a setting that quietly does nothing is the kind
+   * people report as a bug years later.
+   */
+  it('keeps as many reminders as it would have made at a waking hour', () => {
+    const waking = planNudges({ ...night, hour: 9 });
+    expect(planNudges(night)).toHaveLength(waking.length);
+  });
+
+  it('leaves a waking hour exactly where it was asked for', () => {
+    for (const nudge of planNudges({ ...night, hour: 9 })) {
+      expect(wallClock(nudge.fireAt, LONDON)).toBe('09:00');
+    }
+  });
+});
+
+describe('planNudges and the per-kind switches', () => {
+  const base: NudgePlan = {
+    memberId: 'm1',
+    timeZone: LONDON,
+    hour: DEFAULT_HOUR,
+    today: '2026-06-15',
+    now: Date.UTC(2026, 5, 15, 8),
+    loggedDays: [],
+    // Long enough ago to earn the away line.
+    lastTogether: '2026-06-01',
+  };
+
+  it('tags every nudge with a kind from the published list', () => {
+    for (const nudge of planNudges(base)) {
+      expect(NUDGE_KINDS, nudge.key).toContain(nudge.kind);
+    }
+  });
+
+  it('says nothing about the absence when that kind is off', () => {
+    const plan = planNudges({ ...base, kinds: { away: false } });
+    expect(plan.some((n) => n.kind === 'away')).toBe(false);
+    // And the daily reminders are untouched — turning one off is not turning
+    // reminders off.
+    expect(plan.length).toBe(planNudges(base).length);
+  });
+
+  it('plans nothing at all when the daily kind is off', () => {
+    // The away line rides on the first daily nudge, so there is nothing for it
+    // to attach to. Silence is the honest outcome, not a stray away push.
+    expect(planNudges({ ...base, kinds: { daily: false } })).toEqual([]);
+  });
+
+  it('treats an absent switch list as everything on, for older callers', () => {
+    expect(planNudges({ ...base, kinds: undefined })).toEqual(planNudges(base));
+  });
+
+  it('treats an explicit true the same as absent', () => {
+    expect(planNudges({ ...base, kinds: { daily: true, away: true } }))
+      .toEqual(planNudges(base));
   });
 });
