@@ -2929,6 +2929,58 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   font-variant-numeric: tabular-nums;
 }
 
+/* Two switches, because the two pushes are not the same promise — see the
+   note beside them in NotificationsBlock.tsx. Laid out as a list of rows rather
+   than a row of chips: each one needs a line of explanation under it, and a
+   toggle whose meaning takes a sentence is not a chip. */
+.notify-kinds {
+  margin-top: var(--space-4);
+  padding: 0;
+  border: none;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.notify-kinds legend {
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* The checkbox spans both rows so the name and its explanation sit in one
+   column beside it, rather than the second line wrapping under the box. */
+.notify-kind {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: var(--space-1) var(--space-3);
+  min-height: var(--tap);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  cursor: pointer;
+}
+
+.notify-kind input {
+  grid-row: 1 / span 2;
+  width: var(--space-4);
+  height: var(--space-4);
+  margin: 0;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.notify-kind input:disabled { cursor: default; }
+.notify-kind:has(input:disabled) { opacity: 0.6; cursor: default; }
+
+.notify-kind-name { color: var(--color-text); }
+
+.notify-kind-what {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
 /* ---- quests ---------------------------------------------------------------
    One quest at a time, so this is a card and not a list. The whole section is
    arranged around the fact that nothing here can go wrong for the person

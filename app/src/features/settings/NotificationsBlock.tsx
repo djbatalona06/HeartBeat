@@ -4,9 +4,13 @@ import { clearNudges, health, putNudges, subscribePush, unsubscribePush } from '
 import { PushError, enablePush, notificationPermission } from '../../pwa/push';
 import {
   DEFAULT_HOUR,
+  NIGHT_UNTIL,
+  NUDGE_KINDS,
+  isNightHour,
   lastTogetherDay,
   loggedDaysFrom,
   planNudges,
+  type NudgeKind,
 } from '../../domain/notify/schedule';
 import { todayKey } from '../../domain/day';
 import type { Settings } from '../../domain/types';
@@ -29,6 +33,25 @@ import type { Settings } from '../../domain/types';
  */
 
 type Backend = 'checking' | 'ready' | 'no-push' | 'down';
+
+/**
+ * What each switch is, in the words a person would use.
+ *
+ * Kept beside the UI rather than in `schedule.ts`, which is pure and has no
+ * business knowing how a checkbox is labelled — and `NUDGE_KINDS` drives the
+ * list, so a new kind with no copy is a type error here rather than a switch
+ * that renders as `away`.
+ */
+const KIND_COPY: Record<NudgeKind, { name: string; what: string }> = {
+  daily: {
+    name: 'The daily one',
+    what: 'At the time above, and never on a day you have already logged.',
+  },
+  away: {
+    name: 'After a few days away',
+    what: 'One line, once — not once a day. Turn it off if you would rather the app said nothing.',
+  },
+};
 
 export function NotificationsBlock() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -58,7 +81,9 @@ export function NotificationsBlock() {
    * Called after enabling and after the hour changes, and safe either way: the
    * endpoint replaces rather than appends, so posting twice leaves one queue.
    */
-  const schedule = useCallback(async (token: string, hour: number, memberId: string) => {
+  const schedule = useCallback(async (
+    token: string, hour: number, memberId: string,
+  ) => {
     const [moods, exercises, cycles, work] = await Promise.all([
       db.moods.toArray(),
       db.exercises.toArray(),
@@ -76,6 +101,10 @@ export function NotificationsBlock() {
       now: Date.now(),
       loggedDays: logged,
       lastTogether: lastTogetherDay(logged),
+      // Read here rather than taken as an argument: every caller would
+      // otherwise have to remember to pass it, and the one that forgot would
+      // silently re-enable a reminder somebody had turned off.
+      kinds: current.notifyKinds,
     });
     return putNudges(token, plan);
   }, []);
@@ -153,6 +182,29 @@ export function NotificationsBlock() {
     }
   }
 
+  /**
+   * Turn one kind of reminder off without turning reminders off.
+   *
+   * Re-posts the whole queue rather than trying to delete the rows for one
+   * kind: the endpoint replaces, so a full re-plan is both simpler and the only
+   * version that cannot leave a stale nudge behind for a kind nobody wants.
+   */
+  async function changeKind(kind: NudgeKind, wanted: boolean) {
+    const next = { ...(settings?.notifyKinds ?? {}), [kind]: wanted };
+    await saveSettings({ notifyKinds: next });
+    setSettings(await loadSettings());
+    if (on && token && memberId) {
+      setBusy(true);
+      try {
+        await schedule(token, hour, memberId);
+      } catch {
+        setNote('Saved here, but the server did not take it yet.');
+      } finally {
+        setBusy(false);
+      }
+    }
+  }
+
   return (
     <section className="notify">
       <h2 className="notify-title">Reminders</h2>
@@ -184,11 +236,59 @@ export function NotificationsBlock() {
               disabled={busy}
               onChange={(e) => void changeHour(Number(e.target.value))}
             >
+              {/* Every hour is still offered. Refusing to list the night ones
+                  would be deciding for somebody who works nights that they are
+                  wrong about their own day. What changes is that the app says
+                  out loud what it will actually do with the choice, rather than
+                  accepting it and quietly waking them at three. */}
               {Array.from({ length: 24 }, (_, h) => (
-                <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                <option key={h} value={h}>
+                  {String(h).padStart(2, '0')}:00{isNightHour(h) ? ' — arrives in the morning' : ''}
+                </option>
               ))}
             </select>
           </label>
+
+          {isNightHour(hour) ? (
+            <p className="notify-note" role="status">
+              {String(hour).padStart(2, '0')}:00 is inside the quiet hours, so this
+              one will arrive at {String(NIGHT_UNTIL).padStart(2, '0')}:00 instead.
+              Nothing is lost — it waits rather than being skipped.
+            </p>
+          ) : null}
+
+          {on && NUDGE_KINDS.every((k) => settings.notifyKinds?.[k] === false) ? (
+            <p className="notify-note" role="status">
+              Both kinds are off, so nothing will arrive even though reminders
+              are on. Turn one back on below, or turn reminders off above —
+              either is fine, and neither loses anything.
+            </p>
+          ) : null}
+
+          <fieldset className="notify-kinds">
+            {/* Two switches rather than one, because the two pushes are not the
+                same promise. The daily one is an invitation you asked for; the
+                other is the app noticing you were away. Somebody can reasonably
+                want the first and not the second, and making them choose
+                between both and neither is how people turn reminders off
+                altogether. */}
+            <legend>What to send</legend>
+            {NUDGE_KINDS.map((kind) => {
+              const wanted = settings.notifyKinds?.[kind] !== false;
+              return (
+                <label className="notify-kind" key={kind}>
+                  <input
+                    type="checkbox"
+                    checked={wanted}
+                    disabled={busy}
+                    onChange={(e) => void changeKind(kind, e.target.checked)}
+                  />
+                  <span className="notify-kind-name">{KIND_COPY[kind].name}</span>
+                  <span className="notify-kind-what">{KIND_COPY[kind].what}</span>
+                </label>
+              );
+            })}
+          </fieldset>
         </>
       )}
 

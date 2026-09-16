@@ -362,6 +362,15 @@ export interface Settings {
    */
   notifyHour?: number;
   notifyOn?: boolean;
+  /**
+   * Which kinds of reminder are still wanted, keyed by `NudgeKind` — see
+   * `domain/notify/schedule.ts`.
+   *
+   * Absent means all of them, which is what every phone that predates the
+   * switches carries. Only a deliberate `false` turns one off, so a key this
+   * device has never heard of cannot silence a reminder somebody wanted.
+   */
+  notifyKinds?: Record<string, boolean>;
   workerUrl?: string;
   workerSecret?: string;
   /** Cached from /api/health so the switch can render before the network answers. */
