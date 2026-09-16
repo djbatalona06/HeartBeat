@@ -1,0 +1,167 @@
+# design-system.md — the tokens, the components, and the guardrails
+
+What to reach for, what not to write, and what CI will stop you doing.
+
+---
+
+## 1 · Tokens
+
+Every colour, radius, duration, shadow and font is a CSS custom property written
+by `themes/tokens.ts`. **`applyTheme` sets them as inline styles on the root
+element at runtime**, from a theme the couple picked in Settings — so a
+component never imports a theme object, and switching theme repaints without
+re-rendering anything.
+
+That one fact decides most of the rules below, and it is why this repo has no
+Tailwind. See [`TAILWIND.md`](./TAILWIND.md).
+
+### Space, type, tap
+
+| Token | Value | Use for |
+|---|---|---|
+| `--space-1` … `--space-7` | 4 · 8 · 12 · 16 · 24 · 32 · 44 px | Every gap and pad. A raw `14px` is drift. |
+| `--stack` | 18px | The gap between stacked cards. Raise this first when a screen feels crowded. |
+| `--text-xs` … `--text-3xl` | 12px → fluid 44px | Nothing carrying meaning goes below `--text-xs`. |
+| `--tap` | 48px | Above Apple's 44pt floor. The posture is a phone in bed, one-handed. |
+| `--shell-max` / `--shell-gutter` | 560px / 18px | The column. |
+| `--tabbar-h` / `--shell-bottom-clear` | 62px / bar + `--space-5` | What a page must leave clear. |
+
+### Colour
+
+`--color-base` · `--color-surface` · `--color-surface-muted` · `--color-border` ·
+`--color-text` · `--color-text-muted` · `--color-accent` · `--color-accent-text` ·
+`--color-danger` · `--color-success`
+
+Plus the overlay layer, all `color-mix` over those rather than fixed rgba:
+`--scrim` (72%) · `--glass` (82%) · `--hairline`.
+
+**`--scrim` and `--glass` are load-bearing.** `themes/veil.test.ts` composites
+them over every colour the garden can paint and proves the text on top still
+clears AA. Lowering either without running that test is how the home screen
+stops being legible at four in the afternoon on one theme and nobody notices
+for a month.
+
+### Depth
+
+| Token | Use for |
+|---|---|
+| `--lift-1/2/3` | 1 / 2 / 4px. The offsets the shadows are built from. |
+| `--press` | 2px. How far a pressed thing travels. One number so a press is the same gesture everywhere. |
+| `--shadow-contact` | Tight and close. An object resting *on* something. |
+| `--shadow-lift` | Raised. Contact plus a wider pool. |
+| `--shadow` / `--shadow-color` | The theme's own, emitted **mode-corrected**. |
+| `--grain-opacity` | 3.5% light / 5.5% dark. |
+| `--tier-ring-*` | The rarity ladder as light: one hue, five strengths. |
+
+A press is `translateY(var(--press))` **and** the shadow collapsing to
+`--shadow-contact`. Travel alone reads as the card sliding; a shadow change
+alone reads as the light moving. Both together read as a finger.
+
+### Depth, as z-index
+
+`--z-scene: 0` · `--z-content: 1` · `--z-chrome: 6` · `--z-overlay: 40` ·
+`--z-sheet: 45` · `--z-toast: 50`
+
+The scale exists so the next overlay is not `9999` because nobody could tell
+what it had to beat. **CI fails a hand-written `z-index` above 6.**
+
+Not every rule below 6 uses the tokens, and that is knowingly left alone: the
+tab bar is a fixed sibling at a raw `2`, which is why the film grain hangs off
+`.shell` rather than `body` — a pseudo-element inside the shell's own stacking
+context is under every fixed sibling by construction, and there is no integer
+between `1` and `2` to put it at otherwise.
+
+---
+
+## 2 · Components
+
+`ui/` is the library. `components/` is what two or more features share.
+`features/<name>/` is everything else.
+
+| Component | For |
+|---|---|
+| `PrimaryAction` | The one thing this screen is for. **One per screen.** `busy` ≠ `disabled`: disabled is "you may not", busy is "you already did". |
+| `SecondaryAction` | The second-most important thing — often a `ListRow` instead. |
+| `TileCard` | The workhorse. Four variants: `default`, `quest`, `log`, `companion`. A fifth needs a structural difference, not a colour. |
+| `ListRow` · `Chip` · `StatChip` · `BadgeDot` | Rows, filters, numbers, dots. |
+| `Sheet` | A scrim, a panel, a focus trap, and focus restore on **every** close path. |
+| `EmptyState` · `Skeleton` · `Toast` · `ProgressHex` | Nothing yet, not yet, just happened, progress. |
+| `layout/Screen` · `BottomNav` · `HeroStage` · `SwipePane` | The shell. |
+
+### The rules with teeth
+
+- **A raw `<button>` fails review.** It gets no `--press`, no shadow collapse,
+  no busy-versus-disabled. CI enforces this as a **ratchet**: 57 predate the
+  library and are recorded in `scripts/ui-review-baseline.json`; the build
+  fails when a file gains one it did not have. Fixing them is a series of small
+  green diffs — `npm run ui:check -- --update` after each.
+- **No pure black, no pure white.** A `rgba(0,0,0,…)` shadow is a smudge on a
+  light palette and a hole on a dark one; that is what `--shadow-color` is for.
+  Exemptions are named in the check with reasons.
+- **At most three panes per `SwipePane`, three viewport-heights per screen.**
+  `ui/layout/contract.ts`, as arithmetic, as dev-time warnings — never thrown.
+  A crash screen for a couple who wanted to log a walk is the wrong trade.
+
+---
+
+## 3 · The guardrails
+
+| Command | What it checks | Needs a build |
+|---|---|---|
+| `npm run ui:check` | Raw buttons, pure black/white, raw z-index. | no |
+| `npm test` | 2174 unit tests. `.test.ts` in node, `.test.tsx` in jsdom. | no |
+| `npm run visual` | Screenshots every screen × 2 packs × 2 modes, and runs axe-core on the same visit. | **yes** |
+| `npm run lighthouse` | Lighthouse against `vite preview`, plus the precache budget read off the built `sw.js`. | **yes** |
+
+### Writing a `.test.tsx`
+
+The runner was widened from `.ts`-only for one reason, and the bar comes from
+it: **a component test earns its place by asserting behaviour a screenshot
+cannot.** `Sheet.test.tsx` is the model — a Tab that escapes a focus trap looks
+identical in a picture and is a real keyboard bug. "It renders" is not that, and
+belongs in the visual walk.
+
+`.test.tsx` gets jsdom; everything else stays in node. A domain test that starts
+needing a DOM fails, which is `docs/DESIGN.md`'s layering rule enforced by the
+runner instead of by review.
+
+### The visual walk
+
+- **Two packs, two modes** — kitty/light and shinobi/dark. Every pack is the
+  same markup with different custom properties, so a third re-proves the
+  second. Two rather than one catches a rule that hard-codes whichever pack
+  generated the baselines; light and dark cover both sides of every
+  mode-corrected token.
+- **Everything is frozen** — `data-calm`, `prefers-reduced-motion`, a blanket
+  `animation-play-state: paused`, and a transparent caret. A screenshot of a
+  breathing pet is a screenshot of a moment.
+- **Byte comparison, no tolerance.** Every source of jitter is pinned, so a
+  differing byte means something changed. A threshold is a place for a real
+  regression to hide.
+- **axe runs with `color-contrast` off.** `veil.test.ts` already answers that
+  question properly with the real tokens; axe cannot see through a fixed
+  backdrop to the ground a card actually sits on, and would report the garden's
+  gradient as a failure on every frame.
+- Only `critical` and `serious` violations fail. Moderate and minor print. The
+  difference between a guardrail and a nuisance is whether it can be ignored
+  honestly.
+
+### ⚠️ Baselines are not committed yet
+
+The walk **seeds** baselines on its first run and passes, so today it guards
+console errors, reachability and axe — but not pixels.
+
+To finish it, on a machine with the .NET SDK (the build needs it):
+
+```bash
+APP_BASE=/ npm run build
+npm run visual            # writes app/tools/baselines/*.png
+```
+
+Then **look at all ten frames** before committing them. A baseline nobody
+reviewed is a bug frozen into the repo that passes forever. CI uploads the
+frames as the `visual-frames` artifact on every run, so they can be reviewed
+from a pull request too.
+
+After that, `npm run visual` fails on any pixel change; `npm run visual:update`
+re-blesses them, and the diff in review is the picture that changed.

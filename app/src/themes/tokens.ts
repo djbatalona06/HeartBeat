@@ -162,6 +162,22 @@ export function themeToCssVars(theme: Theme, mode: ThemeMode = 'dark'): Record<s
     '--shadow-color': mode === 'light' ? LIGHT_SHADOW_COLOR : theme.shape.shadowColor,
 
     /**
+     * How much film grain, which is a different number in each mode.
+     *
+     * Grain is light dust over a dark ground and dirt over a white one, so the
+     * light palettes take roughly two thirds of what the dark ones do. It is
+     * emitted here rather than set under `:root[data-mode='light']` for the
+     * same reason `--shadow` is: `applyTheme` writes every token as an inline
+     * style on the root element, and an inline style beats any attribute rule.
+     *
+     * Deliberately low, and deliberately not a blend mode. `mix-blend-mode:
+     * overlay` — the usual recipe — changes luminance per pixel, which is the
+     * exact axis `veil.test.ts` guards without knowing blend modes exist, so
+     * it would walk text under AA silently. A flat low-alpha wash cannot.
+     */
+    '--grain-opacity': mode === 'light' ? '0.035' : '0.055',
+
+    /**
      * The overlay layer, which every component used to mix for itself.
      *
      * All three are `color-mix` over palette tokens rather than fixed rgba, so

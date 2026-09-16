@@ -41,6 +41,12 @@ jobs:
       - name: Check D1 config sync
         run: npm run check:config
 
+      # The review rules that are greppable: no new raw <button>, no pure
+      # black or white, no hand-written z-index above the chrome band. Needs
+      # nothing built, so it runs before the slow steps and fails fast.
+      - name: Check the UI review rules
+        run: npm run ui:check
+
       - name: Test
         run: npm test
 
@@ -48,6 +54,34 @@ jobs:
         run: npm run build
         env:
           APP_BASE: /
+
+      # Chromium for the visual walk and for Lighthouse. The sandbox has one at
+      # /opt/pw-browsers; a GitHub runner does not, so it is fetched here. Only
+      # chromium — the walk never opens the other two.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Screenshots every screen in two packs and two modes, and runs axe-core
+      # on the same visit. Until baselines are committed this seeds them and
+      # passes; see docs/design-system.md.
+      - name: Visual regression and axe
+        run: npm run visual
+
+      - name: Upload visual frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-frames
+          path: .shots/visual
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # Lighthouse against `vite preview`, never the dev server — devOptions is
+      # disabled, so there is no service worker in dev and the run would score
+      # an app that is not the app. Also asserts the precache budget off the
+      # built sw.js rather than off a comment.
+      - name: Lighthouse and the precache budget
+        run: npm run lighthouse
 
       - name: Build the gift
         # The gift is a committed artefact, so CI rebuilds it and fails if the
