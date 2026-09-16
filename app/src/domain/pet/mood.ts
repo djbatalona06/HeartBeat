@@ -1,48 +1,7 @@
 import { phaseAt } from '../scene/schedule';
 
-/**
- * How the pet is doing, and the one thing it is never allowed to be.
- *
- * ## What this replaced, and why it is not a rename
- *
- * `Pet.mood` shipped with four values — happy, content, sleepy, **sulking** —
- * and four faces to match. The sulking face is half-lidded eyes and a frown:
- * the pet looking unhappy at you.
- *
- * It was never reachable. Every write in the repository is
- * `mood: pet?.mood ?? 'content'`, in all four places that touch a `Pet` row,
- * and nothing in the app, the Worker or the C# core ever set it to anything
- * else. So the pet has been permanently content since the day it shipped, four
- * faces were drawn and one was ever seen, and the only place the word reached a
- * person at all was a screen reader on the home screen announcing "…level 12
- * and sulking".
- *
- * The brief asked for "sulking" to become "resting" in user-facing strings.
- * That would have renamed a word nobody could see, on a state nothing could
- * produce, and left the frown in the codebase waiting for the first person who
- * decided the pet should react to a missed day.
- *
- * So the value is gone instead, from the type and from the art. **The pet has
- * no face for disappointment.** That is a stronger guarantee than a rename and
- * a much stronger one than a settings toggle: you cannot ship the trap if there
- * is no word for it.
- *
- * ## What it can be, instead of nothing
- *
- * A pet that is permanently `content` is not a pet, so the three remaining
- * moods are now derived rather than stored:
- *
- * - **sleepy** at night, because the hour is a fact about the world and not
- *   about you.
- * - **happy** when the couple's glow is high, which is what a recent log looks
- *   like.
- * - **content** the rest of the time — and, importantly, **at the bottom**.
- *
- * That last one is the whole design. A quiet fortnight takes the pet from happy
- * to content. It never takes it below, because the floor is the thing that
- * decides whether opening the app after a hard week feels like coming home or
- * like being told off.
- */
+
+/** Here contains the mood types for the pets for the users selected theme. */
 export type PetMood = 'happy' | 'content' | 'sleepy';
 
 /** The floor, and the answer whenever there is nothing better to say. */
