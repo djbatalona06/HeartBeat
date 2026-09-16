@@ -40,8 +40,11 @@ export interface BottomNavProps {
   /**
    * Unread counts by route, e.g. `{ '/friends': 2 }`.
    *
-   * A prop for now. In Phase 4 this comes from `deriveBadges` and nowhere else
-   * — see `BadgeDot`. Absent means no badges, which is what ships today.
+   * Passed down from `App`, which calls `useBadges()` once for the whole shell
+   * — the tab bar and the message pill want the same four live queries, and one
+   * call handed to both beats two identical sets of reads on every foreground.
+   * It comes from `deriveBadges` and nowhere else; see `BadgeDot`. Absent means
+   * no badges, which is what an unpaired phone renders.
    */
   badges?: Record<string, number>;
 }
