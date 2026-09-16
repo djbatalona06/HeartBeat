@@ -46,7 +46,7 @@ export function Marigold({ mood }: { mood: MascotMood }) {
         ))}
       </g>
 
-      {mood === 'sulking' ? null : <Blush cx={50} cy={58} spread={22} r={6.5} />}
+      <Blush cx={50} cy={58} spread={22} r={6.5} />
       <Eyes cx={50} cy={44} spread={13} r={6} mood={mood} />
       <Mouth cx={50} cy={62} w={24} mood={mood} />
     </svg>

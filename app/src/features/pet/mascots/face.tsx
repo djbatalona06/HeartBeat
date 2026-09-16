@@ -3,10 +3,17 @@ import type { MascotMood } from './roster';
 /**
  * The bits of a face that all five mascots share.
  *
- * `Pet.mood` has been written by `addXp` since the day the repository was
- * started and read by nothing at all. It is the pose input the pet already
- * had, so the mascots use it and nothing else: four moods, four faces, no new
- * state anywhere.
+ * Three moods, three faces, and none of them is a reproach.
+ *
+ * There was a fourth, and this file drew it: half-lidded eyes and a frown.
+ * Nothing in the repository ever wrote that value, so it was drawn once and
+ * never seen. It is gone now rather than merely unused, because an unused
+ * frown is a frown waiting for somebody to decide the pet should react to a
+ * missed day.
+ *
+ * `domain/pet/mood.ts` names it and explains the removal in full — deliberately
+ * the only file in the app that still does, so the guard in `mood.test.ts` can
+ * stay absolute about the word appearing anywhere else.
  *
  * Drawn rather than imported: no third-party artwork anywhere, see NOTICE.md.
  */
@@ -48,20 +55,6 @@ function eye(x: number, y: number, r: number, mood: MascotMood, color: string) {
       />
     );
   }
-  if (mood === 'sulking') {
-    // Half-lidded: the eye is open, there is simply a lid sitting on it.
-    return (
-      <g key={x}>
-        <ellipse cx={x} cy={y + r * 0.2} rx={r * 0.66} ry={r * 0.52} fill={color} />
-        <path
-          d={`M${x - r * 0.9} ${y - r * 0.5} h ${r * 1.8}`}
-          stroke={color}
-          strokeWidth={r * 0.5}
-          strokeLinecap="round"
-        />
-      </g>
-    );
-  }
   return <ellipse key={x} cx={x} cy={y} rx={r * 0.68} ry={r * 0.9} fill={color} />;
 }
 
@@ -89,8 +82,10 @@ export function Mouth({ cx, cy, w, mood, color = 'var(--color-base)' }: MouthPro
     return <ellipse cx={cx} cy={cy} rx={w * 0.16} ry={w * 0.2} fill={color} />;
   }
   const half = mood === 'happy' ? w / 2 : w * 0.3;
-  // Positive dips down into a smile, negative lifts into a frown.
-  const dip = mood === 'sulking' ? -half * 0.8 : half * (mood === 'happy' ? 1.1 : 0.8);
+  // Always positive, which dips the curve down into a smile. It used to be able
+  // to go negative and lift into a frown; there is no mood left that asks for
+  // one, and that is deliberate — see domain/pet/mood.ts.
+  const dip = half * (mood === 'happy' ? 1.1 : 0.8);
   return (
     <path
       d={`M${cx - half} ${cy} q ${half} ${dip} ${2 * half} 0`}

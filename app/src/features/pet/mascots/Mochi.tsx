@@ -32,7 +32,7 @@ const HIGHLIGHT = '#FDFCFB';
  * arc reads as a stray speck rather than a reflection.
  */
 function catchlit(mood: MascotMood): boolean {
-  return mood === 'content' || mood === 'sulking';
+  return mood === 'content';
 }
 
 export function Mochi({ mood }: { mood: MascotMood }) {
@@ -73,7 +73,7 @@ export function Mochi({ mood }: { mood: MascotMood }) {
         <path d="M96 52 L81 52" />
       </g>
 
-      {mood === 'sulking' ? null : <Blush cx={50} cy={53} spread={21} r={6} />}
+      <Blush cx={50} cy={53} spread={21} r={6} />
       <Eyes cx={50} cy={43} spread={11} r={5} mood={mood} />
       {catchlit(mood) ? (
         <g fill={HIGHLIGHT} opacity="0.9">

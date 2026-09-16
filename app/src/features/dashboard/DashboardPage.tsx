@@ -12,6 +12,8 @@ import { useTheme } from '../../themes/ThemeProvider';
 import { getMascot } from '../pet/mascots';
 import { QuestBoard } from '../quests/QuestBoard';
 import { VitalsPanel, glowOf } from '../pet/VitalsPanel';
+import { moodFor, moodWords } from '../../domain/pet/mood';
+import { useHour } from '../home/useHour';
 import { TogetherPanel } from '../pet/TogetherPanel';
 import { FeedPanel } from '../party/FeedPanel';
 import { gearArt } from '../party/art/gear';
@@ -92,8 +94,14 @@ export function DashboardPage() {
   // recomputed, so the level shown is always derived from the XP instead. XP
   // only ever goes up — the pet cannot lose it, so this bar never runs backwards.
   const progress = levelProgress(pet?.xp ?? 0);
-  const petMood = pet?.mood ?? 'content';
   const mascot = getMascot(theme.id);
+
+  // Derived, not read off the row. `Pet.mood` was stored and never written with
+  // anything but 'content', so the pet has been wearing one face since it
+  // shipped. It follows the hour and the couple's glow now — and there is no
+  // unhappy value to land on, which is the point. See domain/pet/mood.ts.
+  const { hour } = useHour();
+  const petMood = moodFor({ hour, glow: vitals ? glowOf(vitals) : 1 });
 
   async function onComplete(task: Task) {
     await completeTask(task.id, day);
@@ -115,7 +123,10 @@ export function DashboardPage() {
           '--pet-radiance': vitals ? glowOf(vitals) : 1,
         } as React.CSSProperties}
         role="img"
-        aria-label={`${mascot.name} the ${mascot.species}, level ${progress.level} and ${petMood}`}
+        // The one place the mood is language rather than a drawing, and so
+        // the only place anyone has ever met the word. `moodWords` keeps it a
+        // description of the animal: "dozing", never a report on the couple.
+        aria-label={`${mascot.name} the ${mascot.species}, level ${progress.level}, ${moodWords(petMood)}`}
       >
         <mascot.Art mood={petMood} />
       </div>
