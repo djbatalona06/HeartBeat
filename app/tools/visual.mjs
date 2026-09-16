@@ -151,95 +151,112 @@ const FREEZE = `
  * on CI with every screen redirected to `#/onboarding`. The second version
  * waited for each control instead of for a fixed delay, checked the gate had
  * actually opened, and retried three times. It failed the same way, on both
- * themes, all six attempts.
+ * themes, all six attempts. Two rounds of fixing a mechanism whose failure
+ * nobody reproduced is a third round waiting to happen, so it writes the
+ * record `loadSettings` reads instead.
  *
- * The cause is still not established, and that is the point: two rounds of
- * fixing a mechanism whose failure nobody has reproduced is a third round
- * waiting to happen. `finish()` writes and then navigates, so the likeliest
- * candidates are the navigation unmounting the component mid-write or the
- * button never becoming clickable — but neither is proven, and this harness is
- * not the place to keep guessing.
+ * ## Why the write has to be retried
  *
- * ## What it does instead
+ * Seeding once was not enough either, and the reason is a race rather than a
+ * mistake. `useSync()` is mounted at the top of `App.tsx`, so every boot runs
+ * it, and both `pwa/sync.ts` and `pwa/holdingsSync.ts` finish by calling
+ * `saveSettings`. That helper is a read-modify-write — `loadSettings()`, then
+ * `put({ ...current, ...patch })` — so a boot write that read *before* this
+ * seed and wrote *after* it puts the old flags back and the gate closes again.
  *
- * Writes the record `loadSettings` reads, directly.
+ * On CI that is exactly what happened: kitty walked all five screens and
+ * shinobi stopped at `#/welcome`, same code, same commit, one won the race and
+ * one lost it. Nothing here can stop the app writing; what it can do is check
+ * whether the flags survived and write them again if they did not. By the
+ * second attempt the boot writes have landed, and because `saveSettings`
+ * merges rather than replaces, a later write preserves what this one set.
  *
- * The coupling is deliberately as small as it can be: one object store
- * (`settings`), one key (`'settings'`), and two booleans. Nothing else about
- * the schema is assumed, because `loadSettings` spreads the stored row over
- * `DEFAULT_SETTINGS` — a partial record is a valid record, so this does not
- * need to know any other field.
+ * ## The coupling, kept small
  *
- * And the database is never *created* here, only written to. The app boots
- * once first so Dexie builds it at whatever version it is on, then this opens
- * it with `indexedDB.open(name)` — no version argument, so no upgrade is
- * triggered and no store list has to be kept in step. A test harness that
- * declares a schema version is a test harness that silently stops matching the
- * app it tests.
+ * One object store (`settings`), one key (`'settings'`), two booleans.
+ * `loadSettings` spreads the stored row over `DEFAULT_SETTINGS`, so a partial
+ * record is a valid record and no other field has to be known here. The
+ * database is never *created*, only written to: the app boots first so Dexie
+ * builds it at whatever version it is on, and this opens it with no version
+ * argument, so no upgrade fires and no store list has to be kept in step.
  *
  * If the field names ever change, the route assertion in the walk catches it
- * immediately and says so, which is the property that matters.
+ * and says which route it was stuck on, which is the property that made this
+ * failure diagnosable in one CI round instead of three.
  */
 async function prime(page) {
-  // Boot once so Dexie creates `heartbeat` at its current version. `/welcome`
-  // rather than `/` because it is one of FirstRunGate's exempt routes, so it
-  // renders without a redirect.
-  await page.goto(`${base}/#/welcome`, { waitUntil: 'load' });
-  await page.waitForFunction(
-    () => indexedDB.databases().then((dbs) => dbs.some((d) => d.name === 'heartbeat')),
-    null,
-    { timeout: 15000, polling: 200 },
-  ).catch(() => {});
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    // `/welcome` is one of FirstRunGate's exempt routes, so it renders without
+    // a redirect and gives Dexie time to build the database.
+    await page.goto(`${base}/#/welcome`, { waitUntil: 'load' });
+    await page.waitForFunction(
+      () => indexedDB.databases().then((dbs) => dbs.some((d) => d.name === 'heartbeat')),
+      null,
+      { timeout: 15000, polling: 200 },
+    ).catch(() => {});
 
-  const wrote = await page.evaluate(async () => {
-    function open() {
-      return new Promise((resolve, reject) => {
-        // No version: open whatever exists, so Dexie stays the only thing that
-        // decides what the schema is.
-        const request = indexedDB.open('heartbeat');
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-        // Firing means the database did not exist, which means the app never
-        // booted — fail rather than create a half-schema Dexie would then
-        // have to reconcile.
-        request.onupgradeneeded = () => reject(new Error('heartbeat did not exist'));
-      });
-    }
+    // Let the boot writes land before writing over them. This does not remove
+    // the race — only the retry does that — but it loses it far less often.
+    await page.waitForTimeout(600);
 
-    try {
-      const db = await open();
-      if (!db.objectStoreNames.contains('settings')) return 'no settings store';
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction('settings', 'readwrite');
-        // `loadSettings` spreads this over DEFAULT_SETTINGS, so the two flags
-        // the gate reads are the whole record it needs.
-        tx.objectStore('settings').put({
-          id: 'settings',
-          guestAcknowledged: true,
-          onboarded: true,
+    const wrote = await page.evaluate(async () => {
+      function open() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open('heartbeat');
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+          // Firing means the database did not exist, which means the app never
+          // booted — fail rather than create a half-schema Dexie would then
+          // have to reconcile.
+          request.onupgradeneeded = () => reject(new Error('heartbeat did not exist'));
         });
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
-      db.close();
-      return 'ok';
-    } catch (error) {
-      return String(error && error.message ? error.message : error);
+      }
+
+      try {
+        const db = await open();
+        if (!db.objectStoreNames.contains('settings')) return 'no settings store';
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction('settings', 'readwrite');
+          const store = tx.objectStore('settings');
+          // Merge rather than replace: the app may have written real fields by
+          // now, and a bare put would drop them.
+          const read = store.get('settings');
+          read.onsuccess = () => {
+            store.put({
+              ...(read.result ?? {}),
+              id: 'settings',
+              guestAcknowledged: true,
+              onboarded: true,
+            });
+          };
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+        db.close();
+        return 'ok';
+      } catch (error) {
+        return String(error && error.message ? error.message : error);
+      }
+    });
+
+    if (wrote !== 'ok') {
+      console.log(`  note  seed attempt ${attempt} failed: ${wrote}`);
+      continue;
     }
-  });
 
-  if (wrote !== 'ok') {
-    console.log(`  note  could not seed settings: ${wrote}`);
-    return false;
+    // Prove it survived, rather than trusting the write.
+    await page.goto(`${base}/#/`, { waitUntil: 'load' });
+    const open = await page
+      .waitForFunction(() => (location.hash || '#/') === '#/', null,
+        { timeout: 10000, polling: 200 })
+      .then(() => true)
+      .catch(() => false);
+    if (open) {
+      if (attempt > 1) console.log(`  note  gates opened on attempt ${attempt}`);
+      return true;
+    }
   }
-
-  // Prove it took, rather than trusting the write.
-  await page.goto(`${base}/#/`, { waitUntil: 'load' });
-  return page
-    .waitForFunction(() => (location.hash || '#/') === '#/', null,
-      { timeout: 10000, polling: 200 })
-    .then(() => true)
-    .catch(() => false);
+  return false;
 }
 
 async function walk({ id: themeId, mode }) {
