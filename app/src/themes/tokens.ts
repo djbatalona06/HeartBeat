@@ -122,6 +122,17 @@ export function variantOf(theme: Theme, mode: ThemeMode): ThemeVariant {
   return mode === 'light' ? theme.light : darkVariantOf(theme);
 }
 
+/**
+ * How much of the ground a scrim and a glass card actually cover, in percent.
+ *
+ * Exported so the contrast guard can do the compositing arithmetic against the
+ * same numbers the stylesheet paints with. Lowering either of these without
+ * running `veil.test.ts` is how text over the home garden stops being legible
+ * at four in the afternoon on one theme and nobody notices for a month.
+ */
+export const SCRIM_STRENGTH = 72;
+export const GLASS_STRENGTH = 82;
+
 export function themeToCssVars(theme: Theme, mode: ThemeMode = 'dark'): Record<string, string> {
   const c = variantOf(theme, mode).colors;
   return {
@@ -158,12 +169,17 @@ export function themeToCssVars(theme: Theme, mode: ThemeMode = 'dark'): Record<s
      * `rgba(0, 0, 0, 0.5)` is a smudge over a white page and invisible over a
      * dark one, which is the same mistake `--shadow` above already corrects.
      *
-     * `--glass` carries real weight later: it is what keeps a card legible
-     * over the live garden on the home screen, where the ground behind it
-     * moves and cannot be reasoned about at authoring time.
+     * `--glass` carries real weight now: it is what keeps a card legible over
+     * the live garden on the home screen, where the ground behind it moves and
+     * cannot be reasoned about at authoring time.
+     *
+     * The two strengths are named constants rather than literals because
+     * `veil.test.ts` composites the garden's own paints through them and
+     * asserts the text on top still clears AA. A number that lives in two
+     * places is a number that gets tuned in one of them.
      */
-    '--scrim': `color-mix(in srgb, ${c.base} 72%, transparent)`,
-    '--glass': `color-mix(in srgb, ${c.surface} 82%, transparent)`,
+    '--scrim': `color-mix(in srgb, ${c.base} ${SCRIM_STRENGTH}%, transparent)`,
+    '--glass': `color-mix(in srgb, ${c.surface} ${GLASS_STRENGTH}%, transparent)`,
     '--hairline': `color-mix(in srgb, ${c.text} 14%, transparent)`,
   };
 }

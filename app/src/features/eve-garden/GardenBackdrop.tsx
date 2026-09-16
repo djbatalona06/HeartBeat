@@ -1,4 +1,4 @@
-import { sunAt } from './gate/GateBackdrop';
+import { sunAt } from '../../domain/scene/schedule';
 import { plotsAt, type Garden } from '../../domain/rpg/plots';
 import { GardenFlora } from './GardenFlora';
 
@@ -52,9 +52,30 @@ export interface GardenBackdropProps {
   garden: Garden;
   /** The shared pet's level, which is what decides how much ground there is. */
   petLevel: number;
+  /**
+   * How the drawing meets a box that is not its shape.
+   *
+   * The garden is authored at 400×240 — a landscape stage, because that is
+   * what it was: a band behind a fight. `'cover'` fills the box and crops
+   * whatever does not fit, which is right when the box is roughly that shape.
+   *
+   * A phone is not that shape. At 390×844 covering means scaling three and a
+   * half times and showing the middle eighth: no hills, no tree line, no sun,
+   * a fountain the size of a building. The screenshot is unambiguous and no
+   * test would ever have caught it.
+   *
+   * So `'ground'` fits the whole drawing and sits it on the floor of the box,
+   * the way a landscape hangs on a wall rather than being stretched over it.
+   * The sky above is whatever is behind — and the garden's own sky starts at
+   * an opaque `--color-base`, so a page painted in the same colour joins it
+   * without a seam.
+   */
+  fit?: 'cover' | 'ground';
 }
 
-export function GardenBackdrop({ hour, dark, mood, resonance, garden, petLevel }: GardenBackdropProps) {
+export function GardenBackdrop({
+  hour, dark, mood, resonance, garden, petLevel, fit = 'cover',
+}: GardenBackdropProps) {
   const sun = sunAt(hour);
   const night = dark || sun.night;
   const warm = Math.min(1, Math.max(0, mood));
@@ -65,7 +86,7 @@ export function GardenBackdrop({ hour, dark, mood, resonance, garden, petLevel }
     <svg
       className="garden-backdrop"
       viewBox="0 0 400 240"
-      preserveAspectRatio="xMidYMid slice"
+      preserveAspectRatio={fit === 'ground' ? 'xMidYMax meet' : 'xMidYMid slice'}
       aria-hidden="true"
       data-weather={raining ? 'rain' : 'clear'}
     >

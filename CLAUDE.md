@@ -29,7 +29,7 @@ cd app && npx vitest run src/db/repository/entries.test.ts
 npm run gift:build   # rebuild gift/birthday.html
 npm run gift:verify  # headless browser walk of every screen
 
-# Study page (rebuild after ANY change to app/src/styles.css — see pitfalls)
+# Study page (rebuild LAST, after any change to styles.css or to app source — see pitfalls)
 npm run study:build  # rebuild study/index.html
 ```
 
@@ -94,7 +94,7 @@ Full deploy walkthrough: `docs/DEPLOY.md`
 - **Day keys use member timezone**, not UTC — use the member's zone for `noteDays`, `endOfDay`, and any "days" count.
 - **Achievement dedup**: award IDs must be deterministic (e.g. `ach-<code>`, `quest-<id>`) so both devices don't double-credit the same event.
 - **`loadSettings()` inside live queries**: never call it inside a `useLiveQuery` callback — it triggers a sync rewrite that re-fires the query up to 20× per foreground cycle.
-- **Editing `app/src/styles.css` means running `npm run study:build` and committing `study/index.html`** — the study page inlines the whole stylesheet (`cssCodeSplit: false`), so any rule anywhere changes that committed artefact, and CI fails on `git diff --exit-code -- study/index.html`.
+- **`study/index.html` goes stale on far more than CSS, and rebuilding it is the *last* thing you do.** The rule used to read "editing `app/src/styles.css` means running `npm run study:build`", which is true and incomplete: the artefact inlines the whole stylesheet (`cssCodeSplit: false`) *and* the whole standalone bundle — React, the theme engine, all five backdrops — so **any** change to code reachable from `app/src/standalone.tsx` changes it too. A one-line edit to `themes/useCanvasLoop.ts` moved twelve bytes of minified output and failed CI on `git diff --exit-code -- study/index.html`. Run `npm run study:build` after the final source edit of the change, not in the middle of it — a rebuild that happens before one more commit lands is a rebuild that did not happen.
 - **Holdings sync has two kind lists, not one.** `PARTNER_WRITABLE_KINDS` (`domain/sync/holdings.ts`) is who may overwrite a row — a security property, mirrored in the `excluded.kind IN (...)` clause of `UPSERT_SQL` and pinned by a test that parses that clause. `PARTNER_VISIBLE_KINDS` is whose rows a device will apply locally. Life events and cheers are visible without being writable. Adding a kind to the visible list is a display decision; adding one to the writable list is a security decision.
 - **`Rarity` is `Tier`, and `'godly'` is gone.** The ladder is `common → rare →
   epic → legendary → mythic` and lives in `domain/rpg/tiers.ts`, not in
