@@ -140,6 +140,49 @@ const FREEZE = `
   }
 `;
 
+/**
+ * Click through `/welcome` and `/onboarding`, and prove the gate opened.
+ *
+ * Returns true once a plain `#/` stays at `#/`. Every step waits for the
+ * element it is about to use rather than for a fixed number of milliseconds,
+ * and the whole sequence repeats rather than being trusted once.
+ */
+async function prime(page) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    // `.welcome-guest` carries `disabled={busy}`, so wait for it to be enabled
+    // rather than merely present — clicking a disabled button silently does
+    // nothing, which is one of the ways the first run could have failed.
+    await page.goto(`${base}/#/welcome`, { waitUntil: 'load' });
+    const guest = await page
+      .waitForSelector('.welcome-guest:not([disabled])', { timeout: 15000 })
+      .catch(() => null);
+    if (guest) await guest.click().catch(() => {});
+
+    // `.onboarding-skip` renders on every step except the last, so it is there
+    // on arrival. `finish()` awaits its own write before navigating, so once
+    // the click lands the flag is set — the wait below is for the gate to
+    // notice, not for the write.
+    await page.goto(`${base}/#/onboarding`, { waitUntil: 'load' });
+    const skip = await page
+      .waitForSelector('.onboarding-skip', { timeout: 15000 })
+      .catch(() => null);
+    if (skip) await skip.click().catch(() => {});
+
+    // The only question that matters: does a real route stay put.
+    await page.goto(`${base}/#/`, { waitUntil: 'load' });
+    const open = await page
+      .waitForFunction(() => (location.hash || '#/') === '#/', null,
+        { timeout: 8000, polling: 200 })
+      .then(() => true)
+      .catch(() => false);
+    if (open) {
+      if (attempt > 1) console.log(`  note  gates opened on attempt ${attempt}`);
+      return true;
+    }
+  }
+  return false;
+}
+
 async function walk({ id: themeId, mode }) {
   const page = await browser.newPage({
     viewport: { width: 390, height: 844 },
@@ -184,13 +227,24 @@ async function walk({ id: themeId, mode }) {
   // to change. The two escape hatches are real UI with stable classes —
   // `.welcome-guest` sets `guestAcknowledged`, `.onboarding-skip` calls
   // `finish()` which sets `onboarded`.
-  await page.goto(`${base}/#/welcome`, { waitUntil: 'load' });
-  await page.waitForTimeout(400);
-  await page.click('.welcome-guest', { timeout: 5000 }).catch(() => {});
-  await page.goto(`${base}/#/onboarding`, { waitUntil: 'load' });
-  await page.waitForTimeout(400);
-  await page.click('.onboarding-skip', { timeout: 5000 }).catch(() => {});
-  await page.waitForTimeout(400);
+  //
+  // ## Why this retries, and why it verifies rather than assuming
+  //
+  // The first CI run of this file failed with eight identical
+  // "redirected to #/onboarding" lines. `guestAcknowledged` had taken and
+  // `onboarded` had not, so the welcome click worked and the skip click did
+  // not — a fixed `waitForTimeout` after `goto` is a bet that the page has
+  // finished settling, and on a cold runner that bet loses. Both writes go
+  // through Dexie and then have to reach a `useLiveQuery` before the gate
+  // changes its mind, which is not a duration anybody can name in advance.
+  //
+  // So: wait for the control rather than for the clock, then *check the gate
+  // actually opened* and try again if it did not. Three attempts, because the
+  // failure mode is a race and a race that loses three times is a bug.
+  const primed = await prime(page);
+  check(`${themeId} got past the first-run gates`, primed,
+    'still redirected after three attempts — FirstRunGate/PairGate did not open');
+  if (!primed) { await page.close(); return; }
 
   for (const screen of SCREENS) {
     await page.goto(`${base}/${screen.hash}`, { waitUntil: 'load' });

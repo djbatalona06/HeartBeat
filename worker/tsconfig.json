@@ -4,6 +4,11 @@
     "lib": ["ES2022"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    /* Workers types and nothing else. This is a deliberate guard, not an
+       omission: the Worker has no `process`, no `Buffer` and no `node:fs`, so
+       letting @types/node in here would make four things compile that crash at
+       the edge. The tests need those APIs and are typechecked separately by
+       tsconfig.test.json. */
     "types": ["@cloudflare/workers-types"],
     "strict": true,
     "noUnusedLocals": true,
@@ -12,5 +17,6 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
 }

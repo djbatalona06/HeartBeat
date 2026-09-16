@@ -1,3 +1,11 @@
+/**
+ * @vitest-environment jsdom
+ *
+ * Declared per file rather than by a glob in vitest.config.ts. Both work, but
+ * `environmentMatchGlobs` is deprecated in Vitest 3 and gone in 4, and the
+ * docblock has meant the same thing in every version — which matters for a
+ * config that exists to keep 2164 node tests out of a DOM they never touch.
+ */
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { fireEvent } from '@testing-library/dom';

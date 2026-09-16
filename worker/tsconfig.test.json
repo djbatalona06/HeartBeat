@@ -1,0 +1,15 @@
+{
+  /* The tests, which run in Node and so may use Node.
+     `githubAuth.test.ts` and `googleAuth.test.ts` run the real SQL against
+     real SQLite with the real migrations applied, which means reading
+     migration files off disk — `node:fs`, `node:path`, `import.meta.url`.
+     None of that belongs in the Worker's own type scope, so it lives here.
+     Split out when vitest 5 stopped providing @types/node transitively: the
+     types were arriving by accident, and an accident is not a configuration. */
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types", "node"]
+  },
+  "include": ["src"],
+  "exclude": []
+}
