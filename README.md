@@ -7,6 +7,40 @@ If you got here from a birthday present: hey babe :). Start below.
 
 ---
 
+## Installation (for developers)
+
+Prerequisites:
+
+- **Node.js 20+** (CI runs 22) — this repo is an npm workspace spanning
+  `app/` and `worker/`
+- **.NET SDK 10** — the shared pet home screen renders through a
+  WebAssembly build in `game/`, and it runs as part of `npm run dev` and
+  `npm run build`, not just CI
+- The **`wasm-tools` workload** for that SDK: `dotnet workload install wasm-tools`
+
+Clone and install:
+
+```bash
+git clone https://github.com/djbatalona06/heartbeat.git
+cd heartbeat
+npm install          # installs both workspaces (app/ + worker/)
+```
+
+Run it:
+
+```bash
+npm run dev          # http://localhost:5173 — builds the game Wasm debug bundle first
+npm test             # 458 app tests + 19 worker tests
+npm run typecheck    # both workspaces
+```
+
+That gets you a working dev server against local data only — nothing syncs
+between phones until you also stand up the Worker and a D1 database, which
+[`docs/DEPLOY.md`](docs/DEPLOY.md) walks through end to end. `## Local
+development` and `## Deploying` further down cover what each piece is for.
+
+---
+
 ## Getting it on your phone
 
 It installs like an app but arrives through Safari. Four steps.
@@ -189,7 +223,7 @@ The domain layer (`app/src/domain/`) is pure — no React, no Dexie — and carr
 its tests beside it. Vitest is restricted to `*.test.ts`, so components are not
 unit-tested; that is deliberate, not an oversight.
 
-Every write goes through `app/src/db/repository.ts`; components call those
+Every write goes through `app/src/db/repository/`; components call those
 functions and let the Dexie live query re-render. Nothing in `features/` touches
 the database directly.
 
