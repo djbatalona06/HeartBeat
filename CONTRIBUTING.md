@@ -18,6 +18,14 @@ npm run study:build      # if anything reachable from standalone.tsx changed
 CI runs all of it, plus `npm run visual` and `npm run lighthouse`, which need
 the build.
 
+Two things guard security, and they answer different questions. `npm audit
+--omit=dev` is a gate in CI and must stay at zero — it asks whether a
+dependency that reaches a phone is known-vulnerable. CodeQL (its own workflow,
+reporting to the Security tab) asks whether the code we wrote has a flaw in it,
+which matters here because the Worker holds two OAuth flows and a pile of SQL
+where every security property is a `WHERE` clause. Dev-toolchain advisories are
+reported but never fail the build; Dependabot opens the upgrade PR instead.
+
 ## The five that bite
 
 1. **`study/index.html` goes stale on far more than CSS, and rebuilding it is

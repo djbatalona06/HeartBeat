@@ -9,12 +9,13 @@
     "db:local": "wrangler d1 migrations apply heartbeat --local",
     "db:remote": "wrangler d1 migrations apply heartbeat --remote",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241230.0",
+    "@types/node": "^22.20.3",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
+    "vitest": "^5.0.1",
     "wrangler": "^4.131.0"
   }
 }

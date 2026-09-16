@@ -16,14 +16,18 @@ export default defineConfig({
      * that never look at one, which is most of a second per file and the
      * reason the original config said `.ts` only.
      *
-     * So the environment is chosen per file rather than globally: `.test.tsx`
-     * gets jsdom, everything else keeps node. A domain test that accidentally
-     * starts depending on a DOM fails in node, which is the right answer —
-     * that is the layering rule in docs/DESIGN.md enforced by the test runner
-     * instead of by review.
+     * So the environment is chosen per file rather than globally: a component
+     * test opts into jsdom with an `@vitest-environment jsdom` docblock, and
+     * everything else keeps node. A domain test that accidentally starts
+     * depending on a DOM fails in node, which is the right answer — that is
+     * the layering rule in docs/DESIGN.md enforced by the test runner instead
+     * of by review.
+     *
+     * The docblock rather than `environmentMatchGlobs`: that option is
+     * deprecated in Vitest 3 and removed in 4, and this config's whole job is
+     * to survive the version bumps that keep the toolchain out of `npm audit`.
      */
     environment: 'node',
-    environmentMatchGlobs: [['**/*.test.tsx', 'jsdom']],
 
     /**
      * `.tsx` joins `.ts`, which reverses a deliberate decision.

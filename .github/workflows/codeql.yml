@@ -1,0 +1,64 @@
+# Static analysis of the code itself, which `npm audit` does not do.
+#
+# The audit steps in ci.yml answer "is a dependency we pull in known-vulnerable".
+# That is a different question from "does the code we wrote have a flaw in it",
+# and this repo now holds the second kind of code: two OAuth flows, bearer
+# tokens hashed at rest, single-use invites, and a pile of SQL where every
+# security property is a WHERE clause. `worker/src/githubAuth.test.ts` says it
+# plainly — a refused write and a write that changed nothing look identical
+# from outside, so a bug in any of them is silent by construction.
+#
+# Its own workflow rather than a step in ci.yml, deliberately. CodeQL takes
+# minutes, wants its own permissions, and reports to the Security tab rather
+# than by failing a build — folding it into `check` would slow every push and
+# gate a UI change on an analysis that has nothing to say about it.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly, because most of what this catches arrives as a new CodeQL query
+    # rather than as a new commit — a repo that only scans on push stops
+    # learning the day it stops changing.
+    - cron: '41 5 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          # JavaScript/TypeScript only. It covers the Worker, the Pages
+          # Functions and the app — which is all of the auth code and all of
+          # the SQL. The C# in `game/` is a Phaser scene's rules with no
+          # network, no storage and no secrets, and scanning it would mean
+          # building the wasm workload on every pull request to analyse a boss
+          # fight.
+          languages: javascript-typescript
+          # The default queries plus the security-extended pack. The extra
+          # queries are the point of turning this on at all: the default set is
+          # tuned to near-zero false positives, and this repo would rather read
+          # a few maybes about its own auth than miss one.
+          queries: security-extended
+
+      # No build step. `autobuild` exists for compiled languages; for
+      # JavaScript/TypeScript CodeQL reads the source directly, and running the
+      # real build here would need the .NET wasm workload for no benefit.
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript

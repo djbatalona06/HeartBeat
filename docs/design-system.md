@@ -146,22 +146,40 @@ runner instead of by review.
   difference between a guardrail and a nuisance is whether it can be ignored
   honestly.
 
-### ⚠️ Baselines are not committed yet
+### ⚠️ Baselines are not committed yet — and they must come from CI
 
 The walk **seeds** baselines on its first run and passes, so today it guards
-console errors, reachability and axe — but not pixels.
+console errors, route reachability and axe — but not pixels.
 
-To finish it, on a machine with the .NET SDK (the build needs it):
+**Do not generate them on your own machine.** A screenshot is a rasterisation,
+and it depends on the Chromium build, the font stack and the GPU path of the
+machine that took it. Baselines made on a laptop will not byte-match the ones
+CI takes on `ubuntu-latest`, and since the comparison is byte-exact (see above),
+every CI run would fail forever. This is not a tolerance to loosen — the whole
+value of a byte comparison is that a differing byte means something changed.
 
-```bash
-APP_BASE=/ npm run build
-npm run visual            # writes app/tools/baselines/*.png
-```
+So the baselines come from the environment that compares them:
 
-Then **look at all ten frames** before committing them. A baseline nobody
-reviewed is a bug frozen into the repo that passes forever. CI uploads the
-frames as the `visual-frames` artifact on every run, so they can be reviewed
-from a pull request too.
+1. Push a branch. CI runs `npm run visual`, which seeds the ten frames and
+   uploads them as the **`visual-frames`** artifact.
+2. Download that artifact and **look at all ten frames.** A baseline nobody
+   reviewed is a bug frozen into the repo that passes forever.
+3. Commit them to `app/tools/baselines/` with the same names.
 
-After that, `npm run visual` fails on any pixel change; `npm run visual:update`
-re-blesses them, and the diff in review is the picture that changed.
+From then on `npm run visual` fails on any pixel change, and the diff in review
+is the picture that changed. To re-bless after an intended change, take the new
+frames from the same artifact rather than running `visual:update` locally — for
+the same rasterisation reason.
+
+`npm run visual` locally is still useful for everything that is not the pixel
+comparison: it catches console errors, a route that stopped being reachable,
+and axe violations. Those answers are machine-independent.
+
+#### If the walk reports it could not get past the first-run gates
+
+That is `prime()` in `app/tools/visual.mjs` failing three times. `FirstRunGate`
+sends a browser that has never paired to `/welcome` and then `/onboarding`, and
+the walk clicks the two real escape hatches to get through. If their class
+names (`.welcome-guest`, `.onboarding-skip`) or the conditions they render
+under change, this is where it shows up — as one honest failure rather than ten
+screenshots of the onboarding screen.

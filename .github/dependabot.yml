@@ -1,0 +1,32 @@
+# Dependency updates arrive as pull requests, so an advisory becomes a diff
+# somebody reviews rather than a banner nobody clicks.
+#
+# Grouped on purpose. Eleven separate PRs for eleven transitive advisories in
+# one dev toolchain is eleven reviews of the same upgrade, and the honest
+# outcome of that is all eleven sitting open. One grouped PR per ecosystem per
+# week is a thing a two-person project actually merges.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      # The toolchain moves together — vitest pulls vite pulls esbuild — and
+      # splitting them produces PRs that cannot pass CI on their own.
+      dev-toolchain:
+        dependency-type: development
+        patterns: ['*']
+      runtime:
+        dependency-type: production
+        patterns: ['*']
+    labels: ['dependencies']
+
+  # The workflows themselves. actions/checkout and friends are code that runs
+  # with a token, and they age the same way anything else does.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels: ['dependencies']

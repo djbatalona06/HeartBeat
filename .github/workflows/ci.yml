@@ -47,6 +47,26 @@ jobs:
       - name: Check the UI review rules
         run: npm run ui:check
 
+      # Two audits, because they answer two different questions.
+      #
+      # The first is a gate: `--omit=dev` is what actually reaches a phone, and
+      # a vulnerability there is shipped. It must stay at zero.
+      #
+      # The second is a report that never fails the build. Dev-toolchain
+      # advisories are real but they are not shipped — the vitest/vite/esbuild
+      # set that prompted this step was three moderates, a high and a critical,
+      # none of which leave a developer's machine. Gating on them means either
+      # taking a semver-major upgrade the moment it appears or muting the
+      # check, and muting is what actually happens. Dependabot opens the PR
+      # instead; see .github/dependabot.yml.
+      - name: Audit what ships
+        run: npm audit --omit=dev --audit-level=low
+
+      - name: Audit the toolchain (report only)
+        if: always()
+        continue-on-error: true
+        run: npm audit
+
       - name: Test
         run: npm test
 

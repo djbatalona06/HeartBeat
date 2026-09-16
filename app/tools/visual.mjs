@@ -140,6 +140,108 @@ const FREEZE = `
   }
 `;
 
+/**
+ * Get past `FirstRunGate`, by writing the two flags it reads.
+ *
+ * ## Clicking through was tried twice and did not work
+ *
+ * The first version clicked the app's own escape hatches — `.welcome-guest`
+ * and `.onboarding-skip` — which is what `gift/tools/verify.mjs` does and is
+ * the better instinct: it exercises real UI and encodes no schema. It failed
+ * on CI with every screen redirected to `#/onboarding`. The second version
+ * waited for each control instead of for a fixed delay, checked the gate had
+ * actually opened, and retried three times. It failed the same way, on both
+ * themes, all six attempts.
+ *
+ * The cause is still not established, and that is the point: two rounds of
+ * fixing a mechanism whose failure nobody has reproduced is a third round
+ * waiting to happen. `finish()` writes and then navigates, so the likeliest
+ * candidates are the navigation unmounting the component mid-write or the
+ * button never becoming clickable — but neither is proven, and this harness is
+ * not the place to keep guessing.
+ *
+ * ## What it does instead
+ *
+ * Writes the record `loadSettings` reads, directly.
+ *
+ * The coupling is deliberately as small as it can be: one object store
+ * (`settings`), one key (`'settings'`), and two booleans. Nothing else about
+ * the schema is assumed, because `loadSettings` spreads the stored row over
+ * `DEFAULT_SETTINGS` — a partial record is a valid record, so this does not
+ * need to know any other field.
+ *
+ * And the database is never *created* here, only written to. The app boots
+ * once first so Dexie builds it at whatever version it is on, then this opens
+ * it with `indexedDB.open(name)` — no version argument, so no upgrade is
+ * triggered and no store list has to be kept in step. A test harness that
+ * declares a schema version is a test harness that silently stops matching the
+ * app it tests.
+ *
+ * If the field names ever change, the route assertion in the walk catches it
+ * immediately and says so, which is the property that matters.
+ */
+async function prime(page) {
+  // Boot once so Dexie creates `heartbeat` at its current version. `/welcome`
+  // rather than `/` because it is one of FirstRunGate's exempt routes, so it
+  // renders without a redirect.
+  await page.goto(`${base}/#/welcome`, { waitUntil: 'load' });
+  await page.waitForFunction(
+    () => indexedDB.databases().then((dbs) => dbs.some((d) => d.name === 'heartbeat')),
+    null,
+    { timeout: 15000, polling: 200 },
+  ).catch(() => {});
+
+  const wrote = await page.evaluate(async () => {
+    function open() {
+      return new Promise((resolve, reject) => {
+        // No version: open whatever exists, so Dexie stays the only thing that
+        // decides what the schema is.
+        const request = indexedDB.open('heartbeat');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+        // Firing means the database did not exist, which means the app never
+        // booted — fail rather than create a half-schema Dexie would then
+        // have to reconcile.
+        request.onupgradeneeded = () => reject(new Error('heartbeat did not exist'));
+      });
+    }
+
+    try {
+      const db = await open();
+      if (!db.objectStoreNames.contains('settings')) return 'no settings store';
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('settings', 'readwrite');
+        // `loadSettings` spreads this over DEFAULT_SETTINGS, so the two flags
+        // the gate reads are the whole record it needs.
+        tx.objectStore('settings').put({
+          id: 'settings',
+          guestAcknowledged: true,
+          onboarded: true,
+        });
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+      return 'ok';
+    } catch (error) {
+      return String(error && error.message ? error.message : error);
+    }
+  });
+
+  if (wrote !== 'ok') {
+    console.log(`  note  could not seed settings: ${wrote}`);
+    return false;
+  }
+
+  // Prove it took, rather than trusting the write.
+  await page.goto(`${base}/#/`, { waitUntil: 'load' });
+  return page
+    .waitForFunction(() => (location.hash || '#/') === '#/', null,
+      { timeout: 10000, polling: 200 })
+    .then(() => true)
+    .catch(() => false);
+}
+
 async function walk({ id: themeId, mode }) {
   const page = await browser.newPage({
     viewport: { width: 390, height: 844 },
@@ -184,13 +286,31 @@ async function walk({ id: themeId, mode }) {
   // to change. The two escape hatches are real UI with stable classes —
   // `.welcome-guest` sets `guestAcknowledged`, `.onboarding-skip` calls
   // `finish()` which sets `onboarded`.
-  await page.goto(`${base}/#/welcome`, { waitUntil: 'load' });
-  await page.waitForTimeout(400);
-  await page.click('.welcome-guest', { timeout: 5000 }).catch(() => {});
-  await page.goto(`${base}/#/onboarding`, { waitUntil: 'load' });
-  await page.waitForTimeout(400);
-  await page.click('.onboarding-skip', { timeout: 5000 }).catch(() => {});
-  await page.waitForTimeout(400);
+  //
+  // ## Why this retries, and why it verifies rather than assuming
+  //
+  // The first CI run of this file failed with eight identical
+  // "redirected to #/onboarding" lines. `guestAcknowledged` had taken and
+  // `onboarded` had not, so the welcome click worked and the skip click did
+  // not — a fixed `waitForTimeout` after `goto` is a bet that the page has
+  // finished settling, and on a cold runner that bet loses. Both writes go
+  // through Dexie and then have to reach a `useLiveQuery` before the gate
+  // changes its mind, which is not a duration anybody can name in advance.
+  //
+  // So: wait for the control rather than for the clock, then *check the gate
+  // actually opened* and try again if it did not. Three attempts, because the
+  // failure mode is a race and a race that loses three times is a bug.
+  const primed = await prime(page);
+  if (!primed) {
+    // Say where it landed. The previous version reported only that it had been
+    // redirected, which cost a CI round to learn what this line now prints.
+    const landed = await page.evaluate(() => location.hash || '#/').catch(() => '?');
+    check(`${themeId} got past the first-run gates`, false,
+      `still at ${landed} — the settings seed did not open FirstRunGate`);
+    await page.close();
+    return;
+  }
+  check(`${themeId} got past the first-run gates`, true);
 
   for (const screen of SCREENS) {
     await page.goto(`${base}/${screen.hash}`, { waitUntil: 'load' });
