@@ -5268,7 +5268,7 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 .encounter {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--z-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5660,7 +5660,7 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 .garden-map-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--z-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5743,7 +5743,7 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 .garden-victory {
   position: fixed;
   inset: 0;
-  z-index: 45;
+  z-index: var(--z-sheet);
   display: flex;
   align-items: flex-start;
   justify-content: center;

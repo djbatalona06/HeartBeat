@@ -23,9 +23,15 @@
     "gift:build": "node gift/build.mjs",
     "gift:verify": "node gift/tools/verify.mjs",
     "gift:build:music": "node gift/build.mjs --with-audio",
-    "site:check": "node gift/tools/check-landing.mjs"
+    "site:check": "node gift/tools/check-landing.mjs",
+    "ui:check": "node scripts/check-ui-review.mjs",
+    "visual": "node app/tools/visual.mjs",
+    "visual:update": "node app/tools/visual.mjs --update",
+    "lighthouse": "node app/tools/lighthouse.mjs"
   },
   "devDependencies": {
+    "axe-core": "^4.13.0",
+    "lighthouse": "^13.4.1",
     "playwright": "^1.49.0",
     "wrangler": "^4.131.0"
   },
