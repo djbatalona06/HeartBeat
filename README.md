@@ -3,7 +3,7 @@
 A gamified life tracker for two people. Moods, workouts, cycles and calendars in
 one place, on both phones, with nudges that arrive whether the app is open or not.
 
-If you got here from a birthday present: hello. Start below.
+If you got here from a birthday present: hey babe :). Start below.
 
 ---
 
