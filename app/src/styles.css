@@ -215,8 +215,50 @@ body {
   transition: background var(--motion-slow) var(--ease-soft);
 }
 
+/* ---- the ground under the pet ---------------------------------------------
+   The mascots are flat SVGs drawn in theme variables, and that is what lets
+   them follow a palette when it changes — so the way to give them depth is not
+   to redraw five of them with shading that would stop following anything.
+
+   What they were actually missing is **ground**. The pet sat in a radial glow
+   with nothing underneath, which reads as floating no matter how well the
+   figure itself is drawn. One soft ellipse fixes that, and it costs one
+   pseudo-element rather than five files.
+
+   It breathes in *counterpoint* to the pet, not in sync: `home-breathe` lifts
+   the figure at 50%, so the shadow is smallest and faintest at 50%. A shadow
+   that grew with the thing above it would read as the light moving instead of
+   the pet rising — which is the same mistake as travel-without-shadow on a
+   button press, and the same fix.
+
+   `--shadow-color` rather than a black: the theme engine already emits it
+   mode-corrected, and a shadow tuned for a dark ground is a smudge on a pale
+   palette like pony's. */
+.home-mascot-standalone::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 4%;
+  width: 44%;
+  height: 6.5%;
+  border-radius: 50%;
+  background: var(--shadow-color);
+  filter: blur(5px);
+  transform: translateX(-50%);
+  animation: home-mascot-ground 5.5s ease-in-out infinite;
+}
+
+@keyframes home-mascot-ground {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.9; }
+  50% { transform: translateX(-50%) scale(0.9); opacity: 0.62; }
+}
+
 .home-mascot-art {
   position: relative;
+  /* Above the ground shadow. Both pseudo-elements paint after the content in
+     document order, so without this the shadow would land on the pet's feet
+     rather than under them. */
+  z-index: 1;
   width: 100%;
   height: 100%;
   overflow: visible;
@@ -226,8 +268,10 @@ body {
 
 /* Calm mode stops it, and so does reduced motion further down. A pet that will
    not hold still is the opposite of what this screen is for. */
-.home-mascot-standalone[data-calm='true'] .home-mascot-art { animation: none; }
-.home-mascot-standalone[data-mood='sleepy'] .home-mascot-art { animation-duration: 8.5s; }
+.home-mascot-standalone[data-calm='true'] .home-mascot-art,
+.home-mascot-standalone[data-calm='true']::after { animation: none; }
+.home-mascot-standalone[data-mood='sleepy'] .home-mascot-art,
+.home-mascot-standalone[data-mood='sleepy']::after { animation-duration: 8.5s; }
 
 @keyframes home-breathe {
   0%, 100% { transform: scale(1) translateY(0); }
@@ -6322,6 +6366,13 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 .gate-pedestal .gate-figure {
   border-radius: 50%;
   box-shadow: 0 0 0 2px var(--tier-ring), 0 0 12px -2px var(--tier-ring);
+  /* Lifts the silhouette off the backdrop now that there is a foreground bank
+     behind it. `drop-shadow` rather than `box-shadow` because these are SVG
+     figures, not boxes — a box shadow would draw a rectangle around a fox.
+     Safe here where `box-shadow` was not enough and `filter` is affordable:
+     the pedestals only transition on selection, so nothing re-renders the
+     filter frame after frame. */
+  filter: drop-shadow(0 2px 3px var(--shadow-color));
 }
 
 /* Attribute-qualified rather than a bare `.odds-row`, which already has a base
