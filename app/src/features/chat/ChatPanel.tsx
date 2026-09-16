@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { VoiceInput } from '../../components/VoiceInput';
 import { useMessages } from './useMessages';
+import { BadgeDot } from '../../ui/BadgeDot';
+import type { Badges } from '../notifications/useBadges';
 
 /**
  * The thread with the other half of the couple, always within reach.
@@ -16,25 +18,38 @@ function clockOf(ts: number): string {
   return new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-export function ChatPanel() {
+/**
+ * `badges` is a prop rather than a `useBadges()` call for the reason
+ * `SceneBackdrop` accepted the opposite trade: the shell renders this *and* the
+ * tab bar, both want the same four live queries, and one call passed down beats
+ * two identical sets of reads against IndexedDB on every foreground.
+ */
+export function ChatPanel({ badges }: { badges: Badges }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const { messages, send, paired, offline } = useMessages(open);
 
   const foot = useRef<HTMLDivElement>(null);
-  const seen = useRef(0);
-  const [unread, setUnread] = useState(0);
 
-  // Anything that arrived from the other person while the sheet was shut.
+  // The count is not this component's to compute any more.
+  //
+  // It used to be: a `useRef(0)` of how many had been seen, subtracted from how
+  // many had arrived. That was right until the page reloaded, at which point
+  // the ref went back to zero, the subtraction went negative, and three waiting
+  // messages showed nothing at all. Nobody writes that on purpose — it is what
+  // a tally invented at the point of display turns into.
+  //
+  // Now it comes from `deriveBadges` over a durable watermark, like every other
+  // dot in the app. See `domain/notifications/derive.ts`.
+  const { byKey, markSeen } = badges;
+  const unread = byKey.messages;
+
+  // Opening the thread *is* reading it. Stamped on open rather than on close,
+  // because a message that arrives while you are looking at it has been seen,
+  // and a watermark set on close would badge it the moment you shut the sheet.
   useEffect(() => {
-    if (open) {
-      seen.current = messages.length;
-      setUnread(0);
-      return;
-    }
-    const theirs = messages.filter((m) => !m.mine).length;
-    setUnread(Math.max(0, theirs - seen.current));
-  }, [messages, open]);
+    if (open) void markSeen('messages');
+  }, [open, messages.length, markSeen]);
 
   useEffect(() => {
     if (open) foot.current?.scrollIntoView({ block: 'end' });
@@ -52,9 +67,7 @@ export function ChatPanel() {
       <button type="button" className="chat-pill" onClick={() => setOpen(true)}>
         <span aria-hidden="true">✎</span>
         <span>Messages</span>
-        {unread > 0 ? (
-          <span className="chat-unread" aria-label={`${unread} unread`}>{unread}</span>
-        ) : null}
+        <BadgeDot count={unread.count} label={unread.label} />
       </button>
     );
   }

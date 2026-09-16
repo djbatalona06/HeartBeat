@@ -3,17 +3,20 @@
  *
  * ## One component, and later one source
  *
- * Today the whole app has exactly one novelty indicator: an unread count in
+ * The app used to have exactly one novelty indicator: an unread count in
  * `features/chat/ChatPanel.tsx`, computed inline from a `useRef` of how many
- * messages had been seen — so it resets to zero on every reload, and no other
- * surface has one at all.
+ * messages had been seen — so it reset to zero on every reload, and no other
+ * surface had one at all.
  *
- * This is the component half of fixing that. The data half is `deriveBadges` in
- * Phase 4, and the rule that comes with it is that **no component computes its
- * own dot**: every badge in the app reads from one pure function over synced
- * state, or it does not exist. Until that lands, this takes an explicit prop —
- * which is deliberately awkward, because a component that could invent its own
- * count is a component that will.
+ * This is the component half of fixing that. The data half is `deriveBadges`
+ * in `domain/notifications/derive.ts`, and the rule that comes with it is that
+ * **no component computes its own dot**: every badge in the app reads from one
+ * pure function over durable state, or it does not exist. `derive.test.ts`
+ * walks the source to keep it that way, so the rule is enforced rather than
+ * merely written down here.
+ *
+ * The count stays an explicit prop, which is deliberately awkward: a component
+ * that could invent its own is a component that will.
  *
  * ## A dot means waiting, never missed
  *

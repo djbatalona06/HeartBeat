@@ -516,6 +516,20 @@ body {
   box-shadow: 0 0 0 2px var(--color-surface);
 }
 
+/* Pulled inside the glyph box, now that there is finally something to look at.
+
+   `.tabbar-glyph` is 46x30 — sized for the active pill behind the icon, not for
+   the icon, which is about half that. A dot on the *box's* corner therefore
+   floats well clear of the thing it belongs to, and `top: -2px` puts it over
+   the bar's own top hairline. Both were invisible until Phase 4 gave the badge
+   real data: the rule shipped in Phase 1 with no consumer, so nobody had ever
+   seen one. This is the first screenshot of it, and it is why the offsets are
+   measured against the icon instead. */
+.tabbar-glyph .badge-dot {
+  top: 1px;
+  inset-inline-end: 7px;
+}
+
 /* The count is the point of a number badge; without one it is just a mark. */
 .badge-dot[data-quiet='true'] {
   min-width: var(--space-2);
@@ -1666,15 +1680,25 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 .chat-pill:active { transform: scale(0.95); }
 .chat-pill:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
 
-.chat-unread {
-  min-width: 20px;
-  padding: 0 5px;
-  border-radius: 999px;
+/* The dot on the message pill, which is the one place it cannot use its own
+   colours.
+
+   `.badge-dot` paints in `--color-accent` against `--color-surface`, which is
+   right on the tab bar. The pill *is* `--color-accent`, so the default would be
+   an accent dot on an accent ground — invisible but for its own ring. The
+   colours invert here and the positioning goes back to flow, because inside a
+   flex pill the badge is a third child beside the glyph and the label, not
+   something hanging off a corner.
+
+   This replaces `.chat-unread`, which was the same rule attached to a bespoke
+   span. One component, one source of the count, and the context it sits in
+   decides how it looks — which is the arrangement that stops the next surface
+   from growing a fourth copy. */
+.chat-pill .badge-dot {
+  position: static;
   background: var(--color-base);
   color: var(--color-text);
-  font-size: var(--text-xs);
-  line-height: 20px;
-  text-align: center;
+  box-shadow: none;
   font-variant-numeric: tabular-nums;
 }
 

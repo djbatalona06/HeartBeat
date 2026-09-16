@@ -111,6 +111,22 @@ export async function setResolveQuickly(resolveQuickly: boolean): Promise<void> 
 }
 
 /**
+ * Mark a badge's surface as looked at, now.
+ *
+ * Read-modify-write on one object rather than a field per key, so adding a
+ * badge is an entry in `BADGE_KEYS` and nothing here. Monotonic on purpose:
+ * `Math.max` against what is already stored means a stale render calling this
+ * with an old timestamp cannot un-read something — the failure that matters is
+ * hiding a dot for something still waiting, and a watermark that only ever
+ * moves forward cannot cause it.
+ */
+export async function markBadgeSeen(key: string, at: number = Date.now()): Promise<void> {
+  const current = (await loadSettings()).badgesSeen ?? {};
+  if ((current[key] ?? 0) >= at) return;
+  await saveSettings({ badgesSeen: { ...current, [key]: at } });
+}
+
+/**
  * Cycle ownership has one answer, and it is this one. `Member.tracksCycle` is
  * copied from it so the couple's rows are complete, and is never read back to
  * decide anything — see the note on Settings.tracksCycle.

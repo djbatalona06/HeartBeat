@@ -342,6 +342,21 @@ export interface Settings {
    */
   resolveQuickly?: boolean;
   /**
+   * When each badge's surface was last actually looked at, keyed by
+   * `BadgeKey` — see `domain/notifications/derive.ts`.
+   *
+   * Local rather than synced, and deliberately: what *you* have read is a fact
+   * about this phone, not about the couple. Syncing it would mean her opening
+   * the thread clears his dot, which is the one behaviour nobody would ever
+   * ask for. It also means no merge rule for two watermarks, and no row in
+   * the holdings tables for a number that is nobody else's business.
+   *
+   * Optional with no migration: `db/database.ts` spreads `DEFAULT_SETTINGS`
+   * over whatever it loads, and a missing watermark reads as never-looked,
+   * which correctly badges history that arrived from the other phone.
+   */
+  badgesSeen?: Record<string, number>;
+  /**
    * Reminders. Both are absent until notifications are turned on from a tap,
    * which is the only way they can be turned on at all.
    */

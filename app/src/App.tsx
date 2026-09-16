@@ -16,6 +16,7 @@ import { usePairing } from './features/pairing/usePairing';
 import { FirstRunGate } from './features/onboarding/FirstRunGate';
 import { RouteNotFound } from './features/errors/NotHere';
 import { BottomNav } from './ui/layout/BottomNav';
+import { useBadges } from './features/notifications/useBadges';
 import { ToastHost } from './ui/Toast';
 import { SceneBackdrop } from './features/home/SceneBackdrop';
 import { WelcomePage } from './features/onboarding/WelcomePage';
@@ -73,6 +74,12 @@ export function App() {
   // Whether there are two of you, and the re-key that carries this phone's rows
   // over the moment there are. See features/pairing/usePairing.ts.
   const { ready, paired } = usePairing();
+
+  // Every dot in the app, derived once here and handed to the two surfaces that
+  // wear them. Nothing below computes its own — see
+  // domain/notifications/derive.ts, and the test there that walks the source to
+  // make sure nothing starts.
+  const badges = useBadges();
 
   return (
     // Outside ThemeProvider on purpose: the theme engine writes every CSS
@@ -179,7 +186,7 @@ export function App() {
                 <main> so it survives every route change — the thread should not
                 reset because she looked at the calendar mid-sentence. A thread with
                 one end is not a thread, so it waits for the pairing. */}
-            {paired ? <ChatPanel /> : null}
+            {paired ? <ChatPanel badges={badges} /> : null}
             {/* Inside the router, because every one of its entries is a route.
                 Outside <main> for the same reason the thread is: it should not
                 reset when the screen behind it changes. */}
@@ -196,7 +203,7 @@ export function App() {
                 phone's own — a solo first run earns and spends both — so there is
                 nothing here that waits on a second person. */}
             <StatusHud />
-            <BottomNav locked={ready && !paired} />
+            <BottomNav locked={ready && !paired} badges={badges.byRoute} />
           </ToastHost>
         </HashRouter>
       </ThemeProvider>
