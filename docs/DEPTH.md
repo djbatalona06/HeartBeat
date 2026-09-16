@@ -228,6 +228,15 @@ Step 7's own plan ends "baselines land last". That is the argument:
    adds no file the service worker precaches, that assertion can be an exact
    entry count rather than a range with headroom in it — and headroom in a
    budget is a budget that never fails.
+
+   **Read the number off a build, not off the comment.** That comment states
+   the budget twice and disagrees with itself — "twelve entries at 882 KB" at
+   `vite.config.ts:67`, "19 entries / ~946 KiB" at `:100` — and CI on this
+   branch reports `precache 20 entries (1041.60 KiB)`. Both numbers in the
+   source are stale, which is what a budget written in prose does. Step 7's
+   first job on this is to take the count from `npm run build` and put it
+   somewhere that fails when it moves; a guardrail seeded from either
+   comment is red on the commit that adds it.
 5. **Tranche C makes the "raw button" grep cheaper**, as above.
 
 One thing cuts the other way and is worth saying: doing the look first means
