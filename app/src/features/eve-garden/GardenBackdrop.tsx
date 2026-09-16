@@ -212,6 +212,45 @@ export function GardenBackdrop({
           })}
         </g>
       )}
+
+      {/* -- the foreground: the nearest thing, and the fastest --------------
+          The single change that makes everything else read as far away. A
+          drawing with a sky, a middle and a floor is a picture; the same
+          drawing with something *in front* is a place you are standing in,
+          because the eye takes the near edge as where it is and pushes the
+          rest back behind it.
+
+          Painted in `--color-base` at near-full opacity, so it reads as a dark
+          near bank rather than as another object — a foreground with detail in
+          it competes with the garden instead of framing it. Base is already on
+          `veil.test.ts`'s paint list, so this adds no colour the contrast
+          guard does not composite.
+
+          It spans -20 to 420 rather than 0 to 400 on purpose: it drifts
+          further than any other layer, and a path that stops at the viewBox
+          edge would swing a gap into view on the home screen, where
+          `fit="ground"` shows the drawing's full width instead of cropping it.
+
+          Last in the document, after the weather, because nearest means
+          nearest — rain falls behind the bank you are standing behind. */}
+      <g className="garden-layer garden-layer-fore">
+        <path
+          d="M-20 233 Q54 224 108 231 Q170 239 232 230 Q300 221 420 229 L420 240 L-20 240 Z"
+          fill="var(--color-base)"
+          opacity="0.92"
+        />
+        {[14, 40, 96, 152, 214, 272, 330, 378].map((x, i) => (
+          <path
+            key={x}
+            d={`M${x} 240 q${i % 2 ? 3 : -3} -7 ${i % 2 ? 1 : -1} -12`}
+            stroke="var(--color-base)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            fill="none"
+            opacity="0.92"
+          />
+        ))}
+      </g>
     </svg>
   );
 }
