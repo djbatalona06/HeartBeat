@@ -3,17 +3,8 @@ import type { MascotMood } from './roster';
 /**
  * The bits of a face that all five mascots share.
  *
- * Three moods, three faces, and none of them is a reproach.
- *
- * There was a fourth, and this file drew it: half-lidded eyes and a frown.
- * Nothing in the repository ever wrote that value, so it was drawn once and
- * never seen. It is gone now rather than merely unused, because an unused
- * frown is a frown waiting for somebody to decide the pet should react to a
- * missed day.
- *
- * `domain/pet/mood.ts` names it and explains the removal in full — deliberately
- * the only file in the app that still does, so the guard in `mood.test.ts` can
- * stay absolute about the word appearing anywhere else.
+ * Three moods, three faces, and none of them is a frown. There was a fourth;
+ * nothing ever set it, and `mood.test.ts` now fails if it comes back.
  *
  * Drawn rather than imported: no third-party artwork anywhere, see NOTICE.md.
  */

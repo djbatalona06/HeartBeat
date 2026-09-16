@@ -1,7 +1,6 @@
 import { phaseAt } from '../scene/schedule';
 
-
-/** Here contains the mood types for the pets for the users selected theme. */
+/** How the pet is drawn. Derived from the hour and the couple's glow. */
 export type PetMood = 'happy' | 'content' | 'sleepy';
 
 /** The floor, and the answer whenever there is nothing better to say. */
