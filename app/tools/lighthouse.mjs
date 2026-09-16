@@ -86,19 +86,52 @@ if (manifest.length === 0) {
 }
 
 // ---- lighthouse -------------------------------------------------------------
-const preview = spawn('npx', ['vite', 'preview', '--port', '4174', '--strictPort'], {
-  cwd: join(ROOT, 'app'), stdio: 'ignore',
+/**
+ * `vite preview`, and the two things the first CI run got wrong about it.
+ *
+ * **Sixty seconds, not ten.** The first version polled for 10s and failed
+ * exactly on that boundary while the runner's cleanup then reported a live
+ * `node` and `esbuild` — so vite was starting, just not within the window.
+ * `preview` loads `vite.config.ts`, which pulls in `unplugin-dotnet-wasm` and
+ * `vite-plugin-pwa`, and on a cold runner that is not a 10-second job.
+ *
+ * **Its output is kept.** The first version used `stdio: 'ignore'`, so when it
+ * failed the only thing it could say was "never came up" — which is the
+ * failure with its cause thrown away, and cost a CI round to learn nothing.
+ * Whatever vite says on the way up or down is buffered and printed if the wait
+ * ends badly.
+ *
+ * `npm run preview --workspace app` rather than `npx vite preview`: the
+ * workspace already declares that script, and npx is one more resolution step
+ * that can find a different vite than the one that did the build.
+ */
+const preview = spawn('npm', ['run', 'preview', '--workspace', 'app', '--', '--port', '4174', '--strictPort', '--host', '127.0.0.1'], {
+  cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
 });
+
+let previewLog = '';
+preview.stdout.on('data', (d) => { previewLog += d; });
+preview.stderr.on('data', (d) => { previewLog += d; });
+preview.on('error', (e) => { previewLog += `spawn error: ${e.message}\n`; });
+
 process.on('exit', () => preview.kill());
 
 // Poll rather than sleep a fixed time: a fixed wait is either flaky or slow,
-// and on a cold CI runner it is both.
+// and on a cold CI runner it is both. The sleep is unconditional — the first
+// version only slept in the catch branch, so a server answering non-2xx would
+// have spun through every attempt without waiting at all.
 const url = 'http://127.0.0.1:4174/';
 let up = false;
-for (let i = 0; i < 40 && !up; i++) {
-  try { up = (await fetch(url)).ok; } catch { await new Promise((r) => setTimeout(r, 250)); }
+for (let i = 0; i < 120 && !up; i++) {
+  try { up = (await fetch(url)).ok; } catch { /* not listening yet */ }
+  if (!up) await new Promise((r) => setTimeout(r, 500));
 }
-if (!up) { console.error('vite preview never came up'); preview.kill(); process.exit(1); }
+if (!up) {
+  console.error('vite preview never came up after 60s. Its output was:');
+  console.error(previewLog.trim() || '  (nothing — it produced no output at all)');
+  preview.kill();
+  process.exit(1);
+}
 
 const { default: lighthouse } = await import('lighthouse');
 const { chromium } = await import('playwright');
