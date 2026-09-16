@@ -43,7 +43,7 @@ export function Wishbell({ mood }: { mood: MascotMood }) {
 
       <path d={starPath(70, 63, 8)} fill="var(--color-text)" opacity="0.8" />
 
-      {mood === 'sulking' ? null : <Blush cx={52} cy={60} spread={19} r={6} />}
+      <Blush cx={52} cy={60} spread={19} r={6} />
       <Eyes cx={52} cy={49} spread={12} r={5.5} mood={mood} />
       <g fill="var(--color-base)" opacity="0.55">
         <ellipse cx="47" cy="64" rx="2" ry="2.6" />

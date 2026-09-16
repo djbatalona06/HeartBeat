@@ -192,7 +192,12 @@ export interface Pet {
   level: number;
   xp: number;
   /** Derived from recent activity; drives which sprite pose shows. */
-  mood: 'happy' | 'content' | 'sleepy' | 'sulking';
+  /**
+   * How the pet is drawn. Derived at render time from the hour and the
+   * couple's glow — see `domain/pet/mood.ts` — rather than from anything
+   * stored, and there is deliberately no unhappy value to derive.
+   */
+  mood: 'happy' | 'content' | 'sleepy';
   fedAt: number;
   /**
    * Awards made on this phone that the server has not counted yet. They are
