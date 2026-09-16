@@ -39,6 +39,7 @@ between phones until you also stand up the Worker and a D1 database, which
 [`docs/DEPLOY.md`](docs/DEPLOY.md) walks through end to end. `## Local
 development` and `## Deploying` further down cover what each piece is for.
 
+Anyone is able to add issues or their own suggestions since this project was mainly a bday present for my gf. 
 ---
 
 ## Getting it on your phone
@@ -46,8 +47,8 @@ development` and `## Deploying` further down cover what each piece is for.
 It installs like an app but arrives through Safari. Four steps.
 
 **1 · Open the app link in Safari.** Not Chrome, and not the browser inside
-Instagram or Messages — actual Safari. iPhone only allows web apps to install
-from there.
+Instagram or Messages — actual Safari. If you couldn't find it yet, it's in the bio section of this repo 
+iPhone only allows web apps to install from there. 
 
 **2 · Tap Share, then Add to Home Screen.** This step is not cosmetic. iOS
 refuses to deliver notifications to a web app unless it has been added to the
