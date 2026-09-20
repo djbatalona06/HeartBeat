@@ -148,6 +148,30 @@ export function isUsableIdentity(id: Partial<Identity> | undefined | null): id i
   return Boolean(id && id.memberId && id.coupleId);
 }
 
+/**
+ * Whether this phone actually has a partner.
+ *
+ * ## The trap this exists to close
+ *
+ * `coupleId` alone is not the test, and reading it as one is a mistake that
+ * looks right. `ensureIdentity` **mints and saves** a memberId and a coupleId
+ * the first time anything needs them, so a phone that has never paired with
+ * anybody still has both — and `settings.coupleId ? 'Paired' : 'Not paired'`
+ * told a lone user they were paired from their first launch onwards.
+ *
+ * The honest test is the token, because that is the thing only the server can
+ * hand over: `workerSecret` exists once pairing has actually happened. It is
+ * what `usePairing` has always used and what every authenticated call sends.
+ *
+ * So the definition lives here, once, rather than being spelled out at each
+ * call site — which is how the two spellings came to disagree.
+ */
+export function isPaired(
+  settings: { coupleId?: string; workerSecret?: string } | undefined | null,
+): boolean {
+  return Boolean(settings?.coupleId && settings.workerSecret);
+}
+
 /** True when a re-key moves the primary key rather than only fields on the row. */
 export function rehomes(plan: TableRekey): boolean {
   return plan.memberFields.includes(plan.primaryKey) || plan.coupleFields.includes(plan.primaryKey);

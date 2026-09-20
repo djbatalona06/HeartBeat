@@ -2,7 +2,9 @@ import { useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { loadSettings } from '../../db/database';
 import { rekeyIdentity } from '../../db/repository';
-import { isUsableIdentity, sameIdentity, type Identity } from '../../domain/identity/rekey';
+import {
+  isPaired, isUsableIdentity, sameIdentity, type Identity,
+} from '../../domain/identity/rekey';
 
 /**
  * Whether this phone has a partner yet, and the repair that runs the moment it
@@ -88,6 +90,7 @@ export function usePairing(): Pairing {
 
   return {
     ready: settings !== undefined,
-    paired: Boolean(coupleId && settings?.workerSecret),
+    // One definition, shared with every other screen that asks — see isPaired.
+    paired: isPaired(settings),
   };
 }

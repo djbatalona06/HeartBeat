@@ -352,6 +352,23 @@ body {
 .home-equipped-item { width: 32px; height: 32px; }
 .home-equipped-item .gear-art { width: 100%; height: 100%; }
 
+/* ---- the invitation on a lone phone ----------------------------------------
+
+   Shown only while unpaired. Two tiles rather than a grid of six: the whole
+   point is that there is one thing worth doing here, and a wall of equal
+   choices is what the old six-door ring got wrong. `.tile*` is already in this
+   stylesheet from when the dashboard was a grid. */
+.home-invite {
+  margin-bottom: var(--space-4);
+}
+
+.home-invite-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
 /* ---- the home pet card ----------------------------------------------------
    The pet's name, its level and its bar. The level is always derived from XP
    rather than read off the row — see `DashboardPage.tsx`. */
