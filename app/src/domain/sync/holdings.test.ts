@@ -84,6 +84,16 @@ describe('the wire shape', () => {
       // Keyed by coupleId and carrying no `id` at all — the shape that makes
       // `keyOf` more than `row.id`.
       world: () => ({ coupleId: 'couple-1', island: 1, cleared: [], updatedAt: AT }),
+      // Couple-level like the world, but keyed by its own derived id rather
+      // than by coupleId, so that a couple can hold one row per week.
+      wager: () => ({
+        id: 'wager-couple-1-2026-09-14',
+        coupleId: 'couple-1',
+        weekStart: '2026-09-14',
+        target: 3,
+        stake: 66,
+        updatedAt: AT,
+      }),
     };
     for (const kind of HOLDING_KINDS) {
       const key = keyOf(kind, rows[kind]() as never);
@@ -123,15 +133,19 @@ describe('which kinds are writable, and which are merely visible', () => {
    * display decision. A test that let the two collapse back into each other
    * would let a display decision quietly hand out write permission.
    */
-  it('lets either of you write only the quest and the shared world', () => {
-    expect(PARTNER_WRITABLE_KINDS).toEqual(['quest', 'world']);
+  it('lets either of you write only the quest, the shared world and the wager', () => {
+    // Three things the couple take on together. Each was a deliberate widening
+    // of a security boundary, which is why this restates the list rather than
+    // deriving it: adding a fourth has to be a decision somebody typed here.
+    expect(PARTNER_WRITABLE_KINDS).toEqual(['quest', 'world', 'wager']);
+    const shared = new Set(['quest', 'world', 'wager']);
     for (const kind of HOLDING_KINDS) {
-      expect(isPartnerWritable(kind), kind).toBe(kind === 'quest' || kind === 'world');
+      expect(isPartnerWritable(kind), kind).toBe(shared.has(kind));
     }
   });
 
-  it('shows both of you the quest, life events, cheers and the world', () => {
-    expect(PARTNER_VISIBLE_KINDS).toEqual(['quest', 'lifeEvent', 'cheer', 'world']);
+  it('shows both of you the quest, life events, cheers, the world and the wager', () => {
+    expect(PARTNER_VISIBLE_KINDS).toEqual(['quest', 'lifeEvent', 'cheer', 'world', 'wager']);
   });
 
   it('makes every writable kind visible, but not the reverse', () => {

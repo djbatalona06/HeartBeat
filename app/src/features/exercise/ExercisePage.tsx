@@ -8,6 +8,7 @@ import { DEFAULT_TIMEZONE, type DayKey } from '../../domain/types';
 import { CameraCapture } from './CameraCapture';
 import { WeekThread } from './WeekThread';
 import { PhotoWall } from './PhotoWall';
+import { WagerPanel } from './WagerPanel';
 import {
   CAPTION_MAX, NAME_MAX, blankRow, cleanCaption, isWorthSaving, summarise, toRows, toSets,
   type SetRow,
@@ -166,6 +167,15 @@ export function ExercisePage() {
       </div>
 
       <WeekThread memberId={memberId} day={day} today={today} onPick={setDay} />
+
+      {/* Before the sets, because it is the reason somebody is about to log
+          one. The week it shows follows the strip above. */}
+      <WagerPanel
+        coupleId={settings?.coupleId ?? null}
+        memberId={memberId}
+        day={day}
+        today={today}
+      />
 
       <section className="sheet">
         <h2 className="section-title">The sets</h2>

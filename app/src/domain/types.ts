@@ -281,6 +281,50 @@ export interface Quest {
   updatedAt?: number;
 }
 
+/**
+ * A week the two of you staked something on together.
+ *
+ * ## It is a shared target, not a race
+ *
+ * The obvious reading of "wager" is one partner against the other, and this
+ * app cannot hold that. `domain/notify/schedule.ts` argues the posture about
+ * reminders, `domain/notifications/derive.ts` argues it about badges, and both
+ * land in the same place: nothing here exists to tell somebody they are behind.
+ * A weekly scoreboard between two people who live together is that, with a
+ * trophy on it.
+ *
+ * So both of you aim at the same number and the pet is paid when you both
+ * reach it. Missing costs nothing — the week simply does not pay, the way
+ * `Quest.retiredAt` means "the week ran out, target unmet; nothing taken".
+ * What is staked is the pet's XP, which belongs to neither of you alone.
+ *
+ * ## The id is arithmetic, so two phones cannot start two of these
+ *
+ * `id` is derived from the couple and the Monday, so both devices independently
+ * compute the same key for the same week and the upsert converges on one row.
+ * The alternative — a random id — means each phone starting its own wager on a
+ * Monday morning and the couple ending up with two, which is the bug the
+ * quest's single-active rule exists to prevent and which nothing in the sync
+ * layer could resolve after the fact.
+ */
+export interface Wager {
+  /** `wager-<coupleId>-<weekStart>`. Derived, never random — see above. */
+  id: string;
+  coupleId: CoupleId;
+  /** The Monday of the week this covers, in the member's zone. */
+  weekStart: DayKey;
+  /** How many workouts **each** of them is aiming for. */
+  target: number;
+  /** Pet XP paid once, if they both reach it. */
+  stake: number;
+  /** Set when the payout landed, which is what stops it landing twice. */
+  settledAt?: number;
+  /** True when it settled because they made it, false when the week ran out. */
+  met?: boolean;
+  updatedAt: number;
+}
+
+
 export interface Achievement {
   id: string;
   coupleId: CoupleId;

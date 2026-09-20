@@ -197,9 +197,15 @@ describe('the four copies of the kind list', () => {
     }
   });
 
+  /**
+   * The literal here used to be 'wager', which became a real kind. Any string
+   * the CHECK does not name will do, and one that could never be a kind is the
+   * safer fixture: this test is about the constraint rejecting the unknown, not
+   * about any particular feature not existing yet.
+   */
   it('rejects a kind the client cannot send', () => {
     const db = fresh();
-    expect(() => db.prepare(UPSERT_SQL).run('x', 'wager', 'c1', 'her', '{}', NOW)).toThrow();
+    expect(() => db.prepare(UPSERT_SQL).run('x', 'not-a-kind', 'c1', 'her', '{}', NOW)).toThrow();
   });
 
   it('serves the same kinds the client sends', () => {

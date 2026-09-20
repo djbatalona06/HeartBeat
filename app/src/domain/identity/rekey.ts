@@ -115,6 +115,14 @@ export const REKEY_TABLES: readonly TableRekey[] = [
   // Couple-level, both of them: no memberId to move, and no slot to collide on
   // — pairing mints a fresh coupleId, so nothing is already sitting there.
   { table: 'quests', primaryKey: 'id', memberFields: [], coupleFields: ['coupleId'] },
+  // The weekly wager, the same shape as the quest. Its `id` embeds the old
+  // coupleId and `rehomes()` is false, so the row is re-keyed in place with
+  // that id still baked in -- harmless, because every read is by `coupleId`
+  // and `[coupleId+weekStart]` rather than by id, and the id only has to be
+  // *stable* for the upsert to converge rather than to mean anything. A wager
+  // started before pairing therefore survives it, which is the point: the
+  // week's effort was real.
+  { table: 'wagers', primaryKey: 'id', memberFields: [], coupleFields: ['coupleId'] },
   { table: 'achievements', primaryKey: 'id', memberFields: [], coupleFields: ['coupleId'] },
   { table: 'messages', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   // Not `oneRowPerDay`: a person can write more than once in a day, and the

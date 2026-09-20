@@ -2943,6 +2943,48 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 .ex-calendar-link:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
 
 
+/* ---- the week's wager ------------------------------------------------------
+
+   A shared target, not a scoreboard. The styling carries that: the two rows
+   are identical, in source order, with no rank and no bar comparing them --
+   the only difference between them is a tick once somebody arrives. See
+   features/exercise/WagerPanel.tsx for why. */
+.wager-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.wager-standings {
+  list-style: none;
+  margin: var(--space-3) 0 var(--space-3);
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.wager-standing {
+  display: grid;
+  grid-template-columns: 1fr auto var(--space-4);
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-muted);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+}
+
+/* Arrived. The same success tint the week strip and the calendar use for a
+   trained day, so one colour means one thing across all three. */
+.wager-standing[data-met='true'] {
+  background: color-mix(in srgb, var(--color-success) 16%, var(--color-surface));
+}
+
+.wager-count { font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
+.wager-standing[data-met='true'] .wager-count { color: var(--color-text); }
+.wager-mark { color: var(--color-success); text-align: right; }
+
 /* ---- the photo wall --------------------------------------------------------
 
    A week of both members' proofs. auto-fill rather than a fixed column count,
