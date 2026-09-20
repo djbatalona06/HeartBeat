@@ -1,13 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
-import { ensureIdentity, putWorkEvent, removeWorkEvent } from '../../db/repository';
+import {
+  ensureIdentity, exercisesInRange, putWorkEvent, removeWorkEvent, trainedDays,
+} from '../../db/repository';
 import { VoiceInput } from '../../components/VoiceInput';
 import { CalendarFile } from './CalendarFile';
 import { loadGrade } from '../../domain/calendar/csv';
+import { summarise } from '../exercise/workout';
 import { parseEvent } from '../../domain/voice/parseEvent';
-import { addDays, todayKey } from '../../domain/day';
-import { DEFAULT_TIMEZONE, type DayKey, type MinuteOfDay, type WorkEvent } from '../../domain/types';
+import {
+  addDays, daysInMonth, monthOf, shiftMonth, sundayIndex, todayKey,
+} from '../../domain/day';
+import {
+  DEFAULT_TIMEZONE, type DayKey, type ExerciseEntry, type MinuteOfDay, type WorkEvent,
+} from '../../domain/types';
 
 /**
  * The shared calendar.
@@ -23,30 +30,6 @@ const MONTHS = [
 ];
 
 const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-function monthOf(day: DayKey): string {
-  return day.slice(0, 7);
-}
-
-/** Day-of-week for a DayKey without going through a local Date. */
-function weekdayOf(day: DayKey): number {
-  const [y, m, d] = day.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-}
-
-function daysInMonth(month: string): DayKey[] {
-  const [y, m] = month.split('-').map(Number);
-  const count = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return Array.from({ length: count }, (_, i) => `${y}-${pad(m)}-${pad(i + 1)}`);
-}
-
-function shiftMonth(month: string, delta: number): string {
-  const [y, m] = month.split('-').map(Number);
-  const total = (y * 12 + (m - 1)) + delta;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${Math.floor(total / 12)}-${pad((total % 12) + 1)}`;
-}
 
 /** 540 → "9:00 am". Minutes past midnight are what WorkEvent stores. */
 export function clockOf(minutes: MinuteOfDay): string {
@@ -104,6 +87,37 @@ export function WorkPage() {
       .toArray();
   }, [month]);
 
+  /**
+   * The month's workouts, both members', from the same range as the events
+   * above.
+   *
+   * A second read rather than folding exercise into `db.work`: they are
+   * different tables with different lifecycles, and the calendar is a *view*
+   * over both rather than an owner of either. Both members for the same reason
+   * the events query has no `memberId` filter — the grid already shows the two
+   * of you together, and a workout mark that counted one of you would be the
+   * odd thing out on the page.
+   */
+  const workouts = useLiveQuery(async () => {
+    const span = daysInMonth(month);
+    return exercisesInRange(span[0]!, span[span.length - 1]!);
+  }, [month]);
+
+  // `trainedDays` is the one definition of "there was a workout here", shared
+  // with Move's week strip, so the tint and the strip cannot disagree.
+  const trained = useMemo(() => new Set(trainedDays(workouts ?? [])), [workouts]);
+
+  const setsByDay = useMemo(() => {
+    const map = new Map<DayKey, ExerciseEntry[]>();
+    for (const row of workouts ?? []) {
+      if (row.sets.length === 0) continue;
+      const list = map.get(row.day);
+      if (list) list.push(row);
+      else map.set(row.day, [row]);
+    }
+    return map;
+  }, [workouts]);
+
   const byDay = useMemo(() => {
     const map = new Map<DayKey, WorkEvent[]>();
     for (const e of events ?? []) {
@@ -116,7 +130,7 @@ export function WorkPage() {
   }, [events]);
 
   const days = daysInMonth(month);
-  const lead = weekdayOf(days[0]);
+  const lead = sundayIndex(days[0]);
   const [year, monthNumber] = month.split('-').map(Number);
   const selectedEvents = byDay.get(selected) ?? [];
 
@@ -165,6 +179,7 @@ export function WorkPage() {
               type="button"
               className="cal-day"
               data-load={grade > 0 ? String(grade) : undefined}
+              data-workout={trained.has(day) ? 'true' : undefined}
               data-today={day === today ? 'true' : undefined}
               data-selected={day === selected ? 'true' : undefined}
               aria-pressed={day === selected}
@@ -191,6 +206,7 @@ export function WorkPage() {
         day={selected}
         today={today}
         events={selectedEvents}
+        workouts={setsByDay.get(selected) ?? []}
         memberId={identity?.memberId ?? null}
         onJumpToMonth={(next) => {
           setMonth(monthOf(next));
@@ -207,12 +223,15 @@ function DaySheet({
   day,
   today,
   events,
+  workouts,
   memberId,
   onJumpToMonth,
 }: {
   day: DayKey;
   today: DayKey;
   events: WorkEvent[];
+  /** The day's exercise entries, both members', already filtered to ones with sets. */
+  workouts: ExerciseEntry[];
   memberId: string | null;
   onJumpToMonth: (day: DayKey) => void;
 }) {
@@ -312,6 +331,28 @@ function DaySheet({
   return (
     <section className="cal-sheet">
       <h2 className="section-title">{label}</h2>
+
+      {/* Above the events, because it is the thing the tinted cell was
+          advertising. `summarise` is the Move screen's own line -- "3 sets ·
+          30 reps · 1,200 kg" -- rather than a second way of saying the same
+          numbers, so the calendar cannot drift from the page that owns them.
+
+          Read-only on purpose: this is a calendar showing what happened, and
+          the place to change a workout is the screen with the set grid on it.
+          The link under it goes there rather than reimplementing the form. */}
+      {workouts.length > 0 ? (
+        <ul className="cal-moves">
+          {workouts.map((row) => (
+            <li className="cal-move" key={`${row.memberId}:${row.day}`}>
+              <span className="cal-move-who">
+                {row.memberId === memberId ? 'You' : 'Them'}
+              </span>
+              <span className="cal-move-sets">{summarise(row.sets)}</span>
+              {row.caption ? <span className="cal-move-note">{row.caption}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {events.length === 0 ? (
         <p className="section-sub">Nothing on this day.</p>

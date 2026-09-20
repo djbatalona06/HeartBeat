@@ -90,6 +90,54 @@ export function weekOf(day: DayKey): DayKey[] {
   return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
 }
 
+/* ---- month grids ---------------------------------------------------------- */
+
+/**
+ * The four calculations a month grid needs, in one place.
+ *
+ * `WorkPage` and `CyclePage` each held a byte-for-byte copy of all four, and
+ * `domain/schedule/presets.ts` has a third variant of the same arithmetic in
+ * `monthGrid`. Three copies of a date calculation is three chances for one of
+ * them to be fixed and the others not — and these are the calculations where
+ * that goes wrong quietly, because a grid whose lead padding is off by one
+ * still renders a perfectly plausible month.
+ *
+ * `sundayIndex` is the odd one against `weekdayIndex` above, and both are
+ * right: a month grid heads its columns with Sunday because that is what a
+ * calendar page looks like where this app is used, while a week that something
+ * is *counted inside* starts on Monday. Naming them for the day they count
+ * from is what stops the wrong one being reached for.
+ */
+
+/** The `YYYY-MM` a day belongs to. */
+export function monthOf(day: DayKey): string {
+  return day.slice(0, 7);
+}
+
+/** Sunday = 0 … Saturday = 6, for a month grid's lead padding. */
+export function sundayIndex(day: DayKey): number {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+/** Every day in a `YYYY-MM`, in order. */
+export function daysInMonth(month: string): DayKey[] {
+  const [y, m] = month.split('-').map(Number);
+  // Day 0 of the next month is the last day of this one, which is how this
+  // avoids a leap-year table.
+  const count = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return Array.from({ length: count }, (_, i) => `${y}-${pad(m)}-${pad(i + 1)}`);
+}
+
+/** `YYYY-MM` shifted by whole months, across year boundaries. */
+export function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split('-').map(Number);
+  const total = (y * 12 + (m - 1)) + delta;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${Math.floor(total / 12)}-${pad((total % 12) + 1)}`;
+}
+
 /**
  * One item from a pool, chosen by the day rather than at random.
  *

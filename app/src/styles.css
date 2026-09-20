@@ -2428,6 +2428,70 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   color: var(--color-text);
 }
 
+/* Workouts, in the theme's success colour rather than its accent.
+
+   Three things can mark a day in this app and they must be told apart at a
+   glance: accent is work (the load grade above), danger is the cycle's flow
+   (in the cycle block), and success is a workout. Reusing the accent would
+   make a gym session and a triple-booked Tuesday the same shade of the same
+   colour.
+
+   A left edge rather than a fill, and that is the whole reason this composes.
+   The load tint already owns the cell's background, so a second background
+   would have to win or lose; a bar down the side says "and also a workout"
+   without arguing, and survives the day being selected, being today, and
+   carrying three work events at once. It is why there is no contrast ceiling
+   to respect here the way `data-load` has one -- nothing is drawn on top of
+   it, so the 4.5:1 floor the day number has to clear is untouched. */
+.cal-grid-work .cal-day[data-workout='true']::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--color-success);
+}
+
+/* On the selected day the cell goes solid accent, and a success bar on top of
+   it is two saturated colours fighting in 40 pixels. The accent's own text
+   colour is the one thing guaranteed to read there. */
+.cal-grid-work .cal-day[data-workout='true'][data-selected='true']::before {
+  background: var(--color-accent-text);
+}
+
+/* ---- workouts in the day sheet ---- */
+
+.cal-moves {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.cal-move {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+  background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+}
+
+.cal-move-who { color: var(--color-text-muted); }
+.cal-move-sets { font-variant-numeric: tabular-nums; }
+
+/* The caption, on its own line under the numbers. */
+.cal-move-note {
+  grid-column: 2;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
 .cal-file { margin-top: var(--space-6); }
 
 .cal-file-actions { margin-top: var(--space-3); }
@@ -2867,6 +2931,17 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 }
 
 .ex-caption { margin-top: var(--space-2); resize: vertical; line-height: var(--line-body); }
+
+/* The way through to the month. An underlined text link rather than a button:
+   it is a sideways move to another screen, not the action this one is for --
+   the primary button below it is. */
+.ex-calendar-link {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ex-calendar-link:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+
 
 /* ---- the photo wall --------------------------------------------------------
 

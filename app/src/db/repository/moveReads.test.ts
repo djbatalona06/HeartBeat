@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../database';
-import { photosInRange, workoutDays } from './index';
+import { exercisesInRange, photosInRange, trainedDays, workoutDays } from './index';
 import type { ExerciseEntry, WorkoutPhoto } from '../../domain/types';
 
 /**
@@ -138,5 +138,43 @@ describe('photosInRange', () => {
 
   it('is empty rather than throwing for a week with nothing in it', async () => {
     expect(await photosInRange('2026-09-14', '2026-09-20')).toEqual([]);
+  });
+});
+
+describe('exercisesInRange and trainedDays', () => {
+  it('reads whole entries, so one query answers both questions', async () => {
+    // The calendar needs the sets to summarise and the days to tint. Two reads
+    // of one table for one month is how a grid and its day sheet start
+    // disagreeing with each other.
+    await db.exercises.bulkPut([
+      entry('2026-09-16', HER, SET),
+      { ...entry('2026-09-17', HIM, []), caption: 'Walked instead.' },
+    ]);
+
+    const rows = await exercisesInRange('2026-09-14', '2026-09-20');
+    expect(rows).toHaveLength(2);
+    expect(trainedDays(rows)).toEqual(['2026-09-16']);
+  });
+
+  it('is the same definition workoutDays uses', async () => {
+    await db.exercises.bulkPut([
+      entry('2026-09-16', HER, SET),
+      entry('2026-09-18', HIM, SET),
+    ]);
+    expect(trainedDays(await exercisesInRange('2026-09-14', '2026-09-20')))
+      .toEqual(await workoutDays('2026-09-14', '2026-09-20'));
+  });
+
+  it('counts a day once when both of them trained on it', async () => {
+    await db.exercises.bulkPut([
+      entry('2026-09-16', HER, SET),
+      entry('2026-09-16', HIM, SET),
+    ]);
+    expect(trainedDays(await exercisesInRange('2026-09-14', '2026-09-20')))
+      .toEqual(['2026-09-16']);
+  });
+
+  it('is empty rather than throwing for no rows at all', () => {
+    expect(trainedDays([])).toEqual([]);
   });
 });

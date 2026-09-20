@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
 import { ensureIdentity, putExercise } from '../../db/repository';
@@ -217,6 +218,13 @@ export function ExercisePage() {
 
         <SecondaryAction onClick={addRow}>Add a set</SecondaryAction>
         <p className="set-total">{summarise(sets)}</p>
+        {/* Straight to the month, rather than leaving somebody to find the
+            Work tab and work out that it also holds this. The calendar marks
+            every day with sets on it and shows this same line in its day
+            sheet, so it is genuinely the same information one level up. */}
+        <p className="section-sub">
+          <Link className="ex-calendar-link" to="/work">See the month on the calendar</Link>
+        </p>
       </section>
 
       <section className="sheet">
