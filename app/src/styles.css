@@ -2868,6 +2868,76 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 
 .ex-caption { margin-top: var(--space-2); resize: vertical; line-height: var(--line-body); }
 
+/* ---- the photo wall --------------------------------------------------------
+
+   A week of both members' proofs. auto-fill rather than a fixed column count,
+   so it is two columns on a narrow phone and five on a tablet without a media
+   query per breakpoint. The minimum is generous enough that a photograph is
+   still worth looking at rather than a thumbnail of a thumbnail. */
+.wall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--space-2);
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+}
+
+.wall-cell {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--color-surface-muted);
+}
+
+.wall-shot {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.wall-slot {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+.wall-slot-text { font-size: var(--text-sm); }
+
+/* Whose it is and which day, over the corner of the shot. A caption below each
+   cell would double the grid's height for two words, and the label has to stay
+   legible over an arbitrary photograph -- hence a scrim behind it rather than a
+   colour picked to work against most pictures.
+
+   `--scrim` is mixed from the theme's own base, so the text over it is
+   `--color-text`, which is the one colour every pack guarantees contrasts with
+   base. `--color-base` here would be base-on-base and invisible in both modes. */
+.wall-who,
+.wall-when {
+  position: absolute;
+  bottom: 0;
+  padding: 2px var(--space-2);
+  background: var(--scrim);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+.wall-who { left: 0; border-top-right-radius: var(--radius); }
+.wall-when { right: 0; border-top-left-radius: var(--radius); font-variant-numeric: tabular-nums; }
+
+/* Your own shots carry the accent, so a week of two people reads at a glance.
+   Opaque, and paired with `--color-accent-text`: every pack defines that as
+   the colour that survives being drawn on its accent, and a translucent accent
+   over an unknown photograph guarantees neither. */
+.wall-who[data-mine='true'] {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
 /* ---- the proof ---- */
 
 .proof-grid {

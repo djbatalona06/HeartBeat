@@ -77,6 +77,41 @@ export async function cachePhotoBytes(
 }
 
 /** Everything on this phone whose bytes never reached R2. */
+/**
+ * Every proof in a range of days, from both of you.
+ *
+ * ## Both members, and why that needs no new plumbing
+ *
+ * The partner's rows are already here. `pwa/sync.ts` applies a pulled `photo`
+ * entry without consulting whose it is — there is no `mine` filter on the
+ * entries path at all, deliberately, because the point of the couple is that
+ * each can see the other's day — and `functions/api/entries.ts` serves both
+ * members' rows to either phone. The bytes follow on demand: `/api/media`
+ * authorises on the **couple** segment of the key, so this device's own bearer
+ * can fetch a shot the other phone took. `usePhotoBytes` is already written for
+ * "whoever took it".
+ *
+ * So all that was missing was the read, and it is the bare `day` index rather
+ * than `[memberId+day]` precisely because it must not be scoped to one person.
+ *
+ * ## Newest first, and stable
+ *
+ * Sorted by day descending, then by member and facing, so the order does not
+ * depend on Dexie's traversal. That matters more than it looks: a pulled row's
+ * primary key is synthesised as `<entryId>-<index>` and the whole day is
+ * deleted and re-put on every winning sync, so ids are not stable across
+ * syncs. Anything rendering these must key on `(memberId, day, facing)` — an
+ * id would remount every cell each time the other phone saved anything.
+ */
+export async function photosInRange(from: DayKey, to: DayKey): Promise<WorkoutPhoto[]> {
+  const rows = await db.workoutPhotos.where('day').between(from, to, true, true).toArray();
+  return rows.sort((a, b) => (
+    b.day.localeCompare(a.day)
+      || a.memberId.localeCompare(b.memberId)
+      || a.facing.localeCompare(b.facing)
+  ));
+}
+
 export async function pendingPhotoUploads(memberId: MemberId): Promise<WorkoutPhoto[]> {
   const mine = await db.workoutPhotos.where('memberId').equals(memberId).toArray();
   return mine.filter((row) => row.pendingUpload && row.dataUri);

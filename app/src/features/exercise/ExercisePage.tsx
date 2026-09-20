@@ -6,6 +6,7 @@ import { addDays, startOfWeek, todayKey } from '../../domain/day';
 import { DEFAULT_TIMEZONE, type DayKey } from '../../domain/types';
 import { CameraCapture } from './CameraCapture';
 import { WeekThread } from './WeekThread';
+import { PhotoWall } from './PhotoWall';
 import {
   CAPTION_MAX, NAME_MAX, blankRow, cleanCaption, isWorthSaving, summarise, toRows, toSets,
   type SetRow,
@@ -248,6 +249,11 @@ export function ExercisePage() {
       <button type="button" className="primary" onClick={() => { void save(); }} disabled={!canSave}>
         {saved ? 'Saved' : 'Save the day'}
       </button>
+
+      {/* After the save button, because it looks back rather than asking for
+          anything -- the same order home puts its feed in. The week it shows is
+          the one the strip above is on, so the arrows move both. */}
+      <PhotoWall memberId={memberId} day={day} />
     </div>
   );
 }
