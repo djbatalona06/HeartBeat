@@ -193,6 +193,26 @@ export async function postCycleNudge(token: string, day: string): Promise<void> 
   if (!res.ok) throw await errorFrom(res);
 }
 
+/**
+ * Tell the other phone that a workout went in today.
+ *
+ * Best-effort in the same way, and for the same reason: the sets are a local
+ * write that has to succeed with no signal, and a notification that did not go
+ * out is not a reason to fail the thing the person actually did.
+ *
+ * Safe to call on every save. The endpoint keys the row by couple, day and
+ * recipient and does nothing on conflict, so the first workout of a day tells
+ * them and the rest are no-ops -- see functions/api/movenudge.ts.
+ */
+export async function postMoveNudge(token: string, day: string): Promise<void> {
+  const res = await fetch('/api/movenudge', {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify({ day }),
+  });
+  if (!res.ok) throw await errorFrom(res);
+}
+
 /* ---- notifications -------------------------------------------------------- */
 
 /**

@@ -931,6 +931,46 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   background: var(--color-surface-muted);
 }
 
+/* ---- the headline bar -------------------------------------------------------
+
+   One line at the top of the shell when something good is waiting. It is a
+   link and nothing else -- see features/notifications/NotificationHeader.tsx
+   for why there is no dismiss button -- so all of the styling below is on an
+   anchor, and none of it needs a raw button.
+
+   Accent-tinted rather than filled: a solid accent bar at the top of every
+   screen competes with the page title directly under it, and this is meant to
+   be noticed once and then acted on, not to own the screen. */
+.headline {
+  margin-bottom: var(--space-3);
+}
+.headline-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-4);
+  /* The same 12% the calendar's lightest load grade uses, and for the same
+     reason: past roughly a third, text over it stops clearing 4.5:1 against
+     the palest of the five theme accents. */
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  border: var(--border-width) solid color-mix(in srgb, var(--color-accent) 35%, var(--color-surface));
+  border-radius: var(--radius-large);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: transform var(--motion-fast) var(--ease-soft);
+}
+.headline-link:active { transform: scale(0.99); }
+.headline-link:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+.headline-text { flex: 1; }
+.headline-go {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
 /* ---- tab bar + menu ---------------------------------------------------------
    Six across the bottom, and everything else behind the three-line button.
 

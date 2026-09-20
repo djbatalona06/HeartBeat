@@ -10,6 +10,7 @@ import {
   type SetRow,
 } from './workout';
 import { SecondaryAction } from '../../ui/SecondaryAction';
+import { postMoveNudge } from '../../pwa/api';
 
 /**
  * The Move screen: what you did, in your own words, with proof.
@@ -108,6 +109,18 @@ export function ExercisePage() {
       proofBack: entry?.proofBack,
     });
     setSaved(true);
+
+    // Tell the other phone, and never let that fail this. The sets are already
+    // written above; a notification that did not go out is not a reason to
+    // report the save as broken.
+    //
+    // Only when there is something to announce: saving an emptied day is how
+    // somebody deletes a workout, and "they moved today" is the wrong thing to
+    // send about that. Re-saving is free either way -- the endpoint keys the
+    // row by couple, day and recipient and does nothing on conflict, so the
+    // other phone is told once however many times this runs.
+    const token = settings?.workerSecret;
+    if (token && sets.length > 0) void postMoveNudge(token, day).catch(() => {});
   }
 
   const canSave = Boolean(memberId) && (isWorthSaving(rows, caption) || entry !== undefined);
