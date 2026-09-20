@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
+import { notificationTarget } from '../domain/notify/target';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -47,19 +48,24 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const path = (event.notification.data?.path as string) ?? '/';
-  const scope = self.registration.scope;
+  // Both spellings of a route reduce to one here, and anything that would
+  // leave the app becomes home. Four producers write these paths and they do
+  // not agree on the hash -- see domain/notify/target.ts.
+  const target = notificationTarget(
+    self.registration.scope,
+    event.notification.data?.path as string | undefined,
+  );
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       // Focus an open window rather than spawning a second copy of the app.
       for (const client of clients) {
-        if (client.url.startsWith(scope) && 'focus' in client) {
+        if (client.url.startsWith(self.registration.scope) && 'focus' in client) {
           client.focus();
-          return client.navigate(`${scope}#${path}`).then(() => undefined);
+          return client.navigate(target).then(() => undefined);
         }
       }
-      return self.clients.openWindow(`${scope}#${path}`).then(() => undefined);
+      return self.clients.openWindow(target).then(() => undefined);
     }),
   );
 });
