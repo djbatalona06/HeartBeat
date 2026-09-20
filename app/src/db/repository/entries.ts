@@ -29,6 +29,37 @@ export async function putMood(
   });
 }
 
+/**
+ * Which days in a range had a workout, for whoever asks.
+ *
+ * "Had a workout" means **sets**, not merely a row. An entry can exist holding
+ * nothing but a caption — `isWorthSaving` allows it, and a line about a rest
+ * day is worth keeping — but a day with no sets is not a day somebody trained,
+ * and marking it as one would make the week strip and anything counting a week
+ * disagree with each other. It is the same test `ExercisePage` uses to decide
+ * whether the other phone is worth telling.
+ *
+ * Both members, when `memberId` is omitted. The week strip wants one person's
+ * own week; anything comparing the two wants both, and the compound index
+ * cannot serve that, so the bare `day` index is used instead.
+ */
+export async function workoutDays(
+  from: DayKey,
+  to: DayKey,
+  memberId?: MemberId,
+): Promise<DayKey[]> {
+  const rows = memberId
+    ? await db.exercises
+      .where('[memberId+day]')
+      .between([memberId, from], [memberId, to], true, true)
+      .toArray()
+    : await db.exercises.where('day').between(from, to, true, true).toArray();
+
+  // A set, deduplicated: with both members the same day arrives twice, and the
+  // caller is asking which days were trained rather than how many rows exist.
+  return [...new Set(rows.filter((r) => r.sets.length > 0).map((r) => r.day))].sort();
+}
+
 export async function putExercise(
   memberId: MemberId,
   day: DayKey,

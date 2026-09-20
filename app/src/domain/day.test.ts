@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, dayKey, daysBetween, isoWeekOf } from './day';
+import {
+  addDays, dayKey, daysBetween, isoWeekOf, startOfWeek, weekOf, weekdayIndex,
+} from './day';
 
 const LA = 'America/Los_Angeles';
 
@@ -84,5 +86,70 @@ describe('isoWeekOf', () => {
 
   it('agrees with itself -- the whole point, so two unsynced phones land on the same rotating pair', () => {
     expect(isoWeekOf('2026-09-25')).toBe(isoWeekOf('2026-09-25'));
+  });
+});
+
+describe('weekdayIndex', () => {
+  it('counts from Monday, like isoWeekOf', () => {
+    // 2026-09-14 is a Monday.
+    expect(weekdayIndex('2026-09-14')).toBe(0);
+    expect(weekdayIndex('2026-09-15')).toBe(1);
+    expect(weekdayIndex('2026-09-20')).toBe(6); // Sunday
+  });
+});
+
+describe('startOfWeek', () => {
+  it('finds the Monday', () => {
+    expect(startOfWeek('2026-09-17')).toBe('2026-09-14');
+  });
+
+  it('leaves a Monday alone', () => {
+    expect(startOfWeek('2026-09-14')).toBe('2026-09-14');
+  });
+
+  it('treats Sunday as the end of its week, not the start of the next', () => {
+    // The trap in every Monday-start week implementation.
+    expect(startOfWeek('2026-09-20')).toBe('2026-09-14');
+  });
+
+  it('crosses a month end', () => {
+    // 2026-10-01 is a Thursday; its Monday is in September.
+    expect(startOfWeek('2026-10-01')).toBe('2026-09-28');
+  });
+
+  it('crosses a year end', () => {
+    // 2027-01-01 is a Friday.
+    expect(startOfWeek('2027-01-01')).toBe('2026-12-28');
+  });
+});
+
+describe('weekOf', () => {
+  it('is seven days, Monday first', () => {
+    expect(weekOf('2026-09-17')).toEqual([
+      '2026-09-14', '2026-09-15', '2026-09-16',
+      '2026-09-17', '2026-09-18', '2026-09-19', '2026-09-20',
+    ]);
+  });
+
+  it('gives the same week for every day in it', () => {
+    const week = weekOf('2026-09-14');
+    for (const day of week) {
+      expect(weekOf(day), `${day} landed in a different week`).toEqual(week);
+    }
+  });
+
+  it('agrees with isoWeekOf about which week a day is in', () => {
+    // The reason both live in this file: the wager counts a week and the strip
+    // draws one, and they must not be able to disagree.
+    for (const day of weekOf('2026-09-17')) {
+      expect(isoWeekOf(day)).toBe(isoWeekOf('2026-09-17'));
+    }
+  });
+
+  it('holds across a month end', () => {
+    expect(weekOf('2026-10-01')).toEqual([
+      '2026-09-28', '2026-09-29', '2026-09-30',
+      '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04',
+    ]);
   });
 });

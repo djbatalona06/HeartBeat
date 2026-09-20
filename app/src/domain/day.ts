@@ -52,6 +52,45 @@ export function isoWeekOf(day: DayKey): number {
 }
 
 /**
+ * Monday = 0 … Sunday = 6.
+ *
+ * The same convention `isoWeekOf` above already counts in, and deliberately so:
+ * this app now has one definition of a week, and the weekly wager and the week
+ * strip on Move both hang off it. Two definitions would mean a thread showing
+ * seven days that the wager measuring "this week" disagreed with, which is the
+ * kind of thing nobody notices until a Sunday.
+ *
+ * It is *not* the convention the two month grids use — `WorkPage` and
+ * `CyclePage` head their columns with Sunday. That is a different question: a
+ * month grid is a calendar page and follows the locale's idea of a page, while
+ * a week here is a window with a start and an end that something is counted
+ * inside.
+ */
+export function weekdayIndex(day: DayKey): number {
+  const [y, m, d] = day.split('-').map(Number);
+  return (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
+}
+
+/** The Monday of the week holding `day`. `day` itself, when it is a Monday. */
+export function startOfWeek(day: DayKey): DayKey {
+  return addDays(day, -weekdayIndex(day));
+}
+
+/**
+ * The seven days of the week holding `day`, Monday first.
+ *
+ * Whole calendar days rather than a rolling window back from today, for the
+ * reason `domain/notify/schedule.ts` gives about reminders: a week is a thing
+ * with a Monday, not the last hundred and sixty-eight hours. A rolling window
+ * would also mean the strip re-ordered itself every midnight, so the bubble a
+ * person had learned to reach for moved under their thumb.
+ */
+export function weekOf(day: DayKey): DayKey[] {
+  const monday = startOfWeek(day);
+  return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+}
+
+/**
  * One item from a pool, chosen by the day rather than at random.
  *
  * Arithmetic, and that is the whole point: both phones land on the same

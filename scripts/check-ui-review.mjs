@@ -75,6 +75,15 @@ const RAW_BUTTON_EXEMPT = new Set([
   // The fallback that renders when the theme engine itself has failed, and so
   // cannot import anything that reads a token.
   'components/ErrorBoundary.tsx',
+  // A day cell is not a chip. It carries three independent states -- selected,
+  // today, and trained -- and paints all three from data attributes, which is
+  // how `.cal-day` in the two month grids already works. Bending `Chip` to
+  // pass arbitrary data attributes through for one caller would make the
+  // shared primitive worse. Listed rather than left to the ratchet because the
+  // check is per line and a multi-line `<button` opening tag does not match
+  // it: WorkPage's and CyclePage's day cells are unexamined for the same
+  // reason, and a rule this file passes by accident is not a rule.
+  'features/exercise/WeekThread.tsx',
 ]);
 
 /**

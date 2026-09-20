@@ -2723,6 +2723,88 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 
 .ex-day-step:disabled { opacity: 0.4; }
 
+/* ---- the week thread -------------------------------------------------------
+
+   Seven day bubbles under the Move heading. Three independent states, each on
+   its own data attribute rather than a class permutation: selected, today, and
+   trained. `.cal-day` in the two month grids is the same shape and the same
+   reasoning -- see features/exercise/WeekThread.tsx.
+
+   `flex` with a `--tap` floor rather than `repeat(7, 1fr)`: at 320px seven
+   equal columns give each bubble 40px, under the tap floor the rest of the app
+   holds. Overflowing to a scroll is the honest answer on the narrowest phones,
+   and at every ordinary width all seven fit with room over. */
+.week-thread {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  /* Only bites below roughly 360px, where seven tap targets genuinely do not
+     fit. Padding so a focus ring on the last bubble is not clipped. */
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.week-thread::-webkit-scrollbar { display: none; }
+
+.week-day {
+  position: relative;
+  flex: 1 0 var(--tap);
+  min-width: var(--tap);
+  min-height: var(--tap);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: var(--space-2) 0;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  transition:
+    background var(--motion-fast) var(--ease-soft),
+    transform var(--motion-fast) var(--ease-soft);
+}
+.week-day:active { transform: scale(0.96); }
+.week-day:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+.week-day:disabled { opacity: 0.4; }
+
+.week-day-initial {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1;
+}
+.week-day-num {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Trained. The mark is the bubble's own fill rather than a dot, because a dot
+   plus an initial plus a number in a 48px circle is three things too many.
+   12%, which is where the calendar's load tint starts and for the same
+   contrast reason. */
+.week-day[data-done='true'] {
+  background: color-mix(in srgb, var(--color-success) 16%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-success) 40%, var(--color-surface));
+}
+
+/* Today is a ring, so it survives also being selected or trained -- the same
+   trick `.cal-day[data-today]` uses. */
+.week-day[data-today='true'] {
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-accent);
+}
+
+/* Selected wins the fill outright: it is the one thing the rest of the screen
+   is about, and a trained day that is also selected must not read as merely
+   trained. */
+.week-day[data-on='true'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+.week-day[data-on='true'] .week-day-initial { color: var(--color-accent-text); }
+
 /* ---- the sets ---- */
 
 .set-list {

@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
 import { ensureIdentity, putExercise } from '../../db/repository';
-import { addDays, todayKey } from '../../domain/day';
+import { addDays, startOfWeek, todayKey } from '../../domain/day';
 import { DEFAULT_TIMEZONE, type DayKey } from '../../domain/types';
 import { CameraCapture } from './CameraCapture';
+import { WeekThread } from './WeekThread';
 import {
   CAPTION_MAX, NAME_MAX, blankRow, cleanCaption, isWorthSaving, summarise, toRows, toSets,
   type SetRow,
@@ -134,12 +135,16 @@ export function ExercisePage() {
         <p className="page-sub">What you did today, and what it looked like.</p>
       </header>
 
+      {/* The week, then which day of it. The arrows moved one day at a time
+          and said nothing about the other six, which on a screen whose whole
+          subject is consistency was the wrong thing to show. They are still
+          here, either side, because a week strip cannot reach last Tuesday. */}
       <div className="ex-days">
         <button
           type="button"
           className="ex-day-step"
-          onClick={() => setDay(addDays(day, -1))}
-          aria-label="The day before"
+          onClick={() => setDay(addDays(day, -7))}
+          aria-label="The week before"
         >
           ‹
         </button>
@@ -147,13 +152,18 @@ export function ExercisePage() {
         <button
           type="button"
           className="ex-day-step"
-          onClick={() => setDay(addDays(day, 1))}
-          disabled={day >= today}
-          aria-label="The day after"
+          // Clamped to today rather than landing a week ahead: stepping forward
+          // from a Wednesday in a past week would otherwise select a Wednesday
+          // that has not happened, and the form would offer to log it.
+          onClick={() => { const next = addDays(day, 7); setDay(next > today ? today : next); }}
+          disabled={startOfWeek(day) >= startOfWeek(today)}
+          aria-label="The week after"
         >
           ›
         </button>
       </div>
+
+      <WeekThread memberId={memberId} day={day} today={today} onPick={setDay} />
 
       <section className="sheet">
         <h2 className="section-title">The sets</h2>
