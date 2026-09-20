@@ -17,6 +17,7 @@ import { FirstRunGate } from './features/onboarding/FirstRunGate';
 import { RouteNotFound } from './features/errors/NotHere';
 import { BottomNav } from './ui/layout/BottomNav';
 import { useBadges } from './features/notifications/useBadges';
+import { NotificationHeader } from './features/notifications/NotificationHeader';
 import { ToastHost } from './ui/Toast';
 import { SceneBackdrop } from './features/home/SceneBackdrop';
 import { WelcomePage } from './features/onboarding/WelcomePage';
@@ -106,6 +107,13 @@ export function App() {
                     real once the second phone joins, rather than being redirected
                     away and forgotten. */}
                 <PairGate ready={ready} paired={paired} open={OPEN_WHILE_UNPAIRED}>
+                  {/* Above the routes rather than inside `Screen`, because only
+                      five of the twenty-five pages use `Screen` -- the rest still
+                      write `.page` by hand, so mounting it there would show the
+                      line on a fifth of the app. It renders nothing at all unless
+                      something is waiting, and it is handed the badges `App`
+                      already holds rather than reading its own. */}
+                  <NotificationHeader badges={badges} />
                   {/* Around the routes only. A single page throwing should leave the
                       nav bar and the thread standing, so there is still a way out of
                       the broken screen without force-quitting the app. */}

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { sync } from './sync';
 import { syncHoldings } from './holdingsSync';
 import { flushPetXp } from './petSync';
+import { replanNudges } from './nudgeSync';
 import { loadSettings } from '../db/database';
 import { settleLifeEvents } from '../db/repository';
 
@@ -58,6 +59,12 @@ export function useSync(): void {
         if (settings.memberId && settings.coupleId && !cancelled) {
           await settleLifeEvents(settings.memberId, settings.coupleId);
         }
+
+        // Refill the reminder queue on the same occasions. Last, and on its own
+        // failure path: the queue only plans three days ahead and nothing else
+        // refills it, but a server that will not take the plan must not cost
+        // the day log its round trip. See nudgeSync.ts.
+        if (!cancelled) await replanNudges().catch(() => {});
       } catch {
         // Offline, or the backend is down. Both are ordinary: everything renders
         // from IndexedDB, and the next foreground will try again.

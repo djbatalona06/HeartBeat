@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, dayKey, daysBetween, isoWeekOf } from './day';
+import {
+  addDays, dayKey, daysBetween, daysInMonth, isoWeekOf, monthOf, shiftMonth, startOfWeek, sundayIndex, weekOf, weekdayIndex,
+} from './day';
 
 const LA = 'America/Los_Angeles';
 
@@ -84,5 +86,167 @@ describe('isoWeekOf', () => {
 
   it('agrees with itself -- the whole point, so two unsynced phones land on the same rotating pair', () => {
     expect(isoWeekOf('2026-09-25')).toBe(isoWeekOf('2026-09-25'));
+  });
+});
+
+describe('weekdayIndex', () => {
+  it('counts from Monday, like isoWeekOf', () => {
+    // 2026-09-14 is a Monday.
+    expect(weekdayIndex('2026-09-14')).toBe(0);
+    expect(weekdayIndex('2026-09-15')).toBe(1);
+    expect(weekdayIndex('2026-09-20')).toBe(6); // Sunday
+  });
+});
+
+describe('startOfWeek', () => {
+  it('finds the Monday', () => {
+    expect(startOfWeek('2026-09-17')).toBe('2026-09-14');
+  });
+
+  it('leaves a Monday alone', () => {
+    expect(startOfWeek('2026-09-14')).toBe('2026-09-14');
+  });
+
+  it('treats Sunday as the end of its week, not the start of the next', () => {
+    // The trap in every Monday-start week implementation.
+    expect(startOfWeek('2026-09-20')).toBe('2026-09-14');
+  });
+
+  it('crosses a month end', () => {
+    // 2026-10-01 is a Thursday; its Monday is in September.
+    expect(startOfWeek('2026-10-01')).toBe('2026-09-28');
+  });
+
+  it('crosses a year end', () => {
+    // 2027-01-01 is a Friday.
+    expect(startOfWeek('2027-01-01')).toBe('2026-12-28');
+  });
+});
+
+describe('weekOf', () => {
+  it('is seven days, Monday first', () => {
+    expect(weekOf('2026-09-17')).toEqual([
+      '2026-09-14', '2026-09-15', '2026-09-16',
+      '2026-09-17', '2026-09-18', '2026-09-19', '2026-09-20',
+    ]);
+  });
+
+  it('gives the same week for every day in it', () => {
+    const week = weekOf('2026-09-14');
+    for (const day of week) {
+      expect(weekOf(day), `${day} landed in a different week`).toEqual(week);
+    }
+  });
+
+  it('agrees with isoWeekOf about which week a day is in', () => {
+    // The reason both live in this file: the wager counts a week and the strip
+    // draws one, and they must not be able to disagree.
+    for (const day of weekOf('2026-09-17')) {
+      expect(isoWeekOf(day)).toBe(isoWeekOf('2026-09-17'));
+    }
+  });
+
+  it('holds across a month end', () => {
+    expect(weekOf('2026-10-01')).toEqual([
+      '2026-09-28', '2026-09-29', '2026-09-30',
+      '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04',
+    ]);
+  });
+});
+
+/**
+ * The month-grid arithmetic, which `WorkPage` and `CyclePage` each held their
+ * own byte-for-byte copy of. These are the calculations where a bug is quiet:
+ * a grid whose lead padding is off by one still renders a plausible month.
+ */
+describe('monthOf', () => {
+  it('is the YYYY-MM a day belongs to', () => {
+    expect(monthOf('2026-09-20')).toBe('2026-09');
+    expect(monthOf('2026-01-01')).toBe('2026-01');
+  });
+});
+
+describe('sundayIndex', () => {
+  it('counts from Sunday, unlike weekdayIndex', () => {
+    // 2026-09-20 is a Sunday: 0 here, 6 on the Monday-start count.
+    expect(sundayIndex('2026-09-20')).toBe(0);
+    expect(sundayIndex('2026-09-14')).toBe(1); // Monday
+    expect(sundayIndex('2026-09-19')).toBe(6); // Saturday
+  });
+
+  it('disagrees with weekdayIndex exactly as intended', () => {
+    // Both are right, and naming them for the day they count from is what
+    // stops the wrong one being reached for in a month grid.
+    expect(sundayIndex('2026-09-14')).toBe(1);
+    expect(weekdayIndex('2026-09-14')).toBe(0);
+  });
+});
+
+describe('daysInMonth', () => {
+  it('covers a 30-day month', () => {
+    const days = daysInMonth('2026-09');
+    expect(days).toHaveLength(30);
+    expect(days[0]).toBe('2026-09-01');
+    expect(days[29]).toBe('2026-09-30');
+  });
+
+  it('covers a 31-day month', () => {
+    expect(daysInMonth('2026-01')).toHaveLength(31);
+  });
+
+  it('gets February right in a common year', () => {
+    expect(daysInMonth('2026-02')).toHaveLength(28);
+  });
+
+  it('gets February right in a leap year', () => {
+    expect(daysInMonth('2028-02')).toHaveLength(29);
+    expect(daysInMonth('2028-02').at(-1)).toBe('2028-02-29');
+  });
+
+  it('gets the century rule right', () => {
+    // 1900 is not a leap year; 2000 is. The rule a hand-written table forgets.
+    expect(daysInMonth('1900-02')).toHaveLength(28);
+    expect(daysInMonth('2000-02')).toHaveLength(29);
+  });
+
+  it('zero-pads every day key', () => {
+    for (const day of daysInMonth('2026-09')) {
+      expect(day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+  });
+});
+
+describe('shiftMonth', () => {
+  it('moves within a year', () => {
+    expect(shiftMonth('2026-09', 1)).toBe('2026-10');
+    expect(shiftMonth('2026-09', -1)).toBe('2026-08');
+  });
+
+  it('crosses a year end in both directions', () => {
+    expect(shiftMonth('2026-12', 1)).toBe('2027-01');
+    expect(shiftMonth('2026-01', -1)).toBe('2025-12');
+  });
+
+  it('moves more than a year', () => {
+    expect(shiftMonth('2026-09', 12)).toBe('2027-09');
+    expect(shiftMonth('2026-09', -12)).toBe('2025-09');
+    expect(shiftMonth('2026-09', 16)).toBe('2028-01');
+  });
+
+  it('is its own inverse', () => {
+    for (const month of ['2026-01', '2026-09', '2026-12']) {
+      for (const delta of [1, -1, 7, -7, 25]) {
+        expect(shiftMonth(shiftMonth(month, delta), -delta)).toBe(month);
+      }
+    }
+  });
+
+  it('stays a valid month every step of two years', () => {
+    let month = '2026-01';
+    for (let i = 0; i < 24; i += 1) {
+      month = shiftMonth(month, 1);
+      expect(month).toMatch(/^\d{4}-(0[1-9]|1[0-2])$/);
+      expect(daysInMonth(month).length).toBeGreaterThan(27);
+    }
   });
 });

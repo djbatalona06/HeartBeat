@@ -22,7 +22,7 @@ import { authenticate, json, type Env } from './_lib';
  * import from `src/` — which means nothing but a test stops them drifting.
  */
 export const KINDS = [
-  'inventory', 'pet', 'avatar', 'quest', 'task', 'lifeEvent', 'cheer', 'world',
+  'inventory', 'pet', 'avatar', 'quest', 'task', 'lifeEvent', 'cheer', 'world', 'wager',
 ] as const;
 type Kind = (typeof KINDS)[number];
 
@@ -44,7 +44,7 @@ type Kind = (typeof KINDS)[number];
  * be imported into this list. Widening this one hands the other phone the right
  * to rewrite rows it did not make.
  */
-export const PARTNER_WRITABLE: readonly Kind[] = ['quest', 'world'];
+export const PARTNER_WRITABLE: readonly Kind[] = ['quest', 'world', 'wager'];
 
 /**
  * Per-row ceiling. These rows are small by construction — an inventory row is
@@ -91,7 +91,7 @@ export const UPSERT_SQL =
      -- — that is the whole point of the feed — but seeing is decided
      -- client-side by PARTNER_VISIBLE_KINDS. Each row still has exactly one
      -- writer for life, and this clause is what holds them to it.
-     AND (holdings.member_id = excluded.member_id OR excluded.kind IN ('quest', 'world'))`;
+     AND (holdings.member_id = excluded.member_id OR excluded.kind IN ('quest', 'world', 'wager'))`;
 
 function utf8Bytes(text: string): number {
   return new TextEncoder().encode(text).length;

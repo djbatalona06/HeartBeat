@@ -29,6 +29,61 @@ export async function putMood(
   });
 }
 
+/**
+ * Every exercise entry in a range of days.
+ *
+ * Both members, when `memberId` is omitted. The week strip on Move wants one
+ * person's own week; the calendar wants both, because it already shows both
+ * partners' work events in one grid and a workout mark that only counted one
+ * of them would be the odd thing out. The compound index cannot serve the
+ * couple-wide case, so that one walks the bare `day` index instead.
+ *
+ * Whole entries rather than a summary, because the two callers want different
+ * things out of them — which days to tint, and what the sets actually were —
+ * and two reads of one table to answer one question about a month is how the
+ * grid and its day sheet start disagreeing.
+ */
+export async function exercisesInRange(
+  from: DayKey,
+  to: DayKey,
+  memberId?: MemberId,
+): Promise<ExerciseEntry[]> {
+  return memberId
+    ? db.exercises
+      .where('[memberId+day]')
+      .between([memberId, from], [memberId, to], true, true)
+      .toArray()
+    : db.exercises.where('day').between(from, to, true, true).toArray();
+}
+
+/**
+ * Which days in a range had a workout on them.
+ *
+ * "Had a workout" means **sets**, not merely a row. An entry can exist holding
+ * nothing but a caption — `isWorthSaving` allows it, and a line about a rest
+ * day is worth keeping — but a day with no sets is not a day somebody trained,
+ * and marking it as one would make the week strip, the calendar and anything
+ * counting a week disagree with each other. It is the same test `ExercisePage`
+ * uses to decide whether the other phone is worth telling.
+ *
+ * One definition, in one place: the calendar derives its tint from
+ * `trainedDays` over the same rows rather than asking the database a second
+ * question with a second filter.
+ */
+export function trainedDays(rows: readonly ExerciseEntry[]): DayKey[] {
+  // A set, deduplicated: with both members the same day arrives twice, and the
+  // caller is asking which days were trained rather than how many rows exist.
+  return [...new Set(rows.filter((r) => r.sets.length > 0).map((r) => r.day))].sort();
+}
+
+export async function workoutDays(
+  from: DayKey,
+  to: DayKey,
+  memberId?: MemberId,
+): Promise<DayKey[]> {
+  return trainedDays(await exercisesInRange(from, to, memberId));
+}
+
 export async function putExercise(
   memberId: MemberId,
   day: DayKey,

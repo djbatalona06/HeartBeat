@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
 import { ensureIdentity, putExercise } from '../../db/repository';
-import { addDays, todayKey } from '../../domain/day';
+import { addDays, startOfWeek, todayKey } from '../../domain/day';
 import { DEFAULT_TIMEZONE, type DayKey } from '../../domain/types';
 import { CameraCapture } from './CameraCapture';
+import { WeekThread } from './WeekThread';
+import { PhotoWall } from './PhotoWall';
+import { WagerPanel } from './WagerPanel';
 import {
   CAPTION_MAX, NAME_MAX, blankRow, cleanCaption, isWorthSaving, summarise, toRows, toSets,
   type SetRow,
 } from './workout';
 import { SecondaryAction } from '../../ui/SecondaryAction';
+import { postMoveNudge } from '../../pwa/api';
 
 /**
  * The Move screen: what you did, in your own words, with proof.
@@ -108,6 +113,18 @@ export function ExercisePage() {
       proofBack: entry?.proofBack,
     });
     setSaved(true);
+
+    // Tell the other phone, and never let that fail this. The sets are already
+    // written above; a notification that did not go out is not a reason to
+    // report the save as broken.
+    //
+    // Only when there is something to announce: saving an emptied day is how
+    // somebody deletes a workout, and "they moved today" is the wrong thing to
+    // send about that. Re-saving is free either way -- the endpoint keys the
+    // row by couple, day and recipient and does nothing on conflict, so the
+    // other phone is told once however many times this runs.
+    const token = settings?.workerSecret;
+    if (token && sets.length > 0) void postMoveNudge(token, day).catch(() => {});
   }
 
   const canSave = Boolean(memberId) && (isWorthSaving(rows, caption) || entry !== undefined);
@@ -121,12 +138,16 @@ export function ExercisePage() {
         <p className="page-sub">What you did today, and what it looked like.</p>
       </header>
 
+      {/* The week, then which day of it. The arrows moved one day at a time
+          and said nothing about the other six, which on a screen whose whole
+          subject is consistency was the wrong thing to show. They are still
+          here, either side, because a week strip cannot reach last Tuesday. */}
       <div className="ex-days">
         <button
           type="button"
           className="ex-day-step"
-          onClick={() => setDay(addDays(day, -1))}
-          aria-label="The day before"
+          onClick={() => setDay(addDays(day, -7))}
+          aria-label="The week before"
         >
           ‹
         </button>
@@ -134,13 +155,27 @@ export function ExercisePage() {
         <button
           type="button"
           className="ex-day-step"
-          onClick={() => setDay(addDays(day, 1))}
-          disabled={day >= today}
-          aria-label="The day after"
+          // Clamped to today rather than landing a week ahead: stepping forward
+          // from a Wednesday in a past week would otherwise select a Wednesday
+          // that has not happened, and the form would offer to log it.
+          onClick={() => { const next = addDays(day, 7); setDay(next > today ? today : next); }}
+          disabled={startOfWeek(day) >= startOfWeek(today)}
+          aria-label="The week after"
         >
           ›
         </button>
       </div>
+
+      <WeekThread memberId={memberId} day={day} today={today} onPick={setDay} />
+
+      {/* Before the sets, because it is the reason somebody is about to log
+          one. The week it shows follows the strip above. */}
+      <WagerPanel
+        coupleId={settings?.coupleId ?? null}
+        memberId={memberId}
+        day={day}
+        today={today}
+      />
 
       <section className="sheet">
         <h2 className="section-title">The sets</h2>
@@ -193,6 +228,13 @@ export function ExercisePage() {
 
         <SecondaryAction onClick={addRow}>Add a set</SecondaryAction>
         <p className="set-total">{summarise(sets)}</p>
+        {/* Straight to the month, rather than leaving somebody to find the
+            Work tab and work out that it also holds this. The calendar marks
+            every day with sets on it and shows this same line in its day
+            sheet, so it is genuinely the same information one level up. */}
+        <p className="section-sub">
+          <Link className="ex-calendar-link" to="/work">See the month on the calendar</Link>
+        </p>
       </section>
 
       <section className="sheet">
@@ -225,6 +267,11 @@ export function ExercisePage() {
       <button type="button" className="primary" onClick={() => { void save(); }} disabled={!canSave}>
         {saved ? 'Saved' : 'Save the day'}
       </button>
+
+      {/* After the save button, because it looks back rather than asking for
+          anything -- the same order home puts its feed in. The week it shows is
+          the one the strip above is on, so the arrows move both. */}
+      <PhotoWall memberId={memberId} day={day} />
     </div>
   );
 }

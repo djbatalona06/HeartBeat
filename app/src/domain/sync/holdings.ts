@@ -1,7 +1,7 @@
 import type { Avatar, Cheer, LifeEvent, Task } from '../rpg/types';
 import type { InventoryItem } from '../rpg/inventory';
 import type { PetInstance } from '../rpg/pets';
-import type { Quest } from '../types';
+import type { Quest, Wager } from '../types';
 import type { WorldProgress } from '../rpg/world';
 
 /**
@@ -22,7 +22,7 @@ import type { WorldProgress } from '../rpg/world';
  */
 
 export const HOLDING_KINDS = [
-  'inventory', 'pet', 'avatar', 'quest', 'task', 'lifeEvent', 'cheer', 'world',
+  'inventory', 'pet', 'avatar', 'quest', 'task', 'lifeEvent', 'cheer', 'world', 'wager',
 ] as const;
 export type HoldingKind = (typeof HOLDING_KINDS)[number];
 
@@ -59,10 +59,10 @@ export type HoldingKind = (typeof HOLDING_KINDS)[number];
  * rows it did not make. Keeping them one list made the second look like the
  * first, which is exactly how that right gets granted by accident.
  */
-export const PARTNER_WRITABLE_KINDS: readonly HoldingKind[] = ['quest', 'world'];
+export const PARTNER_WRITABLE_KINDS: readonly HoldingKind[] = ['quest', 'world', 'wager'];
 
 export const PARTNER_VISIBLE_KINDS: readonly HoldingKind[] = [
-  'quest', 'lifeEvent', 'cheer', 'world',
+  'quest', 'lifeEvent', 'cheer', 'world', 'wager',
 ];
 
 export function isPartnerWritable(kind: HoldingKind): boolean {
@@ -73,9 +73,10 @@ export function isPartnerVisible(kind: HoldingKind): boolean {
   return PARTNER_VISIBLE_KINDS.includes(kind);
 }
 
-/** A local row of any of the eight kinds. All of them carry `updatedAt`. */
+/** A local row of any of the nine kinds. All of them carry `updatedAt`. */
 export type HoldingRow =
-  | InventoryItem | PetInstance | Avatar | Quest | Task | LifeEvent | Cheer | WorldProgress;
+  | InventoryItem | PetInstance | Avatar | Quest | Task | LifeEvent | Cheer | WorldProgress
+  | Wager;
 
 export interface WireHolding {
   /** The local primary key, carried through unchanged. */
@@ -191,8 +192,8 @@ export function shouldApply(
  * upsert's member check fails, nothing changes, and the row still counts itself
  * as written, on every sync for the life of the couple.
  *
- * `undefined` means the row is the couple's and either of them may write it,
- * which is the quest and nothing else.
+ * `undefined` means the row is the couple's and either of them may write it:
+ * the quest, Eve's Garden's world, and the weekly wager.
  */
 export function writerOf(kind: HoldingKind, row: HoldingRow): string | undefined {
   if (isPartnerWritable(kind)) return undefined;

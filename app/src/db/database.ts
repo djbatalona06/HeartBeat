@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type {
   Achievement, ChatMessage, CycleEntry, ExerciseEntry, Member, MoodEntry, Pet, Quest, Settings,
-  WorkEvent, WorkoutPhoto,
+  Wager, WorkEvent, WorkoutPhoto,
 } from '../domain/types';
 import { DEFAULT_SETTINGS } from '../domain/types';
 import type {
@@ -59,6 +59,9 @@ export class HeartBeatDB extends Dexie {
 
   // v10 — how far through Eve's Garden the couple have got.
   worldProgress!: Table<WorldProgress, string>;
+
+  // v11 — the weekly wager: one row per couple per week.
+  wagers!: Table<Wager, string>;
 
   constructor() {
     super('heartbeat');
@@ -189,6 +192,27 @@ export class HeartBeatDB extends Dexie {
     // `get(coupleId)`.
     this.version(10).stores({
       worldProgress: 'coupleId',
+    });
+
+    // v11 adds the weekly wager: the number the two of you aimed at in a given
+    // week and whether the pet was paid for it.
+    //
+    // One row per couple per week, keyed by an id derived from both -- see the
+    // note on `Wager`. Derived rather than random so that two phones each
+    // starting a wager on a Monday morning converge on one row instead of
+    // leaving the couple holding two, which nothing in the sync layer could
+    // resolve afterwards.
+    //
+    // It syncs as a partner-writable holding kind, like the quest and the
+    // world, because it is taken on together and either of you may start or
+    // change it. Widening that list is called out as a security decision in
+    // domain/sync/holdings.ts; this is the third kind to earn it, and for the
+    // same reason the quest did.
+    //
+    // `[coupleId+weekStart]` is the only read that matters -- "what did we
+    // stake this week" -- and `coupleId` alone serves the history.
+    this.version(11).stores({
+      wagers: 'id, coupleId, weekStart, [coupleId+weekStart]',
     });
   }
 }

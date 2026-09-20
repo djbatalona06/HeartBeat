@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings, saveSettings } from '../../db/database';
 import { ensureIdentity, putCycle } from '../../db/repository';
-import { addDays, daysBetween, todayKey } from '../../domain/day';
+import {
+  addDays, daysBetween, daysInMonth, monthOf, shiftMonth, sundayIndex, todayKey,
+} from '../../domain/day';
 import { DEFAULT_TIMEZONE, type CycleEntry, type DayKey } from '../../domain/types';
 import { FLOWS, MOODS, SYMPTOM_GROUPS } from '../../domain/cycle/taxonomy';
 import { daysLate, periodStartsFrom, predict, type Prediction } from '../../domain/cycle/predict';
@@ -28,29 +30,6 @@ const MONTHS = [
 ];
 
 const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-function monthOf(day: DayKey): string {
-  return day.slice(0, 7);
-}
-
-function weekdayOf(day: DayKey): number {
-  const [y, m, d] = day.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-}
-
-function daysInMonth(month: string): DayKey[] {
-  const [y, m] = month.split('-').map(Number);
-  const count = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return Array.from({ length: count }, (_, i) => `${y}-${pad(m)}-${pad(i + 1)}`);
-}
-
-function shiftMonth(month: string, delta: number): string {
-  const [y, m] = month.split('-').map(Number);
-  const total = y * 12 + (m - 1) + delta;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${Math.floor(total / 12)}-${pad((total % 12) + 1)}`;
-}
 
 /** "Saturday 29 August" — the calendar's own way of naming a day. */
 function longDay(day: DayKey): string {
@@ -137,7 +116,7 @@ function CycleBody() {
   }
 
   const days = daysInMonth(month);
-  const lead = weekdayOf(days[0]);
+  const lead = sundayIndex(days[0]);
   const [year, monthNumber] = month.split('-').map(Number);
   const canLog = Boolean(tracksCycle && myId);
 

@@ -2,15 +2,7 @@ import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { db } from '../../db/database';
 import {
-  REKEY_TABLES,
-  isUsableIdentity,
-  needsWholeTable,
-  planRekey,
-  rehomes,
-  rekeyRow,
-  sameIdentity,
-  slotOf,
-  type TableRekey,
+  REKEY_TABLES, isPaired, isUsableIdentity, needsWholeTable, planRekey, rehomes, rekeyRow, sameIdentity, slotOf, type TableRekey,
 } from './rekey';
 
 /**
@@ -321,5 +313,37 @@ describe('tables that gained a writer after the allowlist was written', () => {
     // `settings` holds the identity rather than referring to it. Anything else
     // on this list needs a reason that is still true.
     expect(NOT_RE_KEYED).toEqual(['settings']);
+  });
+});
+
+describe('isPaired', () => {
+  /**
+   * The mistake this closes. `ensureIdentity` mints *and saves* a memberId and
+   * a coupleId on first launch so the app works before there is a partner, so
+   * `settings.coupleId` is set on a phone that has never paired with anybody.
+   * The dashboard read it as the test and told a lone user "Paired" from their
+   * first launch onwards.
+   */
+  it('is false for a lone phone that has minted its own ids', () => {
+    expect(isPaired({ coupleId: 'couple-1' })).toBe(false);
+  });
+
+  it('is true only once the server has handed over a token', () => {
+    expect(isPaired({ coupleId: 'couple-1', workerSecret: 'tok' })).toBe(true);
+  });
+
+  it('is false for a token with no couple, which should never happen', () => {
+    expect(isPaired({ workerSecret: 'tok' })).toBe(false);
+  });
+
+  it('is false rather than throwing before settings have loaded', () => {
+    expect(isPaired(undefined)).toBe(false);
+    expect(isPaired(null)).toBe(false);
+    expect(isPaired({})).toBe(false);
+  });
+
+  it('treats an empty string as absent', () => {
+    expect(isPaired({ coupleId: '', workerSecret: 'tok' })).toBe(false);
+    expect(isPaired({ coupleId: 'couple-1', workerSecret: '' })).toBe(false);
   });
 });

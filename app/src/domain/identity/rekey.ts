@@ -115,6 +115,14 @@ export const REKEY_TABLES: readonly TableRekey[] = [
   // Couple-level, both of them: no memberId to move, and no slot to collide on
   // — pairing mints a fresh coupleId, so nothing is already sitting there.
   { table: 'quests', primaryKey: 'id', memberFields: [], coupleFields: ['coupleId'] },
+  // The weekly wager, the same shape as the quest. Its `id` embeds the old
+  // coupleId and `rehomes()` is false, so the row is re-keyed in place with
+  // that id still baked in -- harmless, because every read is by `coupleId`
+  // and `[coupleId+weekStart]` rather than by id, and the id only has to be
+  // *stable* for the upsert to converge rather than to mean anything. A wager
+  // started before pairing therefore survives it, which is the point: the
+  // week's effort was real.
+  { table: 'wagers', primaryKey: 'id', memberFields: [], coupleFields: ['coupleId'] },
   { table: 'achievements', primaryKey: 'id', memberFields: [], coupleFields: ['coupleId'] },
   { table: 'messages', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   // Not `oneRowPerDay`: a person can write more than once in a day, and the
@@ -138,6 +146,30 @@ export function sameIdentity(a: Identity, b: Identity): boolean {
 /** True when an identity is complete enough to move rows onto or off. */
 export function isUsableIdentity(id: Partial<Identity> | undefined | null): id is Identity {
   return Boolean(id && id.memberId && id.coupleId);
+}
+
+/**
+ * Whether this phone actually has a partner.
+ *
+ * ## The trap this exists to close
+ *
+ * `coupleId` alone is not the test, and reading it as one is a mistake that
+ * looks right. `ensureIdentity` **mints and saves** a memberId and a coupleId
+ * the first time anything needs them, so a phone that has never paired with
+ * anybody still has both — and `settings.coupleId ? 'Paired' : 'Not paired'`
+ * told a lone user they were paired from their first launch onwards.
+ *
+ * The honest test is the token, because that is the thing only the server can
+ * hand over: `workerSecret` exists once pairing has actually happened. It is
+ * what `usePairing` has always used and what every authenticated call sends.
+ *
+ * So the definition lives here, once, rather than being spelled out at each
+ * call site — which is how the two spellings came to disagree.
+ */
+export function isPaired(
+  settings: { coupleId?: string; workerSecret?: string } | undefined | null,
+): boolean {
+  return Boolean(settings?.coupleId && settings.workerSecret);
 }
 
 /** True when a re-key moves the primary key rather than only fields on the row. */

@@ -52,6 +52,93 @@ export function isoWeekOf(day: DayKey): number {
 }
 
 /**
+ * Monday = 0 … Sunday = 6.
+ *
+ * The same convention `isoWeekOf` above already counts in, and deliberately so:
+ * this app now has one definition of a week, and the weekly wager and the week
+ * strip on Move both hang off it. Two definitions would mean a thread showing
+ * seven days that the wager measuring "this week" disagreed with, which is the
+ * kind of thing nobody notices until a Sunday.
+ *
+ * It is *not* the convention the two month grids use — `WorkPage` and
+ * `CyclePage` head their columns with Sunday. That is a different question: a
+ * month grid is a calendar page and follows the locale's idea of a page, while
+ * a week here is a window with a start and an end that something is counted
+ * inside.
+ */
+export function weekdayIndex(day: DayKey): number {
+  const [y, m, d] = day.split('-').map(Number);
+  return (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
+}
+
+/** The Monday of the week holding `day`. `day` itself, when it is a Monday. */
+export function startOfWeek(day: DayKey): DayKey {
+  return addDays(day, -weekdayIndex(day));
+}
+
+/**
+ * The seven days of the week holding `day`, Monday first.
+ *
+ * Whole calendar days rather than a rolling window back from today, for the
+ * reason `domain/notify/schedule.ts` gives about reminders: a week is a thing
+ * with a Monday, not the last hundred and sixty-eight hours. A rolling window
+ * would also mean the strip re-ordered itself every midnight, so the bubble a
+ * person had learned to reach for moved under their thumb.
+ */
+export function weekOf(day: DayKey): DayKey[] {
+  const monday = startOfWeek(day);
+  return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+}
+
+/* ---- month grids ---------------------------------------------------------- */
+
+/**
+ * The four calculations a month grid needs, in one place.
+ *
+ * `WorkPage` and `CyclePage` each held a byte-for-byte copy of all four, and
+ * `domain/schedule/presets.ts` has a third variant of the same arithmetic in
+ * `monthGrid`. Three copies of a date calculation is three chances for one of
+ * them to be fixed and the others not — and these are the calculations where
+ * that goes wrong quietly, because a grid whose lead padding is off by one
+ * still renders a perfectly plausible month.
+ *
+ * `sundayIndex` is the odd one against `weekdayIndex` above, and both are
+ * right: a month grid heads its columns with Sunday because that is what a
+ * calendar page looks like where this app is used, while a week that something
+ * is *counted inside* starts on Monday. Naming them for the day they count
+ * from is what stops the wrong one being reached for.
+ */
+
+/** The `YYYY-MM` a day belongs to. */
+export function monthOf(day: DayKey): string {
+  return day.slice(0, 7);
+}
+
+/** Sunday = 0 … Saturday = 6, for a month grid's lead padding. */
+export function sundayIndex(day: DayKey): number {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+/** Every day in a `YYYY-MM`, in order. */
+export function daysInMonth(month: string): DayKey[] {
+  const [y, m] = month.split('-').map(Number);
+  // Day 0 of the next month is the last day of this one, which is how this
+  // avoids a leap-year table.
+  const count = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return Array.from({ length: count }, (_, i) => `${y}-${pad(m)}-${pad(i + 1)}`);
+}
+
+/** `YYYY-MM` shifted by whole months, across year boundaries. */
+export function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split('-').map(Number);
+  const total = (y * 12 + (m - 1)) + delta;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${Math.floor(total / 12)}-${pad((total % 12) + 1)}`;
+}
+
+/**
  * One item from a pool, chosen by the day rather than at random.
  *
  * Arithmetic, and that is the whole point: both phones land on the same

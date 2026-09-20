@@ -352,6 +352,23 @@ body {
 .home-equipped-item { width: 32px; height: 32px; }
 .home-equipped-item .gear-art { width: 100%; height: 100%; }
 
+/* ---- the invitation on a lone phone ----------------------------------------
+
+   Shown only while unpaired. Two tiles rather than a grid of six: the whole
+   point is that there is one thing worth doing here, and a wall of equal
+   choices is what the old six-door ring got wrong. `.tile*` is already in this
+   stylesheet from when the dashboard was a grid. */
+.home-invite {
+  margin-bottom: var(--space-4);
+}
+
+.home-invite-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
 /* ---- the home pet card ----------------------------------------------------
    The pet's name, its level and its bar. The level is always derived from XP
    rather than read off the row — see `DashboardPage.tsx`. */
@@ -929,6 +946,46 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   padding: 1px 5px;
   border-radius: 5px;
   background: var(--color-surface-muted);
+}
+
+/* ---- the headline bar -------------------------------------------------------
+
+   One line at the top of the shell when something good is waiting. It is a
+   link and nothing else -- see features/notifications/NotificationHeader.tsx
+   for why there is no dismiss button -- so all of the styling below is on an
+   anchor, and none of it needs a raw button.
+
+   Accent-tinted rather than filled: a solid accent bar at the top of every
+   screen competes with the page title directly under it, and this is meant to
+   be noticed once and then acted on, not to own the screen. */
+.headline {
+  margin-bottom: var(--space-3);
+}
+.headline-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-4);
+  /* The same 12% the calendar's lightest load grade uses, and for the same
+     reason: past roughly a third, text over it stops clearing 4.5:1 against
+     the palest of the five theme accents. */
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  border: var(--border-width) solid color-mix(in srgb, var(--color-accent) 35%, var(--color-surface));
+  border-radius: var(--radius-large);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: transform var(--motion-fast) var(--ease-soft);
+}
+.headline-link:active { transform: scale(0.99); }
+.headline-link:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+.headline-text { flex: 1; }
+.headline-go {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
 }
 
 /* ---- tab bar + menu ---------------------------------------------------------
@@ -2388,6 +2445,70 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   color: var(--color-text);
 }
 
+/* Workouts, in the theme's success colour rather than its accent.
+
+   Three things can mark a day in this app and they must be told apart at a
+   glance: accent is work (the load grade above), danger is the cycle's flow
+   (in the cycle block), and success is a workout. Reusing the accent would
+   make a gym session and a triple-booked Tuesday the same shade of the same
+   colour.
+
+   A left edge rather than a fill, and that is the whole reason this composes.
+   The load tint already owns the cell's background, so a second background
+   would have to win or lose; a bar down the side says "and also a workout"
+   without arguing, and survives the day being selected, being today, and
+   carrying three work events at once. It is why there is no contrast ceiling
+   to respect here the way `data-load` has one -- nothing is drawn on top of
+   it, so the 4.5:1 floor the day number has to clear is untouched. */
+.cal-grid-work .cal-day[data-workout='true']::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--color-success);
+}
+
+/* On the selected day the cell goes solid accent, and a success bar on top of
+   it is two saturated colours fighting in 40 pixels. The accent's own text
+   colour is the one thing guaranteed to read there. */
+.cal-grid-work .cal-day[data-workout='true'][data-selected='true']::before {
+  background: var(--color-accent-text);
+}
+
+/* ---- workouts in the day sheet ---- */
+
+.cal-moves {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.cal-move {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+  background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+}
+
+.cal-move-who { color: var(--color-text-muted); }
+.cal-move-sets { font-variant-numeric: tabular-nums; }
+
+/* The caption, on its own line under the numbers. */
+.cal-move-note {
+  grid-column: 2;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
 .cal-file { margin-top: var(--space-6); }
 
 .cal-file-actions { margin-top: var(--space-3); }
@@ -2683,6 +2804,88 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 
 .ex-day-step:disabled { opacity: 0.4; }
 
+/* ---- the week thread -------------------------------------------------------
+
+   Seven day bubbles under the Move heading. Three independent states, each on
+   its own data attribute rather than a class permutation: selected, today, and
+   trained. `.cal-day` in the two month grids is the same shape and the same
+   reasoning -- see features/exercise/WeekThread.tsx.
+
+   `flex` with a `--tap` floor rather than `repeat(7, 1fr)`: at 320px seven
+   equal columns give each bubble 40px, under the tap floor the rest of the app
+   holds. Overflowing to a scroll is the honest answer on the narrowest phones,
+   and at every ordinary width all seven fit with room over. */
+.week-thread {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  /* Only bites below roughly 360px, where seven tap targets genuinely do not
+     fit. Padding so a focus ring on the last bubble is not clipped. */
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.week-thread::-webkit-scrollbar { display: none; }
+
+.week-day {
+  position: relative;
+  flex: 1 0 var(--tap);
+  min-width: var(--tap);
+  min-height: var(--tap);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: var(--space-2) 0;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  transition:
+    background var(--motion-fast) var(--ease-soft),
+    transform var(--motion-fast) var(--ease-soft);
+}
+.week-day:active { transform: scale(0.96); }
+.week-day:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+.week-day:disabled { opacity: 0.4; }
+
+.week-day-initial {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1;
+}
+.week-day-num {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Trained. The mark is the bubble's own fill rather than a dot, because a dot
+   plus an initial plus a number in a 48px circle is three things too many.
+   12%, which is where the calendar's load tint starts and for the same
+   contrast reason. */
+.week-day[data-done='true'] {
+  background: color-mix(in srgb, var(--color-success) 16%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-success) 40%, var(--color-surface));
+}
+
+/* Today is a ring, so it survives also being selected or trained -- the same
+   trick `.cal-day[data-today]` uses. */
+.week-day[data-today='true'] {
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-accent);
+}
+
+/* Selected wins the fill outright: it is the one thing the rest of the screen
+   is about, and a trained day that is also selected must not read as merely
+   trained. */
+.week-day[data-on='true'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+.week-day[data-on='true'] .week-day-initial { color: var(--color-accent-text); }
+
 /* ---- the sets ---- */
 
 .set-list {
@@ -2745,6 +2948,129 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 }
 
 .ex-caption { margin-top: var(--space-2); resize: vertical; line-height: var(--line-body); }
+
+/* The way through to the month. An underlined text link rather than a button:
+   it is a sideways move to another screen, not the action this one is for --
+   the primary button below it is. */
+.ex-calendar-link {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ex-calendar-link:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+
+
+/* ---- the week's wager ------------------------------------------------------
+
+   A shared target, not a scoreboard. The styling carries that: the two rows
+   are identical, in source order, with no rank and no bar comparing them --
+   the only difference between them is a tick once somebody arrives. See
+   features/exercise/WagerPanel.tsx for why. */
+.wager-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.wager-standings {
+  list-style: none;
+  margin: var(--space-3) 0 var(--space-3);
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.wager-standing {
+  display: grid;
+  grid-template-columns: 1fr auto var(--space-4);
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-muted);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+}
+
+/* Arrived. The same success tint the week strip and the calendar use for a
+   trained day, so one colour means one thing across all three. */
+.wager-standing[data-met='true'] {
+  background: color-mix(in srgb, var(--color-success) 16%, var(--color-surface));
+}
+
+.wager-count { font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
+.wager-standing[data-met='true'] .wager-count { color: var(--color-text); }
+.wager-mark { color: var(--color-success); text-align: right; }
+
+/* ---- the photo wall --------------------------------------------------------
+
+   A week of both members' proofs. auto-fill rather than a fixed column count,
+   so it is two columns on a narrow phone and five on a tablet without a media
+   query per breakpoint. The minimum is generous enough that a photograph is
+   still worth looking at rather than a thumbnail of a thumbnail. */
+.wall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--space-2);
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+}
+
+.wall-cell {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--color-surface-muted);
+}
+
+.wall-shot {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.wall-slot {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+.wall-slot-text { font-size: var(--text-sm); }
+
+/* Whose it is and which day, over the corner of the shot. A caption below each
+   cell would double the grid's height for two words, and the label has to stay
+   legible over an arbitrary photograph -- hence a scrim behind it rather than a
+   colour picked to work against most pictures.
+
+   `--scrim` is mixed from the theme's own base, so the text over it is
+   `--color-text`, which is the one colour every pack guarantees contrasts with
+   base. `--color-base` here would be base-on-base and invisible in both modes. */
+.wall-who,
+.wall-when {
+  position: absolute;
+  bottom: 0;
+  padding: 2px var(--space-2);
+  background: var(--scrim);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+.wall-who { left: 0; border-top-right-radius: var(--radius); }
+.wall-when { right: 0; border-top-left-radius: var(--radius); font-variant-numeric: tabular-nums; }
+
+/* Your own shots carry the accent, so a week of two people reads at a glance.
+   Opaque, and paired with `--color-accent-text`: every pack defines that as
+   the colour that survives being drawn on its accent, and a translucent accent
+   over an unknown photograph guarantees neither. */
+.wall-who[data-mine='true'] {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
 
 /* ---- the proof ---- */
 

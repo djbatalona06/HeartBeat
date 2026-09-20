@@ -1,18 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
-import { db, loadSettings, saveSettings } from '../../db/database';
-import { clearNudges, health, putNudges, subscribePush, unsubscribePush } from '../../pwa/api';
+import { useEffect, useState } from 'react';
+import { loadSettings, saveSettings } from '../../db/database';
+import { clearNudges, health, subscribePush, unsubscribePush } from '../../pwa/api';
 import { PushError, enablePush, notificationPermission } from '../../pwa/push';
+import { replanNudges } from '../../pwa/nudgeSync';
 import {
   DEFAULT_HOUR,
   NIGHT_UNTIL,
   NUDGE_KINDS,
   isNightHour,
-  lastTogetherDay,
-  loggedDaysFrom,
-  planNudges,
   type NudgeKind,
 } from '../../domain/notify/schedule';
-import { todayKey } from '../../domain/day';
 import type { Settings } from '../../domain/types';
 
 /**
@@ -78,36 +75,15 @@ export function NotificationsBlock() {
   /**
    * Recompute the queue and post it, replacing whatever was there.
    *
-   * Called after enabling and after the hour changes, and safe either way: the
-   * endpoint replaces rather than appends, so posting twice leaves one queue.
+   * The planning itself is `pwa/nudgeSync.ts`, which is also what runs on
+   * launch and on every foreground — this screen used to hold the only copy,
+   * which is why the queue could run dry three days after somebody last looked
+   * at it. Safe to call twice: the endpoint replaces rather than appends.
+   *
+   * It reads the hour and the kinds from Settings rather than taking them, so
+   * every caller below saves first and then re-plans.
    */
-  const schedule = useCallback(async (
-    token: string, hour: number, memberId: string,
-  ) => {
-    const [moods, exercises, cycles, work] = await Promise.all([
-      db.moods.toArray(),
-      db.exercises.toArray(),
-      db.cycles.toArray(),
-      db.work.toArray(),
-    ]);
-    const current = await loadSettings();
-    const timeZone = current.timeZone;
-    const logged = loggedDaysFrom(moods, exercises, cycles, work);
-    const plan = planNudges({
-      memberId,
-      timeZone,
-      hour,
-      today: todayKey(timeZone),
-      now: Date.now(),
-      loggedDays: logged,
-      lastTogether: lastTogetherDay(logged),
-      // Read here rather than taken as an argument: every caller would
-      // otherwise have to remember to pass it, and the one that forgot would
-      // silently re-enable a reminder somebody had turned off.
-      kinds: current.notifyKinds,
-    });
-    return putNudges(token, plan);
-  }, []);
+  const schedule = () => replanNudges().then((count) => count ?? 0);
 
   if (!settings) return null;
 
@@ -134,7 +110,7 @@ export function NotificationsBlock() {
       const sub = await enablePush(vapid);
       await subscribePush(token, sub);
       await saveSettings({ notifyOn: true, notifyHour: hour, pushEndpoint: sub.endpoint });
-      const count = await schedule(token, hour, memberId);
+      const count = await schedule();
       setPermission(notificationPermission());
       setSettings(await loadSettings());
       setNote(count > 0
@@ -173,7 +149,7 @@ export function NotificationsBlock() {
     if (on && token && memberId) {
       setBusy(true);
       try {
-        await schedule(token, next, memberId);
+        await schedule();
       } catch {
         setNote('The new time is saved here, but the server did not take it yet.');
       } finally {
@@ -196,7 +172,7 @@ export function NotificationsBlock() {
     if (on && token && memberId) {
       setBusy(true);
       try {
-        await schedule(token, hour, memberId);
+        await schedule();
       } catch {
         setNote('Saved here, but the server did not take it yet.');
       } finally {

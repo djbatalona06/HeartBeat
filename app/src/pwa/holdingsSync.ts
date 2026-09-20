@@ -39,6 +39,7 @@ function storeFor(kind: HoldingKind) {
     case 'lifeEvent': return db.lifeEvents;
     case 'cheer': return db.cheers;
     case 'world': return db.worldProgress;
+    case 'wager': return db.wagers;
   }
 }
 
@@ -70,6 +71,10 @@ async function collectPending(memberId: string, since: number): Promise<WireHold
         // Couple-level and keyed by coupleId, so — like the quest — there is no
         // member index to read it by. There is exactly one row.
         ? await db.worldProgress.toArray()
+      : kind === 'wager'
+        // Couple-level too: a wager has no memberId at all, so reading it by
+        // one would return nothing and the row would never leave this phone.
+        ? await db.wagers.toArray()
       : kind === 'lifeEvent'
         ? await db.lifeEvents.toArray()
         : kind === 'avatar'

@@ -18,6 +18,9 @@ import { TogetherPanel } from '../pet/TogetherPanel';
 import { FeedPanel } from '../party/FeedPanel';
 import { gearArt } from '../party/art/gear';
 import { Screen } from '../../ui/layout/Screen';
+import { isPaired } from '../../domain/identity/rekey';
+import { Tile } from '../../components/Tile';
+import { EmptyState } from '../../ui/EmptyState';
 
 /**
  * Home. What the pet is doing, and what is left to do today.
@@ -57,6 +60,13 @@ export function DashboardPage() {
 
   const memberId = settings?.memberId ?? identity?.memberId;
   const coupleId = settings?.coupleId ?? identity?.coupleId;
+
+  // Not `settings.coupleId`. `ensureIdentity` mints and saves both ids on the
+  // first launch so the app works before there is a partner, so a lone phone
+  // has a coupleId too -- and this screen used to read that as "Paired" and
+  // say so in its own subtitle from day one. The token is the honest test;
+  // see `isPaired`.
+  const paired = isPaired(settings);
 
   // Dailies and goals together, because to the person looking at it there is
   // one list of what today still wants — a goal you set on purpose is not a
@@ -108,7 +118,7 @@ export function DashboardPage() {
   }
 
   return (
-    <Screen title="HeartBeat" sub={<>{settings?.coupleId ? 'Paired' : 'Not paired yet'} · {day}</>}>
+    <Screen title="HeartBeat" sub={<>{paired ? 'Paired' : 'Just you so far'} · {day}</>}>
       {/* The dye is three CSS custom properties on the wrapper, which is the
           whole of how a colourway reaches the drawing — every mascot paints in
           those and nothing else, so none of the five files knows dyes exist. */}
@@ -149,7 +159,41 @@ export function DashboardPage() {
           victories, tasks — and this is what you have *done*. */}
       <VitalsPanel vitals={vitals} />
 
-      {settings?.coupleId ? <TogetherPanel coupleId={settings.coupleId} day={day} /> : null}
+      {/* Only with two of you. It reads both halves of the couple against each
+          other, and on a lone phone that is a comparison with nobody. */}
+      {paired && settings?.coupleId
+        ? <TogetherPanel coupleId={settings.coupleId} day={day} />
+        : null}
+
+      {/* The one thing a lone phone is actually missing, said once and near the
+          top rather than as four empty panels further down. `Tile` has been in
+          the tree since the dashboard was a grid and had no call sites left
+          after the ring came out; this is what it was for. */}
+      {!paired ? (
+        <section className="home-invite">
+          <EmptyState glyph="♥">
+            Everything here works on its own. Pairing adds the other half — their
+            day beside yours, the quest you take on together, and a birb you
+            both feed.
+          </EmptyState>
+          <div className="home-invite-tiles">
+            <Tile
+              to="/settings"
+              title="Pair up"
+              icon="friends"
+              value="Start"
+              hint="One code, once. Nothing you have logged is lost."
+            />
+            <Tile
+              to="/exercise"
+              title="Move"
+              icon="dumbbell"
+              value={open.length > 0 ? 'Today waits' : 'Log one'}
+              hint="Sets, a photo, and the week at a glance."
+            />
+          </div>
+        </section>
+      ) : null}
 
       <section className="home-today">
         <h2 className="section-title">Today</h2>
