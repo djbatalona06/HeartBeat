@@ -85,6 +85,10 @@ npm run deploy         # wrangler deploy
 Generate a VAPID keypair first if you don't have one (`npx web-push
 generate-vapid-keys` or any P-256 keypair, base64url-encoded).
 
+Once the keys are set, [`docs/notification-testing.md`](./notification-testing.md)
+is the two-phone pass that proves delivery actually works. Nothing in CI can
+check that, because push needs a Home Screen install on a real phone.
+
 > **The project name and the domain are not the same.** The Pages project is
 > **`heartbeat-app`**; it serves at **`heartbeat-eop.pages.dev`**. `PAGES_PROJECT`
 > in `deploy.yml` must be the *project*, and `ALLOWED_ORIGIN` in
