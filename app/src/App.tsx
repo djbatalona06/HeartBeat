@@ -151,8 +151,13 @@ export function App() {
                       {/* No /bag of its own: `main` grew AssetsPage, which is the
                           same idea done properly, so the Bag tab points there.
                           Worn and Colours move onto Birb, where dressing the bird
-                          sits next to its house and its adventures. */}
-                      <Route path="/birb" element={<PartyPage only={['worn', 'colours', 'house', 'adventures', 'companions', 'boss']} title="Birb" />} />
+                          sits next to its house.
+
+                          The raid left: the sheet, the boss and the adventures
+                          are one subject and now have one screen, so /birb is
+                          the bird and the room it lives in. */}
+                      <Route path="/birb" element={<PartyPage only={['worn', 'colours', 'house', 'companions']} title="Birb" />} />
+                      <Route path="/raid" element={<PartyPage only={['raid']} title="Raid" />} />
                       <Route path="/party" element={<PartyPage />} />
                       <Route path="/eve-garden" element={(
                         <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>

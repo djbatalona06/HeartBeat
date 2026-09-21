@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useToast } from '../../ui/Toast';
 import { db, loadSettings } from '../../db/database';
 import {
-  awardBossVictory,
-  bossVictoryXp,
   buyDye,
   buyEgg,
   buyFurniture,
@@ -24,7 +22,6 @@ import {
   unequipSlot,
   wearDye,
 } from '../../db/repository';
-import { flushPetXp } from '../../pwa/petSync';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import {
   GEAR, RARITIES, RARITY_NAMES, canEquip, gearForSlot, type GearItem, type Rarity,
@@ -36,8 +33,6 @@ import {
 import { offerFor } from '../../domain/rpg/mysteryShop';
 import { todayKey } from '../../domain/day';
 import type { DayKey } from '../../domain/types';
-import { SKILLS, castBlockedBecause, skillById } from '../../domain/rpg/skills';
-import { hpFraction, resolveBlow, victoryDropBonus, waitingOn, type BossState } from '../../domain/rpg/boss';
 import { GEAR_SLOTS, type Avatar, type GearSlot } from '../../domain/rpg/types';
 import { findOwned, ownsItem, refineByItemId, type InventoryItem } from '../../domain/rpg/inventory';
 import { EGG_PRICE, GEAR_PRICE, REFINE_MAX, gearBonusWithRefinement, refinePrice } from '../../domain/rpg/shop';
@@ -62,12 +57,13 @@ import { petArt } from './art/pets';
 import { ChestAlcove } from './ChestAlcove';
 import { Purchases } from './Purchases';
 import { RaidSheet } from './RaidSheet';
+import { Boss } from './Boss';
+import { GearDiff } from './GearDiff';
 import { PRIZES_PER_CHEST } from '../../domain/rpg/chests';
 import type { ChestOutcome } from '../../db/repository/chests';
 import { ChestReveal } from '../chest/ChestReveal';
 import { openingLine } from '../chest/receipt';
 import { SecondaryAction } from '../../ui/SecondaryAction';
-import { PrimaryAction } from '../../ui/PrimaryAction';
 
 /**
  * How brightly a companion's card is lit, by how rare it is.
@@ -114,16 +110,6 @@ const RARITY_INTENSITY: Record<Rarity, number> = {
   mythic: 1.6,
 };
 
-interface BossPayload {
-  tier: number;
-  hp: number;
-  maxHp: number;
-  state: BossState;
-  readyA: boolean;
-  readyB: boolean;
-  youAreReady: boolean;
-}
-
 /**
  * The things this page can show, and the order they read in.
  *
@@ -135,10 +121,10 @@ interface BossPayload {
  * it. `/party` passes nothing and still shows all of them.
  */
 export type PartySection =
-  'companions' | 'worn' | 'colours' | 'house' | 'adventures' | 'shop' | 'boss' | 'achievements';
+  'companions' | 'worn' | 'colours' | 'house' | 'raid' | 'shop' | 'achievements';
 
 export const ALL_SECTIONS: readonly PartySection[] =
-  ['companions', 'worn', 'colours', 'house', 'adventures', 'shop', 'boss', 'achievements'];
+  ['companions', 'worn', 'colours', 'house', 'raid', 'shop', 'achievements'];
 
 /**
  * The party: who is walking with you, what you are wearing, and the one fight
@@ -232,6 +218,11 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
               const name = petKindById(result.pet!.kindId)!.name;
               say(result.merged ? `Another ${name}. Two of the same found each other.` : `${name} hatched.`);
             }}
+            /* Stays here now that Adventures has moved to /raid, because it
+               is not the same action: this sends the companion out for a
+               stretch of hours with no destination, while Adventures' `onGo`
+               travels to a named place. The first is about the animal and
+               belongs on its tab; only the second is a raid concern. */
             onAdventure={async () => {
               const result = await startAdventure(identity.memberId, identity.coupleId);
               say(result.ok ? `Gone for ${result.hours} hours.` : result.reason ?? null);
@@ -269,36 +260,67 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
           />
           ) : null}
 
-          {/* The raid sheet sits with the gear rather than in the garden: it is
-              the answer to "would the other boots be better", and that is a
-              question asked at the wardrobe, not mid-fight. */}
-          {only.includes('worn') ? (
-          <RaidSheet
-            avatar={avatar}
-            owned={owned ?? []}
-            petXp={pet?.xp ?? 0}
-            house={(pet?.house ?? {}) as House}
-            companion={(pets ?? []).find((p) => p.id === avatar.companionId)}
-          />
-          ) : null}
+          {/*
+            -- the raid ------------------------------------------------------
+            One section, three panels, in the order the question is asked: what
+            you bring, the fight it is for, and the smaller outings that are
+            not it.
 
-          {only.includes('adventures') ? (
-          <Adventures
-            avatar={avatar}
-            owned={owned ?? []}
-            onGo={async (placeId) => {
-              // The roll is drawn here and handed in, so the repository and the
-              // domain both stay deterministic given their inputs.
-              const result = await startAdventure(
-                identity.memberId, identity.coupleId, placeId, Math.random(),
-              );
-              if (!result.ok) say(result.reason ?? null, 'error');
-              else say(
-                `${result.place}: came back with ${result.found}.`
-                + (result.bounty ? ` +${result.bounty} coins for getting there first.` : ''),
-              );
-            }}
-          />
+            These three used to be spread across `/birb` — the sheet under
+            `worn`, the boss and the adventures each their own flag — which put
+            the seven raid stats on the tab about dressing a bird and gave the
+            one screen that fetches a Worker no home of its own. The sheet's
+            old comment argued it belonged "at the wardrobe, not mid-fight",
+            and that is still true: it is *also* rendered by the Bag, which is
+            the wardrobe. One implementation, two callers, the same argument
+            `ChestAlcove`'s header makes about published odds.
+          */}
+          {only.includes('raid') ? (
+          <>
+            <RaidSheet
+              avatar={avatar}
+              owned={owned ?? []}
+              petXp={pet?.xp ?? 0}
+              house={(pet?.house ?? {}) as House}
+              companion={(pets ?? []).find((p) => p.id === avatar.companionId)}
+            />
+            {/* Directly under the sheet, because it is the rest of the same
+                sentence: the sheet says what every number is and where it came
+                from, and this says what one different piece would make of it. */}
+            <GearDiff
+              avatar={avatar}
+              owned={owned ?? []}
+              petXp={pet?.xp ?? 0}
+              house={(pet?.house ?? {}) as House}
+              companion={(pets ?? []).find((p) => p.id === avatar.companionId)}
+            />
+            <Boss
+              avatar={avatar}
+              pets={pets ?? []}
+              owned={owned ?? []}
+              workerUrl={settings?.workerUrl}
+              token={settings?.workerSecret}
+              onSpendMp={(amount) => spendMp(identity.memberId, identity.coupleId, amount)}
+              onSpendPetMp={spendPetMp}
+              onMessage={(text) => say(text)}
+            />
+            <Adventures
+              avatar={avatar}
+              owned={owned ?? []}
+              onGo={async (placeId) => {
+                // The roll is drawn here and handed in, so the repository and
+                // the domain both stay deterministic given their inputs.
+                const result = await startAdventure(
+                  identity.memberId, identity.coupleId, placeId, Math.random(),
+                );
+                if (!result.ok) say(result.reason ?? null, 'error');
+                else say(
+                  `${result.place}: came back with ${result.found}.`
+                  + (result.bounty ? ` +${result.bounty} coins for getting there first.` : ''),
+                );
+              }}
+            />
+          </>
           ) : null}
 
           {only.includes('house') ? (
@@ -384,19 +406,6 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
               }}
             />
           </Purchases>
-          ) : null}
-
-          {only.includes('boss') ? (
-          <Boss
-            avatar={avatar}
-            pets={pets ?? []}
-            owned={owned ?? []}
-            workerUrl={settings?.workerUrl}
-            token={settings?.workerSecret}
-            onSpendMp={(amount) => spendMp(identity.memberId, identity.coupleId, amount)}
-            onSpendPetMp={spendPetMp}
-            onMessage={(text) => say(text)}
-          />
           ) : null}
 
           {/* The shelf has its own tab now, alongside the quests it rhymes
@@ -997,196 +1006,6 @@ function Decor({ avatar, owned, onBuy }: {
           );
         })}
       </ul>
-    </section>
-  );
-}
-
-function Boss({ avatar, pets, owned, workerUrl, token, onSpendMp, onSpendPetMp, onMessage }: {
-  avatar: Avatar;
-  pets: PetInstance[];
-  owned: InventoryItem[];
-  workerUrl?: string;
-  token?: string;
-  onSpendMp: (amount: number) => Promise<boolean>;
-  onSpendPetMp: (petId: string, amount: number) => Promise<boolean>;
-  onMessage: (text: string) => void;
-}) {
-  const [boss, setBoss] = useState<BossPayload | null>(null);
-  const [busy, setBusy] = useState(false);
-  const level = levelOf(avatar);
-  const sheet = sheetFor(avatar, gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned)));
-
-  const call = useCallback(async (path: string, body?: unknown): Promise<BossPayload | null> => {
-    if (!workerUrl || !token) return null;
-    const response = await fetch(`${workerUrl.replace(/\/$/, '')}${path}`, {
-      method: body === undefined ? 'GET' : 'POST',
-      headers: {
-        authorization: `Bearer ${token}`,
-        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    const payload = (await response.json().catch(() => ({}))) as { boss?: BossPayload };
-    return payload.boss ?? null;
-  }, [workerUrl, token]);
-
-  useEffect(() => {
-    let live = true;
-    call('/boss').then((next) => { if (live && next) setBoss(next); }).catch(() => {});
-    return () => { live = false; };
-  }, [call]);
-
-  if (!workerUrl || !token) {
-    return (
-      <section className="panel">
-        <h2 className="section-title">The boss</h2>
-        <p className="section-sub">
-          This is the one screen that cannot render from the phone. Boss HP is
-          contested state — two phones subtracting under last-write-wins would
-          discard one of your hits — so it lives on the Worker. Pair a Worker in
-          Settings and it appears here.
-        </p>
-      </section>
-    );
-  }
-
-  const companion = pets.find((p) => p.id === avatar.companionId);
-  const companionView = companion ? petSheet(companion) : null;
-
-  async function attack(skillId?: string) {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const effects = [];
-      const skill = skillId ? skillById(skillId) : undefined;
-      if (skill) {
-        const blocked = castBlockedBecause(skill, level, sheet.mp);
-        if (blocked) { onMessage(blocked); return; }
-        if (!(await onSpendMp(skill.mpCost))) { onMessage(`${skill.name} needs more MP.`); return; }
-        effects.push(skill.effect);
-      }
-      // The companion joins in whenever its own bar can pay for it.
-      if (companion && companionView?.skillReady) {
-        if (await onSpendPetMp(companion.id, companionView.kind.skill.mpCost)) {
-          effects.push(companionView.kind.skill.effect);
-        }
-      }
-
-      const blow = resolveBlow(sheet.stats, effects);
-      const next = await call('/boss/attack', { damage: blow.damage });
-      if (next) {
-        setBoss(next);
-        if (next.state === 'won') {
-          // Both of you were in it, so the shared pet is what it pays. The
-          // award is keyed on the tier, so the other phone reporting the same
-          // victory is the same award rather than a second one; the flush is
-          // best-effort because the award is already queued in IndexedDB and
-          // the next foreground will carry it.
-          const gained = bossVictoryXp(next.tier);
-          await awardBossVictory(avatar.coupleId, next.tier);
-          void flushPetXp().catch(() => {});
-          onMessage(
-            `Down. +${gained} XP to the pet, and drops run `
-            + `${Math.round(victoryDropBonus(next.tier) * 100)}% richer now.`,
-          );
-        }
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <section className="panel">
-      <h2 className="section-title">The boss</h2>
-
-      {!boss ? (
-        <p className="section-sub">Asking the Worker…</p>
-      ) : (
-        <>
-          <p className="section-sub">Tier {boss.tier}</p>
-          <div className="bar bar-boss">
-            <div
-              className="bar-fill bar-fill-danger"
-              style={{ width: `${hpFraction(boss) * 100}%` }}
-            />
-          </div>
-          <p className="task-line">{boss.hp} / {boss.maxHp}</p>
-
-          {boss.state === 'gathering' ? (
-            <>
-              <p className="section-sub">
-                {waitingOn(boss) ?? 'Both of you are in.'}
-              </p>
-              <button
-                type="button"
-                className="primary"
-                disabled={busy || boss.youAreReady}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    const next = await call('/boss/ready', {});
-                    if (next) setBoss(next);
-                  } finally { setBusy(false); }
-                }}
-              >
-                {boss.youAreReady ? 'You are ready' : 'Ready'}
-              </button>
-            </>
-          ) : null}
-
-          {boss.state === 'fighting' ? (
-            <>
-              <PrimaryAction disabled={busy} onClick={() => attack()}>Hit it for {resolveBlow(sheet.stats).damage}</PrimaryAction>
-              <div className="chips">
-                {SKILLS.map((skill) => (
-                  <button
-                    key={skill.id}
-                    type="button"
-                    className={`chip ${castBlockedBecause(skill, level, sheet.mp) ? 'chip-locked' : ''}`}
-                    title={castBlockedBecause(skill, level, sheet.mp) ?? skill.blurb}
-                    disabled={busy}
-                    onClick={() => attack(skill.id)}
-                  >
-                    {skill.name} · {skill.mpCost}
-                  </button>
-                ))}
-              </div>
-              {companionView ? (
-                <p className="task-line">
-                  {companionView.skillReady
-                    ? `${companionView.kind.name} joins with ${companionView.kind.skill.name}.`
-                    : companionView.skillBlockedBecause}
-                </p>
-              ) : null}
-            </>
-          ) : null}
-
-          {boss.state === 'won' || boss.state === 'lost' ? (
-            <>
-              <p className="section-sub">
-                {boss.state === 'won'
-                  ? 'Cleared. The next one is a quarter bigger.'
-                  : 'Not this time. The same tier is still there.'}
-              </p>
-              <button
-                type="button"
-                className="primary"
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    const next = await call('/boss/ready', {});
-                    if (next) setBoss(next);
-                  } finally { setBusy(false); }
-                }}
-              >
-                Line up the next one
-              </button>
-            </>
-          ) : null}
-        </>
-      )}
     </section>
   );
 }

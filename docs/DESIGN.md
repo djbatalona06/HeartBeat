@@ -414,6 +414,56 @@ this app's whole thesis. A short note grants the other person energy; sending
 pays the sender a little too, or nobody sends. Capped at three per sender per
 day — they keep their weight by being rare.
 
+### The raid has a screen, and the sheet has a second half
+
+`/raid` is one section holding three panels, in the order the question is
+asked: what you bring (the raid sheet), what one different piece would make of
+it (the swap preview), the fight it is all for (the boss), and the smaller
+outings that are not it (adventures).
+
+The three used to be spread across `/birb` — the sheet tucked under `worn`, the
+boss and the adventures each with their own flag — which put the seven raid
+stats on the tab about dressing a bird, and gave the one screen in the app that
+cannot render from IndexedDB no home of its own. `/birb` is now the bird and the
+room it lives in. `Boss` came out of `PartyPage.tsx` into its own file while
+moving; nothing about it was shared with the page.
+
+The raid sheet is rendered in **two** places — `/raid` and the Bag — from one
+implementation. Its old comment argued it belonged "at the wardrobe, not
+mid-fight", and that is still true; the Bag *is* the wardrobe. Same argument as
+`ChestAlcove` being rendered by both the Shop tab and the garden drawer.
+
+`Companions`' "send them off" shortcut stays on `/birb`, because it is not the
+same action as an adventure: it calls `startAdventure` with no destination,
+while Adventures travels to a named place. The first is about the animal.
+
+#### The swap preview compares you with yourself, deliberately
+
+Pick a slot, pick something you own, read the change: two columns and a signed
+delta per stat, with nothing written. `domain/rpg/diff.ts` is the arithmetic.
+
+The obvious reading of a "gear diff" in a two-person app is one member's sheet
+against the other's with a team total under it. It is not that, for two reasons.
+
+The blocking one is that the data is not there. `avatar` and `inventory` are
+not in `PARTNER_VISIBLE_KINDS`, so a phone never receives the other member's
+gear at all; a two-person diff needs that list extended first, which would be
+the first time personal inventory crossed between phones.
+
+The better one is that this is the more useful question anyway. "Those boots are
+worth four Fortify to you" is something to act on. A column of your partner's
+numbers beside yours is a scoreboard between two people who live together,
+which is what this layer was shaped to make impossible — the same position
+`schedule.ts` takes about push, `derive.ts` about badges, and the weekly wager
+about being a shared target rather than a race.
+
+So a `delta` and a "better by 4" verdict are fine here: they rank two **items**,
+never two people. Taking a slot back to empty is offered too — a level that fell
+can make wearing nothing the better move, and nothing else on that screen can
+ask it. An item above its wearer's level previews as no gain rather than as a
+gain that never arrives, because `gearSources` already contributes nothing for
+one; "not yet" is the honest preview.
+
 ### Chests, and the arithmetic of a published guarantee
 
 Three chests at 90, 260 and 700 coins. Three rather than one because a single
