@@ -71,6 +71,15 @@ function HomeGarden() {
   const settings = useLiveQuery(() => db.settings.get('settings'), []);
   const day = todayKey(settings?.timeZone ?? 'America/Los_Angeles');
 
+  // The dye, for the big tree's canopy. One more point lookup on a route that
+  // already runs three -- see the note above about the duplication accepted
+  // here -- and it is what lets the tree match the bird standing in front of
+  // it. `DashboardPage` reads the same row for the mascot itself.
+  const avatar = useLiveQuery(
+    () => (settings?.memberId ? db.avatars.get(settings.memberId) : undefined),
+    [settings?.memberId],
+  );
+
   const vitals = useLiveQuery(() => coupleVitals(day), [day]);
   const momentum = useLiveQuery(() => gardenMomentum(day), [day]);
   const pet = useLiveQuery(
@@ -104,6 +113,7 @@ function HomeGarden() {
         garden={(pet?.plots ?? {}) as Garden}
         fit="ground"
         petLevel={levelForXp(pet?.xp ?? 0)}
+        dye={avatar?.dye}
       />
       {/* The ground under the words.
           Top and bottom only, fading out through the middle: the page header

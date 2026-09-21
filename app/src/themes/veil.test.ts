@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { THEMES } from './index';
+import { DYES } from '../domain/rpg/dyes';
 import {
   GLASS_STRENGTH, SCRIM_STRENGTH, contrast, variantOf,
 } from './tokens';
@@ -184,4 +185,49 @@ describe('the veil over the home garden', () => {
     // teaches the next person to weaken it.
     expect(100 - SCRIM_STRENGTH).toBeLessThanOrEqual(LOUDEST_PACK_INK_PERCENT);
   });
+
+  /**
+   * The dye the big tree wears, which is the one paint in the garden that does
+   * not come from the theme.
+   *
+   * `GardenTree` tints its canopy with `dyeStyle(dye)`, so the couple's bird
+   * and the tree behind it match. That puts `domain/rpg/dyes.ts` colours behind
+   * the veil, and the note on `GARDEN_PAINTS` above names exactly this hazard:
+   * a paint the list does not know about leaves this test passing while the
+   * screen gets less legible.
+   *
+   * So the eight dyes are composited too, in both modes of all five themes —
+   * forty combinations per dye, which is the point, because a dye is chosen
+   * independently of the theme and every pairing is reachable.
+   *
+   * All three of a dye's paints are checked, because the tree paints with all
+   * three: `accent` reaches the leaves and the lit crown, `ink` the canopy
+   * mass, and `muted` goes to `--color-text-muted`, which is the trunk and the
+   * branches. Leaving one out would be picking which third of the tree is
+   * allowed to make text illegible.
+   */
+  for (const dye of DYES) {
+    for (const theme of THEMES) {
+      for (const mode of MODES) {
+        const { colors } = variantOf(theme, mode);
+        const base = parse(colors.base);
+        const label = `${theme.id} ${mode} + ${dye.id}`;
+
+        it(`${label}: a scrim keeps text over the dyed canopy at AA`, () => {
+          for (const paint of [dye.accent, dye.ink, dye.muted]) {
+            const ground = over(parse(paint), base);
+            const veiled = over(fade(base, SCRIM_STRENGTH), ground);
+            expect(
+              contrast(hex(over(parse(colors.text), veiled)), hex(veiled)),
+              `${label}: text over scrimmed ${paint}`,
+            ).toBeGreaterThanOrEqual(4.5);
+            expect(
+              contrast(hex(over(parse(colors.textMuted), veiled)), hex(veiled)),
+              `${label}: muted text over scrimmed ${paint}`,
+            ).toBeGreaterThanOrEqual(3);
+          }
+        });
+      }
+    }
+  }
 });
