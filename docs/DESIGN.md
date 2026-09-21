@@ -414,6 +414,41 @@ this app's whole thesis. A short note grants the other person energy; sending
 pays the sender a little too, or nobody sends. Capped at three per sender per
 day — they keep their weight by being rare.
 
+### One line the two of you are on the same page of
+
+`domain/support/` already held day-seeded phrases in four lanes —
+`cycle-self`, `cycle-partner`, `mens-health`, `general` — and `cyclenudge.ts`
+already deep-linked partners *to* them. What was missing was anywhere on Mood
+that simply said one.
+
+- **Seeded on the couple as well as the day.** `pickForDay` hashes the day key,
+  so both phones already land on the same line with nothing synced — that is
+  its point and it is untouched, with all five of its callers still resolving
+  to exactly what they always did. What it cannot do is tell two *couples*
+  apart: every couple reading the general lane on a given day got the same
+  line, and with four or five quotes to a lane the rotation is short and
+  globally in lockstep. `pickForCouple` seeds on `hash(coupleId:day)` through
+  `roll`, the mixer `raidStats.ts` and `gear.ts` already use. Both phones still
+  agree; different couples stop reading in chorus.
+- **The placement decides the lane, not the viewer.** `CycleLock` guarantees
+  nothing behind it renders while locked, so a line drawn from a cycle lane
+  *above* the section would carry the one thing the lock exists to keep round
+  the front of it. `openLanes` is what may appear anywhere and excludes both
+  cycle lanes; `lockedLanes` is what may appear only inside. Same line
+  `cyclenudge.ts` holds for push: the partner's copy never names the cycle.
+- **The lane is rolled on a different step from the quote**, so a couple whose
+  lanes change — somebody answers the gender question, a partner starts
+  tracking — gets a different line rather than the same one relabelled.
+- Rendered as a pull quote rather than a panel: it is something to read, not
+  something to do, and a bordered card with a title competes with the three
+  meters the page is for.
+- `WellnessNote`, not `WellnessMessageCard` — `features/eve-garden/WellnessCards.tsx`
+  already exists and is a different thing.
+- The locked placement carries one line of small print: **"Advisory only. Not
+  contraception."** Said there and only there, because a warm sentence beside a
+  cycle calendar is the context in which somebody might read more into it than
+  is in it.
+
 ### The bag says what things are worth
 
 The bag showed counts, coins, rarity names, refine levels and bonds — and not

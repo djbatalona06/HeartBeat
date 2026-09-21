@@ -8,6 +8,7 @@ import { DEFAULT_TIMEZONE, type MoodEntry } from '../../domain/types';
 import { Meter } from '../../components/Meter';
 import { ComplimentComposer } from './ComplimentComposer';
 import { CycleSection } from '../cycle/CyclePage';
+import { WellnessNote } from './WellnessNote';
 import {
   MOOD_METERS,
   NEUTRAL_MOOD,
@@ -187,6 +188,10 @@ export function MoodPage() {
           {canSave || !ready ? 'Save today' : 'Saved'}
         </button>
       </section>
+
+      {/* One line for today, above the lock and therefore never a cycle one --
+          `openLanes` is what enforces that, not this call site. */}
+      <WellnessNote placement="open" />
 
       {/* Last, and gated on its own.
 

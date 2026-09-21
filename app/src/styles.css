@@ -5311,6 +5311,35 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
    line on the card that is a *number about the fight* — the rarity and the
    refine above it are labels, and the sheet at the top of the page is where
    these add up. */
+/* ---- one line for today ----------------------------------------------------
+   A quieter surface than `.panel`: it is something to read rather than
+   something to do, and a card with a title and a border competes with the
+   three meters that are what the Mood page is for. An `<aside>` with a rule
+   down its lit edge, like a pull quote. */
+.wellness-note {
+  margin-top: var(--space-4);
+  padding: var(--space-1) 0 var(--space-1) var(--space-3);
+  border-left: 3px solid color-mix(in srgb, var(--color-accent) 55%, var(--color-surface));
+}
+.wellness-note-lane {
+  margin: 0 0 2px;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.wellness-note-text {
+  margin: 0;
+  font-size: var(--text-base);
+  line-height: var(--line-body);
+}
+.wellness-note-by,
+.wellness-note-small {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
 .asset-card-stat {
   font-size: var(--text-xs);
   color: var(--color-accent);

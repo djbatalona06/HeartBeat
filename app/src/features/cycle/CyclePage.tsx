@@ -10,6 +10,7 @@ import { FLOWS, MOODS, SYMPTOM_GROUPS } from '../../domain/cycle/taxonomy';
 import { daysLate, periodStartsFrom, predict, type Prediction } from '../../domain/cycle/predict';
 import { Icon } from '../../components/icons';
 import { CycleLock } from './CycleLock';
+import { WellnessNote } from '../mood/WellnessNote';
 import { LockSettings } from './LockSettings';
 
 /**
@@ -59,6 +60,10 @@ function shortDay(day: DayKey): string {
 export function CycleSection() {
   return (
     <CycleLock>
+      {/* Inside the lock, where the cycle lanes are the whole point.
+          `lockedLanes` gives an unpaired or non-tracking phone an empty list,
+          so this renders nothing rather than a panel with no line in it. */}
+      <WellnessNote placement="locked" />
       <CycleBody />
     </CycleLock>
   );
