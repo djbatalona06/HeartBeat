@@ -284,7 +284,25 @@ async function prime(page) {
     // opened, which is the only evidence that distinguishes "open" from "has
     // not run yet". Neither can be reported by a sample taken too early.
     //
-    // Coupling to `.home-pet` is the same trade this file already makes for
+    // ## Which gate this is about
+    //
+    // `FirstRunGate`, and only that one. There are two gates and they are not
+    // the same question: that one asks whether this phone has met the app,
+    // and `PairGate` asks whether there are two of you. This function seeds
+    // the first one's answer and can do nothing about the second — pairing
+    // needs a `workerSecret` only the server can issue.
+    //
+    // So "open" here means *past onboarding*, which is either of two honest
+    // outcomes: the dashboard rendered, or `PairGate` is showing its
+    // invitation. `/` is not in `OPEN_WHILE_UNPAIRED`, so an unpaired browser
+    // gets the invitation **at the same hash**, rendered in place with no
+    // redirect — which is exactly why sampling the hash could never tell
+    // these apart, and why waiting only for the dashboard times out.
+    //
+    // Anything else — a redirect to `#/welcome` or `#/onboarding` — is the
+    // seed not having taken, and is what the retry is for.
+    //
+    // Coupling to these classes is the same trade this file already makes for
     // `.welcome-guest` and `.onboarding-skip`, and for the reason given
     // there: real UI with a stable class beats encoding the app's schema into
     // its harness.
@@ -292,7 +310,10 @@ async function prime(page) {
     const open = await page
       .waitForFunction(() => {
         if ((location.hash || '#/') !== '#/') return { open: false };
-        return document.querySelector('.home-pet') ? { open: true } : undefined;
+        // Either is past onboarding. Neither is "the gate has not run yet",
+        // which renders nothing and is what the poll has to outlast.
+        const past = document.querySelector('.home-pet') || document.querySelector('.gate-title');
+        return past ? { open: true } : undefined;
       }, null, { timeout: 15000, polling: 100 })
       .then((handle) => handle.jsonValue())
       .then((result) => result.open === true)

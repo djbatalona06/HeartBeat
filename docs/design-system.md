@@ -182,6 +182,30 @@ anybody read.
 comparison: it catches console errors, a route that stopped being reachable,
 and axe violations. Those answers are machine-independent.
 
+#### ⚠️ The walk mostly screenshots the pairing gate, not the app
+
+`prime()` seeds `guestAcknowledged` and `onboarded`, which is everything
+`FirstRunGate` asks for. It can do nothing about **`PairGate`**, because
+pairing needs a `workerSecret` only the server can issue — and `/` is not in
+`OPEN_WHILE_UNPAIRED`, so an unpaired browser at `#/` gets the pair invitation
+**rendered in place, at the same hash, with no redirect**.
+
+So four of the five screens the walk visits — home, mood, tasks, party — are
+almost certainly the same invitation five times over, and only `/settings` is
+itself. The per-screen "is reachable" check cannot see this: it compares the
+hash, and the hash is exactly what it asked for. That is also why it went
+unnoticed.
+
+What the walk still earns: console errors on boot, that the first-run gates can
+be got past at all, and axe on whatever did render. What it does not currently
+earn is coverage of the five screens by name.
+
+Fixing it means seeding a `coupleId` and a `workerSecret` in `prime()` so
+`isPaired` is true. That is a small change to this file and a potentially large
+one to its output — five real screens' worth of axe results that have never
+been looked at, and ten baselines of something other than what is there now.
+Worth doing deliberately rather than as a side effect of something else.
+
 #### If the walk reports it could not get past the first-run gates
 
 That is `prime()` in `app/tools/visual.mjs` failing three times. `FirstRunGate`
