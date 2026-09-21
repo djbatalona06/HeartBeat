@@ -414,6 +414,56 @@ this app's whole thesis. A short note grants the other person energy; sending
 pays the sender a little too, or nobody sends. Capped at three per sender per
 day — they keep their weight by being rare.
 
+### One line at the top, and what may be waved away
+
+The header used to show the **first** of quests and cheers and silently drop
+the other, so with two things waiting the second was invisible until the first
+was dealt with. The weekly wager, which shipped with nothing surfacing it
+anywhere, was not in the list at all.
+
+One line is still right — it sits above every screen, and a stack of bars is a
+screen of its own. So it is one line plus an honest count of what is behind it:
+"3 quests are finished. The payouts are waiting. · and 2 more".
+
+Order is what the app **owes** you, then what your partner gave you, then what
+it is telling you: quests, cheers, wager. A payout should not queue behind a
+progress note.
+
+**It still has no counter of its own.** `domain/notifications/events.ts` takes
+`deriveBadges`' output and turns it into sentences; it never reads the tables.
+Two counters over the same rows drift, and the dot on the tab bar disagreeing
+with the bar at the top is what `derive.test.ts` walks every source file to
+prevent. The rule the old `headline()` carried — a sentence across every screen
+is a louder instrument than a dot, so it gets no source of truth of its own —
+moved with it, and is still written down where the badges are.
+
+#### Which lines carry an ×, and which do not
+
+The previous version had no dismiss button at all, on the argument that quests
+are deliberately not watermarked: a finished quest clears by being *claimed*,
+so a "seen" stamp would hide a payout nobody has taken, and an × wired to a
+no-op is a control that appears to work.
+
+That argument is right, and it was being over-applied. It holds for anything
+the app **owes** you. It does not hold for the wager line, which is news — not
+actionable, and something a person who has read it should be able to put away.
+So `Notice.clears` is `'claiming'` or `'dismissing'`, the × appears only for
+the second, and a dismissed id for a claiming notice is **ignored rather than
+honoured** so a stale entry can never hide a payout.
+
+Dismissal ids are per-state — `wager:abc:d3`, not `wager:abc` — which is what
+lets today's "three days left" be put away and tomorrow's "two days left" come
+back. `pruneDismissed` drops ids whose news is over, because the list lives in
+`Settings.dismissedNotifications` (per-device, like `badgesSeen`) and would
+otherwise grow by one per week forever.
+
+#### What the wager line will not say
+
+A **missed** week. It ran out and nothing was taken — `reckonWager` says so —
+and putting "you did not manage it" across the top of every screen is exactly
+the deficit this layer exists to make impossible. Same position `schedule.ts`
+takes about push and `derive.ts` about badges. A quiet week simply does not pay.
+
 ### The birbhouse furnishes itself
 
 The room had twelve controls: four slots, each with a Bare chip and two pieces,

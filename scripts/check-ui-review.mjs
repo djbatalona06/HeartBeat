@@ -84,6 +84,12 @@ const RAW_BUTTON_EXEMPT = new Set([
   // it: WorkPage's and CyclePage's day cells are unexamined for the same
   // reason, and a rule this file passes by accident is not a rule.
   'features/exercise/WeekThread.tsx',
+  // An icon-only dismiss on a live region. None of the four primitives is one:
+  // PrimaryAction and SecondaryAction are full-width text buttons, Chip is a
+  // selection in a set, ListRow is a row. What this needs is a `--tap` square
+  // carrying its own `aria-label` (the × alone reads as nothing), sitting
+  // *outside* the bar's own <Link> so that dismissing cannot also navigate.
+  'features/notifications/NotificationHeader.tsx',
 ]);
 
 /**

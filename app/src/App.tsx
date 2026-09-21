@@ -17,6 +17,7 @@ import { FirstRunGate } from './features/onboarding/FirstRunGate';
 import { RouteNotFound } from './features/errors/NotHere';
 import { BottomNav } from './ui/layout/BottomNav';
 import { useBadges } from './features/notifications/useBadges';
+import { useNotices } from './features/notifications/useNotices';
 import { NotificationHeader } from './features/notifications/NotificationHeader';
 import { ToastHost } from './ui/Toast';
 import { SceneBackdrop } from './features/home/SceneBackdrop';
@@ -81,6 +82,9 @@ export function App() {
   // domain/notifications/derive.ts, and the test there that walks the source to
   // make sure nothing starts.
   const badges = useBadges();
+  // One wager read for the whole app, beside the one badge read. See
+  // `useNotices` for why they are separate hooks.
+  const notices = useNotices(badges);
 
   return (
     // Outside ThemeProvider on purpose: the theme engine writes every CSS
@@ -113,7 +117,7 @@ export function App() {
                       line on a fifth of the app. It renders nothing at all unless
                       something is waiting, and it is handed the badges `App`
                       already holds rather than reading its own. */}
-                  <NotificationHeader badges={badges} />
+                  <NotificationHeader badges={badges} notices={notices} />
                   {/* Around the routes only. A single page throwing should leave the
                       nav bar and the thread standing, so there is still a way out of
                       the broken screen without force-quitting the app. */}

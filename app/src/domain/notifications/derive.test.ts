@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  BADGE_KEYS, BADGE_ROUTES, HEADLINE_KEYS, byRoute, deriveBadges, headline,
+  BADGE_KEYS, BADGE_ROUTES, byRoute, deriveBadges,
   type BadgeInput, type BadgeKey,
 } from './derive';
 import type { Quest } from '../types';
@@ -241,85 +241,3 @@ describe('the rule', () => {
   });
 });
 
-describe('headline', () => {
-  const badgesWith = (over: Partial<BadgeInput> = {}) => deriveBadges(input(over));
-
-  it('says nothing when nothing is waiting', () => {
-    expect(headline(badgesWith())).toBeNull();
-  });
-
-  it('leads with a finished quest, because that is what the app owes you', () => {
-    const line = headline(badgesWith({
-      quests: [quest({ progress: 3, target: 3 })],
-      cheers: [cheer({ createdAt: 60 })],
-    }));
-    expect(line?.key).toBe('quests');
-    expect(line?.to).toBe('/quests');
-    expect(line?.text).toBe('A quest is finished. The payout is waiting.');
-  });
-
-  it('falls to the cheer when no quest is finished', () => {
-    const line = headline(badgesWith({
-      quests: [quest({ progress: 1 })],
-      cheers: [cheer({ createdAt: 60 })],
-    }));
-    expect(line?.key).toBe('cheers');
-    expect(line?.to).toBe('/friends');
-    expect(line?.text).toBe('They cheered something you logged.');
-  });
-
-  it('counts in words a person would use', () => {
-    const many = headline(badgesWith({
-      quests: [
-        quest({ id: 'a', progress: 3, target: 3 }),
-        quest({ id: 'b', progress: 3, target: 3 }),
-      ],
-    }));
-    expect(many?.text).toBe('2 quests are finished. The payouts are waiting.');
-
-    const cheers = headline(badgesWith({
-      cheers: [
-        cheer({ id: 'a', eventId: 'e1', createdAt: 60 }),
-        cheer({ id: 'b', eventId: 'e2', createdAt: 61 }),
-        cheer({ id: 'c', eventId: 'e3', createdAt: 62 }),
-      ],
-    }));
-    expect(cheers?.text).toBe('They cheered 3 things you logged.');
-  });
-
-  /**
-   * The thread is a sheet reached from a pill above the tab bar, which is why
-   * `BADGE_ROUTES` gives `messages` no route. Saying it a second time across
-   * the top of every screen is how a header becomes something people learn to
-   * ignore — and then the quest payout goes unread too.
-   */
-  it('never speaks for messages, which have their own surface', () => {
-    const line = headline(badgesWith({
-      messages: [{ mine: false, createdAt: 60 }],
-    }));
-    expect(line).toBeNull();
-    expect(HEADLINE_KEYS).not.toContain('messages' as BadgeKey);
-  });
-
-  /**
-   * The header restates a badge and never derives a count of its own. That is
-   * what keeps `derive.ts`'s posture rule — every badge is somebody offering
-   * you something — true of the loudest surface in the app as well as the
-   * quietest.
-   */
-  it('only ever speaks for a real badge key with a real route', () => {
-    for (const key of HEADLINE_KEYS) {
-      expect(BADGE_KEYS, `${key} is not a badge key`).toContain(key);
-      expect(BADGE_ROUTES[key], `${key} routes nowhere`).toMatch(/^\//);
-    }
-  });
-
-  it('is quiet once the badge it restates is cleared', () => {
-    // A cheer already looked at. The dot goes, and so must the sentence.
-    const line = headline(badgesWith({
-      seen: { cheers: 100 },
-      cheers: [cheer({ createdAt: 60 })],
-    }));
-    expect(line).toBeNull();
-  });
-});

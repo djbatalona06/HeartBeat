@@ -169,71 +169,20 @@ export function byRoute(badges: Record<BadgeKey, Badge>): Record<string, number>
   return out;
 }
 
-/**
- * The one thing worth a line across the top of the screen, or nothing.
+/*
+ * A headline used to live here: `HEADLINE_KEYS`, `Headline`, `headlineText`
+ * and `headline()`, which returned the first of quests and cheers and dropped
+ * the other. It has moved to `notifications/events.ts`, which collects
+ * everything waiting instead of only the first and can also speak for the
+ * wager, which is not a badge at all.
  *
- * ## Why this is not a fourth badge key
- *
- * A dot says "there is something here". A sentence across the top of every
- * screen says "read this now", and that is a louder instrument. So it is
- * deliberately not its own count derived from its own data: it only ever
- * restates a badge that already exists, which means it inherits the rule the
- * badge list is built on — every one of them is somebody *offering* you
- * something, never the app noting what you did not do. A header that said "you
- * have not logged since Tuesday" is the single easiest way to turn this app
- * into a debt, and the way to make that impossible is to give the header no
- * source of truth of its own.
- *
- * ## Why messages are left out
- *
- * They have a surface already: a pill above the tab bar that opens the thread
- * as a sheet over whatever screen you are on. `BADGE_ROUTES` records the same
- * fact by giving `messages` no route. Saying it twice would not make an unread
- * message easier to find; it would make the header something people learn to
- * ignore, and then the quest payout goes unread too.
- *
- * So: only the keys that have somewhere to send you, in the order of what the
- * app owes you versus what it is telling you.
+ * The rule it carried moved with it, because it is the important part and not
+ * the code: a sentence across the top of every screen is a louder instrument
+ * than a dot, so it **never gets a source of truth of its own**. It only ever
+ * restates what `deriveBadges` already counted, which is what makes it inherit
+ * the rule this whole list is built on — every one of them is somebody
+ * *offering* you something, never the app noting what you did not do. A header
+ * reading "you have not logged since Tuesday" is the single easiest way to
+ * turn this app into a debt, and giving the header no data of its own is what
+ * makes that impossible.
  */
-export const HEADLINE_KEYS: readonly BadgeKey[] = ['quests', 'cheers'];
-
-export interface Headline {
-  /** Which badge this restates, so dismissing it marks the right thing seen. */
-  key: BadgeKey;
-  /** One sentence. Present tense, and about the good thing that happened. */
-  text: string;
-  /** Where tapping goes. Always set — `HEADLINE_KEYS` only holds routed keys. */
-  to: string;
-}
-
-/**
- * What each key says when it is the one being shown.
- *
- * Bespoke rather than reusing `Badge.label`: "3 quests finished" is right for a
- * screen reader announcing a dot and wrong as a sentence, and bending one
- * string to do both jobs is how the dot ends up reading like a headline or the
- * headline like a label.
- */
-function headlineText(key: BadgeKey, n: number): string {
-  if (key === 'quests') {
-    return n === 1
-      ? 'A quest is finished. The payout is waiting.'
-      : `${n} quests are finished. The payouts are waiting.`;
-  }
-  return n === 1
-    ? 'They cheered something you logged.'
-    : `They cheered ${n} things you logged.`;
-}
-
-export function headline(badges: Record<BadgeKey, Badge>): Headline | null {
-  for (const key of HEADLINE_KEYS) {
-    const badge = badges[key];
-    const to = BADGE_ROUTES[key];
-    // `to` cannot be missing for these two, and is checked anyway: the day
-    // somebody adds a routeless key to the list above, this shows nothing
-    // rather than rendering a bar that goes nowhere when tapped.
-    if (!to || badge.count <= 0) continue;
-    return { key, text: headlineText(key, badge.count), to };
-  }
-  return null;
-}

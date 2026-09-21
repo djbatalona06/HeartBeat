@@ -958,9 +958,16 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
    Accent-tinted rather than filled: a solid accent bar at the top of every
    screen competes with the page title directly under it, and this is meant to
    be noticed once and then acted on, not to own the screen. */
+/* The bar, and the × beside it when the lead line is news rather than
+   something owed. A row rather than a block now: the link takes the space and
+   the dismiss sits outside it, so tapping the × cannot also follow the link. */
 .headline {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
   margin-bottom: var(--space-3);
 }
+.headline-link { flex: 1; min-width: 0; }
 .headline-link {
   display: flex;
   align-items: center;
@@ -987,6 +994,31 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   font-size: var(--text-lg);
   line-height: 1;
 }
+/* What is behind the lead. Quieter than the line itself and never a number on
+   its own — "and 2 more" is a count of things somebody can go and look at, not
+   a badge to clear. */
+.headline-more {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+/* Matches the bar it sits beside rather than the page, so the two read as one
+   control group; `--tap` square, because an icon-only target is the one place
+   a hit area has to be stated rather than inherited from text. */
+.headline-dismiss {
+  flex: none;
+  width: var(--tap);
+  min-height: var(--tap);
+  border: var(--border-width) solid color-mix(in srgb, var(--color-accent) 35%, var(--color-surface));
+  border-radius: var(--radius-large);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+.headline-dismiss:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
 
 /* ---- tab bar + menu ---------------------------------------------------------
    Six across the bottom, and everything else behind the three-line button.
