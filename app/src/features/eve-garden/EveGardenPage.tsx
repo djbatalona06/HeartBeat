@@ -35,6 +35,10 @@ import { logActivity } from './logging';
 import { GardenBackdrop } from './GardenBackdrop';
 import { GardenPlaces } from './GardenPlaces';
 import { GardenDrawer } from './GardenDrawer';
+import { PRIZES_PER_CHEST } from '../../domain/rpg/chests';
+import type { ChestOutcome } from '../../db/repository/chests';
+import { ChestReveal } from '../chest/ChestReveal';
+import { openingLine } from '../chest/receipt';
 import { GardenHabitat } from './GardenHabitat';
 import { RaidGate } from './gate/RaidGate';
 import { Compass } from './Compass';
@@ -168,6 +172,10 @@ export function EveGardenPage() {
     { monster: MonsterDto; xp: number; leveledUp: boolean; level: number; rewardText: string } | null
   >(null);
   const [note, setNote] = useState<string | null>(null);
+  // The chest the drawer just opened, while it is still being looked at. The
+  // same reveal the Shop tab renders -- a second one would be a second chance
+  // to describe a duplicate as nothing.
+  const [revealed, setRevealed] = useState<Extract<ChestOutcome, { ok: true }> | null>(null);
 
   /**
    * What is broken, if anything — and separate from `note`, which is the
@@ -792,11 +800,16 @@ export function EveGardenPage() {
             setNote(result.ok ? null : result.reason ?? null);
           }}
           onOpenChest={async (chestId) => {
-            const result = await openChestFor(memberId!, coupleId!, chestId, {
-              tier: Math.random(), kind: Math.random(),
-              stat: Math.random(), pick: Math.random(),
-            });
-            setNote(result.ok ? `${result.name}.` : result.reason);
+            // One roll set per item in the chest. See `openChestFor`.
+            const result = await openChestFor(
+              memberId!, coupleId!, chestId,
+              Array.from({ length: PRIZES_PER_CHEST }, () => ({
+                tier: Math.random(), kind: Math.random(),
+                stat: Math.random(), pick: Math.random(),
+              })),
+            );
+            if (!result.ok) { setNote(result.reason); return; }
+            setRevealed(result);
           }}
         />
       )}
@@ -830,6 +843,15 @@ export function EveGardenPage() {
           onDismiss={() => { setVictory(null); setBattle(null); }}
         />
       )}
+
+      {/* After the victory banner, because a chest is opened from the drawer
+          and never in the middle of a fight, so the two cannot both be up. */}
+      {revealed ? (
+        <ChestReveal
+          outcome={revealed}
+          onDismiss={() => { setNote(openingLine(revealed)); setRevealed(null); }}
+        />
+      ) : null}
     </section>
   );
 }

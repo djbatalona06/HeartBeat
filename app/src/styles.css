@@ -6604,6 +6604,125 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 
 .chest-odds { display: grid; gap: var(--space-1); }
 
+/* ---- what came out of it ---------------------------------------------------
+
+   The reveal, over everything. `--z-sheet` rather than `--z-overlay`: it is a
+   modal dialog and it has to sit above the drawer that opened it, which is
+   already an overlay.
+
+   Nothing in here is behind the animation. Every prize is in the DOM at full
+   opacity from the first frame, and `ChestAnimator` fades each one *in* from
+   zero with `fill: both` — so a phone that cannot animate, calm mode, reduced
+   motion and a screen reader all get the whole list, and only the arrival is
+   lost. The one exception is the burst, which is nothing but a flash and so
+   starts invisible and stays that way if it never runs. */
+.chest-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: var(--scrim);
+}
+.chest-reveal-card {
+  width: min(22rem, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+  text-align: center;
+  animation: garden-drop var(--motion-medium) var(--motion-easing);
+}
+
+/* The lid and the flash share one box so the flash is centred on the chest
+   rather than on the card -- the chest is not the widest thing in here. */
+.chest-reveal-lid {
+  position: relative;
+  justify-self: center;
+  width: 6rem;
+}
+.chest-reveal-art {
+  /* Its own box, because the shake rotates it and the transform must compose
+     with nothing else. */
+  transform-origin: 50% 70%;
+}
+.chest-reveal-burst {
+  position: absolute;
+  inset: -30%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--color-accent) 0%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chest-reveal-title {
+  margin: 0;
+  font-family: var(--font-display);
+  letter-spacing: var(--font-display-tracking);
+  font-size: var(--text-lg);
+}
+
+.chest-reveal-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.chest-reveal-prize {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  /* The rung, on the left edge, exactly as an odds row says it. */
+  box-shadow: inset 3px 0 0 var(--tier-ring);
+  text-align: left;
+}
+.chest-reveal-prize-name {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+.chest-reveal-prize-kind {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.chest-reveal-prize-note {
+  font-size: var(--text-xs);
+  color: var(--color-accent);
+}
+/* A duplicate is not a lesser prize and does not look like one. Gear refined
+   to +2 is a good chest, and dimming its name to mark it as a repeat would say
+   the opposite of what happened. The note line says what it did; nothing here
+   needs to say it twice in grey. The attribute is still on the element for a
+   later rule that has a better reason than this one did. */
+
+.chest-reveal-floor,
+.chest-reveal-refund {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
+
+/* `.primary` carries its own `margin-top` for a page that stacks sections; in
+   a grid that already has a gap that is the gap twice over. */
+.chest-reveal-card .primary { margin-top: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The card's own entrance. The three items inside it are the animator's,
+     and `revealPlan` already collapses those to nothing under the same
+     setting -- one request, answered in both places it has to be. */
+  .chest-reveal-card { animation: none; }
+}
+
 /* ---- the purchases drawer -------------------------------------------------- */
 
 .purchases { padding: 0; overflow: hidden; }
@@ -6717,9 +6836,10 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 
 /* ---- the rarity ring ------------------------------------------------------
    Everything ownable lands on the tier ladder, so everything that *shows* a
-   rung should say so the same way. Three surfaces carry the attribute today —
-   the raid sheet's sources, the arch's pedestals, and the chest odds — and
-   before this each said it differently, or only for the top two rungs.
+   rung should say so the same way. Four surfaces carry the attribute today —
+   the raid sheet's sources, the arch's pedestals, the chest odds and the
+   prizes in a chest reveal — and before this each said it differently, or
+   only for the top two rungs.
 
    The rung sets a variable; the surfaces spend it. That split is what keeps
    the ladder in one place: adding a sixth rung is one line here, not one line
@@ -6727,19 +6847,23 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
    what the rungs are. */
 .raid-source[data-tier='rare'],
 .gate-pedestal[data-tier='rare'],
-.odds-row[data-rarity='rare'] { --tier-ring: var(--tier-ring-rare); }
+.odds-row[data-rarity='rare'],
+.chest-reveal-prize[data-rarity='rare'] { --tier-ring: var(--tier-ring-rare); }
 
 .raid-source[data-tier='epic'],
 .gate-pedestal[data-tier='epic'],
-.odds-row[data-rarity='epic'] { --tier-ring: var(--tier-ring-epic); }
+.odds-row[data-rarity='epic'],
+.chest-reveal-prize[data-rarity='epic'] { --tier-ring: var(--tier-ring-epic); }
 
 .raid-source[data-tier='legendary'],
 .gate-pedestal[data-tier='legendary'],
-.odds-row[data-rarity='legendary'] { --tier-ring: var(--tier-ring-legendary); }
+.odds-row[data-rarity='legendary'],
+.chest-reveal-prize[data-rarity='legendary'] { --tier-ring: var(--tier-ring-legendary); }
 
 .raid-source[data-tier='mythic'],
 .gate-pedestal[data-tier='mythic'],
-.odds-row[data-rarity='mythic'] { --tier-ring: var(--tier-ring-mythic); }
+.odds-row[data-rarity='mythic'],
+.chest-reveal-prize[data-rarity='mythic'] { --tier-ring: var(--tier-ring-mythic); }
 
 /* The plinth already glows for the *chosen* companion. This is the other
    question — how rare the thing standing on it is — so it reads as a ring

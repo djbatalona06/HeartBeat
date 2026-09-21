@@ -127,17 +127,25 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   per skill, `scene/vfx.ts` maps it to one of five motions, and
   `scene/vfx.test.ts` fails in both directions — an unmapped skill and a mapped
   shape nobody casts.
+- **A chest holds `PRIZES_PER_CHEST` items and the counter steps once per
+  chest.** A chest counts as a miss only when all three items missed, so the
+  published 6/9/12 windows are reached far more rarely than the one-item
+  arithmetic they were chosen with — 1 in 56, 1 in 212, 1 in 3081. They were
+  kept because they are published; `chests.test.ts` holds the figures, the
+  argument, and a tripwire that fails if the item count, a chest's weights or a
+  window moves. **The floor lifts one item, not all three** — applied to every
+  item it is a jackpot wearing the word insurance.
 - **Chest pity is per chest**, stored on `Avatar.chestPity` (optional, no
   migration). The rescale at a floor is `applyFloor` from `pets.ts`, not a
-  second copy. `chests.test.ts` asserts each window is reached between one run
-  in four and one in twenty — a window reached half the time is the real drop
-  rate wearing a second name.
-- **A paid chest must never hand back nothing.** Gear refines, a companion
-  deepens its bond, a cosmetic is refunded at list price;
-  `repository/chests.test.ts` drives sixty consecutive draws to prove it. The
-  odds module stops short of ownership on purpose — that is the repository's
-  question, and keeping it there is why the odds can be tested without a
-  database.
+  second copy.
+- **A paid chest must never hand back nothing, and that is now per item.** Gear
+  refines, a companion deepens its bond, a cosmetic is refunded — and the
+  **refund is capped at the item's share of the price**, because every furniture
+  piece is `rare` at 120–180 coins while the wooden chest costs 90, which made
+  owning the set a money printer. The owned sets are updated *inside* the grant
+  loop, or one chest hands over the same new rug three times. The odds module
+  stops short of ownership on purpose — that is the repository's question, and
+  keeping it there is why the odds can be tested without a database.
 - **Nothing in a Dexie transaction may `await` a non-Dexie promise.** A dynamic
   `import()` inside `openChestFor` ended the transaction halfway through paying
   for a chest; every module it needs is imported statically.
@@ -157,9 +165,12 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   level is the fifty-rung curve in `domain/xp.ts` that the couple climbs.
   Milestones hang off the second. `EveGardenPage`'s victory banner reads the
   pet's, because the first would announce a plot opening on the wrong level.
-- **`ChestAlcove` has one implementation, rendered twice.** The Shop tab and
-  `GardenDrawer` both use it. Do not fork it — two sets of published odds is
-  two chances to publish a number that is not the number.
+- **`ChestAlcove`, `ChestArt` and `ChestReveal` each have one implementation,
+  rendered twice.** The Shop tab and `GardenDrawer` both open chests. Do not
+  fork any of them — two sets of published odds is two chances to publish a
+  number that is not the number, two chest drawings is two chances for the
+  cheap one to look like the dear one, and two reveals is two chances to
+  describe a duplicate as nothing.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)

@@ -414,6 +414,56 @@ this app's whole thesis. A short note grants the other person energy; sending
 pays the sender a little too, or nobody sends. Capped at three per sender per
 day — they keep their weight by being rare.
 
+### Chests, and the arithmetic of a published guarantee
+
+Three chests at 90, 260 and 700 coins. Three rather than one because a single
+chest with every tier in it is a slot machine — one price, one lever, and the
+only decision is how many times to pull it. Three is a decision, and the
+decision is legible from the prices without anybody reading an odds table.
+
+Every chest hands over **three items** (`PRIZES_PER_CHEST`), each rolled
+independently on the chest's own published table. The odds panel shows the
+table for *your* next chest with your luck and your counter already folded in,
+never a table for a draw in general, and it is never behind a purchase.
+
+- **A paid chest never hands back nothing, per item.** Gear you own refines, a
+  companion you own deepens its bond, and a cosmetic you own is refunded —
+  there is no second level of owning a rug. Each item prefers something unowned
+  at its tier first, so a refund is the last resort.
+- **Refunds are capped at the item's share of the price.** Every furniture
+  piece is priced 120 or 180, which the price-to-tier map calls `rare`, and the
+  wooden chest costs **90** and rolls rare decor — so refunding at list price
+  turned owning the furniture set into a money printer, threefold once a chest
+  held three items. "A wasted draw is never a wasted purchase" means you get
+  your money back, not that you profit.
+- **The pity counter steps once per chest, not once per item.** A chest counts
+  as a miss only when all three of its items missed. That keeps the published
+  windows at 6/9/12 and keeps every counter already synced between two phones
+  comparable — and it has a consequence worth stating plainly, because a floor
+  nobody reaches is decoration:
+
+  | chest | window | reached, one item | reached, as shipped |
+  |---|---|---|---|
+  | wooden | 6 | 1 in 4 | 1 in 56 |
+  | silver | 9 | 1 in 6 | 1 in 212 |
+  | gilded | 12 | 1 in 15 | 1 in 3081 |
+
+  The windows were chosen when a chest held one item. They were kept because
+  they are published, which makes the floors a backstop that fires rarely
+  rather than one that fires: three items is itself the protection against a
+  bad run, and the floor catches the runs three items did not. Restoring the
+  old reach would mean windows of roughly 6/8/7, which breaks the rule that
+  each chest's window is wider than the last. `chests.test.ts` carries the
+  figures and a tripwire that fails if the item count, a chest's weights or a
+  window moves.
+- **The floor lifts one item, not three.** "Guaranteed epic or better" is a
+  promise about the chest. Applied to every item it would be a jackpot wearing
+  the word insurance, and the odds footnote says which it is.
+- **The reveal shows all three**, worst first so it builds, with every prize in
+  the DOM from the first frame — the animation decides how they arrived, never
+  whether they are there. One implementation, rendered by both the Shop tab and
+  the garden drawer, for the same reason there is one odds table.
+
 ### The boss fight, and why it is the one server-side feature
 
 Boss HP is **contested state**. Everything else in HeartBeat renders from

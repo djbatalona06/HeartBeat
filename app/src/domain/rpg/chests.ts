@@ -20,12 +20,19 @@ import {
  *
  * ## What pity is for here, which is what it is for everywhere in this app
  *
- * Insurance against a bad run, and nothing else. Each window is chosen so that
- * the chance of reaching it is somewhere between one run in four and one in
- * fourteen — so it **removes the bad tail without moving the median**, which is
- * the only honest version of a pity system and the reasoning `pets.ts` already
- * wrote down at length. The counters are per chest, because a bad run on the
- * cheap chest is not insurance you have paid for on the dear one.
+ * Insurance against a bad run, and nothing else — it **removes the bad tail
+ * without moving the median**, which is the only honest version of a pity
+ * system and the reasoning `pets.ts` already wrote down at length. The counters
+ * are per chest, because a bad run on the cheap chest is not insurance you have
+ * paid for on the dear one.
+ *
+ * The windows were chosen when a chest held one item and reaching one took
+ * between one run in four and one in fifteen. A chest holds three now and only
+ * counts as a miss when all three missed, so the same windows are reached far
+ * more rarely — 1 in 56, 1 in 212 and 1 in 3081. `pityAt` was kept at 6/9/12
+ * because those numbers are published. `chests.test.ts` holds the figures, the
+ * argument for keeping them, and a tripwire that fails if any of the three
+ * inputs moves.
  *
  * Unlike the egg's, these counters are shown. `pityLine` is the sentence, and
  * it is on the chest rather than buried: a floor nobody can see is not a
@@ -56,7 +63,13 @@ export interface Chest {
   price: number;
   /** The weight of each tier in this chest's pool. Absent means not in it. */
   weights: Partial<Record<Tier, number>>;
-  /** Draws without `pityTier` or better before the next one is guaranteed. */
+  /**
+   * Chests without `pityTier` or better before the next one is guaranteed.
+   *
+   * Chests, not items. A chest holds `PRIZES_PER_CHEST` of them and counts as
+   * a miss only when all of them missed -- see the table in `chests.test.ts`
+   * for what that does to how often a floor actually fires.
+   */
   pityAt: number;
   pityTier: Tier;
   /** How likely each kind of prize is, before the catalogue has its say. */
@@ -209,8 +222,8 @@ export function pityLine(chest: Chest, pity: number): string {
   const name = TIER_NAMES[chest.pityTier];
   if (chestPityFloor(chest, pity)) return `Guaranteed ${name} or better — this one.`;
   const left = chest.pityAt - Math.max(0, pity);
-  if (pity <= 0) return `Guaranteed ${name} or better within ${chest.pityAt} draws.`;
-  return `Guaranteed ${name} in ${left} ${left === 1 ? 'draw' : 'draws'}.`;
+  if (pity <= 0) return `Guaranteed ${name} or better within ${chest.pityAt} chests.`;
+  return `Guaranteed ${name} in ${left} ${left === 1 ? 'chest' : 'chests'}.`;
 }
 
 /* -- drawing ----------------------------------------------------------------- */
@@ -249,8 +262,18 @@ export function rollPrizeKind(chest: Chest, tier: Tier, roll: number): PrizeKind
     (chances[k] ?? 0) > (chances[best] ?? 0) ? k : best);
 }
 
-export interface ChestDraw {
-  chestId: ChestId;
+/** How many items one chest hands over. */
+export const PRIZES_PER_CHEST = 3;
+
+/**
+ * One item out of a chest: what it is, before ownership has had its say.
+ *
+ * A *description* of a prize rather than a prize. Turning it into an owned row
+ * is the repository's job, because only the repository knows what this couple
+ * already has — and a duplicate refines rather than stacking, which is a
+ * question about ownership and not about odds.
+ */
+export interface ChestPrize {
   tier: Tier;
   /** Null only if this chest's catalogues offer nothing at this tier at all. */
   kind: PrizeKind | null;
@@ -258,10 +281,26 @@ export interface ChestDraw {
   statRoll: number;
   /** Which of the matching catalogue entries, as a number in [0, 1). */
   pickRoll: number;
-  /** The chest's counter after this draw. */
+}
+
+/** One chest, opened. */
+export interface ChestOpening {
+  chestId: ChestId;
+  /**
+   * The items, **in the order they were rolled**.
+   *
+   * Presentation may sort them — `showcaseOrder` is there for that — but this
+   * order is what actually came out, and it is the order the repository grants
+   * them in, which is what decides which of two items at the same tier got the
+   * unowned one.
+   */
+  prizes: ChestPrize[];
+  /** The chest's counter after this opening. It steps at most once. */
   pity: number;
-  /** True when the floor is what produced this tier. */
-  flooredBy: Tier | null;
+  /** The floor that was in force, which is what `pityLine` promised. */
+  floor: Tier | null;
+  /** True when that floor actually had to lift an item to keep the promise. */
+  lifted: boolean;
 }
 
 export interface ChestRolls {
@@ -271,32 +310,86 @@ export interface ChestRolls {
   pick: number;
 }
 
+/** Rolls arrive from `Math.random()` and from tests, and neither is trusted. */
+function clamped(roll: number): number {
+  return Math.min(0.999999, Math.max(0, roll));
+}
+
+/** One item at a tier already decided, from its own kind, stat and pick rolls. */
+function prizeAt(chest: Chest, tier: Tier, rolls: ChestRolls): ChestPrize {
+  return {
+    tier,
+    kind: rollPrizeKind(chest, tier, rolls.kind),
+    statRoll: clamped(rolls.stat),
+    pickRoll: clamped(rolls.pick),
+  };
+}
+
 /**
- * One draw, start to finish, as a pure function of four rolls.
+ * One chest, start to finish, as a pure function of one roll set per item.
  *
- * Returns a *description* of a prize rather than a prize: which tier, which
- * kind, and where in the band it lands. Turning that into an owned row is the
- * repository's job, because only the repository knows what this couple already
- * has — and a duplicate refines rather than stacking, which is a question about
- * ownership and not about odds.
+ * ## Three items, one guarantee
+ *
+ * Each item is rolled on the chest's own table with luck folded in and **the
+ * floor left out**, and then the floor is applied once, to the chest: if
+ * nothing in it reached the pity tier, the best item is lifted to it.
+ *
+ * Applying the floor to every item instead would turn insurance into a
+ * jackpot — a floored gilded chest would hand over three legendaries — and it
+ * would make `pityLine` a lie in the generous direction, which is still a lie.
+ * "Guaranteed rare or better — this one" is a promise about the chest.
+ *
+ * ## One step of the counter
+ *
+ * `pityAt` counts chests, not items, so 6/9/12 mean exactly what they have
+ * always meant and every counter already stored and synced stays comparable.
+ * The step is taken against the **best** tier in the opening, because a chest
+ * that handed over an epic has paid out whatever the other two were.
  */
 export function openChest(
   chest: Chest,
-  rolls: ChestRolls,
+  rolls: readonly ChestRolls[],
   luck = 0,
   pity = 0,
-): ChestDraw {
+): ChestOpening {
   const floor = chestPityFloor(chest, pity);
-  const tier = rollChestTier(chest, rolls.tier, luck, pity);
+  const tiers = rolls.map((roll) => rollChestTier(chest, roll.tier, luck, 0));
+
+  let lifted = false;
+  if (floor && tiers.length > 0 && !tiers.some((tier) => tierRank(tier) >= tierRank(floor))) {
+    let best = 0;
+    for (let i = 1; i < tiers.length; i += 1) {
+      if (tierRank(tiers[i]) > tierRank(tiers[best])) best = i;
+    }
+    tiers[best] = floor;
+    lifted = true;
+  }
+
   return {
     chestId: chest.id,
-    tier,
-    kind: rollPrizeKind(chest, tier, rolls.kind),
-    statRoll: Math.min(0.999999, Math.max(0, rolls.stat)),
-    pickRoll: Math.min(0.999999, Math.max(0, rolls.pick)),
-    pity: nextChestPity(chest, pity, tier),
-    flooredBy: floor,
+    prizes: tiers.map((tier, i) => prizeAt(chest, tier, rolls[i])),
+    // An opening with no items in it is not an opening, and must not cost
+    // somebody a step of their counter.
+    pity: tiers.length === 0
+      ? Math.max(0, pity)
+      : nextChestPity(chest, pity, tiers.reduce(
+        (top, tier) => (tierRank(tier) > tierRank(top) ? tier : top),
+      )),
+    floor,
+    lifted,
   };
+}
+
+/**
+ * The same items, worst first — **presentation only**.
+ *
+ * A reveal that builds to the best thing in the chest is the reason this
+ * exists. It returns a copy, and `ChestOpening.prizes` keeps the rolled order,
+ * because the order things were granted in is a fact about what happened and
+ * the order they are shown in is a choice about how to show it.
+ */
+export function showcaseOrder<T extends { tier: Tier }>(prizes: readonly T[]): T[] {
+  return [...prizes].sort((a, b) => tierRank(a.tier) - tierRank(b.tier));
 }
 
 /** Every tier a chest can reach that is at or above its own pity floor. The

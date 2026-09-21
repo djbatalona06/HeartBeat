@@ -62,9 +62,10 @@ import { petArt } from './art/pets';
 import { ChestAlcove } from './ChestAlcove';
 import { Purchases } from './Purchases';
 import { RaidSheet } from './RaidSheet';
-import { TIER_NAMES } from '../../domain/rpg/tiers';
-import { PRIZE_KIND_NAMES } from '../../domain/rpg/chests';
+import { PRIZES_PER_CHEST } from '../../domain/rpg/chests';
 import type { ChestOutcome } from '../../db/repository/chests';
+import { ChestReveal } from '../chest/ChestReveal';
+import { openingLine } from '../chest/receipt';
 import { SecondaryAction } from '../../ui/SecondaryAction';
 import { PrimaryAction } from '../../ui/PrimaryAction';
 
@@ -95,16 +96,6 @@ function luckOf(avatar: Avatar, owned: InventoryItem[]): number {
   const level = levelOf(avatar);
   const bonus = gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned));
   return sheetFor(avatar, bonus).stats.luck;
-}
-
-function chestReceipt(result: Extract<ChestOutcome, { ok: true }>): string {
-  const what = `${TIER_NAMES[result.tier]} ${PRIZE_KIND_NAMES[result.kind].toLowerCase()}`;
-  if (result.refined !== undefined) return `${result.name} again — refined to +${result.refined}.`;
-  if (result.bonded !== undefined) return `${result.name} again. Closer by ${result.bonded}.`;
-  if (result.refunded !== undefined) {
-    return `${result.name} was already yours. ${result.refunded} coins back.`;
-  }
-  return `${result.name} — a ${what}.`;
 }
 
 const RARITY_GLOW: Record<Rarity, string[]> = {
@@ -168,6 +159,10 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
   const { say } = useToast();
   /** One chest at a time. Two taps racing would spend twice and show once. */
   const [opening, setOpening] = useState(false);
+  // What the last chest handed over, while it is still being looked at. The
+  // reveal is the receipt; the toast below is only the fallback for a page
+  // that never mounted one.
+  const [revealed, setRevealed] = useState<Extract<ChestOutcome, { ok: true }> | null>(null);
 
   // The sheet has to exist before the first completion, or a fresh install
   // shows a page with no character on it and no way to tell that is temporary.
@@ -336,20 +331,20 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
               if (opening) return;
               setOpening(true);
               try {
-                // The four rolls are drawn here and handed in, so the domain and
-                // the repository both stay deterministic given their inputs —
-                // the same arrangement `buyEgg` has.
                 const result = await openChestFor(
                   identity.memberId, identity.coupleId, chestId,
-                  {
+                  // One roll set per item, drawn here and handed in, so the
+                  // domain and the repository both stay deterministic given
+                  // their inputs -- the same arrangement `buyEgg` has.
+                  Array.from({ length: PRIZES_PER_CHEST }, () => ({
                     tier: Math.random(),
                     kind: Math.random(),
                     stat: Math.random(),
                     pick: Math.random(),
-                  },
+                  })),
                 );
                 if (!result.ok) { say(result.reason, 'error'); return; }
-                say(chestReceipt(result), 'success');
+                setRevealed(result);
               } finally {
                 setOpening(false);
               }
@@ -408,6 +403,16 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
               with. It stays on /party because /party is the everything view. */}
           {only.includes('achievements') ? <AchievementShelf coupleId={identity.coupleId} /> : null}
         </>
+      ) : null}
+
+      {/* Last in the document, because it is an overlay and nearest means
+          nearest. Dismissing leaves the one-line form in a toast, so the thing
+          that was opened is still named on the page behind it. */}
+      {revealed ? (
+        <ChestReveal
+          outcome={revealed}
+          onDismiss={() => { say(openingLine(revealed), 'success'); setRevealed(null); }}
+        />
       ) : null}
     </div>
   );
