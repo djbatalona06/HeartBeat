@@ -50,11 +50,13 @@ jobs:
           # building the wasm workload on every pull request to analyse a boss
           # fight.
           languages: javascript-typescript
-          # The default queries plus the security-extended pack. The extra
-          # queries are the point of turning this on at all: the default set is
-          # tuned to near-zero false positives, and this repo would rather read
-          # a few maybes about its own auth than miss one.
-          queries: security-extended
+          # The queries, and the two directories that are not ours to fix, live
+          # in one file: `.github/codeql/codeql-config.yml`. It still asks for
+          # the default queries plus the security-extended pack — the extra
+          # queries are the point of turning this on at all, since the default
+          # set is tuned to near-zero false positives and this repo would
+          # rather read a few maybes about its own auth than miss one.
+          config-file: .github/codeql/codeql-config.yml
 
       # No build step. `autobuild` exists for compiled languages; for
       # JavaScript/TypeScript CodeQL reads the source directly, and running the

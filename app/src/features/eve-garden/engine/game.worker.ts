@@ -76,6 +76,11 @@ function call(api: BridgeExports, method: GameRequest['method'], args: readonly 
     case 'progress': return api.Progress(args[0] as number);
     case 'award': return api.Award(args[0] as string, args[1] as number);
     case 'defeatXp': return api.DefeatXp(args[0] as number, args[1] as number);
+    // The switch is exhaustive over `GameMethod`, so this is unreachable from
+    // the typed client — and reachable from a message that simply says
+    // `method: 'whatever'`. Without it that message is answered `ok: true` with
+    // an undefined value, which is a worse thing to debug than a rejection.
+    default: throw new Error(`unknown method: ${String(method)}`);
   }
 }
 
@@ -88,7 +93,36 @@ const ready = boot().then((api) => {
   return api;
 });
 
+/**
+ * Nothing but a well-formed request is answered.
+ *
+ * `call()` returns `undefined` for a method it does not know, so a malformed
+ * message used to come back as a perfectly cheerful `{ ok: true, value:
+ * undefined }` — a reply the client cannot tell from a real one.
+ *
+ * It is also the honest answer to CodeQL's `js/missing-origin-check` on the
+ * handler below, which is a false positive and is dismissed as one in the
+ * Security tab. That query is written for `window.addEventListener('message')`,
+ * where a message really can arrive from any page. This is a **dedicated**
+ * worker: its port is held by the one document that constructed it and by
+ * nothing else, and the `origin` on a message from that document is the empty
+ * string — so an origin check here would compare against nothing and refuse
+ * nothing. What can actually be wrong is the *shape* of what arrives, so that
+ * is what is checked.
+ */
+function isRequest(data: unknown): data is GameRequest {
+  const candidate = data as Partial<GameRequest> | null;
+  return (
+    typeof candidate === 'object' &&
+    candidate !== null &&
+    typeof candidate.id === 'number' &&
+    typeof candidate.method === 'string' &&
+    Array.isArray(candidate.args)
+  );
+}
+
 self.addEventListener('message', (event: MessageEvent<GameRequest>) => {
+  if (!isRequest(event.data)) return;
   const { id, method, args } = event.data;
 
   const reply = (response: GameResponse) => self.postMessage(response);

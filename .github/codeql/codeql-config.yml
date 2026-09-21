@@ -1,0 +1,35 @@
+# What CodeQL reads, and what it deliberately does not.
+#
+# The query selection lives here rather than inline in the workflow so that the
+# scope and the queries are one file — a `paths-ignore` in one place and a
+# `queries:` in another is how a repo ends up scanning a different tree than it
+# thinks it does. See `.github/workflows/codeql.yml` for why this analysis
+# exists at all.
+name: HeartBeat
+
+# The default queries plus security-extended, unchanged from what the workflow
+# asked for inline before this file existed.
+queries:
+  - uses: security-extended
+
+# Three kinds of file are out of scope, for two reasons.
+#
+# **Vendored third-party code.** `gift/src/vendor/three.min.js` is three.js
+# r160, minified, byte-for-byte as published. Twelve `js/insecure-randomness`
+# alerts came out of one function in it — `MathUtils.generateUUID()`, the
+# `Math.random()` that names a Texture, a Source and an Object3D so the scene
+# graph can tell them apart. Those uuids are not a security context, nobody
+# here can fix them, and the question "is a dependency we pull in
+# known-vulnerable" is already answered by the `npm audit` steps in ci.yml.
+#
+# **Build artefacts that inline source already scanned.** `gift/birthday.html`
+# is `gift/build.mjs`'s output: the vendored three.js above, plus
+# `gift/src/*.js`, in one file. `study/index.html` is the same arrangement for
+# the standalone study bundle. Scanning either means reading our own code a
+# second time — in minified form, at a line number nobody can act on — and
+# reporting anything found twice. The sources they are built from are scanned
+# where they are written, which is where a fix would go.
+paths-ignore:
+  - gift/src/vendor
+  - gift/birthday.html
+  - study/index.html

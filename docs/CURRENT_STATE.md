@@ -329,5 +329,13 @@ Beyond the ones in `CLAUDE.md`, which all still apply:
   right by capturing the zone at mint. Anything counting "days" must match.
 - **`db/repository/` is a directory.** New section = new file + one `export *`
   in alphabetical order. Never append to an existing section.
-- **There is no security scanning in this repo at all** — no CodeQL, no SARIF.
-  Noted in #57 and still true, and now a good deal of auth code lives here.
+- **CodeQL scans this repo, and what it does *not* read is a decision.**
+  `.github/codeql/codeql-config.yml` holds both halves: the default queries
+  plus security-extended, and a `paths-ignore` for vendored three.js and for
+  the two build artefacts that inline source scanned elsewhere
+  (`gift/birthday.html`, `study/index.html`). Excluding anything else means
+  saying why in that file. The one alert the Security tab is expected to carry
+  is `js/missing-origin-check` on `engine/game.worker.ts` — a dedicated
+  worker's message handler has no origin to check; the reasoning is in the
+  file, and the alert is dismissed as a false positive rather than worked
+  around in code.

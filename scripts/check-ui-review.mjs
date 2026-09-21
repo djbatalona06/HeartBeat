@@ -13,7 +13,6 @@
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { join, dirname, extname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync } from 'node:fs';
 
 const UPDATE = process.argv.includes('--update');
 
@@ -179,9 +178,11 @@ const rest = findings.filter((f) => f.rule !== 'raw-button');
 const counts = {};
 for (const f of buttons) counts[f.file] = (counts[f.file] ?? 0) + 1;
 
-const baseline = existsSync(BASELINE_FILE)
-  ? JSON.parse(await readFile(BASELINE_FILE, 'utf8'))
-  : null;
+// Read it and let a missing file say so, rather than asking whether it exists
+// and then reading it: two answers about one file with a gap in between, and
+// the second read is the one that decides whether the ratchet has a baseline.
+const baselineText = await readFile(BASELINE_FILE, 'utf8').catch(() => null);
+const baseline = baselineText === null ? null : JSON.parse(baselineText);
 
 if (UPDATE || baseline === null) {
   await writeFile(BASELINE_FILE, `${JSON.stringify(counts, null, 2)}\n`);

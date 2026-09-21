@@ -32,8 +32,8 @@
 
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
-import { readFile, stat, writeFile, mkdir } from 'node:fs/promises';
-import { join, dirname, extname } from 'node:path';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { join, dirname, extname, resolve, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, mkdirSync } from 'node:fs';
 
@@ -73,21 +73,57 @@ const MIME = {
   '.wasm': 'application/wasm',
 };
 
-const server = createServer(async (req, res) => {
-  const path = decodeURIComponent(req.url.split('?')[0]);
-  let file = join(DIST, path);
+/**
+ * The requested path, resolved inside `root` — or null if it climbed out.
+ *
+ * `join(root, '/../../etc/passwd')` normalises the `..` away and hands back a
+ * path outside the root, so the check has to happen after resolving rather
+ * than on the URL. This server only ever answers the Chromium this script
+ * drives on a random localhost port, but a directory traversal is a directory
+ * traversal, and it is two lines to not have one.
+ *
+ * Same shape as gift/tools/check-landing.mjs; when one moves, the other moves
+ * with it.
+ */
+function resolveInside(root, urlPath) {
+  const file = resolve(root, `.${urlPath.startsWith('/') ? urlPath : `/${urlPath}`}`);
+  // Asked as "how do I get there from the root" rather than as a prefix
+  // compare: `..` on its own is the root's parent and `../` is everything
+  // above that, and a check that names only one of them lets the other past.
+  const rel = relative(root, file);
+  if (rel === '..' || rel.startsWith(`..${sep}`)) return null;
+  return file;
+}
+
+/**
+ * Read it, rather than ask whether it can be read and then read it: `stat`
+ * followed by `readFile` is two answers about one file with a gap in between,
+ * and the only thing the first answer was ever used for is the directory case
+ * — which the read itself reports as EISDIR.
+ */
+async function readUnder(file) {
   try {
-    if ((await stat(file)).isDirectory()) file = join(file, 'index.html');
-  } catch {
-    // The app is a hash router, so every route is index.html. A 404 here would
-    // mean the walk could only ever see the home screen.
-    file = join(DIST, 'index.html');
+    return { path: file, body: await readFile(file) };
+  } catch (error) {
+    if (error.code !== 'EISDIR') return null;
+    const index = join(file, 'index.html');
+    try {
+      return { path: index, body: await readFile(index) };
+    } catch {
+      return null;
+    }
   }
-  try {
-    const body = await readFile(file);
-    res.writeHead(200, { 'content-type': MIME[extname(file)] ?? 'application/octet-stream' });
-    res.end(body);
-  } catch { res.writeHead(404); res.end('not found'); }
+}
+
+const server = createServer(async (req, res) => {
+  const file = resolveInside(DIST, decodeURIComponent(req.url.split('?')[0]));
+  // The app is a hash router, so every route is index.html. A 404 for a miss
+  // would mean the walk could only ever see the home screen — and a path that
+  // tried to climb out of DIST is a miss like any other.
+  const found = (file && (await readUnder(file))) ?? (await readUnder(join(DIST, 'index.html')));
+  if (!found) { res.writeHead(404); return res.end('not found'); }
+  res.writeHead(200, { 'content-type': MIME[extname(found.path)] ?? 'application/octet-stream' });
+  res.end(found.body);
 });
 await new Promise((r) => server.listen(0, r));
 const base = `http://127.0.0.1:${server.address().port}`;
