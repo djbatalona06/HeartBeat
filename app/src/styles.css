@@ -4808,20 +4808,32 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 }
 .house-scene { display: block; width: 100%; height: auto; }
 
-.house-slot { margin-top: var(--space-4); }
-.house-slot-name {
+/* What is in the room, now that nothing arranges it.
+   An inventory rather than a control: the twelve placement chips that used to
+   live here are gone, and the one thing that must not go with them is the
+   account of *why* the drawing looks the way it does. A room that changed on
+   its own with nothing naming what moved in would be worse than the chips
+   were. */
+.house-list {
+  display: grid;
+  gap: 2px;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.house-line {
+  display: grid;
+  grid-template-columns: 5rem 1fr;
+  align-items: baseline;
+  padding: var(--space-1) 0;
+  font-size: var(--text-sm);
+}
+.house-line-slot {
   font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
-/* A piece you do not own yet is dimmed and says its price, rather than being
-   hidden — the room should show what it could be, not only what it is. */
-.house-slot .chip-locked { cursor: default; }
-/* Chips capitalize by default, which is right for the difficulty words they
-   were built for and wrong for a proper name: it turns "Rainy window" into
-   "Rainy Window" and the set into inconsistent Title Case. */
-.house-slot .chip { text-transform: none; }
 
 .decor-list {
   list-style: none;

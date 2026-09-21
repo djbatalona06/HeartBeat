@@ -10,7 +10,6 @@ import {
   buyGear,
   buyOffer,
   ensureIdentity,
-  placeFurniture,
   getOrCreateAvatar,
   equipItem,
   markLoreSeen,
@@ -41,10 +40,9 @@ import {
   FURNITURE,
   HOUSE_SLOTS,
   HOUSE_SLOT_NAMES,
-  furnitureForSlot,
+  furnitureById,
   normalizeHouse,
   type House,
-  type HouseSlot,
 } from '../../domain/rpg/furniture';
 import { houseArt } from './art/house';
 import { PLACES, canTravel, nextPlace, travelCost } from '../../domain/rpg/locations';
@@ -324,19 +322,7 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
           ) : null}
 
           {only.includes('house') ? (
-          <Birbhouse
-            house={(pet?.house ?? {}) as House}
-            owned={owned ?? []}
-            avatar={avatar}
-            onPlace={async (slot, itemId) => {
-              const result = await placeFurniture(identity.memberId, identity.coupleId, slot, itemId);
-              if (!result.ok) say(result.reason ?? null, 'error');
-            }}
-            onClear={async (slot) => {
-              const result = await placeFurniture(identity.memberId, identity.coupleId, slot, undefined);
-              if (!result.ok) say(result.reason ?? null, 'error');
-            }}
-          />
+          <Birbhouse house={(pet?.house ?? {}) as House} avatar={avatar} />
           ) : null}
 
           {/* The shop is the chests; everything you can simply buy is the
@@ -402,7 +388,9 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
               owned={owned ?? []}
               onBuy={async (itemId) => {
                 const result = await buyFurniture(identity.memberId, identity.coupleId, itemId);
-                say(result.ok ? 'Bought. Place it on the Birb tab.' : result.reason ?? null, result.ok ? 'success' : 'error');
+                // No "place it" any more: buying furnished the room, in the
+                // same transaction that took the coins.
+                say(result.ok ? 'Bought, and it has moved in.' : result.reason ?? null, result.ok ? 'success' : 'error');
               }}
             />
           </Purchases>
@@ -674,22 +662,48 @@ function Adventures({ avatar, owned, onGo }: {
  * wall behind the bird, floor and perch in front. Compositing separate boxes
  * would have meant a rug that is always painted over the feet standing on it.
  */
-function Birbhouse({ house, owned, avatar, onPlace, onClear }: {
+/**
+ * The room, which furnishes itself.
+ *
+ * ## What came out, and why
+ *
+ * Twelve controls: four slots, each with a Bare chip and two pieces, plus copy
+ * explaining that rearranging it changed what you both saw. Eight pieces
+ * exist. A configuration screen for four either-or decisions is a lot of
+ * surface for a question nobody was really asking, and the answer was almost
+ * always "the better one" — so that is what it does now. Buying a piece places
+ * it; see `refurnishHouse`.
+ *
+ * ## What auto-placement can decide
+ *
+ * *Which* piece stands in each slot, and never *where*. Every drawing in
+ * `art/house/` uses absolute coordinates in this one shared 100×100 space —
+ * the rainy window is at x=58, y=18 and can be nowhere else — so position is
+ * not a thing there is a choice about. Making it one would mean rewriting all
+ * eight to be position-agnostic inside a `<g transform>`.
+ *
+ * ## What is still shown
+ *
+ * The room, and a line naming what is in it with the empty slots said plainly.
+ * A room that changed on its own with no account of why would be worse than
+ * the chips were: the point of losing the controls is not losing the
+ * information.
+ */
+function Birbhouse({ house, avatar }: {
   house: House;
-  owned: InventoryItem[];
   avatar: Avatar;
-  onPlace: (slot: HouseSlot, itemId: string) => void;
-  onClear: (slot: HouseSlot) => void;
 }) {
   const { theme } = useTheme();
   const mascot = getMascot(theme.id);
   const placed = normalizeHouse(house);
+  const bare = HOUSE_SLOTS.filter((slot) => !placed[slot]);
 
   return (
     <section className="panel">
       <h2 className="section-title">Birbhouse</h2>
       <p className="section-sub">
-        Yours together — rearranging it changes what you both see.
+        Yours together. It furnishes itself from what the two of you own — buy a
+        better piece and it moves in.
       </p>
 
       <div className="house" role="img" aria-label="The birbhouse">
@@ -708,41 +722,28 @@ function Birbhouse({ house, owned, avatar, onPlace, onClear }: {
         </svg>
       </div>
 
-      {HOUSE_SLOTS.map((slot) => {
-        const options = furnitureForSlot(slot);
-        return (
-          <div className="house-slot" key={slot}>
-            <h3 className="house-slot-name">{HOUSE_SLOT_NAMES[slot]}</h3>
-            <div className="chips">
-              <button
-                type="button"
-                className={`chip ${placed[slot] ? '' : 'chip-on'}`}
-                aria-pressed={!placed[slot]}
-                onClick={() => onClear(slot)}
-              >
-                Bare
-              </button>
-              {options.map((item) => {
-                const isOwned = ownsItem(owned, item.id);
-                const isPlaced = placed[slot] === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`chip ${isPlaced ? 'chip-on' : ''} ${isOwned ? '' : 'chip-locked'}`}
-                    aria-pressed={isPlaced}
-                    title={isOwned ? item.blurb : `${item.blurb} — ${item.price} coins in the Shop.`}
-                    onClick={() => (isOwned ? onPlace(slot, item.id) : undefined)}
-                    disabled={!isOwned}
-                  >
-                    {item.name}{isOwned ? '' : ` · ${item.price}`}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
+      {/* An inventory of the room rather than a control for it. Each line is
+          the piece that won its slot, so the drawing is never a change nobody
+          can account for. */}
+      <ul className="house-list">
+        {HOUSE_SLOTS.filter((slot) => placed[slot]).map((slot) => {
+          const item = furnitureById(placed[slot]);
+          return item ? (
+            <li className="house-line" key={slot}>
+              <span className="house-line-slot">{HOUSE_SLOT_NAMES[slot]}</span>
+              <span className="house-line-name">{item.name}</span>
+            </li>
+          ) : null;
+        })}
+      </ul>
+
+      {bare.length > 0 ? (
+        <p className="section-sub">
+          {bare.length === HOUSE_SLOTS.length
+            ? 'Nothing in it yet. The Shop has the furniture.'
+            : `Still bare: ${bare.map((slot) => HOUSE_SLOT_NAMES[slot].toLowerCase()).join(', ')}.`}
+        </p>
+      ) : null}
     </section>
   );
 }

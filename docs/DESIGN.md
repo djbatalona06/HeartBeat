@@ -414,6 +414,51 @@ this app's whole thesis. A short note grants the other person energy; sending
 pays the sender a little too, or nobody sends. Capped at three per sender per
 day — they keep their weight by being rare.
 
+### The birbhouse furnishes itself
+
+The room had twelve controls: four slots, each with a Bare chip and two pieces,
+plus copy explaining that rearranging it changed what you both saw. Eight
+pieces exist. A configuration screen for four either-or decisions was a lot of
+surface for a question nobody was really asking, and the answer was almost
+always "the better one".
+
+So **buying is placing**. `buyFurniture` furnishes the room in the same
+transaction that takes the coins, which means a purchase can never leave the
+room unchanged — the same guarantee a chest makes.
+
+- **Which piece wins a slot: highest price, then catalogue order.** Nothing in
+  the codebase answered this before. It reads as though it should be "highest
+  tier, then price", but furniture takes its rung *from* its price through
+  `tierForPrice`, which is monotonic in price — a dearer piece can never be a
+  lower tier, so the two orders are the same order. Naming price alone is
+  shorter and keeps `furniture.ts` from importing `raidStats.ts`, which imports
+  `HouseSlot` back from it. Catalogue order makes the answer total.
+- **Upgrades only, per slot, and that is what makes it safe.** `Pet.house` is
+  couple-level — it rides the shared pet row — while `inventory` is per-member
+  and is *not* partner-visible, so each phone sees only half of what the couple
+  owns. Recomputing the room from one member's inventory and storing the result
+  would delete whatever the other had furnished with, and the two phones would
+  take turns deleting each other's work on every sync. Taking the better of the
+  two per slot removes that entirely: every write is idempotent, the room only
+  ever improves, and sync order stops mattering. Same shape as the XP ledger
+  being reconciled rather than last-write-wins.
+- **Auto-placement chooses *which*, never *where*.** Every drawing in
+  `art/house/` uses absolute coordinates in one shared 100×100 space — the
+  rainy window is at x=58, y=18 and can be nowhere else. Varying position would
+  mean rewriting all eight to be position-agnostic inside a `<g transform>`.
+- **What is still shown** is an inventory of the room: a line per slot naming
+  the piece that won it, and the empty slots said plainly. The point of losing
+  the controls is not losing the information — a room that changed on its own
+  with no account of why would be worse than the chips were.
+- `placeIn` and `clearSlot` lost their last callers and went with the chips.
+
+Two coverage gaps closed alongside. There was no `cosmetics.test.ts` at all, so
+`buyFurniture`, `buyDye` and `wearDye` were unpinned while `buyFurniture` was
+gaining a third table to write to. And `houseArt` was absent from
+`art/art.test.ts`, which walked only gear and pets — its import-time throw was
+therefore reached only when somebody opened the Birb tab in a browser, so a
+piece added without a drawing shipped green and broke a screen.
+
 ### The raid has a screen, and the sheet has a second half
 
 `/raid` is one section holding three panels, in the order the question is

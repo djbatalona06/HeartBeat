@@ -156,6 +156,16 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   against the server, so a device can briefly hold a garden ahead of the level
   it can prove. `plantFlora` derives the level **inside** the transaction for
   the same reason; never take it as an argument.
+- **The birbhouse furnishes itself, and only upwards.** There is no placing:
+  `buyFurniture` calls `refurnishHouse` in the same transaction, which takes
+  the **better of the stored piece and this member's best owned piece, per
+  slot** — highest price, then catalogue order (`compareFurniture`). Upgrade-only
+  is load-bearing, not caution: `Pet.house` is couple-level while `inventory`
+  is per-member and not partner-visible, so recomputing the room from one
+  inventory and storing it would have two phones taking turns deleting each
+  other's furniture. Auto-placement decides *which* piece, never *where* —
+  every drawing in `art/house/` uses absolute coordinates in one shared
+  100×100 space.
 - **The garden does not use the birbhouse catalogue.** A rainy window and a
   round rug do not go outdoors. `FLORA` is the garden's own, and nothing in it
   is mythic — the top rung should be something you won, and `KIND_TIERS` in
