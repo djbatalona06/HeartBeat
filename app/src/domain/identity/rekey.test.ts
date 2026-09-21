@@ -1,4 +1,7 @@
 import 'fake-indexeddb/auto';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { db } from '../../db/database';
 import {
@@ -345,5 +348,53 @@ describe('isPaired', () => {
   it('treats an empty string as absent', () => {
     expect(isPaired({ coupleId: '', workerSecret: 'tok' })).toBe(false);
     expect(isPaired({ coupleId: 'couple-1', workerSecret: '' })).toBe(false);
+  });
+
+  /**
+   * This function's header says the definition lives here once rather than
+   * being spelled out at each call site, "which is how the two spellings came
+   * to disagree" — and a comment cannot enforce itself.
+   *
+   * It could not, in fact: three call sites went on restating it anyway
+   * (`SettingsPage`, `MoodPage`, `useMessages`), in two different field orders.
+   * None of them was wrong, which is the point — they were four chances for
+   * the next edit to fix one and miss three, on the question of whether to
+   * show somebody their partner's data.
+   *
+   * Narrow on purpose, in the same spirit as `derive.test.ts`'s badge guard:
+   * it pins the shape that actually happened rather than trying to describe
+   * every possible one. A screen needing something *extra* is fine and is not
+   * this — `useMessages` legitimately wants a `memberId` too, and asks for it
+   * as `isPaired(settings) && Boolean(memberId)`.
+   *
+   * What it does **not** catch, said plainly rather than left to be discovered:
+   * the same question asked through local aliases. `useMessages` spelled it
+   * `Boolean(token && coupleId && memberId)`, which names neither field, and no
+   * regex over field names was ever going to see that. This guard catches the
+   * two spellings that are easy to write by reflex; it is not a proof.
+   */
+  it('is not spelled out by hand anywhere else', () => {
+    const SRC = fileURLToPath(new URL('../..', import.meta.url));
+    // The two fields as adjacent operands of one `&&`, in either order. Tight
+    // bounds rather than `[^)]*`, which spans newlines and matched whole
+    // parameter lists that merely mentioned both names.
+    const HAND_ROLLED = /\b(coupleId|workerSecret)\b[^&|)]{0,20}&&[^&|(]{0,20}\b(workerSecret|coupleId)\b/;
+
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) { walk(full); continue; }
+        if (!/\.tsx?$/.test(entry.name) || entry.name.endsWith('.test.ts')) continue;
+        // Where the definition itself lives.
+        if (full.includes(join('domain', 'identity'))) continue;
+        if (HAND_ROLLED.test(readFileSync(full, 'utf8'))) {
+          offenders.push(relative(SRC, full));
+        }
+      }
+    };
+    walk(SRC);
+
+    expect(offenders, 'these ask "are we paired" themselves — call isPaired').toEqual([]);
   });
 });

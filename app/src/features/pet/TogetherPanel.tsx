@@ -37,7 +37,14 @@ export function TogetherPanel({ coupleId, day }: { coupleId: string; day: DayKey
    */
   useEffect(() => {
     if (!coupleId || !view) return;
-    void settleTogether(coupleId, day);
+    // Caught rather than `void`ed, and swallowed rather than surfaced. This was
+    // the one unguarded promise on the paired dashboard, where a rejection
+    // becomes an unhandled rejection and Chrome logs it as an error — which the
+    // visual walk's console-error check would then read as this screen being
+    // broken. There is nothing to show a person either way: the write is
+    // idempotent and the next look retries it, so a failed settle costs a visit
+    // and not a week.
+    settleTogether(coupleId, day).catch(() => {});
   }, [coupleId, day, view]);
 
   if (!view) return null;

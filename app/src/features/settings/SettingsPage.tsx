@@ -33,6 +33,7 @@ import {
   normalizeInvite,
   pairFailure,
 } from './pairing';
+import { isPaired } from '../../domain/identity/rekey';
 import { reconcileTheme, readStoredTheme, writeStoredTheme } from './theme';
 import { PHOTO_BUDGET_BYTES, coverBox, formatKb, photoBytes, withinBudget } from './photo';
 import { SecondaryAction } from '../../ui/SecondaryAction';
@@ -65,7 +66,8 @@ export function SettingsPage() {
     return () => { live = false; };
   }, []);
 
-  const paired = Boolean(settings?.workerSecret && settings?.coupleId);
+  // One definition, shared with every other screen that asks — see `isPaired`.
+  const paired = isPaired(settings);
 
   // A pick this render has made but the settings row has not caught up with.
   // A ref rather than state: it must be readable by the effect below on the

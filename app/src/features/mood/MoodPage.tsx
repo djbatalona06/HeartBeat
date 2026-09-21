@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
 import { ensureIdentity, putMood } from '../../db/repository';
 import { todayKey } from '../../domain/day';
+import { isPaired } from '../../domain/identity/rekey';
 import { DEFAULT_TIMEZONE, type MoodEntry } from '../../domain/types';
 import { Meter } from '../../components/Meter';
 import { ComplimentComposer } from './ComplimentComposer';
@@ -93,7 +94,8 @@ export function MoodPage() {
   const shown = draft ?? valuesOf(mineRow);
   const theirs = valuesOf(theirRow);
 
-  const paired = Boolean(settings?.coupleId && settings?.workerSecret);
+  // One definition, shared with every other screen that asks — see `isPaired`.
+  const paired = isPaired(settings);
   const showPartner = paired || Boolean(theirRow);
   const partnerName = PARTNER_FALLBACK_NAME;
 
