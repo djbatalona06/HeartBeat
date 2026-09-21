@@ -13,7 +13,8 @@ component never imports a theme object, and switching theme repaints without
 re-rendering anything.
 
 That one fact decides most of the rules below, and it is why this repo has no
-Tailwind. See [`TAILWIND.md`](./TAILWIND.md).
+Tailwind. See [`TAILWIND.md`](./TAILWIND.md), and [`PULSE.md`](./PULSE.md) for
+the same question asked about a first-party CSS-in-JS layer.
 
 ### Space, type, tap
 
@@ -40,6 +41,39 @@ them over every colour the garden can paint and proves the text on top still
 clears AA. Lowering either without running that test is how the home screen
 stops being legible at four in the afternoon on one theme and nobody notices
 for a month.
+
+### Colour that moves — `--color-accent-live`
+
+The accent the app actually paints with. It is `--color-accent` leaned a
+bounded distance toward another colour *in the same palette*, by the pet's
+mood: `success` when happy, `base` when sleepy — so the accent recedes into the
+page rather than dimming to grey. `content` is the untouched accent, so the app
+at rest is the theme exactly as designed.
+
+| Token | Value | Use for |
+|---|---|---|
+| `--color-accent-live` | `color-mix` over the pack's own accent | `.primary`, `.home-pet-fill`, `.bar-fill-accent` |
+| `--mood-warm` / `--mood-dim` | 85% / 85% | The lean's strength. Emitted from `tokens.ts`. |
+
+Three things about it are deliberate and easy to undo by accident:
+
+- **The mix is in `styles.css`, not in `tokens.ts`.** `applyTheme` writes
+  tokens as inline styles, so an accent computed in TypeScript would go stale
+  on every theme and mode change. A `color-mix` over `var()` re-resolves
+  against whatever palette is showing. The only JavaScript is `applyMood`,
+  which sets `data-mood` on the root element — the same mechanism as
+  `data-theme`, `data-mode` and `data-calm`.
+- **The strengths are emitted, not written twice.** `--mood-warm` and
+  `--mood-dim` come from the constants `themes/mood.test.ts` measures, for the
+  reason `--scrim` and `--glass` do: a number in two places gets tuned in one.
+- **`mood.test.ts` is load-bearing.** It walks five packs × two palettes ×
+  three moods and proves the button label still clears AA on every accent this
+  can produce (floor 5.22:1), and that the sleepy lean never spends more than
+  30% of the separation the pack already had. Lower either strength and it
+  fails.
+
+Why a lean and not the hue rotation this was first sketched as:
+[`PULSE.md`](./PULSE.md) §3.
 
 ### Depth
 

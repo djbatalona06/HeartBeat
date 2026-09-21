@@ -9,6 +9,7 @@ import { GEAR_SLOTS, SCHEDULED_TYPES, type Task } from '../../domain/rpg/types';
 import { gearById } from '../../domain/rpg/gear';
 import { dyeStyle } from '../../domain/rpg/dyes';
 import { useTheme } from '../../themes/ThemeProvider';
+import { applyMood } from '../../themes/tokens';
 import { getMascot } from '../pet/mascots';
 import { QuestBoard } from '../quests/QuestBoard';
 import { VitalsPanel, glowOf } from '../pet/VitalsPanel';
@@ -112,6 +113,18 @@ export function DashboardPage() {
   // unhappy value to land on, which is the point. See domain/pet/mood.ts.
   const { hour } = useHour();
   const petMood = moodFor({ hour, glow: vitals ? glowOf(vitals) : 1 });
+
+  // The same mood, spent on the accent for the whole app rather than on one
+  // drawing. Set here because this is the only screen that already derives it
+  // -- lifting it into `ThemeProvider` would mean a Dexie import in a module
+  // that has deliberately never had one, and a second live query that could
+  // disagree with this one for a frame.
+  //
+  // Not cleaned up on unmount, deliberately: the pet's mood is the app's mood,
+  // not Home's, and clearing it on navigation would make the accent flick back
+  // to neutral every time you opened the Bag. Until Home has been reached once
+  // there is no mood set, which resolves to the pack's own accent.
+  useEffect(() => { applyMood(petMood); }, [petMood]);
 
   async function onComplete(task: Task) {
     await completeTask(task.id, day);

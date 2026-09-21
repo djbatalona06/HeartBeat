@@ -108,6 +108,55 @@ body {
   --tier-ring: var(--tier-ring-common);
 }
 
+/* ---- the accent, alive -----------------------------------------------------
+   The app already knows how the pet is doing: `domain/pet/mood.ts` derives it
+   from the hour and the couple's glow, and Home has been drawing a mascot with
+   it since it shipped. It was one drawing's private business. This is that same
+   signal spent on the accent, so the whole app leans with it.
+
+   The mix lives here rather than in the theme engine on purpose. `applyTheme`
+   writes tokens as inline styles, so an accent computed in TypeScript would go
+   stale the moment the theme or the palette changed and would have to be
+   re-sent by whoever happened to know the mood. A `color-mix` over `var()`
+   re-resolves against whatever palette is showing, for free, forever. The only
+   JavaScript is one attribute — see `applyMood`.
+
+   Both poles come out of the palette that is already showing, so each pack
+   leans its own way and none of them is overruled by a colour it never chose.
+   The strengths are `--mood-warm` and `--mood-dim`, emitted from the constants
+   `tokens.test.ts` measures — see the long note above them in tokens.ts for
+   why this is a lean and not a hue rotation.
+
+   `content` is deliberately absent: with no mood set, and with the mood that
+   the pet spends most of its time in, this is the pack's accent untouched. */
+:root { --color-accent-live: var(--color-accent); }
+
+:root[data-mood='happy'] {
+  --color-accent-live: color-mix(in srgb, var(--color-accent) var(--mood-warm), var(--color-success));
+}
+
+:root[data-mood='sleepy'] {
+  --color-accent-live: color-mix(in srgb, var(--color-accent) var(--mood-dim), var(--color-base));
+}
+
+/* Calm keeps the leaned colour and drops only the journey to it.
+
+   The mood is information — an app that is quieter at night is the whole point
+   — so what goes is the fade, not the tint. Written out as the transition
+   *without* `background-color` rather than as `transition: none`, because
+   these two elements already had transitions before the mood did: `.primary`
+   carries the press, which is feedback rather than decoration and which calm
+   has never taken away, and `.home-pet-fill` carries the bar filling. Blanking
+   the shorthand would quietly cancel both. Same split as `.mood-meters`. */
+:root[data-calm='true'] .primary {
+  transition: transform var(--motion-fast) var(--ease-soft),
+              box-shadow var(--motion-fast) var(--ease-soft);
+}
+
+:root[data-calm='true'] .home-pet-fill {
+  transition: width var(--motion-slow) var(--ease-soft);
+}
+
 /* ---- film grain -----------------------------------------------------------
    One fractal-noise tile, inlined as a data URI, drawn over the whole viewport.
 
@@ -417,8 +466,9 @@ body {
 .home-pet-fill {
   height: 100%;
   border-radius: 999px;
-  background: var(--color-accent);
-  transition: width var(--motion-slow) var(--ease-soft);
+  background: var(--color-accent-live);
+  transition: width var(--motion-slow) var(--ease-soft),
+              background-color var(--motion-slow) var(--ease-soft);
 }
 
 /* ---- the Together panel ---------------------------------------------------
@@ -1372,7 +1422,7 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 /* The overshoot is the point: a bar filling should read as a reward, not as a
    progress report. */
 .bar-fill { height: 100%; border-radius: 999px; transition: width var(--motion-slow) var(--ease-soft); }
-.bar-fill-accent { background: var(--color-accent); }
+.bar-fill-accent { background: var(--color-accent-live); }
 .bar-fill-success { background: var(--color-success); }
 .bar-fill-danger { background: var(--color-danger); }
 
@@ -1430,14 +1480,19 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   margin-top: var(--space-3);
   border: none;
   border-radius: var(--radius-large);
-  background: var(--color-accent);
+  background: var(--color-accent-live);
   color: var(--color-accent-text);
   font-family: var(--font-display);
   font-size: var(--text-base);
   cursor: pointer;
   box-shadow: var(--shadow-lift);
+  /* `background-color` joins the press transition rather than getting one of
+     its own: the press never changes it, so this only ever animates the mood
+     moving -- which should read as the colour warming over a moment, not as
+     the button being repainted between two frames. */
   transition: transform var(--motion-fast) var(--ease-soft),
-              box-shadow var(--motion-fast) var(--ease-soft);
+              box-shadow var(--motion-fast) var(--ease-soft),
+              background-color var(--motion-slow) var(--ease-soft);
 }
 .primary:active {
   transform: translateY(var(--press));

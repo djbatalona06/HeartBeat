@@ -22,7 +22,55 @@
     <title>HeartBeat</title>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- The cold start, drawn rather than left white.
+
+         An installed PWA on iOS gets no launch image unless the page provides
+         one, so the first thing a tap on the home screen icon produces is a
+         white rectangle for as long as the bundle takes to parse — which is
+         the single clearest tell that an app is a website. This is that gap
+         filled: the ground the app is about to paint anyway, and its own mark
+         in the middle of it.
+
+         It lives *inside* `#root`, so React's first render removes it. No
+         script, no class toggle, no listener, and nothing left behind if the
+         bundle fails to boot in a way that would have stranded a cleanup call.
+
+         The colour is `#2a0f1c` because the `theme-color` meta above already
+         committed to it as the pre-boot ground — that is the default pack's
+         dark base, and the two agreeing is why the status bar and the page do
+         not disagree for the half second before the theme engine runs. A
+         reader who changes one should change both; there is nowhere earlier
+         than this to read a stored theme from without duplicating the theme
+         engine in the document head.
+
+         Marked `aria-hidden` and given no text: it is on screen too briefly to
+         read, and a screen reader announcing it would be announcing furniture.
+         The pulse is the heartbeat the app is named for, and it stops for
+         anyone who has asked for less motion. -->
+    <div id="root">
+      <div class="boot" aria-hidden="true">
+        <svg class="boot-mark" viewBox="0 0 100 100" width="72" height="72">
+          <path d="M50 88C20 62 22 36 42 34c8-1 8 8 8 14 0-6 0-15 8-14 20 2 22 28-8 54z" fill="#ff8fb0" />
+        </svg>
+      </div>
+    </div>
+    <style>
+      .boot {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: #2a0f1c;
+      }
+      .boot-mark { animation: boot-beat 1.6s ease-in-out infinite; }
+      @keyframes boot-beat {
+        0%, 100% { transform: scale(1); opacity: 0.85; }
+        50% { transform: scale(1.08); opacity: 1; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-mark { animation: none; }
+      }
+    </style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
