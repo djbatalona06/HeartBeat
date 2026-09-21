@@ -217,6 +217,19 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   number that is not the number, two chest drawings is two chances for the
   cheap one to look like the dear one, and two reveals is two chances to
   describe a duplicate as nothing.
+- **`--color-accent-live` is a lean, not a new colour.** The pet's mood moves
+  the accent by mixing it toward another token *in the same palette* —
+  `success` when happy, `base` when sleepy — so each of the five packs leans
+  its own way and none is overruled. The mix lives in `styles.css` under
+  `:root[data-mood=...]` rather than in `themeToCssVars`, because `applyTheme`
+  writes tokens as inline styles and a TS-computed accent would go stale on
+  every theme and mode change; the only JavaScript is `applyMood`, one
+  attribute. The strengths are emitted as `--mood-warm`/`--mood-dim` from the
+  constants `mood.test.ts` measures, and that test walks 5 packs × 2 palettes
+  × 3 moods to prove the button label still clears AA. **A hue rotation here
+  would erase the packs and escape every contrast proof** — see `docs/PULSE.md`
+  §3 and §4, which is also the written answer on why there is no CSS-in-JS
+  layer.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)

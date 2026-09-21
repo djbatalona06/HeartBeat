@@ -133,6 +133,51 @@ export function variantOf(theme: Theme, mode: ThemeMode): ThemeVariant {
 export const SCRIM_STRENGTH = 72;
 export const GLASS_STRENGTH = 82;
 
+/**
+ * How far the accent travels when the pet's mood moves it, in percent.
+ *
+ * ## The accent is never replaced, only leaned
+ *
+ * The obvious spelling is a hue rotation — `hsl(var(--accent-h), 70%, 55%)`,
+ * one variable, happy is gold and sleepy is blue. It is the wrong shape here
+ * for two reasons, and both of them are load-bearing.
+ *
+ * It would **erase the packs**. Five themes exist so that shinobi's rust and
+ * pony's lilac are different apps to be in; a hue driven by a bird's mood is a
+ * sixth palette that overrules all five, and on four of them it would simply be
+ * wrong. So the pack's own accent stays exactly what the pack said it was, and
+ * the mood leans it a bounded distance toward another colour *already in that
+ * same palette*. Every theme moves in its own direction.
+ *
+ * It would also **escape the contrast proof**. `tokens.test.ts` shows that
+ * `accentText` clears AA on `accent` for ten palettes; an accent computed at
+ * runtime from a hue nobody checked is ten palettes' worth of unproven
+ * contrast, and the failure mode is a button legible at noon and not at 3am.
+ * `mixAccent` below is the one implementation, so the test walks the real
+ * arithmetic rather than an approximation of it.
+ *
+ * The two poles are chosen for what they mean, not for being warm and cool:
+ *
+ * - **happy** leans toward `success`, the palette's own word for a good
+ *   outcome. It reads as the accent brightening rather than as a new colour.
+ * - **sleepy** leans toward `base`, the page's ground. The accent recedes
+ *   *into* the page — which is what dozing looks like, and is why this is not
+ *   simply a lower opacity: opacity over a live garden is unpredictable, a mix
+ *   toward the ground is not.
+ *
+ * `content` is the untouched accent, so the resting state of the app is the
+ * theme exactly as designed. A mood layer whose neutral is not the original is
+ * a permanent tint wearing a mood's name.
+ *
+ * Percentages rather than a ratio because they are emitted as tokens and spent
+ * inside `color-mix`, which wants a percentage. 85 on both: the floor across
+ * all ten palettes at that strength is 5.22:1, comfortably over AA's 4.5, and
+ * the move is still visible. Lowering either without running the test is how a
+ * button stops being readable on one theme at night.
+ */
+export const MOOD_WARM_STRENGTH = 85;
+export const MOOD_DIM_STRENGTH = 85;
+
 export function themeToCssVars(theme: Theme, mode: ThemeMode = 'dark'): Record<string, string> {
   const c = variantOf(theme, mode).colors;
   return {
@@ -197,6 +242,19 @@ export function themeToCssVars(theme: Theme, mode: ThemeMode = 'dark'): Record<s
     '--scrim': `color-mix(in srgb, ${c.base} ${SCRIM_STRENGTH}%, transparent)`,
     '--glass': `color-mix(in srgb, ${c.surface} ${GLASS_STRENGTH}%, transparent)`,
     '--hairline': `color-mix(in srgb, ${c.text} 14%, transparent)`,
+
+    /**
+     * How far the mood may lean the accent, as the stylesheet spends it.
+     *
+     * Emitted rather than written into `styles.css` as `85%` for the reason
+     * `--scrim` and `--glass` are: the number is asserted in `tokens.test.ts`,
+     * and a number that lives in two places is a number that gets tuned in one
+     * of them. The mix itself stays in CSS — see `--color-accent-live` — so
+     * that it re-resolves against whatever palette is showing without the
+     * theme engine having to be told the mood changed.
+     */
+    '--mood-warm': `${MOOD_WARM_STRENGTH}%`,
+    '--mood-dim': `${MOOD_DIM_STRENGTH}%`,
   };
 }
 
@@ -209,6 +267,66 @@ export function applyTheme(theme: Theme, calm: boolean, mode: ThemeMode = 'dark'
   // Read by the few rules that need to know — a shadow tuned for a dark ground
   // is invisible on a white one — and by nothing that could have used a token.
   root.dataset.mode = mode;
+}
+
+/**
+ * The mood the whole app is wearing, as one attribute on the root element.
+ *
+ * Deliberately *not* folded into `applyTheme`. `applyTheme` writes every token
+ * as an inline style, so a mood that went through it would have to be re-sent
+ * every time the theme or the palette changed, and whoever knew the mood would
+ * have to be wired into whoever knows the theme. Set as an attribute instead,
+ * the mix in `styles.css` is a `var()` over the palette that is showing: change
+ * theme, change mode, and the leaned accent re-resolves on its own with nothing
+ * told about it.
+ *
+ * It persists after the screen that set it unmounts, which is the intent — the
+ * pet's mood is the app's mood, not Home's. The floor is `content`, which is
+ * the untouched accent, so an app that never reaches Home is simply the theme.
+ */
+export function applyMood(mood: string): void {
+  document.documentElement.dataset.mood = mood;
+}
+
+/**
+ * Two colours mixed in sRGB, the way `color-mix(in srgb, a p%, b)` mixes them.
+ *
+ * A channel-wise lerp on the gamma-encoded bytes, which is what `in srgb`
+ * means — not the linearised mix `in srgb-linear` would do. It exists so the
+ * contrast test can ask what the stylesheet will actually paint. Both are hex
+ * because both poles are: `accent`, `success` and `base` are 6-digit hex in
+ * all five packs, while `surfaceMuted` is `rgba()` — which is the reason the
+ * dim pole is the page's ground rather than the muted surface.
+ */
+export function mixHex(a: string, b: string, percent: number): string {
+  const parse = (hex: string): number => {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+    if (!m) throw new Error(`not a 6-digit hex colour: ${hex}`);
+    return parseInt(m[1], 16);
+  };
+  const [x, y] = [parse(a), parse(b)];
+  const f = Math.min(1, Math.max(0, percent / 100));
+  const channel = (shift: number): string => {
+    const v = Math.round((((x >> shift) & 255) * f) + (((y >> shift) & 255) * (1 - f)));
+    return v.toString(16).padStart(2, '0');
+  };
+  return `#${channel(16)}${channel(8)}${channel(0)}`;
+}
+
+/**
+ * The accent a palette actually paints with, once the mood has leaned it.
+ *
+ * The single implementation of what `--color-accent-live` resolves to. The
+ * stylesheet spells the same mix in CSS because it has to re-resolve on a theme
+ * change without JavaScript; this is what the test measures, and the two are
+ * kept honest by `--mood-warm` and `--mood-dim` being emitted from the same
+ * constants the stylesheet reads.
+ */
+export function accentForMood(variant: ThemeVariant, mood: string): string {
+  const c = variant.colors;
+  if (mood === 'happy') return mixHex(c.accent, c.success, MOOD_WARM_STRENGTH);
+  if (mood === 'sleepy') return mixHex(c.accent, c.base, MOOD_DIM_STRENGTH);
+  return c.accent;
 }
 
 /** Relative luminance per WCAG 2.1, for the contrast test. */
