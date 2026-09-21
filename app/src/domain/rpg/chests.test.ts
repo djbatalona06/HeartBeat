@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CHESTS, CHEST_IDS, KIND_TIERS, PRIZE_KINDS, PRIZE_KIND_NAMES, chestById, chestChances,
+  CHESTS, CHEST_IDS, KIND_TIERS, PRIZES_PER_CHEST, PRIZE_KINDS, PRIZE_KIND_NAMES,
+  chestById, chestChances,
   chestPityFloor, insuredTiers, kindChances, nextChestPity, openChest, pityLine, poolOf,
-  rollChestTier, rollPrizeKind, type Chest,
+  rollChestTier, rollPrizeKind, showcaseOrder, type Chest,
 } from './chests';
 import { TIERS, compareTiers, tierRank, type Tier } from './tiers';
 import { GEAR_PRICE } from './shop';
@@ -63,6 +64,13 @@ describe('the three chests', () => {
   });
 });
 
+/** How likely one item is to land under its chest's floor. */
+function missChance(c: Chest): number {
+  return poolOf(c)
+    .filter((tier) => tierRank(tier) < tierRank(c.pityTier))
+    .reduce((sum, tier) => sum + (c.weights[tier] ?? 0), 0);
+}
+
 describe('pity windows', () => {
   it('guarantees something that chest can actually produce', () => {
     for (const c of CHESTS) {
@@ -78,21 +86,62 @@ describe('pity windows', () => {
   });
 
   /**
-   * The honest-pity property, stated as arithmetic. A window somebody reaches
-   * half the time is not insurance, it is the real drop rate with a second
-   * name; a window nobody reaches is decoration. Between one run in four and
-   * one in twenty is where it removes a bad tail without moving the median.
+   * The honest-pity property, stated as arithmetic — and the one thing three
+   * items per chest genuinely changed.
+   *
+   * The original claim was that a window is reached between one run in four and
+   * one in twenty: rarer than that and it is decoration, more often and it is
+   * the real drop rate wearing a second name.
+   *
+   * The counter steps once per chest that paid out nothing, and a chest pays
+   * out nothing only when **all three** of its items miss. So reaching a window
+   * costs `miss ** (PRIZES_PER_CHEST * pityAt)` rather than `miss ** pityAt`:
+   *
+   * | chest  | pityAt | one item | as shipped |
+   * |--------|--------|----------|------------|
+   * | wooden | 6      | 1 in 4   | 1 in 56    |
+   * | silver | 9      | 1 in 6   | 1 in 212   |
+   * | gilded | 12     | 1 in 15  | 1 in 3081  |
+   *
+   * 6/9/12 are published numbers and were kept deliberately. The consequence is
+   * that the floors are a backstop which fires rarely rather than one which
+   * fires — defensible, because three items is itself the protection against a
+   * bad run and the floor is what catches the runs three items did not, but a
+   * decision and not an accident. Restoring the old reach would mean windows of
+   * about 6/8/7, which breaks `pityAt` widening with the chest.
+   *
+   * So the half of the property that still holds is asserted as it was, and the
+   * other half is replaced by the claim that is actually true of the shipped
+   * system: the thing a floor promises is something its chest reaches by luck
+   * roughly half the time, which is *why* the floor rarely has to step in.
    */
-  it('is reachable rarely enough to be insurance and often enough to be real', () => {
+  it('is never simply the real drop rate wearing a second name', () => {
     for (const c of CHESTS) {
-      const miss = poolOf(c)
-        .filter((tier) => tierRank(tier) < tierRank(c.pityTier))
-        .reduce((sum, tier) => sum + (c.weights[tier] ?? 0), 0);
-      const reached = miss ** c.pityAt;
-      expect(reached, `${c.id} reaches its floor ${(reached * 100).toFixed(1)}% of runs`)
+      const reached = missChance(c) ** (PRIZES_PER_CHEST * c.pityAt);
+      expect(reached, `${c.id} reaches its floor ${(reached * 100).toFixed(2)}% of runs`)
         .toBeLessThan(0.3);
-      expect(reached, c.id).toBeGreaterThan(0.005);
     }
+  });
+
+  it('promises a tier its own chest reaches by luck about half the time', () => {
+    for (const c of CHESTS) {
+      const byLuck = 1 - missChance(c) ** PRIZES_PER_CHEST;
+      expect(byLuck, `${c.id} pays out on its own ${(byLuck * 100).toFixed(1)}% of chests`)
+        .toBeGreaterThan(0.3);
+    }
+  });
+
+  /**
+   * The tripwire.
+   *
+   * These three numbers are the whole argument above, as figures. Change
+   * `PRIZES_PER_CHEST`, a chest's weights or a `pityAt` and this fails — which
+   * is the point: every one of those moves how reachable a *published*
+   * guarantee is, and none of them should move it by accident.
+   */
+  it('reaches each floor about as often as it is written down as doing', () => {
+    const odds = CHESTS.map((c) => Math.round(1 / missChance(c) ** (PRIZES_PER_CHEST * c.pityAt)));
+    expect(odds).toEqual([56, 212, 3081]);
   });
 
   it('holds off the floor until the count is reached', () => {
@@ -122,10 +171,20 @@ describe('pity windows', () => {
 describe('the sentence on the chest', () => {
   it('reads three different ways, and never as a lie', () => {
     const c = chest('silver');
-    expect(pityLine(c, 0)).toBe(`Guaranteed Epic or better within ${c.pityAt} draws.`);
-    expect(pityLine(c, 2)).toBe(`Guaranteed Epic in ${c.pityAt - 2} draws.`);
-    expect(pityLine(c, c.pityAt - 1)).toBe('Guaranteed Epic in 1 draw.');
+    expect(pityLine(c, 0)).toBe(`Guaranteed Epic or better within ${c.pityAt} chests.`);
+    expect(pityLine(c, 2)).toBe(`Guaranteed Epic in ${c.pityAt - 2} chests.`);
+    expect(pityLine(c, c.pityAt - 1)).toBe('Guaranteed Epic in 1 chest.');
     expect(pityLine(c, c.pityAt)).toBe('Guaranteed Epic or better — this one.');
+  });
+
+  /**
+   * "Draws" used to mean one item and one chest at the same time, because they
+   * were the same thing. A chest holds three items now, and a counter measured
+   * in items would be three times as fast as the one that is stored.
+   */
+  it('counts the thing it actually counts, which is chests', () => {
+    expect(pityLine(chest('wooden'), 0)).toContain('chests');
+    expect(pityLine(chest('wooden'), 0)).not.toContain('draws');
   });
 
   it('names the tier the chest is actually insured for', () => {
@@ -272,53 +331,157 @@ describe('what comes out', () => {
 });
 
 describe('opening one', () => {
-  const rolls = { tier: 0.5, kind: 0.5, stat: 0.5, pick: 0.5 };
+  const one = { tier: 0.5, kind: 0.5, stat: 0.5, pick: 0.5 };
+  /** One roll set per item, spread so the three do not all land the same. */
+  const three = (over: Partial<typeof one> = {}) => [
+    { ...one, ...over },
+    { ...one, tier: 0.2, kind: 0.3, pick: 0.7, ...over },
+    { ...one, tier: 0.8, kind: 0.7, pick: 0.2, ...over },
+  ];
 
-  it('is the same draw from the same rolls, every time', () => {
-    const a = openChest(chest('silver'), rolls, 3, 2);
-    const b = openChest(chest('silver'), rolls, 3, 2);
+  it('is the same opening from the same rolls, every time', () => {
+    const a = openChest(chest('silver'), three(), 3, 2);
+    const b = openChest(chest('silver'), three(), 3, 2);
     expect(a).toEqual(b);
   });
 
-  it('describes a prize rather than handing one over', () => {
-    const draw = openChest(chest('gilded'), rolls);
-    expect(poolOf(chest('gilded'))).toContain(draw.tier);
-    expect(draw.kind).not.toBeNull();
-    expect(draw.chestId).toBe('gilded');
+  it('hands over one item per roll set', () => {
+    expect(openChest(chest('gilded'), three()).prizes).toHaveLength(3);
+    expect(openChest(chest('gilded'), [one]).prizes).toHaveLength(1);
+    expect(openChest(chest('gilded'), []).prizes).toHaveLength(0);
   });
 
-  it('carries the counter forward', () => {
+  it('describes prizes rather than handing them over', () => {
+    const opening = openChest(chest('gilded'), three());
+    expect(opening.chestId).toBe('gilded');
+    for (const prize of opening.prizes) {
+      expect(poolOf(chest('gilded'))).toContain(prize.tier);
+      expect(prize.kind).not.toBeNull();
+    }
+  });
+
+  it('carries the counter forward, one step per chest and not per item', () => {
     const c = chest('wooden');
-    const low = openChest(c, { ...rolls, tier: 0.999 }, 0, 4);
-    expect(low.tier).toBe('common');
+    // Three commons: a chest that paid out nothing moves the counter by one,
+    // however many items were in it.
+    const low = openChest(c, three({ tier: 0.999 }), 0, 4);
+    expect(low.prizes.map((p) => p.tier)).toEqual(['common', 'common', 'common']);
     expect(low.pity).toBe(5);
-    const good = openChest(c, { ...rolls, tier: 0 }, 0, 4);
-    expect(good.tier).toBe('rare');
+
+    // One rare anywhere in the chest clears it.
+    const good = openChest(c, three({ tier: 0 }), 0, 4);
     expect(good.pity).toBe(0);
   });
 
-  it('says when the floor is what produced the draw', () => {
+  it('clears the counter on the best item, not the last one', () => {
+    const c = chest('wooden');
+    const mixed = openChest(c, [
+      { ...one, tier: 0 },       // rare
+      { ...one, tier: 0.999 },   // common
+      { ...one, tier: 0.999 },   // common
+    ], 0, 4);
+    expect(mixed.prizes[0].tier).toBe('rare');
+    expect(mixed.prizes[2].tier).toBe('common');
+    expect(mixed.pity).toBe(0);
+  });
+
+  it('leaves the counter alone when there was nothing to open', () => {
+    expect(openChest(chest('wooden'), [], 0, 4).pity).toBe(4);
+  });
+
+  describe('the floor, with three items in the chest', () => {
     const c = chest('silver');
-    expect(openChest(c, rolls, 0, 0).flooredBy).toBeNull();
-    const floored = openChest(c, rolls, 0, c.pityAt);
-    expect(floored.flooredBy).toBe('epic');
-    expect(tierRank(floored.tier)).toBeGreaterThanOrEqual(tierRank('epic'));
+
+    it('is not in force before the window', () => {
+      const opening = openChest(c, three(), 0, 0);
+      expect(opening.floor).toBeNull();
+      expect(opening.lifted).toBe(false);
+    });
+
+    /**
+     * The promise is about the chest, not about every item in it.
+     *
+     * A floor applied to all three would turn insurance into a jackpot — a
+     * floored gilded chest would hand over three legendaries — and `pityLine`
+     * says "guaranteed epic or better", singular. So exactly one item is
+     * lifted and the other two keep whatever they rolled.
+     */
+    it('lifts one item to the floor and leaves the rest alone', () => {
+      const opening = openChest(c, three({ tier: 0.999 }), 0, c.pityAt);
+      expect(opening.floor).toBe('epic');
+      expect(opening.lifted).toBe(true);
+
+      const atOrAbove = opening.prizes
+        .filter((p) => tierRank(p.tier) >= tierRank('epic'));
+      expect(atOrAbove).toHaveLength(1);
+      expect(opening.pity).toBe(0);
+    });
+
+    it('does not lift anything when the rolls already beat the floor', () => {
+      // A tier roll of zero reaches the top of the pool on its own.
+      const opening = openChest(c, three({ tier: 0 }), 0, c.pityAt);
+      expect(opening.floor).toBe('epic');
+      expect(opening.lifted).toBe(false);
+      expect(opening.prizes.every((p) => tierRank(p.tier) >= tierRank('epic'))).toBe(true);
+    });
+
+    /** Whatever happens, the sentence on the chest has to come true. */
+    it('keeps the promise on every chest, from every counter', () => {
+      const next = rng(7);
+      for (const c2 of CHESTS) {
+        for (let i = 0; i < 300; i += 1) {
+          const rolls = Array.from({ length: 3 }, () => ({
+            tier: next(), kind: next(), stat: next(), pick: next(),
+          }));
+          const opening = openChest(c2, rolls, 0, c2.pityAt);
+          expect(
+            opening.prizes.some((p) => tierRank(p.tier) >= tierRank(c2.pityTier)),
+            `${c2.id} draw ${i}`,
+          ).toBe(true);
+        }
+      }
+    });
   });
 
   it('clamps rolls that have no business being out of range', () => {
-    const draw = openChest(chest('wooden'), { tier: 0.5, kind: 0.5, stat: -9, pick: 44 });
-    expect(draw.statRoll).toBe(0);
-    expect(draw.pickRoll).toBeLessThan(1);
-    expect(draw.pickRoll).toBeGreaterThanOrEqual(0);
+    const opening = openChest(chest('wooden'), [{ tier: 0.5, kind: 0.5, stat: -9, pick: 44 }]);
+    expect(opening.prizes[0].statRoll).toBe(0);
+    expect(opening.prizes[0].pickRoll).toBeLessThan(1);
+    expect(opening.prizes[0].pickRoll).toBeGreaterThanOrEqual(0);
   });
 
   it('only ever produces tiers on the ladder, over a long run', () => {
     const next = rng(99);
     for (const c of CHESTS) {
-      for (let i = 0; i < 2000; i += 1) {
-        const draw = openChest(c, { tier: next(), kind: next(), stat: next(), pick: next() }, 12, 0);
-        expect([...TIERS].sort(compareTiers)).toContain(draw.tier);
+      for (let i = 0; i < 700; i += 1) {
+        const rolls = Array.from({ length: 3 }, () => ({
+          tier: next(), kind: next(), stat: next(), pick: next(),
+        }));
+        for (const prize of openChest(c, rolls, 12, 0).prizes) {
+          expect([...TIERS].sort(compareTiers)).toContain(prize.tier);
+        }
       }
     }
+  });
+});
+
+describe('the order things are shown in', () => {
+  const at = (tier: Tier) => ({ tier });
+
+  it('builds to the best thing in the chest', () => {
+    const shown = showcaseOrder([at('epic'), at('common'), at('rare')]);
+    expect(shown.map((p) => p.tier)).toEqual(['common', 'rare', 'epic']);
+  });
+
+  /**
+   * The rolled order is a fact about what happened -- it is the order the
+   * repository granted them in, which decides which of two items at the same
+   * tier got the unowned one. The shown order is a choice about how to show
+   * them, and it must not overwrite the fact.
+   */
+  it('copies rather than sorting what it was given', () => {
+    const rolled = [at('epic'), at('common'), at('rare')];
+    showcaseOrder(rolled);
+    expect(rolled.map((p) => p.tier)).toEqual(['epic', 'common', 'rare']);
   });
 });

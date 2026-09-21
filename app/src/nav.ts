@@ -96,7 +96,7 @@ export const PRIMARY_TABS: Tab[] = [
   { to: '/shop', label: 'Shop', icon: 'shop', hint: 'Gear, eggs, and what coins are for' },
   { to: '/friends', label: 'Friends', icon: 'friends', hint: 'Their birb, and something kind to send' },
   { to: '/assets', label: 'Bag', icon: 'bag', hint: 'Gear, companions, and everything you finished' },
-  { to: '/birb', label: 'Birb', icon: 'bird', hint: 'Companions, adventures, and the boss' },
+  { to: '/birb', label: 'Birb', icon: 'bird', hint: 'Your companion, what it wears, and its room' },
 ];
 
 /**
@@ -129,6 +129,7 @@ export const MENU_GROUPS: MenuGroup[] = [
   {
     title: 'The app',
     tabs: [
+      { to: '/raid', label: 'Raid', icon: 'sword', hint: 'The sheet, the boss, and where to go' },
       { to: '/party', label: 'Party', icon: 'sword', hint: 'Everything about the two of you at once' },
       { to: '/eve-garden', label: "Eve's Garden", icon: 'sword', hint: 'The islands, and what stands on them' },
       { to: '/settings', label: 'You', icon: 'person', hint: 'Pairing, theme, notifications' },

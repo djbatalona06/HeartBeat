@@ -145,24 +145,99 @@ export function normalizeHouse(house: House | undefined): House {
   return out;
 }
 
+/* -- furnishing itself ------------------------------------------------------- */
+
 /**
- * Put something in its slot, or clear that slot with `undefined`.
+ * Which of two pieces in the same slot is the better one.
  *
- * Pure, and takes the slot from the item rather than the caller — a piece
- * belongs to exactly one slot, so letting a caller name a different one is only
- * a way to be wrong.
+ * **Highest price, then catalogue order.** Nothing in the codebase answered
+ * this before, so it is a decision being made here rather than a rule being
+ * restated.
+ *
+ * It reads as though it should be "highest tier, then highest price", since
+ * the tier ladder is what everything ownable lands on. It does not need to be:
+ * furniture takes its rung from its price through `tierForPrice`, which walks
+ * the ladder picking the highest rung the price reaches, and is therefore
+ * **monotonic in price**. A dearer piece can never be a lower tier, so the two
+ * orders are the same order and naming price alone is the shorter way to say
+ * it — and it keeps this module from importing `raidStats.ts`, which imports
+ * `HouseSlot` back from here.
+ *
+ * Catalogue order breaks the last tie, so the answer is total: two pieces at
+ * the same price still resolve, and they resolve the same way on both phones.
+ *
+ * Returns a number in the sort-comparator sense: negative when `a` is worse.
  */
-export function placeIn(house: House | undefined, itemId: string | undefined): House {
-  const next = normalizeHouse(house);
-  if (!itemId) return next;
-  const item = furnitureById(itemId);
-  if (!item) return next;
-  next[item.slot] = item.id;
-  return next;
+export function compareFurniture(a: Furniture, b: Furniture): number {
+  if (a.price !== b.price) return a.price - b.price;
+  return FURNITURE.indexOf(b) - FURNITURE.indexOf(a);
 }
 
-export function clearSlot(house: House | undefined, slot: HouseSlot): House {
-  const next = normalizeHouse(house);
-  delete next[slot];
-  return next;
+/** The best piece for one slot out of a set of owned ids, if any. */
+export function bestForSlot(
+  ownedIds: Iterable<string>,
+  slot: HouseSlot,
+): Furniture | undefined {
+  const owned = new Set(ownedIds);
+  let best: Furniture | undefined;
+  for (const piece of furnitureForSlot(slot)) {
+    if (!owned.has(piece.id)) continue;
+    if (!best || compareFurniture(piece, best) > 0) best = piece;
+  }
+  return best;
+}
+
+/**
+ * The room somebody's furniture makes, with no placing involved.
+ *
+ * The house used to be arranged by hand: four rows of chips, a Bare option and
+ * two pieces each, and copy telling you that rearranging it changed what you
+ * both saw. That is gone. A room you furnish by buying furniture is a room
+ * that rewards the thing you actually did, and a placement UI for four slots
+ * with two options each is twelve controls answering a question nobody was
+ * really asking.
+ *
+ * **What auto-placement can and cannot decide.** Every furniture drawing uses
+ * absolute coordinates in one shared 100×100 space — `RainyWindow` is at
+ * x=58, y=18 and nothing else can be — so this chooses *which* piece stands in
+ * each slot and never *where*. Varying position would mean rewriting all eight
+ * drawings to be position-agnostic inside a `<g transform>`, which is a
+ * different change.
+ */
+export function houseFrom(ownedIds: Iterable<string>): House {
+  const owned = new Set(ownedIds);
+  const out: House = {};
+  for (const slot of HOUSE_SLOTS) {
+    const best = bestForSlot(owned, slot);
+    if (best) out[slot] = best.id;
+  }
+  return out;
+}
+
+/**
+ * The stored room, brought up to date by one member's furniture.
+ *
+ * Upgrades only, per slot, and that is what makes it safe. `Pet.house` is
+ * **couple-level** — it rides the shared pet row — while `inventory` is
+ * per-member and is not partner-visible, so each phone can only ever see half
+ * of what the couple owns. Recomputing the room from one member's inventory
+ * and storing the result would delete whatever the other had furnished with,
+ * and then the two phones would take turns deleting each other's work.
+ *
+ * Taking the better of the two per slot removes that entirely: the room only
+ * ever improves, every write is idempotent, and the order the two phones sync
+ * in stops mattering. It is the same shape as the XP ledger being reconciled
+ * rather than last-write-wins, and for the same reason.
+ */
+export function refurnish(stored: House | undefined, ownedIds: Iterable<string>): House {
+  const current = normalizeHouse(stored);
+  const mine = houseFrom(ownedIds);
+  const out: House = { ...current };
+  for (const slot of HOUSE_SLOTS) {
+    const candidate = furnitureById(mine[slot]);
+    if (!candidate) continue;
+    const held = furnitureById(current[slot]);
+    if (!held || compareFurniture(candidate, held) > 0) out[slot] = candidate.id;
+  }
+  return out;
 }

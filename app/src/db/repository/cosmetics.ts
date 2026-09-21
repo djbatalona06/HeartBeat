@@ -1,7 +1,7 @@
 import { db } from '../database';
 import type { CoupleId, DayKey, MemberId } from '../../domain/types';
 import { DEFAULT_DYE_ID, dyeById } from '../../domain/rpg/dyes';
-import { clearSlot, furnitureById, placeIn, type HouseSlot } from '../../domain/rpg/furniture';
+import { furnitureById, refurnish } from '../../domain/rpg/furniture';
 import { canAfford } from '../../domain/rpg/shop';
 import { offerFor } from '../../domain/rpg/mysteryShop';
 import { spend } from '../../domain/rpg/avatar';
@@ -80,6 +80,12 @@ export async function buyDye(
  * Bought by a member — coins are per member — into a house that is the
  * couple's. That asymmetry is deliberate and is the point of buying it: you
  * spend your own coins on a room you both see.
+ *
+ * **Buying is placing.** The room used to be arranged by hand afterwards, and
+ * the refusal above still said "put it somewhere". It furnishes itself now, in
+ * this same transaction, so a purchase that took the coins can never leave the
+ * room unchanged — which is the same guarantee `openChestFor` makes about a
+ * chest, for the same reason.
  */
 export async function buyFurniture(
   memberId: MemberId,
@@ -89,10 +95,10 @@ export async function buyFurniture(
   const item = furnitureById(itemId);
   if (!item) return { ok: false, reason: 'No such piece.' };
 
-  return db.transaction('rw', db.avatars, db.inventory, async () => {
+  return db.transaction('rw', db.avatars, db.inventory, db.pet, async () => {
     const avatar = await getOrCreateAvatar(memberId, coupleId);
     const owned = await db.inventory.where('[memberId+itemId]').equals([memberId, itemId]).first();
-    if (owned) return { ok: false, reason: 'Already yours — put it somewhere.' };
+    if (owned) return { ok: false, reason: 'Already yours.' };
 
     const affordCheck = canAfford(avatar.coins, item.price);
     if (!affordCheck.ok) return { ok: false, reason: affordCheck.reason };
@@ -110,48 +116,56 @@ export async function buyFurniture(
       acquiredAt: now(),
       updatedAt: now(),
     });
+
+    await refurnishHouse(memberId, coupleId);
     return { ok: true };
   });
 }
 
 /**
- * Place a piece, or clear a slot by passing `undefined` for `itemId`.
+ * Bring the couple's room up to date with one member's furniture.
  *
- * Writes to the couple's `pet` row, so it lands for both of you. Ownership is
- * checked against the *placing* member: a piece either of you bought can be
- * placed by whoever bought it, which is the only reading that does not require
- * a shared purse the app does not have.
+ * ## Why there is no placing any more
  *
- * The write goes through `placeIn`/`clearSlot`, which normalize — so a retired
- * catalogue id already sitting in the stored house is dropped on the next
- * rearrange rather than being carried forward forever.
+ * There were twelve controls: four slots, each with a Bare option and two
+ * pieces, and copy explaining that rearranging it changed what you both saw. A
+ * room you furnish by *buying furniture* rewards the thing you actually did,
+ * and twelve controls over eight pieces was a configuration screen for a
+ * decision nobody was making. `houseFrom` picks the best owned piece per slot;
+ * `compareFurniture` says what "best" means and why.
+ *
+ * ## Upgrades only, and why that is not timidity
+ *
+ * `Pet.house` is couple-level — it rides the shared pet row — while
+ * `inventory` is per-member and is **not** partner-visible, so this phone can
+ * only ever see half of what the couple owns. Recomputing the room from one
+ * member's inventory and storing the result would delete whatever the other
+ * had furnished with, and the two phones would then take turns deleting each
+ * other's work on every sync.
+ *
+ * Taking the better of the two per slot removes that: every write is
+ * idempotent, the room only ever improves, and the order the phones sync in
+ * stops mattering. See `refurnish`.
+ *
+ * Called inside `buyFurniture`'s transaction, and safe to call on its own —
+ * which is what a device that has just pulled a partner's purchase wants.
  */
-export async function placeFurniture(
+export async function refurnishHouse(
   memberId: MemberId,
   coupleId: CoupleId,
-  slot: HouseSlot,
-  itemId: string | undefined,
 ): Promise<PurchaseResult> {
   return db.transaction('rw', db.pet, db.inventory, async () => {
     const pet = await db.pet.get(coupleId);
-
-    if (itemId) {
-      const item = furnitureById(itemId);
-      if (!item) return { ok: false, reason: 'No such piece.' };
-      if (item.slot !== slot) return { ok: false, reason: `${item.name} does not go there.` };
-      const owned = await db.inventory.where('[memberId+itemId]').equals([memberId, itemId]).first();
-      if (!owned) return { ok: false, reason: 'That one is not yours yet.' };
-    }
+    const owned = await db.inventory.where('memberId').equals(memberId).toArray();
+    const house = refurnish(pet?.house, owned.map((row) => row.itemId));
 
     // Upserted with the same defaults `awardPetXp` uses, because the pet row is
     // created lazily by whichever of the two happens first. On a fresh install
-    // that is often this: a couple can decorate the house before either of them
-    // has finished a task, and refusing there would have been a dead button
-    // with a confusing reason on it.
+    // that is often this: a couple can furnish the house before either of them
+    // has finished a task.
     //
     // No `updatedAt`: `Pet` carries none, because it is reconciled by the XP
     // ledger rather than by last-write-wins like the other tables.
-    const house = itemId ? placeIn(pet?.house, itemId) : clearSlot(pet?.house, slot);
     await db.pet.put({
       coupleId,
       level: pet?.level ?? 1,

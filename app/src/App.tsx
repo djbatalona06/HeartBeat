@@ -17,6 +17,7 @@ import { FirstRunGate } from './features/onboarding/FirstRunGate';
 import { RouteNotFound } from './features/errors/NotHere';
 import { BottomNav } from './ui/layout/BottomNav';
 import { useBadges } from './features/notifications/useBadges';
+import { useNotices } from './features/notifications/useNotices';
 import { NotificationHeader } from './features/notifications/NotificationHeader';
 import { ToastHost } from './ui/Toast';
 import { SceneBackdrop } from './features/home/SceneBackdrop';
@@ -81,6 +82,9 @@ export function App() {
   // domain/notifications/derive.ts, and the test there that walks the source to
   // make sure nothing starts.
   const badges = useBadges();
+  // One wager read for the whole app, beside the one badge read. See
+  // `useNotices` for why they are separate hooks.
+  const notices = useNotices(badges);
 
   return (
     // Outside ThemeProvider on purpose: the theme engine writes every CSS
@@ -113,7 +117,7 @@ export function App() {
                       line on a fifth of the app. It renders nothing at all unless
                       something is waiting, and it is handed the badges `App`
                       already holds rather than reading its own. */}
-                  <NotificationHeader badges={badges} />
+                  <NotificationHeader badges={badges} notices={notices} />
                   {/* Around the routes only. A single page throwing should leave the
                       nav bar and the thread standing, so there is still a way out of
                       the broken screen without force-quitting the app. */}
@@ -151,8 +155,13 @@ export function App() {
                       {/* No /bag of its own: `main` grew AssetsPage, which is the
                           same idea done properly, so the Bag tab points there.
                           Worn and Colours move onto Birb, where dressing the bird
-                          sits next to its house and its adventures. */}
-                      <Route path="/birb" element={<PartyPage only={['worn', 'colours', 'house', 'adventures', 'companions', 'boss']} title="Birb" />} />
+                          sits next to its house.
+
+                          The raid left: the sheet, the boss and the adventures
+                          are one subject and now have one screen, so /birb is
+                          the bird and the room it lives in. */}
+                      <Route path="/birb" element={<PartyPage only={['worn', 'colours', 'house', 'companions']} title="Birb" />} />
+                      <Route path="/raid" element={<PartyPage only={['raid']} title="Raid" />} />
                       <Route path="/party" element={<PartyPage />} />
                       <Route path="/eve-garden" element={(
                         <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>

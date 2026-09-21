@@ -1,6 +1,7 @@
 import { sunAt } from '../../domain/scene/schedule';
 import { plotsAt, type Garden } from '../../domain/rpg/plots';
 import { GardenFlora } from './GardenFlora';
+import { GardenTree } from './GardenTree';
 
 /**
  * Eve's Garden, behind the fight.
@@ -53,6 +54,14 @@ export interface GardenBackdropProps {
   /** The shared pet's level, which is what decides how much ground there is. */
   petLevel: number;
   /**
+   * The couple's dye, which tints the big tree's canopy and nothing else.
+   *
+   * Optional because the Garden page does not pass one -- the tree is the same
+   * tree there, in the theme's own colours. Only the home screen, where the
+   * mascot wearing that dye is standing in front of it, has a reason to match.
+   */
+  dye?: string;
+  /**
    * How the drawing meets a box that is not its shape.
    *
    * The garden is authored at 400×240 — a landscape stage, because that is
@@ -74,7 +83,7 @@ export interface GardenBackdropProps {
 }
 
 export function GardenBackdrop({
-  hour, dark, mood, resonance, garden, petLevel, fit = 'cover',
+  hour, dark, mood, resonance, garden, petLevel, dye, fit = 'cover',
 }: GardenBackdropProps) {
   const sun = sunAt(hour);
   const night = dark || sun.night;
@@ -125,6 +134,16 @@ export function GardenBackdrop({
           fill="var(--color-surface-muted)"
           opacity="0.4"
         />
+      </g>
+
+      {/*
+        -- the big tree ----------------------------------------------------
+        Its own group, at the mid layer's drift speed, drawn *before* the tree
+        line so the hills and the pond pass in front of its base. That is what
+        places it behind them rather than standing in the pond.
+      */}
+      <g className="garden-layer garden-layer-mid">
+        <GardenTree sun={sun} night={night} warm={warm} petLevel={petLevel} dye={dye} />
       </g>
 
       {/* -- the tree line and the pond, midground --------------------------- */}

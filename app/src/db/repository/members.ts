@@ -127,6 +127,22 @@ export async function markBadgeSeen(key: string, at: number = Date.now()): Promi
 }
 
 /**
+ * Put a notice away on this device, and forget the ones that are over.
+ *
+ * Pruning on the way in rather than on read: the ids are per-state, so the
+ * list would otherwise grow by one per week and per quest count forever, in a
+ * row that is loaded on every foreground. `live` is what the caller can still
+ * see, which is the only thing a dismissal can be about.
+ */
+export async function dismissNotice(id: string, live: readonly string[]): Promise<void> {
+  const current = (await loadSettings()).dismissedNotifications ?? [];
+  if (current.includes(id)) return;
+  const keep = new Set(live);
+  const next = [...current.filter((each) => keep.has(each)), id];
+  await saveSettings({ dismissedNotifications: next });
+}
+
+/**
  * Cycle ownership has one answer, and it is this one. `Member.tracksCycle` is
  * copied from it so the couple's rows are complete, and is never read back to
  * decide anything — see the note on Settings.tracksCycle.

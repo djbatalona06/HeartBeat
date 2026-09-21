@@ -406,6 +406,22 @@ export interface Settings {
    */
   badgesSeen?: Record<string, number>;
   /**
+   * Notice ids this device has waved away, from `domain/notifications/events`.
+   *
+   * Per-device like `badgesSeen`, and for the same reason: which line one of
+   * them has finished reading is nobody else's business.
+   *
+   * Only ids for notices that clear by *dismissing* are ever honoured — a
+   * payout is owed to whoever earned it and only claiming it clears that, so a
+   * stale id here can never hide one. The ids are per-state ("three days
+   * left", not "the wager"), which is what lets tomorrow's number come back
+   * after today's was put away, and `pruneDismissed` keeps the list from
+   * growing over a year of weeks.
+   *
+   * Optional with no migration, like the watermark above.
+   */
+  dismissedNotifications?: string[];
+  /**
    * Reminders. Both are absent until notifications are turned on from a tap,
    * which is the only way they can be turned on at all.
    */

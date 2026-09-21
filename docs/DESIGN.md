@@ -414,6 +414,258 @@ this app's whole thesis. A short note grants the other person energy; sending
 pays the sender a little too, or nobody sends. Capped at three per sender per
 day — they keep their weight by being rare.
 
+### One line the two of you are on the same page of
+
+`domain/support/` already held day-seeded phrases in four lanes —
+`cycle-self`, `cycle-partner`, `mens-health`, `general` — and `cyclenudge.ts`
+already deep-linked partners *to* them. What was missing was anywhere on Mood
+that simply said one.
+
+- **Seeded on the couple as well as the day.** `pickForDay` hashes the day key,
+  so both phones already land on the same line with nothing synced — that is
+  its point and it is untouched, with all five of its callers still resolving
+  to exactly what they always did. What it cannot do is tell two *couples*
+  apart: every couple reading the general lane on a given day got the same
+  line, and with four or five quotes to a lane the rotation is short and
+  globally in lockstep. `pickForCouple` seeds on `hash(coupleId:day)` through
+  `roll`, the mixer `raidStats.ts` and `gear.ts` already use. Both phones still
+  agree; different couples stop reading in chorus.
+- **The placement decides the lane, not the viewer.** `CycleLock` guarantees
+  nothing behind it renders while locked, so a line drawn from a cycle lane
+  *above* the section would carry the one thing the lock exists to keep round
+  the front of it. `openLanes` is what may appear anywhere and excludes both
+  cycle lanes; `lockedLanes` is what may appear only inside. Same line
+  `cyclenudge.ts` holds for push: the partner's copy never names the cycle.
+- **The lane is rolled on a different step from the quote**, so a couple whose
+  lanes change — somebody answers the gender question, a partner starts
+  tracking — gets a different line rather than the same one relabelled.
+- Rendered as a pull quote rather than a panel: it is something to read, not
+  something to do, and a bordered card with a title competes with the three
+  meters the page is for.
+- `WellnessNote`, not `WellnessMessageCard` — `features/eve-garden/WellnessCards.tsx`
+  already exists and is a different thing.
+- The locked placement carries one line of small print: **"Advisory only. Not
+  contraception."** Said there and only there, because a warm sentence beside a
+  cycle calendar is the context in which somebody might read more into it than
+  is in it.
+
+### The bag says what things are worth
+
+The bag showed counts, coins, rarity names, refine levels and bonds — and not
+one stat. Everything ownable in this app carries a number, which is the rule
+`raidStats.ts` exists to enforce, and the screen that lists what you own was
+the one place that number never appeared.
+
+Two additions, no new vocabulary.
+
+- **The raid sheet, at the top.** The *same component* `/raid` renders, not a
+  copy. Its own header has always argued that "would the other boots be
+  better" is a question asked at the wardrobe rather than mid-fight, and the
+  bag is the wardrobe. `holdingsOf` gained the couple's `pet` so the sheet's
+  headline source (pet XP) and up to four of its sources (the house) come from
+  the same single observed read the screen already had, rather than a second
+  live query and the half-rendered states that come with it.
+- **A stat line per card.** The slot's **first** raid stat, because that is
+  where a source's passive lands and nowhere else, with refinement folded in
+  and clamped at `REFINE_MAX` exactly as `gearSources` clamps it. The card and
+  the sheet above it are the same number twice, so a row carrying a refine past
+  the cap must not let the card claim more than the sheet counts.
+
+### One line at the top, and what may be waved away
+
+The header used to show the **first** of quests and cheers and silently drop
+the other, so with two things waiting the second was invisible until the first
+was dealt with. The weekly wager, which shipped with nothing surfacing it
+anywhere, was not in the list at all.
+
+One line is still right — it sits above every screen, and a stack of bars is a
+screen of its own. So it is one line plus an honest count of what is behind it:
+"3 quests are finished. The payouts are waiting. · and 2 more".
+
+Order is what the app **owes** you, then what your partner gave you, then what
+it is telling you: quests, cheers, wager. A payout should not queue behind a
+progress note.
+
+**It still has no counter of its own.** `domain/notifications/events.ts` takes
+`deriveBadges`' output and turns it into sentences; it never reads the tables.
+Two counters over the same rows drift, and the dot on the tab bar disagreeing
+with the bar at the top is what `derive.test.ts` walks every source file to
+prevent. The rule the old `headline()` carried — a sentence across every screen
+is a louder instrument than a dot, so it gets no source of truth of its own —
+moved with it, and is still written down where the badges are.
+
+#### Which lines carry an ×, and which do not
+
+The previous version had no dismiss button at all, on the argument that quests
+are deliberately not watermarked: a finished quest clears by being *claimed*,
+so a "seen" stamp would hide a payout nobody has taken, and an × wired to a
+no-op is a control that appears to work.
+
+That argument is right, and it was being over-applied. It holds for anything
+the app **owes** you. It does not hold for the wager line, which is news — not
+actionable, and something a person who has read it should be able to put away.
+So `Notice.clears` is `'claiming'` or `'dismissing'`, the × appears only for
+the second, and a dismissed id for a claiming notice is **ignored rather than
+honoured** so a stale entry can never hide a payout.
+
+Dismissal ids are per-state — `wager:abc:d3`, not `wager:abc` — which is what
+lets today's "three days left" be put away and tomorrow's "two days left" come
+back. `pruneDismissed` drops ids whose news is over, because the list lives in
+`Settings.dismissedNotifications` (per-device, like `badgesSeen`) and would
+otherwise grow by one per week forever.
+
+#### What the wager line will not say
+
+A **missed** week. It ran out and nothing was taken — `reckonWager` says so —
+and putting "you did not manage it" across the top of every screen is exactly
+the deficit this layer exists to make impossible. Same position `schedule.ts`
+takes about push and `derive.ts` about badges. A quiet week simply does not pay.
+
+### The birbhouse furnishes itself
+
+The room had twelve controls: four slots, each with a Bare chip and two pieces,
+plus copy explaining that rearranging it changed what you both saw. Eight
+pieces exist. A configuration screen for four either-or decisions was a lot of
+surface for a question nobody was really asking, and the answer was almost
+always "the better one".
+
+So **buying is placing**. `buyFurniture` furnishes the room in the same
+transaction that takes the coins, which means a purchase can never leave the
+room unchanged — the same guarantee a chest makes.
+
+- **Which piece wins a slot: highest price, then catalogue order.** Nothing in
+  the codebase answered this before. It reads as though it should be "highest
+  tier, then price", but furniture takes its rung *from* its price through
+  `tierForPrice`, which is monotonic in price — a dearer piece can never be a
+  lower tier, so the two orders are the same order. Naming price alone is
+  shorter and keeps `furniture.ts` from importing `raidStats.ts`, which imports
+  `HouseSlot` back from it. Catalogue order makes the answer total.
+- **Upgrades only, per slot, and that is what makes it safe.** `Pet.house` is
+  couple-level — it rides the shared pet row — while `inventory` is per-member
+  and is *not* partner-visible, so each phone sees only half of what the couple
+  owns. Recomputing the room from one member's inventory and storing the result
+  would delete whatever the other had furnished with, and the two phones would
+  take turns deleting each other's work on every sync. Taking the better of the
+  two per slot removes that entirely: every write is idempotent, the room only
+  ever improves, and sync order stops mattering. Same shape as the XP ledger
+  being reconciled rather than last-write-wins.
+- **Auto-placement chooses *which*, never *where*.** Every drawing in
+  `art/house/` uses absolute coordinates in one shared 100×100 space — the
+  rainy window is at x=58, y=18 and can be nowhere else. Varying position would
+  mean rewriting all eight to be position-agnostic inside a `<g transform>`.
+- **What is still shown** is an inventory of the room: a line per slot naming
+  the piece that won it, and the empty slots said plainly. The point of losing
+  the controls is not losing the information — a room that changed on its own
+  with no account of why would be worse than the chips were.
+- `placeIn` and `clearSlot` lost their last callers and went with the chips.
+
+Two coverage gaps closed alongside. There was no `cosmetics.test.ts` at all, so
+`buyFurniture`, `buyDye` and `wearDye` were unpinned while `buyFurniture` was
+gaining a third table to write to. And `houseArt` was absent from
+`art/art.test.ts`, which walked only gear and pets — its import-time throw was
+therefore reached only when somebody opened the Birb tab in a browser, so a
+piece added without a drawing shipped green and broke a screen.
+
+### The raid has a screen, and the sheet has a second half
+
+`/raid` is one section holding three panels, in the order the question is
+asked: what you bring (the raid sheet), what one different piece would make of
+it (the swap preview), the fight it is all for (the boss), and the smaller
+outings that are not it (adventures).
+
+The three used to be spread across `/birb` — the sheet tucked under `worn`, the
+boss and the adventures each with their own flag — which put the seven raid
+stats on the tab about dressing a bird, and gave the one screen in the app that
+cannot render from IndexedDB no home of its own. `/birb` is now the bird and the
+room it lives in. `Boss` came out of `PartyPage.tsx` into its own file while
+moving; nothing about it was shared with the page.
+
+The raid sheet is rendered in **two** places — `/raid` and the Bag — from one
+implementation. Its old comment argued it belonged "at the wardrobe, not
+mid-fight", and that is still true; the Bag *is* the wardrobe. Same argument as
+`ChestAlcove` being rendered by both the Shop tab and the garden drawer.
+
+`Companions`' "send them off" shortcut stays on `/birb`, because it is not the
+same action as an adventure: it calls `startAdventure` with no destination,
+while Adventures travels to a named place. The first is about the animal.
+
+#### The swap preview compares you with yourself, deliberately
+
+Pick a slot, pick something you own, read the change: two columns and a signed
+delta per stat, with nothing written. `domain/rpg/diff.ts` is the arithmetic.
+
+The obvious reading of a "gear diff" in a two-person app is one member's sheet
+against the other's with a team total under it. It is not that, for two reasons.
+
+The blocking one is that the data is not there. `avatar` and `inventory` are
+not in `PARTNER_VISIBLE_KINDS`, so a phone never receives the other member's
+gear at all; a two-person diff needs that list extended first, which would be
+the first time personal inventory crossed between phones.
+
+The better one is that this is the more useful question anyway. "Those boots are
+worth four Fortify to you" is something to act on. A column of your partner's
+numbers beside yours is a scoreboard between two people who live together,
+which is what this layer was shaped to make impossible — the same position
+`schedule.ts` takes about push, `derive.ts` about badges, and the weekly wager
+about being a shared target rather than a race.
+
+So a `delta` and a "better by 4" verdict are fine here: they rank two **items**,
+never two people. Taking a slot back to empty is offered too — a level that fell
+can make wearing nothing the better move, and nothing else on that screen can
+ask it. An item above its wearer's level previews as no gain rather than as a
+gain that never arrives, because `gearSources` already contributes nothing for
+one; "not yet" is the honest preview.
+
+### Chests, and the arithmetic of a published guarantee
+
+Three chests at 90, 260 and 700 coins. Three rather than one because a single
+chest with every tier in it is a slot machine — one price, one lever, and the
+only decision is how many times to pull it. Three is a decision, and the
+decision is legible from the prices without anybody reading an odds table.
+
+Every chest hands over **three items** (`PRIZES_PER_CHEST`), each rolled
+independently on the chest's own published table. The odds panel shows the
+table for *your* next chest with your luck and your counter already folded in,
+never a table for a draw in general, and it is never behind a purchase.
+
+- **A paid chest never hands back nothing, per item.** Gear you own refines, a
+  companion you own deepens its bond, and a cosmetic you own is refunded —
+  there is no second level of owning a rug. Each item prefers something unowned
+  at its tier first, so a refund is the last resort.
+- **Refunds are capped at the item's share of the price.** Every furniture
+  piece is priced 120 or 180, which the price-to-tier map calls `rare`, and the
+  wooden chest costs **90** and rolls rare decor — so refunding at list price
+  turned owning the furniture set into a money printer, threefold once a chest
+  held three items. "A wasted draw is never a wasted purchase" means you get
+  your money back, not that you profit.
+- **The pity counter steps once per chest, not once per item.** A chest counts
+  as a miss only when all three of its items missed. That keeps the published
+  windows at 6/9/12 and keeps every counter already synced between two phones
+  comparable — and it has a consequence worth stating plainly, because a floor
+  nobody reaches is decoration:
+
+  | chest | window | reached, one item | reached, as shipped |
+  |---|---|---|---|
+  | wooden | 6 | 1 in 4 | 1 in 56 |
+  | silver | 9 | 1 in 6 | 1 in 212 |
+  | gilded | 12 | 1 in 15 | 1 in 3081 |
+
+  The windows were chosen when a chest held one item. They were kept because
+  they are published, which makes the floors a backstop that fires rarely
+  rather than one that fires: three items is itself the protection against a
+  bad run, and the floor catches the runs three items did not. Restoring the
+  old reach would mean windows of roughly 6/8/7, which breaks the rule that
+  each chest's window is wider than the last. `chests.test.ts` carries the
+  figures and a tripwire that fails if the item count, a chest's weights or a
+  window moves.
+- **The floor lifts one item, not three.** "Guaranteed epic or better" is a
+  promise about the chest. Applied to every item it would be a jackpot wearing
+  the word insurance, and the odds footnote says which it is.
+- **The reveal shows all three**, worst first so it builds, with every prize in
+  the DOM from the first frame — the animation decides how they arrived, never
+  whether they are there. One implementation, rendered by both the Shop tab and
+  the garden drawer, for the same reason there is one odds table.
+
 ### The boss fight, and why it is the one server-side feature
 
 Boss HP is **contested state**. Everything else in HeartBeat renders from

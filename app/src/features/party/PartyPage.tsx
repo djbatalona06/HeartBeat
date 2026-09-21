@@ -1,18 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useToast } from '../../ui/Toast';
 import { db, loadSettings } from '../../db/database';
 import {
-  awardBossVictory,
-  bossVictoryXp,
   buyDye,
   buyEgg,
   buyFurniture,
   buyGear,
   buyOffer,
   ensureIdentity,
-  placeFurniture,
   getOrCreateAvatar,
   equipItem,
   markLoreSeen,
@@ -24,7 +21,6 @@ import {
   unequipSlot,
   wearDye,
 } from '../../db/repository';
-import { flushPetXp } from '../../pwa/petSync';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import {
   GEAR, RARITIES, RARITY_NAMES, canEquip, gearForSlot, type GearItem, type Rarity,
@@ -36,8 +32,6 @@ import {
 import { offerFor } from '../../domain/rpg/mysteryShop';
 import { todayKey } from '../../domain/day';
 import type { DayKey } from '../../domain/types';
-import { SKILLS, castBlockedBecause, skillById } from '../../domain/rpg/skills';
-import { hpFraction, resolveBlow, victoryDropBonus, waitingOn, type BossState } from '../../domain/rpg/boss';
 import { GEAR_SLOTS, type Avatar, type GearSlot } from '../../domain/rpg/types';
 import { findOwned, ownsItem, refineByItemId, type InventoryItem } from '../../domain/rpg/inventory';
 import { EGG_PRICE, GEAR_PRICE, REFINE_MAX, gearBonusWithRefinement, refinePrice } from '../../domain/rpg/shop';
@@ -46,10 +40,9 @@ import {
   FURNITURE,
   HOUSE_SLOTS,
   HOUSE_SLOT_NAMES,
-  furnitureForSlot,
+  furnitureById,
   normalizeHouse,
   type House,
-  type HouseSlot,
 } from '../../domain/rpg/furniture';
 import { houseArt } from './art/house';
 import { PLACES, canTravel, nextPlace, travelCost } from '../../domain/rpg/locations';
@@ -62,11 +55,13 @@ import { petArt } from './art/pets';
 import { ChestAlcove } from './ChestAlcove';
 import { Purchases } from './Purchases';
 import { RaidSheet } from './RaidSheet';
-import { TIER_NAMES } from '../../domain/rpg/tiers';
-import { PRIZE_KIND_NAMES } from '../../domain/rpg/chests';
+import { Boss } from './Boss';
+import { GearDiff } from './GearDiff';
+import { PRIZES_PER_CHEST } from '../../domain/rpg/chests';
 import type { ChestOutcome } from '../../db/repository/chests';
+import { ChestReveal } from '../chest/ChestReveal';
+import { openingLine } from '../chest/receipt';
 import { SecondaryAction } from '../../ui/SecondaryAction';
-import { PrimaryAction } from '../../ui/PrimaryAction';
 
 /**
  * How brightly a companion's card is lit, by how rare it is.
@@ -97,16 +92,6 @@ function luckOf(avatar: Avatar, owned: InventoryItem[]): number {
   return sheetFor(avatar, bonus).stats.luck;
 }
 
-function chestReceipt(result: Extract<ChestOutcome, { ok: true }>): string {
-  const what = `${TIER_NAMES[result.tier]} ${PRIZE_KIND_NAMES[result.kind].toLowerCase()}`;
-  if (result.refined !== undefined) return `${result.name} again — refined to +${result.refined}.`;
-  if (result.bonded !== undefined) return `${result.name} again. Closer by ${result.bonded}.`;
-  if (result.refunded !== undefined) {
-    return `${result.name} was already yours. ${result.refunded} coins back.`;
-  }
-  return `${result.name} — a ${what}.`;
-}
-
 const RARITY_GLOW: Record<Rarity, string[]> = {
   common: ['var(--color-border)', 'var(--color-surface-muted)', 'var(--color-border)'],
   rare: ['var(--color-accent)', 'var(--color-border)', 'var(--color-accent)'],
@@ -123,16 +108,6 @@ const RARITY_INTENSITY: Record<Rarity, number> = {
   mythic: 1.6,
 };
 
-interface BossPayload {
-  tier: number;
-  hp: number;
-  maxHp: number;
-  state: BossState;
-  readyA: boolean;
-  readyB: boolean;
-  youAreReady: boolean;
-}
-
 /**
  * The things this page can show, and the order they read in.
  *
@@ -144,10 +119,10 @@ interface BossPayload {
  * it. `/party` passes nothing and still shows all of them.
  */
 export type PartySection =
-  'companions' | 'worn' | 'colours' | 'house' | 'adventures' | 'shop' | 'boss' | 'achievements';
+  'companions' | 'worn' | 'colours' | 'house' | 'raid' | 'shop' | 'achievements';
 
 export const ALL_SECTIONS: readonly PartySection[] =
-  ['companions', 'worn', 'colours', 'house', 'adventures', 'shop', 'boss', 'achievements'];
+  ['companions', 'worn', 'colours', 'house', 'raid', 'shop', 'achievements'];
 
 /**
  * The party: who is walking with you, what you are wearing, and the one fight
@@ -168,6 +143,10 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
   const { say } = useToast();
   /** One chest at a time. Two taps racing would spend twice and show once. */
   const [opening, setOpening] = useState(false);
+  // What the last chest handed over, while it is still being looked at. The
+  // reveal is the receipt; the toast below is only the fallback for a page
+  // that never mounted one.
+  const [revealed, setRevealed] = useState<Extract<ChestOutcome, { ok: true }> | null>(null);
 
   // The sheet has to exist before the first completion, or a fresh install
   // shows a page with no character on it and no way to tell that is temporary.
@@ -237,6 +216,11 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
               const name = petKindById(result.pet!.kindId)!.name;
               say(result.merged ? `Another ${name}. Two of the same found each other.` : `${name} hatched.`);
             }}
+            /* Stays here now that Adventures has moved to /raid, because it
+               is not the same action: this sends the companion out for a
+               stretch of hours with no destination, while Adventures' `onGo`
+               travels to a named place. The first is about the animal and
+               belongs on its tab; only the second is a raid concern. */
             onAdventure={async () => {
               const result = await startAdventure(identity.memberId, identity.coupleId);
               say(result.ok ? `Gone for ${result.hours} hours.` : result.reason ?? null);
@@ -274,52 +258,71 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
           />
           ) : null}
 
-          {/* The raid sheet sits with the gear rather than in the garden: it is
-              the answer to "would the other boots be better", and that is a
-              question asked at the wardrobe, not mid-fight. */}
-          {only.includes('worn') ? (
-          <RaidSheet
-            avatar={avatar}
-            owned={owned ?? []}
-            petXp={pet?.xp ?? 0}
-            house={(pet?.house ?? {}) as House}
-            companion={(pets ?? []).find((p) => p.id === avatar.companionId)}
-          />
-          ) : null}
+          {/*
+            -- the raid ------------------------------------------------------
+            One section, three panels, in the order the question is asked: what
+            you bring, the fight it is for, and the smaller outings that are
+            not it.
 
-          {only.includes('adventures') ? (
-          <Adventures
-            avatar={avatar}
-            owned={owned ?? []}
-            onGo={async (placeId) => {
-              // The roll is drawn here and handed in, so the repository and the
-              // domain both stay deterministic given their inputs.
-              const result = await startAdventure(
-                identity.memberId, identity.coupleId, placeId, Math.random(),
-              );
-              if (!result.ok) say(result.reason ?? null, 'error');
-              else say(
-                `${result.place}: came back with ${result.found}.`
-                + (result.bounty ? ` +${result.bounty} coins for getting there first.` : ''),
-              );
-            }}
-          />
+            These three used to be spread across `/birb` — the sheet under
+            `worn`, the boss and the adventures each their own flag — which put
+            the seven raid stats on the tab about dressing a bird and gave the
+            one screen that fetches a Worker no home of its own. The sheet's
+            old comment argued it belonged "at the wardrobe, not mid-fight",
+            and that is still true: it is *also* rendered by the Bag, which is
+            the wardrobe. One implementation, two callers, the same argument
+            `ChestAlcove`'s header makes about published odds.
+          */}
+          {only.includes('raid') ? (
+          <>
+            <RaidSheet
+              avatar={avatar}
+              owned={owned ?? []}
+              petXp={pet?.xp ?? 0}
+              house={(pet?.house ?? {}) as House}
+              companion={(pets ?? []).find((p) => p.id === avatar.companionId)}
+            />
+            {/* Directly under the sheet, because it is the rest of the same
+                sentence: the sheet says what every number is and where it came
+                from, and this says what one different piece would make of it. */}
+            <GearDiff
+              avatar={avatar}
+              owned={owned ?? []}
+              petXp={pet?.xp ?? 0}
+              house={(pet?.house ?? {}) as House}
+              companion={(pets ?? []).find((p) => p.id === avatar.companionId)}
+            />
+            <Boss
+              avatar={avatar}
+              pets={pets ?? []}
+              owned={owned ?? []}
+              workerUrl={settings?.workerUrl}
+              token={settings?.workerSecret}
+              onSpendMp={(amount) => spendMp(identity.memberId, identity.coupleId, amount)}
+              onSpendPetMp={spendPetMp}
+              onMessage={(text) => say(text)}
+            />
+            <Adventures
+              avatar={avatar}
+              owned={owned ?? []}
+              onGo={async (placeId) => {
+                // The roll is drawn here and handed in, so the repository and
+                // the domain both stay deterministic given their inputs.
+                const result = await startAdventure(
+                  identity.memberId, identity.coupleId, placeId, Math.random(),
+                );
+                if (!result.ok) say(result.reason ?? null, 'error');
+                else say(
+                  `${result.place}: came back with ${result.found}.`
+                  + (result.bounty ? ` +${result.bounty} coins for getting there first.` : ''),
+                );
+              }}
+            />
+          </>
           ) : null}
 
           {only.includes('house') ? (
-          <Birbhouse
-            house={(pet?.house ?? {}) as House}
-            owned={owned ?? []}
-            avatar={avatar}
-            onPlace={async (slot, itemId) => {
-              const result = await placeFurniture(identity.memberId, identity.coupleId, slot, itemId);
-              if (!result.ok) say(result.reason ?? null, 'error');
-            }}
-            onClear={async (slot) => {
-              const result = await placeFurniture(identity.memberId, identity.coupleId, slot, undefined);
-              if (!result.ok) say(result.reason ?? null, 'error');
-            }}
-          />
+          <Birbhouse house={(pet?.house ?? {}) as House} avatar={avatar} />
           ) : null}
 
           {/* The shop is the chests; everything you can simply buy is the
@@ -336,20 +339,20 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
               if (opening) return;
               setOpening(true);
               try {
-                // The four rolls are drawn here and handed in, so the domain and
-                // the repository both stay deterministic given their inputs —
-                // the same arrangement `buyEgg` has.
                 const result = await openChestFor(
                   identity.memberId, identity.coupleId, chestId,
-                  {
+                  // One roll set per item, drawn here and handed in, so the
+                  // domain and the repository both stay deterministic given
+                  // their inputs -- the same arrangement `buyEgg` has.
+                  Array.from({ length: PRIZES_PER_CHEST }, () => ({
                     tier: Math.random(),
                     kind: Math.random(),
                     stat: Math.random(),
                     pick: Math.random(),
-                  },
+                  })),
                 );
                 if (!result.ok) { say(result.reason, 'error'); return; }
-                say(chestReceipt(result), 'success');
+                setRevealed(result);
               } finally {
                 setOpening(false);
               }
@@ -385,29 +388,28 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
               owned={owned ?? []}
               onBuy={async (itemId) => {
                 const result = await buyFurniture(identity.memberId, identity.coupleId, itemId);
-                say(result.ok ? 'Bought. Place it on the Birb tab.' : result.reason ?? null, result.ok ? 'success' : 'error');
+                // No "place it" any more: buying furnished the room, in the
+                // same transaction that took the coins.
+                say(result.ok ? 'Bought, and it has moved in.' : result.reason ?? null, result.ok ? 'success' : 'error');
               }}
             />
           </Purchases>
-          ) : null}
-
-          {only.includes('boss') ? (
-          <Boss
-            avatar={avatar}
-            pets={pets ?? []}
-            owned={owned ?? []}
-            workerUrl={settings?.workerUrl}
-            token={settings?.workerSecret}
-            onSpendMp={(amount) => spendMp(identity.memberId, identity.coupleId, amount)}
-            onSpendPetMp={spendPetMp}
-            onMessage={(text) => say(text)}
-          />
           ) : null}
 
           {/* The shelf has its own tab now, alongside the quests it rhymes
               with. It stays on /party because /party is the everything view. */}
           {only.includes('achievements') ? <AchievementShelf coupleId={identity.coupleId} /> : null}
         </>
+      ) : null}
+
+      {/* Last in the document, because it is an overlay and nearest means
+          nearest. Dismissing leaves the one-line form in a toast, so the thing
+          that was opened is still named on the page behind it. */}
+      {revealed ? (
+        <ChestReveal
+          outcome={revealed}
+          onDismiss={() => { say(openingLine(revealed), 'success'); setRevealed(null); }}
+        />
       ) : null}
     </div>
   );
@@ -660,22 +662,48 @@ function Adventures({ avatar, owned, onGo }: {
  * wall behind the bird, floor and perch in front. Compositing separate boxes
  * would have meant a rug that is always painted over the feet standing on it.
  */
-function Birbhouse({ house, owned, avatar, onPlace, onClear }: {
+/**
+ * The room, which furnishes itself.
+ *
+ * ## What came out, and why
+ *
+ * Twelve controls: four slots, each with a Bare chip and two pieces, plus copy
+ * explaining that rearranging it changed what you both saw. Eight pieces
+ * exist. A configuration screen for four either-or decisions is a lot of
+ * surface for a question nobody was really asking, and the answer was almost
+ * always "the better one" — so that is what it does now. Buying a piece places
+ * it; see `refurnishHouse`.
+ *
+ * ## What auto-placement can decide
+ *
+ * *Which* piece stands in each slot, and never *where*. Every drawing in
+ * `art/house/` uses absolute coordinates in this one shared 100×100 space —
+ * the rainy window is at x=58, y=18 and can be nowhere else — so position is
+ * not a thing there is a choice about. Making it one would mean rewriting all
+ * eight to be position-agnostic inside a `<g transform>`.
+ *
+ * ## What is still shown
+ *
+ * The room, and a line naming what is in it with the empty slots said plainly.
+ * A room that changed on its own with no account of why would be worse than
+ * the chips were: the point of losing the controls is not losing the
+ * information.
+ */
+function Birbhouse({ house, avatar }: {
   house: House;
-  owned: InventoryItem[];
   avatar: Avatar;
-  onPlace: (slot: HouseSlot, itemId: string) => void;
-  onClear: (slot: HouseSlot) => void;
 }) {
   const { theme } = useTheme();
   const mascot = getMascot(theme.id);
   const placed = normalizeHouse(house);
+  const bare = HOUSE_SLOTS.filter((slot) => !placed[slot]);
 
   return (
     <section className="panel">
       <h2 className="section-title">Birbhouse</h2>
       <p className="section-sub">
-        Yours together — rearranging it changes what you both see.
+        Yours together. It furnishes itself from what the two of you own — buy a
+        better piece and it moves in.
       </p>
 
       <div className="house" role="img" aria-label="The birbhouse">
@@ -694,41 +722,28 @@ function Birbhouse({ house, owned, avatar, onPlace, onClear }: {
         </svg>
       </div>
 
-      {HOUSE_SLOTS.map((slot) => {
-        const options = furnitureForSlot(slot);
-        return (
-          <div className="house-slot" key={slot}>
-            <h3 className="house-slot-name">{HOUSE_SLOT_NAMES[slot]}</h3>
-            <div className="chips">
-              <button
-                type="button"
-                className={`chip ${placed[slot] ? '' : 'chip-on'}`}
-                aria-pressed={!placed[slot]}
-                onClick={() => onClear(slot)}
-              >
-                Bare
-              </button>
-              {options.map((item) => {
-                const isOwned = ownsItem(owned, item.id);
-                const isPlaced = placed[slot] === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`chip ${isPlaced ? 'chip-on' : ''} ${isOwned ? '' : 'chip-locked'}`}
-                    aria-pressed={isPlaced}
-                    title={isOwned ? item.blurb : `${item.blurb} — ${item.price} coins in the Shop.`}
-                    onClick={() => (isOwned ? onPlace(slot, item.id) : undefined)}
-                    disabled={!isOwned}
-                  >
-                    {item.name}{isOwned ? '' : ` · ${item.price}`}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
+      {/* An inventory of the room rather than a control for it. Each line is
+          the piece that won its slot, so the drawing is never a change nobody
+          can account for. */}
+      <ul className="house-list">
+        {HOUSE_SLOTS.filter((slot) => placed[slot]).map((slot) => {
+          const item = furnitureById(placed[slot]);
+          return item ? (
+            <li className="house-line" key={slot}>
+              <span className="house-line-slot">{HOUSE_SLOT_NAMES[slot]}</span>
+              <span className="house-line-name">{item.name}</span>
+            </li>
+          ) : null;
+        })}
+      </ul>
+
+      {bare.length > 0 ? (
+        <p className="section-sub">
+          {bare.length === HOUSE_SLOTS.length
+            ? 'Nothing in it yet. The Shop has the furniture.'
+            : `Still bare: ${bare.map((slot) => HOUSE_SLOT_NAMES[slot].toLowerCase()).join(', ')}.`}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -992,196 +1007,6 @@ function Decor({ avatar, owned, onBuy }: {
           );
         })}
       </ul>
-    </section>
-  );
-}
-
-function Boss({ avatar, pets, owned, workerUrl, token, onSpendMp, onSpendPetMp, onMessage }: {
-  avatar: Avatar;
-  pets: PetInstance[];
-  owned: InventoryItem[];
-  workerUrl?: string;
-  token?: string;
-  onSpendMp: (amount: number) => Promise<boolean>;
-  onSpendPetMp: (petId: string, amount: number) => Promise<boolean>;
-  onMessage: (text: string) => void;
-}) {
-  const [boss, setBoss] = useState<BossPayload | null>(null);
-  const [busy, setBusy] = useState(false);
-  const level = levelOf(avatar);
-  const sheet = sheetFor(avatar, gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned)));
-
-  const call = useCallback(async (path: string, body?: unknown): Promise<BossPayload | null> => {
-    if (!workerUrl || !token) return null;
-    const response = await fetch(`${workerUrl.replace(/\/$/, '')}${path}`, {
-      method: body === undefined ? 'GET' : 'POST',
-      headers: {
-        authorization: `Bearer ${token}`,
-        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    const payload = (await response.json().catch(() => ({}))) as { boss?: BossPayload };
-    return payload.boss ?? null;
-  }, [workerUrl, token]);
-
-  useEffect(() => {
-    let live = true;
-    call('/boss').then((next) => { if (live && next) setBoss(next); }).catch(() => {});
-    return () => { live = false; };
-  }, [call]);
-
-  if (!workerUrl || !token) {
-    return (
-      <section className="panel">
-        <h2 className="section-title">The boss</h2>
-        <p className="section-sub">
-          This is the one screen that cannot render from the phone. Boss HP is
-          contested state — two phones subtracting under last-write-wins would
-          discard one of your hits — so it lives on the Worker. Pair a Worker in
-          Settings and it appears here.
-        </p>
-      </section>
-    );
-  }
-
-  const companion = pets.find((p) => p.id === avatar.companionId);
-  const companionView = companion ? petSheet(companion) : null;
-
-  async function attack(skillId?: string) {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const effects = [];
-      const skill = skillId ? skillById(skillId) : undefined;
-      if (skill) {
-        const blocked = castBlockedBecause(skill, level, sheet.mp);
-        if (blocked) { onMessage(blocked); return; }
-        if (!(await onSpendMp(skill.mpCost))) { onMessage(`${skill.name} needs more MP.`); return; }
-        effects.push(skill.effect);
-      }
-      // The companion joins in whenever its own bar can pay for it.
-      if (companion && companionView?.skillReady) {
-        if (await onSpendPetMp(companion.id, companionView.kind.skill.mpCost)) {
-          effects.push(companionView.kind.skill.effect);
-        }
-      }
-
-      const blow = resolveBlow(sheet.stats, effects);
-      const next = await call('/boss/attack', { damage: blow.damage });
-      if (next) {
-        setBoss(next);
-        if (next.state === 'won') {
-          // Both of you were in it, so the shared pet is what it pays. The
-          // award is keyed on the tier, so the other phone reporting the same
-          // victory is the same award rather than a second one; the flush is
-          // best-effort because the award is already queued in IndexedDB and
-          // the next foreground will carry it.
-          const gained = bossVictoryXp(next.tier);
-          await awardBossVictory(avatar.coupleId, next.tier);
-          void flushPetXp().catch(() => {});
-          onMessage(
-            `Down. +${gained} XP to the pet, and drops run `
-            + `${Math.round(victoryDropBonus(next.tier) * 100)}% richer now.`,
-          );
-        }
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <section className="panel">
-      <h2 className="section-title">The boss</h2>
-
-      {!boss ? (
-        <p className="section-sub">Asking the Worker…</p>
-      ) : (
-        <>
-          <p className="section-sub">Tier {boss.tier}</p>
-          <div className="bar bar-boss">
-            <div
-              className="bar-fill bar-fill-danger"
-              style={{ width: `${hpFraction(boss) * 100}%` }}
-            />
-          </div>
-          <p className="task-line">{boss.hp} / {boss.maxHp}</p>
-
-          {boss.state === 'gathering' ? (
-            <>
-              <p className="section-sub">
-                {waitingOn(boss) ?? 'Both of you are in.'}
-              </p>
-              <button
-                type="button"
-                className="primary"
-                disabled={busy || boss.youAreReady}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    const next = await call('/boss/ready', {});
-                    if (next) setBoss(next);
-                  } finally { setBusy(false); }
-                }}
-              >
-                {boss.youAreReady ? 'You are ready' : 'Ready'}
-              </button>
-            </>
-          ) : null}
-
-          {boss.state === 'fighting' ? (
-            <>
-              <PrimaryAction disabled={busy} onClick={() => attack()}>Hit it for {resolveBlow(sheet.stats).damage}</PrimaryAction>
-              <div className="chips">
-                {SKILLS.map((skill) => (
-                  <button
-                    key={skill.id}
-                    type="button"
-                    className={`chip ${castBlockedBecause(skill, level, sheet.mp) ? 'chip-locked' : ''}`}
-                    title={castBlockedBecause(skill, level, sheet.mp) ?? skill.blurb}
-                    disabled={busy}
-                    onClick={() => attack(skill.id)}
-                  >
-                    {skill.name} · {skill.mpCost}
-                  </button>
-                ))}
-              </div>
-              {companionView ? (
-                <p className="task-line">
-                  {companionView.skillReady
-                    ? `${companionView.kind.name} joins with ${companionView.kind.skill.name}.`
-                    : companionView.skillBlockedBecause}
-                </p>
-              ) : null}
-            </>
-          ) : null}
-
-          {boss.state === 'won' || boss.state === 'lost' ? (
-            <>
-              <p className="section-sub">
-                {boss.state === 'won'
-                  ? 'Cleared. The next one is a quarter bigger.'
-                  : 'Not this time. The same tier is still there.'}
-              </p>
-              <button
-                type="button"
-                className="primary"
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    const next = await call('/boss/ready', {});
-                    if (next) setBoss(next);
-                  } finally { setBusy(false); }
-                }}
-              >
-                Line up the next one
-              </button>
-            </>
-          ) : null}
-        </>
-      )}
     </section>
   );
 }

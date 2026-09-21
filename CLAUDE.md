@@ -31,7 +31,43 @@ npm run gift:verify  # headless browser walk of every screen
 
 # Study page (rebuild LAST, after any change to styles.css or to app source — see pitfalls)
 npm run study:build  # rebuild study/index.html
+
+# Visual walk (needs app/dist, so build first)
+npm run visual       # every route in two themes, axe on each, console errors
 ```
+
+### `npm run build` needs the .NET SDK, and so does anything downstream of it
+
+The game core is C# compiled to WebAssembly (`game/`, targeting `net10.0`), so
+`APP_BASE=/ npm run build` needs `dotnet` plus the `wasm-tools` workload.
+`npm run visual` needs the build's output, and `npm test` runs `game:test`
+through `dotnet test`. Without the SDK all three fail, and the two build-shaped
+CI gates — visual regression and Lighthouse — cannot be reproduced at all.
+
+`.claude/hooks/session-start.sh` installs both on web sessions so this is not
+something anybody has to remember. It is registered in `.claude/settings.json`
+and takes effect for sessions started **after** it reaches `main`.
+
+**A change to the build config or to `app/tools/` must be run before it is
+pushed.** This is not general caution — a one-line change to `app/tools/visual.mjs`
+broke `main` for six consecutive CI runs while every other local gate passed
+green, because the harness could not be executed in a container that had no
+SDK. The failure was only visible from CI, three commits later.
+
+Two notes on the Ubuntu-packaged SDK the hook installs:
+
+- It comes from `universe` rather than `dot.net/v1/dotnet-install.sh`, because
+  the container's egress proxy denies `builds.dotnet.microsoft.com` by policy.
+  CI is unaffected and still uses `actions/setup-dotnet@v6`.
+- Installing it needs `apt-get update` first. The image's package index is
+  older than the archive pool, so a straight install fetches URLs that have
+  already moved and dies in 404s.
+
+`npm run visual` writes ten frames into `app/tools/baselines/` and leaves them
+**untracked**. Delete them; do not commit them. The pixel compare is byte-exact
+and container fonts are not CI's fonts — real baselines come from a CI run's
+`visual-frames` artifact. See §"Baselines are not committed yet" in
+`docs/design-system.md`.
 
 ## Architecture
 
@@ -127,17 +163,25 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   per skill, `scene/vfx.ts` maps it to one of five motions, and
   `scene/vfx.test.ts` fails in both directions — an unmapped skill and a mapped
   shape nobody casts.
+- **A chest holds `PRIZES_PER_CHEST` items and the counter steps once per
+  chest.** A chest counts as a miss only when all three items missed, so the
+  published 6/9/12 windows are reached far more rarely than the one-item
+  arithmetic they were chosen with — 1 in 56, 1 in 212, 1 in 3081. They were
+  kept because they are published; `chests.test.ts` holds the figures, the
+  argument, and a tripwire that fails if the item count, a chest's weights or a
+  window moves. **The floor lifts one item, not all three** — applied to every
+  item it is a jackpot wearing the word insurance.
 - **Chest pity is per chest**, stored on `Avatar.chestPity` (optional, no
   migration). The rescale at a floor is `applyFloor` from `pets.ts`, not a
-  second copy. `chests.test.ts` asserts each window is reached between one run
-  in four and one in twenty — a window reached half the time is the real drop
-  rate wearing a second name.
-- **A paid chest must never hand back nothing.** Gear refines, a companion
-  deepens its bond, a cosmetic is refunded at list price;
-  `repository/chests.test.ts` drives sixty consecutive draws to prove it. The
-  odds module stops short of ownership on purpose — that is the repository's
-  question, and keeping it there is why the odds can be tested without a
-  database.
+  second copy.
+- **A paid chest must never hand back nothing, and that is now per item.** Gear
+  refines, a companion deepens its bond, a cosmetic is refunded — and the
+  **refund is capped at the item's share of the price**, because every furniture
+  piece is `rare` at 120–180 coins while the wooden chest costs 90, which made
+  owning the set a money printer. The owned sets are updated *inside* the grant
+  loop, or one chest hands over the same new rug three times. The odds module
+  stops short of ownership on purpose — that is the repository's question, and
+  keeping it there is why the odds can be tested without a database.
 - **Nothing in a Dexie transaction may `await` a non-Dexie promise.** A dynamic
   `import()` inside `openChestFor` ended the transaction halfway through paying
   for a chest; every module it needs is imported statically.
@@ -148,6 +192,16 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   against the server, so a device can briefly hold a garden ahead of the level
   it can prove. `plantFlora` derives the level **inside** the transaction for
   the same reason; never take it as an argument.
+- **The birbhouse furnishes itself, and only upwards.** There is no placing:
+  `buyFurniture` calls `refurnishHouse` in the same transaction, which takes
+  the **better of the stored piece and this member's best owned piece, per
+  slot** — highest price, then catalogue order (`compareFurniture`). Upgrade-only
+  is load-bearing, not caution: `Pet.house` is couple-level while `inventory`
+  is per-member and not partner-visible, so recomputing the room from one
+  inventory and storing it would have two phones taking turns deleting each
+  other's furniture. Auto-placement decides *which* piece, never *where* —
+  every drawing in `art/house/` uses absolute coordinates in one shared
+  100×100 space.
 - **The garden does not use the birbhouse catalogue.** A rainy window and a
   round rug do not go outdoors. `FLORA` is the garden's own, and nothing in it
   is mythic — the top rung should be something you won, and `KIND_TIERS` in
@@ -157,9 +211,12 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   level is the fifty-rung curve in `domain/xp.ts` that the couple climbs.
   Milestones hang off the second. `EveGardenPage`'s victory banner reads the
   pet's, because the first would announce a plot opening on the wrong level.
-- **`ChestAlcove` has one implementation, rendered twice.** The Shop tab and
-  `GardenDrawer` both use it. Do not fork it — two sets of published odds is
-  two chances to publish a number that is not the number.
+- **`ChestAlcove`, `ChestArt` and `ChestReveal` each have one implementation,
+  rendered twice.** The Shop tab and `GardenDrawer` both open chests. Do not
+  fork any of them — two sets of published odds is two chances to publish a
+  number that is not the number, two chest drawings is two chances for the
+  cheap one to look like the dear one, and two reveals is two chances to
+  describe a duplicate as nothing.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)

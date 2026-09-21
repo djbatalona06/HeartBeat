@@ -7,6 +7,22 @@
 //   node app/tools/visual.mjs                 compare against baselines
 //   node app/tools/visual.mjs --update        rewrite the baselines
 //   node app/tools/visual.mjs --shots <dir>   where to put this run's frames
+//   node app/tools/visual.mjs --require-baselines   a missing baseline fails
+//
+// ## The pixel half of this is not switched on yet
+//
+// `app/tools/baselines/` is not in the repo, so every run seeds all ten frames
+// and the byte compare does not execute. That is the documented state, not an
+// accident — see "Baselines are not committed yet" in docs/design-system.md,
+// which also has the three-step procedure for making them and the reason they
+// must come from CI rather than from a laptop (the compare is byte-exact and
+// font rasterisation is machine-specific).
+//
+// What this file adds to that: a seeded frame is now **counted and named** in
+// the summary instead of scrolling past as one more "seeded" line, because a
+// walk that verified nothing must not read as a walk that found nothing wrong.
+// `--require-baselines` is the flag CI passes once the frames are committed,
+// so the gate cannot quietly go inert again afterwards.
 //
 // Follows gift/tools/verify.mjs: raw `playwright`, its own `check()`, its own
 // static server, and the sandbox's Chromium pinned by path. Deliberately not
@@ -27,6 +43,9 @@ const BASELINES = join(ROOT, 'app', 'tools', 'baselines');
 const shotArg = process.argv.indexOf('--shots');
 const SHOTS = shotArg > -1 ? process.argv[shotArg + 1] : join(ROOT, '.shots', 'visual');
 const UPDATE = process.argv.includes('--update');
+const REQUIRE_BASELINES = process.argv.includes('--require-baselines');
+/** Frames that had no baseline to compare against, so nothing was verified. */
+const seeded = [];
 
 mkdirSync(SHOTS, { recursive: true });
 await mkdir(BASELINES, { recursive: true });
@@ -245,11 +264,59 @@ async function prime(page) {
     }
 
     // Prove it survived, rather than trusting the write.
+    //
+    // ## Why this does not poll for the hash
+    //
+    // It used to wait for `location.hash === '#/'`, which is the hash `goto`
+    // had just set -- so the poll raced FirstRunGate's redirect in **both**
+    // directions and was wrong either way. A poll that landed before the gate
+    // ran saw the '#/' it had navigated to and reported the gates open when
+    // they were not; the walk then reached `home`, waited its own 500ms, and
+    // only there discovered it had been bounced to /welcome. A poll that
+    // landed after the redirect saw '#/welcome' and spent the full ten seconds
+    // waiting for a hash that was never coming back, before retrying
+    // correctly. One failure mode looked like a broken home screen and the
+    // other looked like a slow runner; both were this line.
+    //
+    // So it waits for whichever of the two things actually happens. A hash
+    // that is no longer '#/' is the gate having its say -- retry. A hash of
+    // '#/' *and* the dashboard's own markup on the page is the gate having
+    // opened, which is the only evidence that distinguishes "open" from "has
+    // not run yet". Neither can be reported by a sample taken too early.
+    //
+    // ## Which gate this is about
+    //
+    // `FirstRunGate`, and only that one. There are two gates and they are not
+    // the same question: that one asks whether this phone has met the app,
+    // and `PairGate` asks whether there are two of you. This function seeds
+    // the first one's answer and can do nothing about the second — pairing
+    // needs a `workerSecret` only the server can issue.
+    //
+    // So "open" here means *past onboarding*, which is either of two honest
+    // outcomes: the dashboard rendered, or `PairGate` is showing its
+    // invitation. `/` is not in `OPEN_WHILE_UNPAIRED`, so an unpaired browser
+    // gets the invitation **at the same hash**, rendered in place with no
+    // redirect — which is exactly why sampling the hash could never tell
+    // these apart, and why waiting only for the dashboard times out.
+    //
+    // Anything else — a redirect to `#/welcome` or `#/onboarding` — is the
+    // seed not having taken, and is what the retry is for.
+    //
+    // Coupling to these classes is the same trade this file already makes for
+    // `.welcome-guest` and `.onboarding-skip`, and for the reason given
+    // there: real UI with a stable class beats encoding the app's schema into
+    // its harness.
     await page.goto(`${base}/#/`, { waitUntil: 'load' });
     const open = await page
-      .waitForFunction(() => (location.hash || '#/') === '#/', null,
-        { timeout: 10000, polling: 200 })
-      .then(() => true)
+      .waitForFunction(() => {
+        if ((location.hash || '#/') !== '#/') return { open: false };
+        // Either is past onboarding. Neither is "the gate has not run yet",
+        // which renders nothing and is what the poll has to outlast.
+        const past = document.querySelector('.home-pet') || document.querySelector('.gate-title');
+        return past ? { open: true } : undefined;
+      }, null, { timeout: 15000, polling: 100 })
+      .then((handle) => handle.jsonValue())
+      .then((result) => result.open === true)
       .catch(() => false);
     if (open) {
       if (attempt > 1) console.log(`  note  gates opened on attempt ${attempt}`);
@@ -355,6 +422,7 @@ async function walk({ id: themeId, mode }) {
     const baseline = join(BASELINES, `${label}.png`);
     if (UPDATE || !existsSync(baseline)) {
       await writeFile(baseline, await readFile(shot));
+      if (!UPDATE) seeded.push(label);
       console.log(`  ${UPDATE ? 'updated' : 'seeded '} ${label}`);
     } else {
       const [a, b] = [await readFile(baseline), await readFile(shot)];
@@ -418,5 +486,28 @@ console.log('\n=== console errors ===');
 if (problems.length) { problems.forEach((p) => console.log('  ' + p)); failed += problems.length; }
 else console.log('  none');
 
+// A frame with no baseline was not checked, and a run that checked nothing
+// must not read as a run that found nothing wrong. This is said out loud
+// whether or not it fails: "seeded" scrolling past in a log is how this went
+// unnoticed for the whole life of the file.
+if (seeded.length > 0) {
+  console.log(`\n=== ${seeded.length} frame(s) had no baseline ===`);
+  console.log('  Nothing was compared for these. They have been written to');
+  console.log(`  ${BASELINES} for this run only -- CI starts from a clean`);
+  console.log('  checkout, so the next run will seed them again.');
+  for (const label of seeded) console.log(`    - ${label}`);
+  console.log('  To make them, follow "Baselines are not committed yet" in');
+  console.log('  docs/design-system.md: take them from the visual-frames');
+  console.log('  artifact of a CI run, look at every frame, then commit them.');
+  console.log('  Not from a laptop -- the compare is byte-exact and fonts differ.');
+  if (REQUIRE_BASELINES) {
+    failed += seeded.length;
+    console.log('  --require-baselines is set, so this is a failure.');
+  }
+}
+
 console.log(`\n${failed === 0 ? 'PASS' : `FAIL (${failed})`}  ·  frames in ${SHOTS}`);
+if (failed === 0 && seeded.length > 0) {
+  console.log(`NOTE  ${seeded.length} of these frames were not verified against anything.`);
+}
 process.exit(failed === 0 ? 0 : 1);

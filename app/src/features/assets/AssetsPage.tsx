@@ -14,6 +14,10 @@ import {
 } from '../../domain/rpg/holdings';
 import { gearArt } from '../party/art/gear';
 import { petArt } from '../party/art/pets';
+import { RaidSheet } from '../party/RaidSheet';
+import { GEAR_RAID_ORDER, RAID_STAT_NAMES } from '../../domain/rpg/raidStats';
+import { REFINE_GAIN, REFINE_MAX } from '../../domain/rpg/shop';
+import type { House } from '../../domain/rpg/furniture';
 
 /**
  * The bag: everything this member owns, in one place.
@@ -99,6 +103,22 @@ export function AssetsPage() {
           New gear and eggs are bought on <Link to="/party">Party</Link>.
         </p>
       </section>
+
+      {/* The sheet, where the gear it is made of lives.
+          `RaidSheet`'s own header has always argued that "would the other
+          boots be better" is a question asked at the wardrobe rather than
+          mid-fight, and the bag *is* the wardrobe. This is the same component
+          `/raid` renders, not a copy — one implementation, two callers, the
+          same argument `ChestAlcove` makes about published odds. The bag
+          showed counts, coins, rarity names, refine levels and bonds, and not
+          one stat. */}
+      <RaidSheet
+        avatar={avatar}
+        owned={holdings.gear}
+        petXp={holdings.pet?.xp ?? 0}
+        house={(holdings.pet?.house ?? {}) as House}
+        companion={holdings.pets.find((each) => each.id === avatar.companionId)}
+      />
 
       <section className="panel">
         <h2 className="section-title">Gear</h2>
@@ -244,6 +264,20 @@ function GearCard({ entry, onToggle }: { entry: OwnedGear; onToggle: () => void 
         <span className="asset-card-meta">
           {RARITY_NAMES[item.rarity]}
           {row.refine > 0 ? ` +${row.refine}` : ''}
+        </span>
+        {/* What this piece is actually worth, which the bag never said.
+            The stat named is the slot's **first** raid stat, because that is
+            where a source's passive lands and nowhere else — see
+            `raidStats.ts`. Refinement is added in rather than shown apart: a
+            +2 helm's stat level really is higher.
+            Clamped at `REFINE_MAX` exactly as `gearSources` clamps it. The
+            card and the sheet above it are the same number twice, and a row
+            carrying a refine past the cap — from an older build, or a synced
+            row this version does not agree with — must not make the card
+            claim more than the sheet counts. */}
+        <span className="asset-card-stat">
+          {`${item.statLevel + Math.min(REFINE_MAX, Math.max(0, row.refine)) * REFINE_GAIN} `
+            + RAID_STAT_NAMES[GEAR_RAID_ORDER[item.slot][0]]}
         </span>
         {worn ? <span className="asset-card-flag">Worn</span> : null}
         {locked && !worn ? (
