@@ -4,6 +4,7 @@ import { db, loadSettings } from '../../db/database';
 import { confirmMessage, draftMessage, mergeMessages } from '../../db/repository';
 import { fetchMessages, postMessage } from '../../pwa/api';
 import type { ChatMessage } from '../../domain/types';
+import { isPaired } from '../../domain/identity/rekey';
 
 /**
  * The thread, kept in step with the server.
@@ -33,7 +34,11 @@ export function useMessages(open: boolean): Thread {
   const token = settings?.workerSecret;
   const coupleId = settings?.coupleId;
   const memberId = settings?.memberId;
-  const paired = Boolean(token && coupleId && memberId);
+  // `isPaired` is the shared half — see its header for why `coupleId` alone is
+  // not the test. The `memberId` is this screen's own extra requirement rather
+  // than a fourth spelling of the same question: `send` writes it as the
+  // author, and a thread you cannot post to is not an open one.
+  const paired = isPaired(settings) && Boolean(memberId);
 
   const [offline, setOffline] = useState(false);
   const cursor = useRef(0);
