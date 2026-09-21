@@ -5307,6 +5307,15 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 
 .asset-card-name { font-size: var(--text-sm); line-height: var(--line-tight); }
 .asset-card-meta { font-size: var(--text-xs); color: var(--color-text-muted); }
+/* What the piece is worth. Accent rather than muted, because it is the one
+   line on the card that is a *number about the fight* — the rarity and the
+   refine above it are labels, and the sheet at the top of the page is where
+   these add up. */
+.asset-card-stat {
+  font-size: var(--text-xs);
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+}
 
 .asset-card-flag {
   font-size: var(--text-xs);

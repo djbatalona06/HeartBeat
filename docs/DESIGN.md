@@ -414,6 +414,28 @@ this app's whole thesis. A short note grants the other person energy; sending
 pays the sender a little too, or nobody sends. Capped at three per sender per
 day — they keep their weight by being rare.
 
+### The bag says what things are worth
+
+The bag showed counts, coins, rarity names, refine levels and bonds — and not
+one stat. Everything ownable in this app carries a number, which is the rule
+`raidStats.ts` exists to enforce, and the screen that lists what you own was
+the one place that number never appeared.
+
+Two additions, no new vocabulary.
+
+- **The raid sheet, at the top.** The *same component* `/raid` renders, not a
+  copy. Its own header has always argued that "would the other boots be
+  better" is a question asked at the wardrobe rather than mid-fight, and the
+  bag is the wardrobe. `holdingsOf` gained the couple's `pet` so the sheet's
+  headline source (pet XP) and up to four of its sources (the house) come from
+  the same single observed read the screen already had, rather than a second
+  live query and the half-rendered states that come with it.
+- **A stat line per card.** The slot's **first** raid stat, because that is
+  where a source's passive lands and nowhere else, with refinement folded in
+  and clamped at `REFINE_MAX` exactly as `gearSources` clamps it. The card and
+  the sheet above it are the same number twice, so a row carrying a refine past
+  the cap must not let the card claim more than the sheet counts.
+
 ### One line at the top, and what may be waved away
 
 The header used to show the **first** of quests and cheers and silently drop
