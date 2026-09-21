@@ -166,10 +166,17 @@ So the baselines come from the environment that compares them:
    reviewed is a bug frozen into the repo that passes forever.
 3. Commit them to `app/tools/baselines/` with the same names.
 
-From then on `npm run visual` fails on any pixel change, and the diff in review
-is the picture that changed. To re-bless after an intended change, take the new
-frames from the same artifact rather than running `visual:update` locally — for
-the same rasterisation reason.
+Then add `--require-baselines` to the `visual` step in `ci.yml`. From then on
+`npm run visual` fails on any pixel change *and* on any frame that has lost its
+baseline, and the diff in review is the picture that changed. To re-bless after
+an intended change, take the new frames from the same artifact rather than
+running `visual:update` locally — for the same rasterisation reason.
+
+Until then the walk names every unverified frame in its summary and prints
+`NOTE  n of these frames were not verified against anything.` under the PASS.
+A run that compared nothing must not read as a run that found nothing wrong —
+before that, ten "seeded" lines scrolled past and the PASS was the only thing
+anybody read.
 
 `npm run visual` locally is still useful for everything that is not the pixel
 comparison: it catches console errors, a route that stopped being reachable,
@@ -179,7 +186,16 @@ and axe violations. Those answers are machine-independent.
 
 That is `prime()` in `app/tools/visual.mjs` failing three times. `FirstRunGate`
 sends a browser that has never paired to `/welcome` and then `/onboarding`, and
-the walk clicks the two real escape hatches to get through. If their class
-names (`.welcome-guest`, `.onboarding-skip`) or the conditions they render
-under change, this is where it shows up — as one honest failure rather than ten
-screenshots of the onboarding screen.
+the walk seeds `guestAcknowledged` and `onboarded` to get through. If the
+conditions those are read under change, this is where it shows up — as one
+honest failure rather than ten screenshots of the onboarding screen.
+
+**If instead it reports the gates open and then fails on `home`**, that was a
+bug in `prime()`'s own verification and is fixed. It polled for
+`location.hash === '#/'` — the hash `goto` had just set — so it raced
+`FirstRunGate`'s redirect in both directions: a poll landing before the gate
+ran reported success and let the walk discover the bounce later at `home`,
+while one landing after spent ten seconds waiting for a hash that was not
+coming back. It now resolves on whichever actually happens, using the
+dashboard's own `.home-pet` as the evidence that the gate opened rather than
+that it had not yet run.

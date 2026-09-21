@@ -83,7 +83,10 @@ jobs:
 
       # Screenshots every screen in two packs and two modes, and runs axe-core
       # on the same visit. Until baselines are committed this seeds them and
-      # passes; see docs/design-system.md.
+      # passes — it names every unverified frame while doing so, and the
+      # `--require-baselines` flag turns that into a failure once they land.
+      # See "Baselines are not committed yet" in docs/design-system.md, which
+      # also says why they have to come from this artifact and not a laptop.
       - name: Visual regression and axe
         run: npm run visual
 
