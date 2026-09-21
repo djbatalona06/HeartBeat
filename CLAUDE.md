@@ -31,7 +31,43 @@ npm run gift:verify  # headless browser walk of every screen
 
 # Study page (rebuild LAST, after any change to styles.css or to app source — see pitfalls)
 npm run study:build  # rebuild study/index.html
+
+# Visual walk (needs app/dist, so build first)
+npm run visual       # every route in two themes, axe on each, console errors
 ```
+
+### `npm run build` needs the .NET SDK, and so does anything downstream of it
+
+The game core is C# compiled to WebAssembly (`game/`, targeting `net10.0`), so
+`APP_BASE=/ npm run build` needs `dotnet` plus the `wasm-tools` workload.
+`npm run visual` needs the build's output, and `npm test` runs `game:test`
+through `dotnet test`. Without the SDK all three fail, and the two build-shaped
+CI gates — visual regression and Lighthouse — cannot be reproduced at all.
+
+`.claude/hooks/session-start.sh` installs both on web sessions so this is not
+something anybody has to remember. It is registered in `.claude/settings.json`
+and takes effect for sessions started **after** it reaches `main`.
+
+**A change to the build config or to `app/tools/` must be run before it is
+pushed.** This is not general caution — a one-line change to `app/tools/visual.mjs`
+broke `main` for six consecutive CI runs while every other local gate passed
+green, because the harness could not be executed in a container that had no
+SDK. The failure was only visible from CI, three commits later.
+
+Two notes on the Ubuntu-packaged SDK the hook installs:
+
+- It comes from `universe` rather than `dot.net/v1/dotnet-install.sh`, because
+  the container's egress proxy denies `builds.dotnet.microsoft.com` by policy.
+  CI is unaffected and still uses `actions/setup-dotnet@v6`.
+- Installing it needs `apt-get update` first. The image's package index is
+  older than the archive pool, so a straight install fetches URLs that have
+  already moved and dies in 404s.
+
+`npm run visual` writes ten frames into `app/tools/baselines/` and leaves them
+**untracked**. Delete them; do not commit them. The pixel compare is byte-exact
+and container fonts are not CI's fonts — real baselines come from a CI run's
+`visual-frames` artifact. See §"Baselines are not committed yet" in
+`docs/design-system.md`.
 
 ## Architecture
 

@@ -182,6 +182,13 @@ anybody read.
 comparison: it catches console errors, a route that stopped being reachable,
 and axe violations. Those answers are machine-independent.
 
+One piece of housekeeping after a local run: the walk writes its ten frames
+into `app/tools/baselines/` and leaves them **untracked**, where a `git add -A`
+would sweep them into a commit. Delete them. Committing frames rasterised
+anywhere but CI is the mistake this whole section exists to prevent, and doing
+it by accident looks exactly like doing it on purpose. They are deliberately
+not in `.gitignore` — that path is how the real ones eventually land.
+
 #### ⚠️ The walk mostly screenshots the pairing gate, not the app
 
 `prime()` seeds `guestAcknowledged` and `onboarded`, which is everything
