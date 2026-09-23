@@ -5876,6 +5876,7 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   text-overflow: ellipsis;
 }
 .garden-compass-stage { color: var(--color-text-muted); }
+.garden-compass-boss { font-size: var(--text-xs); color: var(--color-text-muted); }
 .garden-compass-bar {
   display: block;
   width: 9rem;
@@ -6077,7 +6078,53 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 /* Effectiveness is carried by a border, not a colour swap, so it survives every
    pack and both variants. */
 .garden-action.is-strong { border-color: var(--color-success); }
-.garden-action.is-weak { border-color: color-mix(in srgb, var(--color-text-muted) 60%, transparent); }
+/* One stripe per fighting style, down the leading edge, so the three kinds of
+   move read apart before the names do. */
+.garden-action.is-physical { box-shadow: inset 3px 0 0 var(--color-danger); }
+.garden-action.is-defensive { box-shadow: inset 3px 0 0 var(--color-success); }
+.garden-action.is-magic { box-shadow: inset 3px 0 0 var(--color-accent); }
+.garden-action.is-mend { box-shadow: inset 3px 0 0 var(--color-text-muted); }
+.garden-action.is-charged .garden-action-note { color: var(--color-text); }
+
+/* ---- today's charges -------------------------------------------------------
+   Logging, beside the fight rather than in it. A lit chip says what it is
+   doing; an unlit one is a one-tap log. Bond and Balance are earned, never
+   pressed, so they are spans rather than buttons. */
+.garden-charges { display: grid; gap: var(--space-2); }
+.garden-charges-title { font-size: var(--text-sm); font-weight: 600; }
+.garden-charge-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.garden-charge-slot .chip,
+.garden-charge-earned {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-2);
+  border-radius: var(--radius);
+  text-align: left;
+  /* A chip capitalises its label, which suits one word and turns a sentence
+     into a headline. These are sentences. */
+  text-transform: none;
+}
+.garden-charge-earned {
+  border: var(--border-width) dashed var(--color-border);
+  background: var(--color-surface);
+  opacity: 0.7;
+}
+.garden-charge-earned.is-lit { opacity: 1; border-style: solid; border-color: var(--color-success); }
+/* The chip that answers this monster's weakness, while it is still unlit. */
+.garden-charge-slot.is-answer .chip:not(.chip-on),
+.garden-charge-slot.is-answer .garden-charge-earned:not(.is-lit) { border-color: var(--color-accent); border-style: solid; }
+.chip-on .garden-charge-effect { color: inherit; opacity: 0.85; }
+.garden-charge-name { font-weight: 600; font-size: var(--text-sm); }
+.garden-charge-effect { font-size: var(--text-xs); color: var(--color-text-muted); }
 .garden-action.is-locked { opacity: 0.4; }
 
 .garden-flee {
@@ -6261,14 +6308,10 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 }
 
 /* ---- the Raid Gate --------------------------------------------------------
-   The threshold you cross on the way into Eve's Garden.
-
-   The whole layout is one grid whose geometry comes from two custom properties
-   each pedestal carries — `--gate-x` along the arch and `--gate-depth` into it,
-   both written by `archLayout` in domain/rpg/raidGate.ts. That is why the same
-   five buttons become a scrollable row on a phone with no branch in the
-   component: the arch is a stylesheet decision, and the domain only says where
-   things stand relative to each other. */
+   The threshold you cross on the way into Eve's Garden. Four bands, top to
+   bottom: the seven islands as a trail, this island's boss in the arch, the
+   companions as a row of cards, and the button that commits. On a phone the
+   trail and the roster scroll sideways and nothing else changes. */
 
 .gate {
   display: grid;
@@ -6310,22 +6353,147 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 .gate-tether { animation: gate-pulse 4.5s ease-in-out infinite; }
 @keyframes gate-pulse { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } }
 
-/* The arch itself. A horizontal band of pedestals, scrollable when the screen
-   is too narrow to hold five at a readable size — which is most phones, and is
-   why this is a scroller rather than five things squeezed to nothing. */
-.gate-arch {
-  position: absolute;
-  inset: auto 0 0;
+/* -- the trail: seven islands, one line -- */
+.gate-trail {
   display: flex;
-  align-items: flex-end;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0 0 var(--space-1);
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.gate-trail::-webkit-scrollbar { display: none; }
+.gate-trail-step {
+  flex: 1 0 5.5rem;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  position: relative;
+}
+/* The line joining the dots. Drawn behind each dot towards the next one. */
+.gate-trail-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 0.8rem;
+  left: calc(50% + 0.9rem);
+  right: calc(-50% + 0.9rem);
+  height: 2px;
+  background: var(--color-border);
+}
+.gate-trail-dot {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  font-weight: 600;
+}
+.gate-trail-name { line-height: var(--line-tight); }
+.gate-trail-step[data-state='done'] .gate-trail-dot { border-color: var(--color-success); color: var(--color-success); }
+.gate-trail-step[data-state='here'] { color: var(--color-text); font-weight: 600; }
+.gate-trail-step[data-state='here'] .gate-trail-dot {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  box-shadow: 0 0 0.6rem 0.1rem color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+.gate-trail-step[data-state='locked'] { opacity: 0.55; }
+
+/* -- the boss, standing in the arch between the two trees -- */
+.gate-boss {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(7rem, 11rem) 1fr;
+  align-items: end;
+  gap: var(--space-3);
+  height: 100%;
+  min-height: inherit;
+  padding: var(--space-4);
+}
+.gate-boss-figure {
+  display: grid;
+  place-items: end center;
+  align-self: stretch;
+}
+/* A definite size, not a percentage: the figure centres its child, so a
+   percentage would resolve against the canvas's own 16px and draw a stamp. */
+.gate-boss-sprite {
+  width: clamp(6.5rem, 24vw, 11rem);
+  height: auto;
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0.4rem 0.6rem color-mix(in srgb, var(--color-base) 60%, transparent));
+  animation: gate-boss-breathe 4s ease-in-out infinite;
+}
+@keyframes gate-boss-breathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.2rem); }
+}
+.gate-boss-card {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+}
+.gate-boss-island { font-size: var(--text-xs); color: var(--color-text-muted); }
+.gate-boss-name {
+  font-family: var(--font-display);
+  font-weight: var(--font-display-weight, 400);
+  font-size: var(--text-lg);
+  line-height: var(--line-tight);
+}
+.gate-boss-stats { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.gate-boss-stats span {
+  padding: 1px var(--space-2);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  font-size: var(--text-xs);
+}
+.gate-boss-stats span:nth-child(2) { outline: 1px solid var(--color-success); }
+.gate-boss-hint, .gate-boss-next { font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-body); }
+.gate-stages { display: flex; gap: 4px; margin: var(--space-1) 0 0; padding: 0; list-style: none; }
+.gate-stage-dot {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.gate-stage[data-type='SemiBoss'] .gate-stage-dot,
+.gate-stage[data-type='Boss'] .gate-stage-dot { border-color: var(--color-danger); color: var(--color-danger); }
+.gate-stage[data-type='Elite'] .gate-stage-dot { border-style: dashed; }
+.gate-stage[data-state='done'] .gate-stage-dot { background: var(--color-success); border-color: var(--color-success); color: var(--color-base); }
+.gate-stage[data-state='here'] .gate-stage-dot { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+
+@media (max-width: 520px) {
+  .gate-boss { grid-template-columns: 1fr; justify-items: center; }
+  .gate-boss-sprite { width: clamp(6.5rem, 34vw, 9rem); }
+  .gate-boss-card { width: 100%; }
+}
+
+/* -- the roster: the companions, as a row of cards -- */
+.gate-roster {
+  display: flex;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-3) var(--space-4);
+  padding-bottom: var(--space-1);
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
-.gate-arch::-webkit-scrollbar { display: none; }
+.gate-roster::-webkit-scrollbar { display: none; }
 
 .gate-pedestal {
   flex: 0 0 auto;
@@ -6333,16 +6501,13 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   display: grid;
   justify-items: center;
   gap: var(--space-1);
-  width: 8.5rem;
-  padding: 0;
+  width: 9.5rem;
+  padding: var(--space-2) 0 0;
   border: none;
   background: none;
   color: inherit;
   font: inherit;
   cursor: pointer;
-  /* Lifted by its place in the arch: the middle stands nearest and largest, the
-     ends sit back and slightly smaller. Both numbers come from the domain. */
-  transform: translateY(calc(var(--gate-depth, 0) * -0.9rem)) scale(var(--gate-scale, 1));
   transition: transform var(--motion-medium) var(--ease-soft), opacity var(--motion-fast) linear;
 }
 .gate-pedestal[data-unavailable] { opacity: 0.45; cursor: not-allowed; }
@@ -6403,7 +6568,8 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   line-height: 1.4;
 }
 
-.gate-skill { margin-top: 2px; font-size: var(--text-xs); color: var(--color-accent); font-weight: 600; }
+.gate-moves { margin-top: 2px; font-size: var(--text-xs); font-weight: 600; }
+.gate-skill { font-size: var(--text-xs); color: var(--color-accent); font-weight: 600; }
 .gate-foot, .gate-affinity {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
@@ -6692,6 +6858,7 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 @media (prefers-reduced-motion: reduce) {
   .gate-layer,
   .gate-tether,
+  .gate-boss-sprite,
   .garden-layer-sky,
   .garden-layer-mid,
   .garden-layer-near,

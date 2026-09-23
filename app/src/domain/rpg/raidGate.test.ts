@@ -1,74 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AFFINITY_RANKS, ARCH_SPREAD_DEGREES, MASCOT_ELEMENTS, MASCOT_RAID_ORDER, MAX_AFFINITY_RANK,
-  affinityRank, archLayout, canEnter, gateCards, gateDecision, gateGreeting, mostFavoured,
+  AFFINITY_RANKS, MASCOT_ELEMENTS, MASCOT_RAID_ORDER, MAX_AFFINITY_RANK,
+  affinityRank, canEnter, gateCards, gateDecision, gateGreeting, mostFavoured, movePreview,
   skillPreview, tierForRank, toNextRank, withAffinity,
 } from './raidGate';
 import { COMPANION_KITS } from './companionSkills';
 import { MASCOT_ROSTER } from '../../features/pet/mascots/roster';
 import { RAID_STATS } from './raidStats';
 import { TIERS, TIER_STAT_LEVELS } from './tiers';
-
-describe('the arch', () => {
-  it('stands one companion in the middle when there is only one', () => {
-    expect(archLayout(1)).toEqual([{ index: 0, x: 0, depth: 0, scale: 1 }]);
-    expect(archLayout(0)).toEqual([]);
-  });
-
-  it('spaces evenly, which is what makes it an arc rather than five guesses', () => {
-    const slots = archLayout(5);
-    const gaps = slots.slice(1).map((slot, i) => slot.x - slots[i].x);
-    for (const gap of gaps) expect(gap).toBeCloseTo(gaps[0], 6);
-  });
-
-  it('runs edge to edge, symmetrically about the middle', () => {
-    const slots = archLayout(5);
-    expect(slots[0].x).toBeCloseTo(-1, 6);
-    expect(slots[4].x).toBeCloseTo(1, 6);
-    expect(slots[2].x).toBeCloseTo(0, 6);
-    expect(slots[0].x).toBeCloseTo(-slots[4].x, 6);
-    expect(slots[1].depth).toBeCloseTo(slots[3].depth, 6);
-  });
-
-  it('curves, with the middle nearest and the ends furthest back', () => {
-    const slots = archLayout(5);
-    expect(slots[2].depth).toBeCloseTo(0, 6);
-    expect(slots[0].depth).toBeCloseTo(1, 6);
-    expect(slots[4].depth).toBeCloseTo(1, 6);
-    expect(slots[1].depth).toBeGreaterThan(slots[2].depth);
-  });
-
-  it('shrinks with depth, so the back of the arc reads as the back', () => {
-    const slots = archLayout(5);
-    expect(slots[2].scale).toBe(1);
-    expect(slots[0].scale).toBeLessThan(1);
-    expect(slots[0].scale).toBeGreaterThan(0.8);
-  });
-
-  it('stays even at any count, which five typed offsets would not', () => {
-    for (const count of [2, 3, 4, 5, 6, 9]) {
-      const slots = archLayout(count);
-      expect(slots).toHaveLength(count);
-      const gaps = slots.slice(1).map((slot, i) => slot.x - slots[i].x);
-      for (const gap of gaps) expect(gap, `count ${count}`).toBeCloseTo(gaps[0], 6);
-    }
-  });
-
-  it('bends more when told to, and never flattens to a line', () => {
-    expect(archLayout(5, 80)[0].depth).toBeCloseTo(1, 6);
-    expect(archLayout(5, 80)[1].depth).toBeGreaterThan(archLayout(5, 20)[1].depth);
-    expect(ARCH_SPREAD_DEGREES).toBeGreaterThan(0);
-    expect(ARCH_SPREAD_DEGREES).toBeLessThan(90);
-  });
-
-  /** Even angles round a circle give uneven gaps on screen. Even gaps are
-   *  what a front-facing arch actually needs, so the spacing is linear and
-   *  the bend lives in the depth. */
-  it('spaces by position rather than by angle', () => {
-    const slots = archLayout(5);
-    expect(slots.map((s) => s.x)).toEqual([-1, -0.5, 0, 0.5, 1]);
-  });
-});
 
 describe('affinity', () => {
   it('starts everybody at rank one, for free', () => {
@@ -140,11 +79,9 @@ describe('the cards', () => {
     for (const card of cards) expect(MASCOT_ELEMENTS[card.themeId]).toBe(card.element);
   });
 
-  it('lays them out along the arch, left to right', () => {
-    const cards = gateCards();
-    for (let i = 1; i < cards.length; i += 1) {
-      expect(cards[i].slot.x).toBeGreaterThan(cards[i - 1].slot.x);
-    }
+  it('names the three moves each companion fights with', () => {
+    const pony = gateCards().find((c) => c.themeId === 'pony')!;
+    expect(movePreview(pony)).toBe('Hoofbeat · Bell Ward · Wishfire');
   });
 
   it('reads affinity, and defaults everybody to a fresh rank one', () => {

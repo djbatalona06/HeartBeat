@@ -2,26 +2,31 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   canEnter, gateGreeting, type GateCard, type GateVerdict,
 } from '../../../domain/rpg/raidGate';
+import { clearedCount, currentStage, standingIsland, type WorldProgress } from '../../../domain/rpg/world';
 import { GateBackdrop } from './GateBackdrop';
+import { GateBoss } from './GateBoss';
 import { GatePedestal } from './GatePedestal';
+import { IslandTrail } from './IslandTrail';
 
 /**
  * The Raid Gate.
  *
+ * Top to bottom: the seven islands as a trail, this island's boss standing in
+ * the arch between the two trees, the companions you could take, and the one
+ * button that commits. The boss is the point of the redesign — a gate that
+ * only held five companions was a wardrobe; one with the thing you are going
+ * in to fight is a threshold.
+ *
  * Everything about *whether* it opens and *who* is on it is decided in
- * `domain/rpg/raidGate.ts` and handed in. This component owns one piece of
- * state — which pedestal is ringed right now — and one decision, which is that
- * a tap selects and does not enter. Tap-to-enter was the first version and it
- * made the scene a menu you fell through; the confirm button is what turns it
- * back into a threshold you cross on purpose.
+ * `domain/rpg/raidGate.ts` and handed in, and the boss comes from
+ * `domain/rpg/islands.ts`. This component owns one piece of state — which
+ * companion is ringed — and one decision, which is that a tap selects and does
+ * not enter. Tap-to-enter was the first version and it made the scene a menu
+ * you fell through.
  *
- * ## The one accessibility decision worth stating
- *
- * The arch is a list of buttons in DOM order left to right, which is also
- * reading order. So the visual arch and the tab order agree without a
- * `tabindex` anywhere, and on a narrow phone the same five buttons stack into a
- * column with no change here at all — the layout lives entirely in CSS, off the
- * `--gate-x` and `--gate-depth` each pedestal carries.
+ * The companions are a list of buttons in DOM order, which is also reading
+ * order, so the row and the tab order agree without a `tabindex` anywhere. On a
+ * narrow phone the same row scrolls sideways; the layout lives in CSS.
  */
 
 export interface RaidGateProps {
@@ -34,14 +39,17 @@ export interface RaidGateProps {
   resonance: number;
   /** The shared pet's level, which is the same behind every companion. */
   petLevel: number;
+  /** Where the couple are in the world, for the trail and the boss. */
+  world: WorldProgress;
   onEnter(themeId: string): void;
   /** Absent on a first visit — there is nothing to go back to yet. */
   onCancel?: () => void;
 }
 
 export function RaidGate({
-  cards, verdict, hour, dark, resonance, petLevel, onEnter, onCancel,
+  cards, verdict, hour, dark, resonance, petLevel, world, onEnter, onCancel,
 }: RaidGateProps) {
+  const island = standingIsland(world);
   const [chosen, setChosen] = useState<string | undefined>(verdict.preselected);
   const [refused, setRefused] = useState<string | null>(null);
 
@@ -73,19 +81,27 @@ export function RaidGate({
 
   return (
     <section className={`page gate${dark ? ' is-dark' : ''}`} aria-label="The Raid Gate">
+      <IslandTrail world={world} dark={dark} />
+
       <div className="gate-scene">
         <GateBackdrop hour={hour} dark={dark} resonance={resonance} />
+        <GateBoss
+          island={island}
+          stage={currentStage(world, island)}
+          cleared={clearedCount(world, island)}
+          dark={dark}
+        />
+      </div>
 
-        <div className="gate-arch" role="group" aria-label="Choose a companion">
-          {cards.map((card) => (
-            <GatePedestal
-              key={card.themeId}
-              card={card}
-              selected={card.themeId === chosen}
-              onSelect={choose}
-            />
-          ))}
-        </div>
+      <div className="gate-roster" role="group" aria-label="Choose a companion">
+        {cards.map((card) => (
+          <GatePedestal
+            key={card.themeId}
+            card={card}
+            selected={card.themeId === chosen}
+            onSelect={choose}
+          />
+        ))}
       </div>
 
       <div className="gate-foot-bar">
