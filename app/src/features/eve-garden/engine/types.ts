@@ -12,7 +12,7 @@
  * machinery than a lowercase letter is worth. See the note on `GameJson`.
  */
 
-export type Element = 'Mood' | 'Movement' | 'Nourishment' | 'Focus' | 'Rest';
+export type Element = 'Mood' | 'Movement' | 'Nourishment' | 'Focus' | 'Rest' | 'Bond' | 'Balance';
 export type MonsterType = 'Common' | 'SemiBoss' | 'Elite' | 'Boss';
 export type ActionKind = 'Attack' | 'Debuff' | 'Heal' | 'Shield';
 export type DioramaTheme = 'Light' | 'Dark';
@@ -20,20 +20,36 @@ export type StatusKind = 'SpeedDown' | 'AttackDown' | 'Drain' | 'Guard';
 export type Side = 'Player' | 'Monster';
 export type Outcome = 'Fighting' | 'Won' | 'Down' | 'Fled';
 
-/** The five wellness activities that pay XP. Matches the C# `Activity` enum. */
-export type Activity = 'Mood' | 'Exercise' | 'Work' | 'Rest' | 'Gratitude';
+/** The wellness activities that pay XP. Matches the C# `Activity` enum. */
+export type Activity = 'Mood' | 'Exercise' | 'Work' | 'Rest' | 'Gratitude' | 'Nourish';
 
+/** What today's logging buys in a fight. Matches the C# `Charge` enum. */
+export type Charge =
+  | 'Exercise' | 'Work' | 'Mood' | 'Rest' | 'Gratitude' | 'Nourish' | 'Bond' | 'Balance';
+
+/** The kind of move. Matches the C# `Style` enum. */
+export type MoveStyle = 'Physical' | 'Defensive' | 'Magic' | 'Mend' | 'Together';
+
+/** A move. Its companion-specific name comes from the kit, not from here. */
 export interface ActionDto {
   id: string;
+  /** The plain name ("Strike"). A screen shows the kit's name instead. */
   name: string;
   power: number;
-  element: Element;
+  style: MoveStyle;
   type: ActionKind;
   unlockLevel: number;
-  /** Null for the couple's synergy move, which is nobody's individual log. */
-  activity: Activity | null;
-  /** What logging this activity is worth. Zero when there is no activity. */
-  xp: number;
+}
+
+/** The raid sheet's seven totals, as `Loadout.cs` reads them. */
+export interface RaidStatsDto {
+  energy: number;
+  resilience: number;
+  resonance: number;
+  burden: number;
+  fortify: number;
+  reveal: number;
+  recovery: number;
 }
 
 export interface MonsterDto {
@@ -124,6 +140,15 @@ export interface BattleDto {
   xpOwed: number;
   /** Plain hits left, for the "is this going anywhere" read. Zero once over. */
   hitsLeft: number;
+  /**
+   * Today's charges. The one field the page may set before handing the battle
+   * back: a workout logged mid-fight lands on the next swing.
+   */
+  charges: Charge[] | null;
+  /** The raid sheet, fixed when the fight began. */
+  stats: RaidStatsDto | null;
+  /** The companion's name for each move id, for the log line. Also the page's to set. */
+  moveNames: Record<string, string> | null;
 }
 
 export interface ProgressDto {

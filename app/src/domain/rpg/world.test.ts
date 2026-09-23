@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
-  BUILT_ISLAND_COUNT, ISLAND_COUNT, STAGES_PER_ISLAND, clearStage, clearedCount, currentStage,
+  ISLAND_COUNT, STAGES_PER_ISLAND, clearStage, clearedCount, currentStage,
   isIslandComplete, isIslandUnlocked, islandOfMonster, islandProgress,
   newWorldProgress, stageOfMonster, standingIsland, travelTo, type WorldProgress,
 } from './world';
@@ -96,34 +96,29 @@ describe('clearing a stage', () => {
     expect(isIslandComplete(done, 1)).toBe(true);
   });
 
-  it('unlocks the next island when one is finished, but stays on the last built one', () => {
-    // This test used to expect island 2, which pinned the bug: island 2 has no
-    // stages, so the garden waited forever for a monster that never came.
+  it('moves on to the next island when one is finished', () => {
     const done = afterClearing(ISLAND_1);
-    expect(done.island).toBe(BUILT_ISLAND_COUNT);
-    expect(currentStage(done)).toBe(STAGES_PER_ISLAND);
+    expect(done.island).toBe(2);
+    expect(currentStage(done)).toBe(1);
     expect(isIslandUnlocked(done, 2)).toBe(true);
     expect(isIslandUnlocked(done, 3)).toBe(false);
   });
 
   it('rescues a row already stranded on an unbuilt island', () => {
     // Every couple who finished island 1 before the fix was stored as island 2.
-    const stranded: WorldProgress = { ...afterClearing(ISLAND_1), island: BUILT_ISLAND_COUNT + 1 };
-    expect(standingIsland(stranded)).toBe(BUILT_ISLAND_COUNT);
-    expect(currentStage(stranded)).toBe(STAGES_PER_ISLAND);
-    expect(islandProgress(stranded)).toBe(1);
+    const stranded: WorldProgress = { ...afterClearing(ISLAND_1), island: ISLAND_COUNT + 1 };
+    expect(standingIsland(stranded)).toBe(ISLAND_COUNT);
   });
 
-  it('counts built islands the same way World.cs does', () => {
-    // C# cannot be imported here, so read it: every island not built is a
-    // `Planned(...)` row, and the rest are built.
+  it('counts the islands the same way World.cs does', () => {
+    // C# cannot be imported here, so read it: every island is one
+    // `IslandN.Value` row, and none is left as a `Planned(...)` placeholder.
     const world = readFileSync(
       fileURLToPath(new URL('../../../../game/HeartBeat.Game.Core/Data/World.cs', import.meta.url)),
       'utf8',
     );
-    const planned = world.match(/^\s*Planned\(\d+,/gm) ?? [];
-    expect(planned.length).toBeGreaterThan(0);
-    expect(BUILT_ISLAND_COUNT).toBe(ISLAND_COUNT - planned.length);
+    expect(world.match(/^\s*Island\d+\.Value,/gm) ?? []).toHaveLength(ISLAND_COUNT);
+    expect(world).not.toMatch(/Planned\(/);
   });
 
   it('stays put when the last island is finished', () => {
@@ -162,12 +157,6 @@ describe('travelling', () => {
     expect(travelTo(start, 3, AT)).toBe(start);
     expect(travelTo(start, 99, AT)).toBe(start);
     expect(travelTo(start, 0, AT)).toBe(start);
-  });
-
-  it('refuses an unlocked island that is not built yet', () => {
-    const done = afterClearing(ISLAND_1);
-    expect(isIslandUnlocked(done, 2)).toBe(true);
-    expect(travelTo(done, BUILT_ISLAND_COUNT + 1, AT + 10)).toBe(done);
   });
 
   it('allows a hop back to an island already finished', () => {

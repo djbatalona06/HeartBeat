@@ -1,18 +1,20 @@
-import type { ActionDto, BattleDto, Element, MonsterDto } from './engine/types';
+import type { ActionDto, BattleDto, Charge, MonsterDto, MoveStyle, RaidStatsDto } from './engine/types';
+import {
+  MOVE_STYLE_NAMES, moveKeyFor, type CompanionKit,
+} from '../../domain/rpg/companionSkills';
+import { CHARGE_COPY, chargeForElement, chargeOnWeakness } from '../../domain/rpg/charges';
+import { gearLift } from '../../domain/rpg/loadout';
 
 /**
- * The action bar, which is also the log.
+ * The move bar.
  *
- * This is the whole argument of Eve's Garden in one component. Every button is
- * a wellness activity *and* a combat move: "Log Exercise" writes an exercise
- * row and swings at the monster, in that order, with one tap. There is no
- * Attack button that is only a button.
+ * Every button is one of the companion's moves — Wishbell's Hoofbeat,
+ * Foxglove's Foxfire — and pressing it logs nothing. What the couple logged
+ * today arrives as charges (see `ChargeStrip`), and this bar says what those
+ * charges and the raid sheet are doing to each move, because a bonus nobody
+ * can see is a bonus nobody plays towards.
  *
- * Which is why the effectiveness hint matters. A player who can see that
- * Morning Meadow's monsters flinch at movement has been told something true
- * about the island and something true about their week at the same time.
- *
- * Locked actions are rendered rather than hidden: the level curve is a promise
+ * Locked moves are rendered rather than hidden: the level curve is a promise
  * about what is coming, and an empty bar makes no promises.
  */
 
@@ -24,46 +26,77 @@ export interface ActionBarProps {
   monster: MonsterDto | null;
   level: number;
   busy: boolean;
+  kit: CompanionKit;
+  charges: readonly Charge[];
+  /** The raid sheet's totals, for the gear line on each move. */
+  stats: RaidStatsDto;
   onAct(action: ActionDto): void;
   onFlee(): void;
 }
 
-/** Mirrors `Battle.Effectiveness` in C#, for the hint only — never for damage. */
-function effectivenessOf(element: Element, monster: MonsterDto | null): 'weak' | 'plain' | 'strong' {
-  if (!monster) return 'plain';
-  if (element === monster.weakness) return 'strong';
-  if (element === monster.strength) return 'weak';
-  return 'plain';
+/** The charge that feeds each style. Mirrors `Charges.StyleOf`. */
+const FEEDS: Partial<Record<MoveStyle, Charge>> = {
+  Physical: 'Exercise',
+  Magic: 'Work',
+  Defensive: 'Mood',
+  Mend: 'Rest',
+};
+
+/** What to log to hit this monster's weakness, in a sentence. */
+function weaknessHint(monster: MonsterDto): string {
+  const answer = CHARGE_COPY[chargeForElement(monster.weakness)];
+  return `It is weak to ${monster.weakness.toLowerCase()}: log ${answer.nudge} today and it will feel every hit.`;
+}
+
+function moveName(action: ActionDto, kit: CompanionKit): string {
+  const key = moveKeyFor(action.style);
+  return key ? kit.moves[key].name : action.name;
+}
+
+function styleName(style: MoveStyle): string {
+  const key = moveKeyFor(style);
+  return key ? MOVE_STYLE_NAMES[key] : 'Together';
 }
 
 export function ActionBar({
-  actions, allActions, battle, monster, level, busy, onAct, onFlee,
+  actions, allActions, battle, monster, level, busy, kit, charges, stats, onAct, onFlee,
 }: ActionBarProps) {
   const fighting = battle?.outcome === 'Fighting';
   const yourTurn = fighting && battle?.turn === 'Player';
   const unlocked = new Set(actions.map((a) => a.id));
   const locked = allActions.filter((a) => !unlocked.has(a.id)).slice(0, 2);
+  const onWeakness = chargeOnWeakness(charges, monster?.weakness);
 
   return (
     <div className="garden-actions">
       <ul className="garden-action-list">
         {actions.map((action) => {
-          const edge = effectivenessOf(action.element, monster);
+          const fed = FEEDS[action.style];
+          const charged = fed !== undefined && charges.includes(fed);
+          const lift = gearLift(stats, action.style);
+          const strong = fighting && action.type === 'Attack' && onWeakness !== undefined;
+          const notes = [
+            styleName(action.style),
+            charged ? `${CHARGE_COPY[fed].label} +` : '',
+            lift > 0 ? `+${lift}% gear` : '',
+          ].filter(Boolean);
           return (
             <li key={action.id}>
               <button
                 type="button"
-                className={`garden-action is-${edge}`}
-                // Outside a fight these still log. Disabling them between turns
-                // would make the garden a worse tracker than the mood page.
-                disabled={busy || (fighting && !yourTurn)}
+                className={`garden-action is-${action.style.toLowerCase()}${strong ? ' is-strong' : ''}${charged ? ' is-charged' : ''}`}
+                // Outside a fight there is nothing to press them at.
+                disabled={busy || !yourTurn}
                 onClick={() => onAct(action)}
+                title={(() => {
+                  const key = moveKeyFor(action.style);
+                  return key ? kit.moves[key].description : undefined;
+                })()}
               >
-                <span className="garden-action-name">{action.name}</span>
+                <span className="garden-action-name">{moveName(action, kit)}</span>
                 <span className="garden-action-note">
-                  {action.xp > 0 ? `+${action.xp} XP` : 'Together'}
-                  {fighting && edge === 'strong' ? ' · it feels this' : ''}
-                  {fighting && edge === 'weak' ? ' · it shrugs this off' : ''}
+                  {notes.join(' · ')}
+                  {strong ? ' · it feels this' : ''}
                 </span>
               </button>
             </li>
@@ -73,7 +106,7 @@ export function ActionBar({
         {locked.map((action) => (
           <li key={action.id}>
             <button type="button" className="garden-action is-locked" disabled>
-              <span className="garden-action-name">{action.name}</span>
+              <span className="garden-action-name">{moveName(action, kit)}</span>
               <span className="garden-action-note">Level {action.unlockLevel}</span>
             </button>
           </li>
@@ -92,11 +125,15 @@ export function ActionBar({
       )}
 
       <p className="garden-actions-hint">
-        {fighting
-          ? yourTurn
-            ? 'Your move. Everything here logs as well as lands.'
-            : 'Waiting on them.'
-          : `Level ${level}. Walk into something to start a fight — every button still logs.`}
+        {!fighting
+          ? `Level ${level}. Walk into something to start a fight.`
+          : !yourTurn
+            ? 'Waiting on them.'
+            : onWeakness
+              ? `Your move. Today's ${CHARGE_COPY[onWeakness].label.toLowerCase()} is on its weakness — every hit lands harder.`
+              : monster
+                ? `Your move. ${weaknessHint(monster)}`
+                : 'Your move.'}
       </p>
     </div>
   );

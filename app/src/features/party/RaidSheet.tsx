@@ -1,14 +1,13 @@
-import { loadoutSheet } from '../../domain/rpg/loadout';
+import { holdingsLoadout, loadoutSheet } from '../../domain/rpg/loadout';
 import {
   RAID_STATS, RAID_STAT_BLURBS, RAID_STAT_NAMES, type RaidStatKey,
 } from '../../domain/rpg/raidStats';
 import { TIER_NAMES } from '../../domain/rpg/tiers';
-import { levelOf } from '../../domain/rpg/avatar';
-import { refineByItemId, type InventoryItem } from '../../domain/rpg/inventory';
-import { levelForXp } from '../../domain/xp';
+import type { InventoryItem } from '../../domain/rpg/inventory';
 import type { Avatar } from '../../domain/rpg/types';
 import type { House } from '../../domain/rpg/furniture';
 import type { PetInstance } from '../../domain/rpg/pets';
+import type { Garden } from '../../domain/rpg/plots';
 
 /**
  * What the two of you are actually worth in a raid, and where every point of
@@ -42,19 +41,15 @@ export interface RaidSheetProps {
   /** The couple's shared pet XP. The headline number's source. */
   petXp: number;
   house: House;
+  garden?: Garden;
   companion?: PetInstance;
 }
 
-export function RaidSheet({ avatar, owned, petXp, house, companion }: RaidSheetProps) {
-  const sheet = loadoutSheet({
-    petLevel: levelForXp(petXp),
-    memberLevel: levelOf(avatar),
-    equipped: avatar.gear,
-    refineByItemId: refineByItemId(owned),
-    house,
-    dyeId: avatar.dye,
-    companion,
-  });
+export function RaidSheet({ avatar, owned, petXp, house, garden, companion }: RaidSheetProps) {
+  // The same assembly the fight uses, so this is the sheet Eve's Garden reads.
+  const sheet = loadoutSheet(holdingsLoadout({
+    avatar, owned, petXp, house, garden, pets: companion ? [companion] : [],
+  }));
 
   // Biggest first: the sheet should open on the thing the two of you are best
   // at, not on whichever stat happens to be first in the type.

@@ -7,8 +7,9 @@
  * `game/`, and nothing about them is stored. A row here says where you are, not
  * what is there.
  *
- * That split is what lets Island 2 ship as a data change with no migration: the
- * stored row for a couple standing on island 1 is identical before and after.
+ * That split is what let islands 2 to 7 ship as a data change with no
+ * migration: the stored row for a couple standing on island 1 is identical
+ * before and after.
  *
  * Pure. Dexie lives in `db/repository/world.ts`.
  */
@@ -18,30 +19,17 @@ import type { CoupleId } from '../types';
 /** Seven, and the same for every island. Mirrors `Island.StagesPerIsland` in C#. */
 export const STAGES_PER_ISLAND = 7;
 
-/** Five, and the same list as `World.Islands` in C#. */
-export const ISLAND_COUNT = 5;
+/** Seven, and the same list as `World.Islands` in C#, every one of them built. */
+export const ISLAND_COUNT = 7;
 
 /**
- * How many islands have stages authored. Mirrors `World.IsBuilt` in C#, which
- * this module cannot see across the wasm boundary; `world.test.ts` counts the
- * `Planned(...)` rows in `World.cs` so the two cannot drift.
+ * The island the couple are actually on, clamped to the world.
  *
- * Distinct from `ISLAND_COUNT` on purpose. Advancing onto an unbuilt island
- * put the couple on a stage `Api.Stage` answers with null, and the garden sat
- * on its loading skeleton forever with no monster and no error. Bump this with
- * the file that builds the next island.
- */
-export const BUILT_ISLAND_COUNT = 1;
-
-/**
- * The island the couple are actually on, clamped to the built ones.
- *
- * A row can already say `island: 2`: every couple who finished island 1 before
- * `BUILT_ISLAND_COUNT` existed was advanced there. Clamping on read rescues
- * them without a migration, and the row fixes itself on its next write.
+ * A row can say anything a past build wrote. Clamping on read rescues it
+ * without a migration, and the row fixes itself on its next write.
  */
 export function standingIsland(progress: WorldProgress): number {
-  return Math.min(BUILT_ISLAND_COUNT, Math.max(1, progress.island));
+  return Math.min(ISLAND_COUNT, Math.max(1, progress.island));
 }
 
 /**
@@ -151,22 +139,21 @@ export function clearStage(
   const island = islandOfMonster(monsterId) ?? progress.island;
   const next: WorldProgress = { ...progress, cleared, updatedAt: at };
 
-  // Finishing an island moves them to the next one, if there is a next one
-  // *built*. An unbuilt next island has no monster to draw, so staying on a
-  // finished island at 7/7 is the lesser evil until it ships.
+  // Finishing an island moves them to the next one. The last island has no
+  // next one, so finishing it leaves them standing on it at 7/7.
   const finished = clearedOn(next, island).length >= STAGES_PER_ISLAND;
-  if (finished && island === standingIsland(progress) && island < BUILT_ISLAND_COUNT) {
+  if (finished && island === standingIsland(progress) && island < ISLAND_COUNT) {
     return { ...next, island: island + 1 };
   }
   return next;
 }
 
 /**
- * Move to an island the couple have unlocked and that is built. Refuses anything else by
+ * Move to an island the couple have unlocked. Refuses anything else by
  * returning the row untouched, so the world map can call it on any tap.
  */
 export function travelTo(progress: WorldProgress, island: number, at: number): WorldProgress {
   if (island === progress.island) return progress;
-  if (!isIslandUnlocked(progress, island) || island > BUILT_ISLAND_COUNT) return progress;
+  if (!isIslandUnlocked(progress, island)) return progress;
   return { ...progress, island, updatedAt: at };
 }

@@ -24,7 +24,10 @@ interface BridgeExports {
   Ping(value: number): number;
   World(): string;
   Stage(island: number, stage: number, theme: string): string | null;
-  BeginBattle(island: number, stage: number, theme: string, level: number, seed: number): string | null;
+  BeginBattle(
+    island: number, stage: number, theme: string, level: number, seed: number,
+    charges: string, statsJson: string,
+  ): string | null;
   Act(battleJson: string, actionId: string): string | null;
   MonsterMove(battleJson: string): string | null;
   Progress(xp: number): string;
@@ -70,6 +73,7 @@ function call(api: BridgeExports, method: GameRequest['method'], args: readonly 
       return api.BeginBattle(
         args[0] as number, args[1] as number, args[2] as string,
         args[3] as number, args[4] as number,
+        args[5] as string, args[6] as string,
       );
     case 'act': return api.Act(args[0] as string, args[1] as string);
     case 'monsterMove': return api.MonsterMove(args[0] as string);

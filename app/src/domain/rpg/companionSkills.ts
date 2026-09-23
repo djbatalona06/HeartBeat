@@ -1,16 +1,27 @@
-import type { Activity } from '../../features/eve-garden/engine/types';
+import type { Element, MoveStyle } from '../../features/eve-garden/engine/types';
 
 /**
- * One skill kit per mascot, and the five turns they hang off.
+ * One skill kit per mascot: the moves it fights with, and what it adds on top.
  *
- * ## The turns
+ * ## The moves
  *
- * Eve's Garden already turns each of the five logs into a combat action. This
- * module gives each mascot a *themed* version of one of them — the same turn,
- * with its own picture and slightly different numbers — plus a support skill
- * and an always-on passive. Three each, because a signature alone is a costume:
- * you would pick a companion once, watch its animation, and never think about
- * it again.
+ * Every companion fights with the same four kinds of move — physical,
+ * defensive, magic and a mend — because the fight's arithmetic lives in C#
+ * and is the same whoever you bring. What a kit gives them is a *name* and a
+ * picture: Wishbell's magic is Wishfire, Foxglove's is Foxfire, and they land
+ * the same way. The move bar reads these names; the battle log carries them
+ * across as `moveNames`.
+ *
+ * Logging is not a move. A workout, a study session or a night's sleep logged
+ * today is a *charge* (`domain/rpg/charges.ts`) that changes how the moves
+ * land, which is what lets a button be pressed as often as a fight needs.
+ *
+ * ## The skills
+ *
+ * On top of the moves, each kit has a signature and a support skill hung off
+ * one move each, plus an always-on passive. Three, because a signature alone
+ * is a costume: you would pick a companion once, watch its animation, and
+ * never think about it again.
  *
  * ## The names, and the line this file does not cross
  *
@@ -25,44 +36,41 @@ import type { Activity } from '../../features/eve-garden/engine/types';
  * already does for the collectibles.
  */
 
-/** Which log fires a skill. The five turn types, in the battle doc's words. */
-export type TurnType = 'reveal' | 'strike' | 'fortify' | 'recover' | 'resonance';
+/** The four moves a kit names. Together is the couple's, and nobody's to rename. */
+export type MoveKey = 'physical' | 'defensive' | 'magic' | 'mend';
 
-export const TURN_TYPES: readonly TurnType[] = [
-  'reveal', 'strike', 'fortify', 'recover', 'resonance',
-];
+export const MOVE_KEYS: readonly MoveKey[] = ['physical', 'defensive', 'magic', 'mend'];
 
-export const TURN_NAMES: Record<TurnType, string> = {
-  reveal: 'Reveal',
-  strike: 'Strike',
-  fortify: 'Fortify',
-  recover: 'Recover',
-  resonance: 'Resonance',
+export const MOVE_STYLE_NAMES: Record<MoveKey, string> = {
+  physical: 'Physical',
+  defensive: 'Defensive',
+  magic: 'Magic',
+  mend: 'Mend',
 };
 
-/**
- * The log each turn is. This is the single mapping between what a person did
- * today and what it does in a fight, and it runs both ways below so no screen
- * has to keep a second copy.
- */
-export const TURN_FOR_ACTIVITY: Record<Activity, TurnType> = {
-  Mood: 'reveal',
-  Exercise: 'strike',
-  Work: 'fortify',
-  Rest: 'recover',
-  Gratitude: 'resonance',
-};
-
-const ACTIVITY_FOR_TURN = Object.fromEntries(
-  Object.entries(TURN_FOR_ACTIVITY).map(([activity, turn]) => [turn, activity as Activity]),
-) as Record<TurnType, Activity>;
-
-export function turnFor(activity: Activity): TurnType {
-  return TURN_FOR_ACTIVITY[activity];
+/** The kit's key for a C# move style, or nothing for the couple's move. */
+export function moveKeyFor(style: MoveStyle): MoveKey | undefined {
+  switch (style) {
+    case 'Physical': return 'physical';
+    case 'Defensive': return 'defensive';
+    case 'Magic': return 'magic';
+    case 'Mend': return 'mend';
+    default: return undefined;
+  }
 }
 
-export function activityFor(turn: TurnType): Activity {
-  return ACTIVITY_FOR_TURN[turn];
+/** The C# action ids, by the move they are. Mirrors `Actions.cs`. */
+export const ACTION_FOR_MOVE: Record<MoveKey, string> = {
+  physical: 'strike',
+  defensive: 'guard',
+  magic: 'spell',
+  mend: 'mend',
+};
+
+export interface KitMove {
+  name: string;
+  /** One line, in the companion's own voice. */
+  description: string;
 }
 
 /**
@@ -103,15 +111,15 @@ export interface SkillModifiers {
    *  the second, wrapping past midnight. Absent means any hour. */
   hours?: { from: number; to: number };
   /** Extra damage against a boss whose weakness is this element. */
-  favours?: 'Mood' | 'Movement' | 'Nourishment' | 'Focus' | 'Rest';
+  favours?: Element;
 }
 
 export interface CompanionSkill {
   id: string;
   name: string;
   description: string;
-  /** Which log fires it. */
-  turnType: TurnType;
+  /** Which move it rides on. */
+  move: MoveKey;
   /** What `scene/` plays. A key, not a path — the scene owns the drawing. */
   vfx: string;
   modifiers: SkillModifiers;
@@ -133,6 +141,7 @@ export interface CompanionKit {
   themeId: string;
   /** The mascot's own name, repeated here so a test can hold the two together. */
   mascot: string;
+  moves: Record<MoveKey, KitMove>;
   signature: CompanionSkill;
   support: CompanionSkill;
   passive: CompanionPassive;
@@ -141,21 +150,39 @@ export interface CompanionKit {
 /**
  * The five kits.
  *
- * Each one leans on a different turn, which is the reason to own more than one
- * companion: a couple whose week is all workouts and no rest wants a different
- * one from a couple whose week is the other way round.
+ * Each signature rides a different move, which is the reason to own more than
+ * one companion: a couple who fight with magic want a different one from a
+ * couple who would rather hit things.
  */
 export const COMPANION_KITS: readonly CompanionKit[] = [
   {
     themeId: 'pony',
     mascot: 'Wishbell',
+    moves: {
+      physical: {
+        name: 'Hoofbeat',
+        description: 'A quick double stamp. Small hooves, surprisingly firm opinions.',
+      },
+      defensive: {
+        name: 'Bell Ward',
+        description: 'Rings the bell on her mane; the sound hangs in the air and holds.',
+      },
+      magic: {
+        name: 'Wishfire',
+        description: 'A spark off the horn that goes exactly where she hoped it would.',
+      },
+      mend: {
+        name: 'Wish Upon',
+        description: 'Spends a little of the wish she keeps spare, on you.',
+      },
+    },
     signature: {
       id: 'star-missile',
       name: 'Star Missile',
       description:
         'A bolt off the horn. Lands hardest on the things that are only in your head, '
         + 'and leaves a trail the tether charges along.',
-      turnType: 'strike',
+      move: 'magic',
       vfx: 'horn-bolt',
       modifiers: { damage: 1.25, combo: 1.4, favours: 'Mood' },
       cooldown: 0,
@@ -165,7 +192,7 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
       id: 'one-wish-spare',
       name: 'One Wish Spare',
       description: 'Keeps a little back. Nothing is spent on a day that did not need it.',
-      turnType: 'resonance',
+      move: 'defensive',
       vfx: 'held-spark',
       modifiers: { combo: 1.6, energy: 2 },
       cooldown: 2,
@@ -182,13 +209,31 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
   {
     themeId: 'avatar',
     mascot: 'Cirrus',
+    moves: {
+      physical: {
+        name: 'Tail Lash',
+        description: 'A long curl of cloud, snapped straight.',
+      },
+      defensive: {
+        name: 'Wind Wall',
+        description: 'Coils round the two of you and keeps turning.',
+      },
+      magic: {
+        name: 'Thunderhead',
+        description: 'Gathers the high weather into one grumble and lets it go.',
+      },
+      mend: {
+        name: 'Soft Rain',
+        description: 'Brings a little of the sky down, gently, where it is needed.',
+      },
+    },
     signature: {
       id: 'winds-grace',
       name: "Wind's Grace",
       description:
         'The shield is moving air rather than a wall, so some of what hits it '
         + 'goes back the way it came.',
-      turnType: 'fortify',
+      move: 'defensive',
       vfx: 'ring-of-wind',
       modifiers: { shield: 1.2, reflect: 0.25 },
       cooldown: 0,
@@ -198,7 +243,7 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
       id: 'updraft',
       name: 'Updraft',
       description: 'Picks you up off the floor of the day without you having to climb.',
-      turnType: 'recover',
+      move: 'mend',
       vfx: 'rising-current',
       modifiers: { energy: 6, healFraction: 0.08 },
       cooldown: 2,
@@ -215,13 +260,31 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
   {
     themeId: 'sponge',
     mascot: 'Marigold',
+    moves: {
+      physical: {
+        name: 'Sponge Slam',
+        description: 'All of her, at once, very damply.',
+      },
+      defensive: {
+        name: 'Tide Shell',
+        description: 'Draws a shell of seawater up and sits inside it.',
+      },
+      magic: {
+        name: 'Brine Bubble',
+        description: 'Blows one enormous salty bubble. It pops on them.',
+      },
+      mend: {
+        name: 'Seafoam Rinse',
+        description: 'Wrings herself out over you. It helps, somehow.',
+      },
+    },
     signature: {
       id: 'stand-on-guard',
       name: 'Stand on Guard',
       description:
         'Looks straight at the thing and does not move. It swings worse for being '
         + 'watched — and she hits harder the worse the fight has already gone.',
-      turnType: 'reveal',
+      move: 'physical',
       vfx: 'braced-stance',
       modifiers: { accuracyDebuff: 0.2, desperation: { per: 0.05, gain: 0.025 } },
       cooldown: 0,
@@ -231,7 +294,7 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
       id: 'soak',
       name: 'Soak',
       description: 'Takes it in. Full of holes, full of seawater, entirely unbothered.',
-      turnType: 'fortify',
+      move: 'defensive',
       vfx: 'swell',
       modifiers: { shield: 1.35 },
       cooldown: 3,
@@ -248,13 +311,31 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
   {
     themeId: 'kitty',
     mascot: 'Mochi',
+    moves: {
+      physical: {
+        name: 'Pounce',
+        description: 'From stillness to somewhere else entirely.',
+      },
+      defensive: {
+        name: 'Ribbon Knot',
+        description: 'Ties the ribbon off. Nothing gets through a good knot.',
+      },
+      magic: {
+        name: 'Lantern Glow',
+        description: 'Holds the little lantern up until the dark flinches.',
+      },
+      mend: {
+        name: 'Cat Nap',
+        description: 'Four minutes, eyes shut, and back up better.',
+      },
+    },
     signature: {
       id: 'starry-nights-watch',
       name: "Starry Night's Watch",
       description:
         'Sits up with whoever is still up. Worth more after midnight, and puts a '
         + 'real quarter of the party back on its feet.',
-      turnType: 'recover',
+      move: 'mend',
       vfx: 'lantern-vigil',
       modifiers: { healFraction: 0.25, energy: 4 },
       cooldown: 4,
@@ -264,7 +345,7 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
       id: 'curl-up',
       name: 'Curl Up',
       description: 'Makes a smaller target of the both of you, deliberately.',
-      turnType: 'fortify',
+      move: 'defensive',
       vfx: 'ribbon-coil',
       modifiers: { shield: 1.25, energy: 3 },
       cooldown: 2,
@@ -281,13 +362,31 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
   {
     themeId: 'shinobi',
     mascot: 'Foxglove',
+    moves: {
+      physical: {
+        name: 'Ink Claw',
+        description: 'Three quick strokes, like a brush that bites.',
+      },
+      defensive: {
+        name: 'Smoke Step',
+        description: 'Is not quite where the hit landed.',
+      },
+      magic: {
+        name: 'Foxfire',
+        description: 'Pale flame off the tail tip, cold to look at, hot to touch.',
+      },
+      mend: {
+        name: 'Dawn Breath',
+        description: "The first breath of the morning's training, shared.",
+      },
+    },
     signature: {
       id: 'nine-lives',
       name: 'Nine Lives',
       description:
         'Once a raid, and once only. Nothing takes the two of you below one this '
         + 'turn — and the turn after that lands like it means it.',
-      turnType: 'strike',
+      move: 'physical',
       vfx: 'ink-flare',
       modifiers: { holdTheLine: true, damage: 1.3 },
       cooldown: 0,
@@ -297,7 +396,7 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
       id: 'ink-double',
       name: 'Ink Double',
       description: 'Sends something that looks like her ahead, to find out what is there.',
-      turnType: 'reveal',
+      move: 'magic',
       vfx: 'ink-split',
       modifiers: { accuracyDebuff: 0.15, combo: 1.2 },
       cooldown: 2,
@@ -327,9 +426,16 @@ export function skillsOf(kit: CompanionKit): CompanionSkill[] {
   return [kit.signature, kit.support];
 }
 
-/** The skill this kit attaches to a turn, or nothing if it attaches none. */
-export function skillForTurn(kit: CompanionKit, turn: TurnType): CompanionSkill | undefined {
-  return skillsOf(kit).find((skill) => skill.turnType === turn);
+/** The skill this kit hangs off a move, or nothing if it hangs none. */
+export function skillForMove(kit: CompanionKit, move: MoveKey): CompanionSkill | undefined {
+  return skillsOf(kit).find((skill) => skill.move === move);
+}
+
+/** The kit's name for every C# action id, for the move bar and the log line. */
+export function moveNamesFor(kit: CompanionKit): Record<string, string> {
+  return Object.fromEntries(
+    MOVE_KEYS.map((key) => [ACTION_FOR_MOVE[key], kit.moves[key].name]),
+  );
 }
 
 /* -- firing one ------------------------------------------------------------- */
@@ -344,7 +450,7 @@ export interface TurnContext {
   /** The party's remaining health, as a fraction of its maximum. */
   healthFraction: number;
   /** The element the thing you are fighting is weak to, if it is known yet. */
-  weakness?: SkillModifiers['favours'];
+  weakness?: Element;
 }
 
 export type SkillVerdict =
@@ -364,11 +470,13 @@ export type SkillVerdict =
  */
 export function fireSkill(
   kit: CompanionKit,
-  turn: TurnType,
+  move: MoveKey,
   context: TurnContext,
 ): SkillVerdict {
-  const skill = skillForTurn(kit, turn);
-  if (!skill) return { fires: false, reason: `${kit.mascot} has nothing for a ${TURN_NAMES[turn]}.` };
+  const skill = skillForMove(kit, move);
+  if (!skill) {
+    return { fires: false, reason: `${kit.mascot} has nothing extra for ${kit.moves[move].name}.` };
+  }
 
   if (skill.oncePerRaid && context.spentThisRaid) {
     return { fires: false, reason: `${skill.name} is once a raid, and it has been used.` };

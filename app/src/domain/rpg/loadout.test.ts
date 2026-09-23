@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   COMPANION_RANK_LIFT, PET_LEVEL_STAT_STEP, companionSource, dyeSource, furnitureSources,
-  gearSources, loadoutSheet, petSource,
+  FIGHT_CAPS, FIGHT_HALF_AT, gearLift, gearSources, holdingsLoadout, loadoutSheet, petSource,
 } from './loadout';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { RAID_STATS, type RaidStatKey } from './raidStats';
 import { GEAR } from './gear';
 import { FURNITURE } from './furniture';
@@ -199,5 +201,50 @@ describe('the whole sheet', () => {
       expect(kitted.total[key], key).toBeGreaterThanOrEqual(bare.total[key]);
     }
     expect(sum(kitted.total)).toBeGreaterThan(sum(bare.total));
+  });
+});
+
+describe('holdingsLoadout', () => {
+  it('is the same sheet whichever screen assembles it', () => {
+    const kind = PET_KINDS[0];
+    const loadout = holdingsLoadout({
+      avatar: { xp: 0, gear: {}, dye: DYES[0].id, companionId: 'p1' },
+      owned: [],
+      petXp: 5000,
+      pets: [pet(kind.id)],
+    });
+    expect(loadout.companion?.id).toBe('p1');
+    expect(loadout.dyeId).toBe(DYES[0].id);
+    expect(loadoutSheet(loadout).total).toEqual(loadoutSheet({
+      petLevel: loadout.petLevel, memberLevel: loadout.memberLevel, equipped: {},
+      refineByItemId: {}, dyeId: DYES[0].id, companion: pet(kind.id),
+    }).total);
+  });
+
+  it('counts the mascot that came through the gate', () => {
+    const without = loadoutSheet(holdingsLoadout({ petXp: 0 }));
+    const withMascot = loadoutSheet(holdingsLoadout({
+      petXp: 0,
+      mascot: { id: 'mascot-pony', label: 'Wishbell', tier: 'epic', statLevel: 15, order: ['resonance'] },
+    }));
+    expect(withMascot.total.resonance).toBeGreaterThan(without.total.resonance);
+  });
+});
+
+describe('gearLift', () => {
+  const cs = readFileSync(resolve(__dirname, '../../../../game/HeartBeat.Game.Core/Loadout.cs'), 'utf8');
+
+  it('uses the curve and caps the fight uses', () => {
+    expect(cs).toContain(`HalfAt = ${FIGHT_HALF_AT};`);
+    const names = { Physical: 'PhysicalCap', Magic: 'MagicCap', Defensive: 'WardCap', Mend: 'MendCap', Together: 'TogetherCap' };
+    for (const [style, { cap }] of Object.entries(FIGHT_CAPS)) {
+      expect(cs, style).toContain(`${names[style as keyof typeof names]} = ${cap};`);
+    }
+  });
+
+  it('is nothing for an empty sheet and half the cap at the half-point', () => {
+    const zero = Object.fromEntries(RAID_STATS.map((k) => [k, 0])) as Record<RaidStatKey, number>;
+    expect(gearLift(zero, 'Physical')).toBe(0);
+    expect(gearLift({ ...zero, burden: FIGHT_HALF_AT }, 'Physical')).toBe(Math.round(50 * FIGHT_CAPS.Physical.cap));
   });
 });

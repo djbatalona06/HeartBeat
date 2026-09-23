@@ -6,6 +6,9 @@ import { dyeById } from './dyes';
 import { petKindById, rankOf, type PetInstance } from './pets';
 import { milestoneStats } from './milestones';
 import { floraById, floraTier, normalizeGarden, plotById, type Garden } from './plots';
+import { refineByItemId, type InventoryItem } from './inventory';
+import { levelForXp } from '../xp';
+import type { Avatar } from './types';
 import {
   FURNITURE_RAID_ORDER, GEAR_RAID_ORDER, SPECIES_RAID_ORDER, RAID_STATS, raidSheet,
   sourceStatLevel, tierForPrice, type RaidSheet, type RaidStatKey, type StatSource,
@@ -59,6 +62,8 @@ export interface Loadout {
   companion?: PetInstance;
   /** What is growing in the garden's plots. */
   garden?: Garden;
+  /** The mascot that came through the Raid Gate, as its gate card prices it. */
+  mascot?: StatSource;
 }
 
 /**
@@ -270,5 +275,68 @@ export function loadoutSheet(loadout: Loadout): RaidSheet {
   if (dye) sources.push(dye);
   const companion = companionSource(loadout.companion);
   if (companion) sources.push(companion);
+  if (loadout.mascot) sources.push(loadout.mascot);
   return raidSheet(sources);
+}
+
+/** Everything one member brings, as the screens hold it. */
+export interface Holdings {
+  avatar?: Pick<Avatar, 'xp' | 'gear' | 'dye' | 'companionId'>;
+  owned?: readonly InventoryItem[];
+  /** The couple's shared pet XP. */
+  petXp: number;
+  house?: House;
+  garden?: Garden;
+  /** The member's hatched companions; the one `avatar.companionId` names rides along. */
+  pets?: readonly PetInstance[];
+  mascot?: StatSource;
+}
+
+/**
+ * One member's loadout, from what the screens already read.
+ *
+ * The raid sheet on the party page and the fight in Eve's Garden both come
+ * through here, so the sheet you look at is the sheet you fight with. They
+ * used to assemble it separately, and the party page's copy left the garden
+ * out.
+ */
+export function holdingsLoadout(h: Holdings): Loadout {
+  return {
+    petLevel: levelForXp(h.petXp),
+    memberLevel: levelForXp(h.avatar?.xp ?? 0),
+    equipped: h.avatar?.gear,
+    refineByItemId: refineByItemId(h.owned ?? []),
+    house: h.house,
+    dyeId: h.avatar?.dye,
+    companion: h.pets?.find((pet) => pet.id === h.avatar?.companionId),
+    garden: h.garden,
+    mascot: h.mascot,
+  };
+}
+
+/* -- what the sheet is worth in a fight -------------------------------------- */
+
+/**
+ * The curve `Loadout.cs` puts every raid stat through, restated so the move bar
+ * can say "+12% gear" without a round trip. `loadout.test.ts` reads the C#
+ * constants so the two cannot drift; C# is still the only thing that applies it.
+ */
+export const FIGHT_HALF_AT = 60;
+
+export const FIGHT_CAPS = {
+  Physical: { stat: 'burden', cap: 0.25 },
+  Magic: { stat: 'reveal', cap: 0.25 },
+  Defensive: { stat: 'fortify', cap: 0.3 },
+  Mend: { stat: 'recovery', cap: 0.3 },
+  Together: { stat: 'resonance', cap: 0.3 },
+} as const satisfies Record<string, { stat: RaidStatKey; cap: number }>;
+
+/** The sheet's lift on one move style, as a whole percentage. */
+export function gearLift(
+  stats: Readonly<Record<RaidStatKey, number>>,
+  style: keyof typeof FIGHT_CAPS,
+): number {
+  const { stat, cap } = FIGHT_CAPS[style];
+  const points = Math.max(0, stats[stat] ?? 0);
+  return points <= 0 ? 0 : Math.round((100 * cap * points) / (points + FIGHT_HALF_AT));
 }

@@ -44,6 +44,7 @@ import {
   normalizeHouse,
   type House,
 } from '../../domain/rpg/furniture';
+import type { Garden } from '../../domain/rpg/plots';
 import { houseArt } from './art/house';
 import { PLACES, canTravel, nextPlace, travelCost } from '../../domain/rpg/locations';
 import { useTheme } from '../../themes/ThemeProvider';
@@ -280,6 +281,7 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
               owned={owned ?? []}
               petXp={pet?.xp ?? 0}
               house={(pet?.house ?? {}) as House}
+              garden={pet?.plots as Garden | undefined}
               companion={(pets ?? []).find((p) => p.id === avatar.companionId)}
             />
             {/* Directly under the sheet, because it is the rest of the same
