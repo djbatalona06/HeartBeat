@@ -14,6 +14,13 @@ namespace HeartBeat.Game.Core.Data;
 /// deliberately soft. A recovery stage after the semi-boss is what stops a
 /// seven-fight island from being a seven-fight slog.
 ///
+/// The monsters are four friendly elemental spirits - Earth, Water, Fire and
+/// Air - which is their name and their sprite and nothing more. The fight's
+/// type chart is <see cref="Element"/>, themed on the app's self-care areas,
+/// and the spirits' elements deliberately do not touch it. Their ids and sprite
+/// keys still carry the old names because the ids are stored in every
+/// couple's clear list; renaming them would forget who had beaten what.
+///
 /// Stat curve: HP roughly doubles across the island while the player's does
 /// not, which is what the level-up rewards and the element chart are for.
 /// `Island1Tests` pins the two ends - stage 1 must be winnable at level 1, and
@@ -33,7 +40,7 @@ public static class Island1
         [
             new Stage(1, "The First Step", new Monster(
                 Id: "i1s1-sloth-sprout",
-                Name: "Sloth Sprout",
+                Name: "Mossling",
                 Type: MonsterType.Common,
                 Hp: 30, Attack: 5, Defense: 3, Speed: 2,
                 Weakness: Element.Movement, Strength: Element.Rest,
@@ -48,7 +55,7 @@ public static class Island1
 
             new Stage(2, "Dew Line", new Monster(
                 Id: "i1s2-dozing-beetle",
-                Name: "Dozing Beetle",
+                Name: "Dewdrop Sprite",
                 Type: MonsterType.Common,
                 Hp: 42, Attack: 7, Defense: 4, Speed: 4,
                 Weakness: Element.Movement, Strength: Element.Rest,
@@ -63,7 +70,7 @@ public static class Island1
 
             new Stage(3, "The Long Grass", new Monster(
                 Id: "i1s3-snooze-thistle",
-                Name: "Snooze Thistle",
+                Name: "Cinder Sprite",
                 Type: MonsterType.Common,
                 Hp: 55, Attack: 9, Defense: 5, Speed: 6,
                 Weakness: Element.Movement, Strength: Element.Focus,
@@ -78,7 +85,7 @@ public static class Island1
 
             new Stage(4, "The Long Lie-In", new Monster(
                 Id: "i1s4-lie-in",
-                Name: "The Long Lie-In",
+                Name: "The Long Drizzle",
                 Type: MonsterType.SemiBoss,
                 Hp: 90, Attack: 11, Defense: 7, Speed: 3,
                 Weakness: Element.Movement, Strength: Element.Rest,
@@ -94,7 +101,7 @@ public static class Island1
 
             new Stage(5, "Open Ground", new Monster(
                 Id: "i1s5-dust-drifter",
-                Name: "Dust Mote Drifter",
+                Name: "Breeze Wisp",
                 Type: MonsterType.Common,
                 Hp: 48, Attack: 8, Defense: 3, Speed: 9,
                 Weakness: Element.Movement, Strength: Element.Mood,
@@ -104,7 +111,7 @@ public static class Island1
 
             new Stage(6, "The Old Couch", new Monster(
                 Id: "i1s6-couch-moss",
-                Name: "Couch Moss Golem",
+                Name: "Mossback Golem",
                 Type: MonsterType.Elite,
                 Hp: 120, Attack: 13, Defense: 9, Speed: 4,
                 Weakness: Element.Movement, Strength: Element.Rest,
@@ -121,7 +128,7 @@ public static class Island1
 
             new Stage(7, "The Sentinel's Field", new Monster(
                 Id: "i1s7-sedentary-sentinel",
-                Name: "The Sedentary Sentinel",
+                Name: "The Hearthkeeper",
                 Type: MonsterType.Boss,
                 Hp: 200, Attack: 12, Defense: 8, Speed: 4,
                 Weakness: Element.Movement, Strength: Element.Mood,
@@ -147,12 +154,12 @@ public static class Island1
     public static readonly IReadOnlyDictionary<string, string> DarkNames =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["i1s1-sloth-sprout"] = "Bog Sprout",
-            ["i1s2-dozing-beetle"] = "Mire Beetle",
-            ["i1s3-snooze-thistle"] = "Drowning Thistle",
-            ["i1s4-lie-in"] = "The Never-Rising",
-            ["i1s5-dust-drifter"] = "Silt Drifter",
-            ["i1s6-couch-moss"] = "Sunken Moss Golem",
-            ["i1s7-sedentary-sentinel"] = "The Sunken Sentinel",
+            ["i1s1-sloth-sprout"] = "Bog Mossling",
+            ["i1s2-dozing-beetle"] = "Murk Dewdrop",
+            ["i1s3-snooze-thistle"] = "Smoulder Sprite",
+            ["i1s4-lie-in"] = "The Endless Drizzle",
+            ["i1s5-dust-drifter"] = "Fog Wisp",
+            ["i1s6-couch-moss"] = "Sunken Mossback",
+            ["i1s7-sedentary-sentinel"] = "The Ashen Hearthkeeper",
         };
 }
