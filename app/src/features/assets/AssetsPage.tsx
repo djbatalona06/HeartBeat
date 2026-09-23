@@ -18,6 +18,7 @@ import { RaidSheet } from '../party/RaidSheet';
 import { GEAR_RAID_ORDER, RAID_STAT_NAMES } from '../../domain/rpg/raidStats';
 import { REFINE_GAIN, REFINE_MAX } from '../../domain/rpg/shop';
 import type { House } from '../../domain/rpg/furniture';
+import type { Garden } from '../../domain/rpg/plots';
 
 /**
  * The bag: everything this member owns, in one place.
@@ -117,6 +118,7 @@ export function AssetsPage() {
         owned={holdings.gear}
         petXp={holdings.pet?.xp ?? 0}
         house={(holdings.pet?.house ?? {}) as House}
+        garden={holdings.pet?.plots as Garden | undefined}
         companion={holdings.pets.find((each) => each.id === avatar.companionId)}
       />
 

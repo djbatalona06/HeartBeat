@@ -11,8 +11,9 @@ import { TIERS, tierRank, type Tier } from './tiers';
  * ## Why there is a gate at all
  *
  * Because the pet is the point of this app, and walking straight into a fight
- * makes the pet a sprite. The gate is a **ritual**: five companions standing in
- * an arch under two trees, and one deliberate tap before anything is fought.
+ * makes the pet a sprite. The gate is a **ritual**: the island's boss standing
+ * in an arch between two trees, five companions to choose from, and one
+ * deliberate tap before anything is fought.
  * That is why it is still shown when there is only one companion to choose —
  * the choosing is not the only thing happening.
  *
@@ -30,7 +31,7 @@ import { TIERS, tierRank, type Tier } from './tiers';
  * Rounds fought alongside a mascot, per mascot. It is the only number on a
  * gate card that is that card's own — the shared pet's level belongs to the
  * couple and is the same behind every one of them — so it is what makes the
- * arch a board with five different things on it rather than five hats.
+ * gate a board with five different things on it rather than five hats.
  *
  * It only ever rises, like bond in `pets.ts`, and for the same reason: nothing
  * in this app takes something away because a fortnight went quietly.
@@ -88,65 +89,6 @@ export function tierForRank(rank: number): Tier {
   return TIERS[Math.min(TIERS.length - 1, Math.max(0, rank - 1))];
 }
 
-/* -- the arch ---------------------------------------------------------------- */
-
-/**
- * How far the arch bends, in degrees either side of centre.
- *
- * Sixty. It sets the *depth* curve only — how far back the ends sit — and not
- * the spacing, which is even by construction. Wide enough to read as a curve
- * rather than a row; narrow enough that the two on the ends are still facing
- * you rather than facing each other.
- */
-export const ARCH_SPREAD_DEGREES = 60;
-
-export interface ArchSlot {
-  /** Left to right, 0 at the leftmost. */
-  index: number;
-  /** Horizontal position, -1 at the far left and 1 at the far right. */
-  x: number;
-  /** How far back into the scene, 0 at the front and 1 at the deepest. */
-  depth: number;
-  /** What to scale the figure by, so the ones further back read as further
-   *  back without a perspective camera. */
-  scale: number;
-}
-
-/**
- * Even across, curved back. The centre stands nearest the viewer.
- *
- * **Spacing is linear and depth is the curve**, which is the one real decision
- * in this function. Walking a circular arc at even *angles* is the textbook
- * arch and it is wrong here: `sin` is not linear, so equal angles give unequal
- * gaps on screen, and five pedestals seen from the front then look mis-spaced
- * however correct the maths was. A front-facing arch is even across and bowed
- * in depth, so that is what this computes — and "perfectly spaced" becomes a
- * property of the layout rather than of five numbers somebody typed.
- *
- * Change the count or the bend and the spacing stays even, which is precisely
- * what five typed offsets would not do.
- */
-export function archLayout(count: number, spreadDegrees = ARCH_SPREAD_DEGREES): ArchSlot[] {
-  if (count <= 0) return [];
-  if (count === 1) return [{ index: 0, x: 0, depth: 0, scale: 1 }];
-
-  const spread = (spreadDegrees * Math.PI) / 180;
-  const bend = 1 - Math.cos(spread);
-  return Array.from({ length: count }, (_, index) => {
-    const t = index / (count - 1);                 // 0 .. 1
-    const x = -1 + t * 2;                          // -1 .. 1, evenly
-    const depth = bend === 0 ? 0 : (1 - Math.cos(x * spread)) / bend;
-    return {
-      index,
-      x,
-      depth,
-      // Ten percent smaller at the back of the bow. Enough to read; small
-      // enough that the two on the ends are not visibly lesser companions.
-      scale: 1 - depth * 0.1,
-    };
-  });
-}
-
 /* -- the cards --------------------------------------------------------------- */
 
 export interface GateCard {
@@ -168,7 +110,6 @@ export interface GateCard {
   leans: RaidStatKey[];
   /** What it adds to the tether, as a percentage. Zero when it adds none. */
   resonance: number;
-  slot: ArchSlot;
   /** False only when something has genuinely put it out of reach. */
   available: boolean;
   unavailableBecause?: string;
@@ -182,16 +123,14 @@ export interface GateInput {
 }
 
 /**
- * The five cards, laid out in the arch, in `COMPANION_KITS` order.
+ * The five cards, in `COMPANION_KITS` order.
  *
  * Walked off the kits rather than off the roster so a mascot without a skill
  * kit cannot reach the gate — a pedestal whose companion has nothing to do in a
  * fight is worse than an empty pedestal.
  */
 export function gateCards(input: GateInput = {}): GateCard[] {
-  const slots = archLayout(COMPANION_KITS.length);
-
-  return COMPANION_KITS.map((kit, index) => {
+  return COMPANION_KITS.map((kit) => {
     const identity = MASCOT_ROSTER[kit.themeId] ?? MASCOT_ROSTER[FALLBACK_MASCOT_ID];
     const affinity = Math.max(0, input.affinity?.[kit.themeId] ?? 0);
     const rank = affinityRank(affinity);
@@ -221,7 +160,6 @@ export function gateCards(input: GateInput = {}): GateCard[] {
       },
       leans: order.slice(0, 3).filter((stat) => RAID_STATS.includes(stat)),
       resonance: Math.round((combo - 1) * 1000) / 10,
-      slot: slots[index],
       available: reason === undefined,
       unavailableBecause: reason,
     };
@@ -327,6 +265,12 @@ export function skillPreview(card: GateCard): string {
   return `${card.kit.signature.name} · ${card.kit.passive.name}`;
 }
 
+/** The three moves a card fights with, by name, for the line under its skill. */
+export function movePreview(card: GateCard): string {
+  const { physical, defensive, magic } = card.kit.moves;
+  return `${physical.name} · ${defensive.name} · ${magic.name}`;
+}
+
 /**
  * The affinity ledger after a raid, as a new object.
  *
@@ -344,7 +288,7 @@ export function withAffinity(
   return next;
 }
 
-/** The best-ranked companion in the arch, for a screen that wants to say so. */
+/** The best-ranked companion at the gate, for a screen that wants to say so. */
 export function mostFavoured(cards: readonly GateCard[]): GateCard | undefined {
   return [...cards]
     .filter((card) => card.affinity > 0)

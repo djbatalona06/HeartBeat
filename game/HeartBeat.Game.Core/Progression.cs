@@ -16,7 +16,13 @@ public readonly record struct PlayerStats(int MaxHp, int Attack, int Defense, in
 /// </summary>
 public static class Progression
 {
-    public const int MaxLevel = 10;
+    /// <summary>
+    /// Thirty-four ranks: four for each of the seven islands on top of the ten
+    /// island 1 was built for. Island <c>k</c> is balanced to be entered at
+    /// <c>1 + 4(k-1)</c> and its boss beaten at <c>8 + 4(k-1)</c>, which
+    /// <c>IslandTests</c> holds.
+    /// </summary>
+    public const int MaxLevel = 34;
 
     /// <summary>
     /// Total XP needed to *reach* <paramref name="level"/> from nothing.
@@ -51,54 +57,72 @@ public static class Progression
         return Math.Clamp((xp - floor) / (double)(ceiling - floor), 0, 1);
     }
 
+    /// <summary>Past level 10, each rank lifts HP, attack and defense by this share.</summary>
+    public const double LateGrowth = 0.07;
+
     /// <summary>
-    /// Stats at a level, from the level-up reward table.
+    /// What reaching one level adds, given the stats before it. One table for
+    /// both the numbers and the line that announces them, so the reward text
+    /// cannot describe a stat the level did not give.
     ///
-    /// Written as a fold over the reward table rather than a switch so the
-    /// table below stays the single statement of what each level gives. Odd
-    /// levels from 3 up are stat bumps; even levels are unlocks
-    /// (<see cref="Actions.UnlockedAt"/>), which is why this only moves on 3,
-    /// 5, 7 and 9.
-    ///
-    /// The sizes of those bumps are not a matter of taste - they are pinned by
-    /// `IslandTests`, which simulates real fights and fails if a stage becomes
-    /// unwinnable at the level a player arrives with. The first draft of this
-    /// table (+10 HP, +2 attack) lost to the stage-7 boss a hundred times out
-    /// of a hundred, because a 200 HP boss needs the player's damage to roughly
-    /// double across the island and +2 does not do that. Change a number here
-    /// and the simulation will tell you what it did.
+    /// Levels 2-10 are island 1's curve. From 11 on growth compounds, because
+    /// every island after the first spans the same seven ranks and has to feel
+    /// like the same climb: a flat +4 attack is a lot at level 11 and nothing at
+    /// level 30. Speed ticks up every fourth rank so turn order keeps pace with
+    /// the islands' faster monsters.
     /// </summary>
+    private static PlayerStats GainAt(int level, PlayerStats before) => level switch
+    {
+        <= 1 => default,
+        2 => new(10, 0, 0, 0),
+        3 => new(20, 0, 0, 0),
+        4 => default,
+        5 => new(0, 6, 0, 0),
+        6 => new(0, 0, 0, 1),
+        7 => new(0, 0, 5, 0),
+        8 => new(0, 3, 0, 0),
+        9 => new(40, 0, 0, 0),
+        10 => default,
+        _ => new(
+            Grow(before.MaxHp),
+            Grow(before.Attack),
+            Grow(before.Defense),
+            level % 4 == 0 ? 1 : 0),
+    };
+
+    private static int Grow(int value) => Math.Max(1, (int)Math.Round(value * LateGrowth, MidpointRounding.AwayFromZero));
+
+    /// <summary>The player's stats at a level, built up from level 1 one rank at a time.</summary>
     public static PlayerStats StatsAt(int level)
     {
         var stats = new PlayerStats(MaxHp: 60, Attack: 12, Defense: 5, Speed: 5);
         for (int l = 2; l <= Math.Min(level, MaxLevel); l++)
         {
-            stats = l switch
-            {
-                3 => stats with { MaxHp = stats.MaxHp + 20 },
-                5 => stats with { Attack = stats.Attack + 6 },
-                7 => stats with { Defense = stats.Defense + 5 },
-                9 => stats with { MaxHp = stats.MaxHp + 40 },
-                _ => stats,
-            };
+            PlayerStats gain = GainAt(l, stats);
+            stats = new PlayerStats(
+                stats.MaxHp + gain.MaxHp,
+                stats.Attack + gain.Attack,
+                stats.Defense + gain.Defense,
+                stats.Speed + gain.Speed);
         }
         return stats;
     }
 
-    /// <summary>A human-readable line for the level-up banner. Empty for levels that give nothing.</summary>
-    public static string RewardTextAt(int level) => level switch
+    /// <summary>What reaching a level gave, for the level-up line.</summary>
+    public static string RewardTextAt(int level)
     {
-        2 => "Log Mood becomes a combat action.",
-        3 => "+20 max HP.",
-        4 => "Log Rest becomes a heal.",
-        5 => "+6 attack.",
-        6 => "Log Gratitude charges resonance.",
-        7 => "+5 defense.",
-        8 => "Log Work joins the action bar.",
-        9 => "+40 max HP.",
-        10 => "Together: the couple's synergy move.",
-        _ => "",
-    };
+        if (level < 2 || level > MaxLevel) return "";
+        if (level == 4) return "Mend: your companion can heal.";
+        if (level == 10) return "Together: the couple's move.";
+
+        PlayerStats gain = GainAt(level, StatsAt(level - 1));
+        var parts = new List<string>();
+        if (gain.MaxHp > 0) parts.Add($"+{gain.MaxHp} max HP");
+        if (gain.Attack > 0) parts.Add($"+{gain.Attack} attack");
+        if (gain.Defense > 0) parts.Add($"+{gain.Defense} defense");
+        if (gain.Speed > 0) parts.Add($"+{gain.Speed} speed");
+        return string.Join(", ", parts) + ".";
+    }
 
     /// <summary>
     /// XP for logging a wellness activity.
@@ -113,6 +137,7 @@ public static class Progression
         Activity.Work => 15,
         Activity.Rest => 10,
         Activity.Gratitude => 20,
+        Activity.Nourish => 10,
         _ => 0,
     };
 

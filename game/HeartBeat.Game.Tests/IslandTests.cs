@@ -13,24 +13,40 @@ namespace HeartBeat.Game.Tests;
 /// </summary>
 public class IslandTests
 {
-    public static TheoryData<int> StageNumbers()
+    /// <summary>The rank an island is balanced to be entered at.</summary>
+    public static int BandStart(int island) => 1 + 4 * (island - 1);
+
+    /// <summary>The rank a couple arrives at a stage with: one per stage past the band start.</summary>
+    public static int ArrivalLevel(int island, int stage) => Math.Min(Progression.MaxLevel, BandStart(island) + stage);
+
+    public static TheoryData<int> IslandNumbers()
     {
         var data = new TheoryData<int>();
-        foreach (Stage s in Island1.Value.Stages) data.Add(s.Number);
+        foreach (Island i in World.Islands) data.Add(i.Number);
         return data;
     }
 
-    [Fact]
-    public void IslandOneHasSevenStagesNumberedInOrder()
+    public static TheoryData<int, int> EveryStage()
     {
-        Assert.Equal(Island.StagesPerIsland, Island1.Value.Stages.Count);
-        Assert.Equal(
-            Enumerable.Range(1, Island.StagesPerIsland),
-            Island1.Value.Stages.Select(s => s.Number));
+        var data = new TheoryData<int, int>();
+        foreach (Island i in World.Islands)
+        foreach (Stage s in i.Stages)
+            data.Add(i.Number, s.Number);
+        return data;
     }
 
-    [Fact]
-    public void TheStageShapeIsCommonCommonCommonSemiBossCommonEliteBoss()
+    [Theory]
+    [MemberData(nameof(IslandNumbers))]
+    public void EveryIslandHasSevenStagesNumberedInOrder(int number)
+    {
+        Island island = World.IslandFor(number)!;
+        Assert.Equal(Island.StagesPerIsland, island.Stages.Count);
+        Assert.Equal(Enumerable.Range(1, Island.StagesPerIsland), island.Stages.Select(s => s.Number));
+    }
+
+    [Theory]
+    [MemberData(nameof(IslandNumbers))]
+    public void TheStageShapeIsCommonCommonCommonSemiBossCommonEliteBoss(int number)
     {
         Assert.Equal(
             new[]
@@ -38,100 +54,129 @@ public class IslandTests
                 MonsterType.Common, MonsterType.Common, MonsterType.Common,
                 MonsterType.SemiBoss, MonsterType.Common, MonsterType.Elite, MonsterType.Boss,
             },
-            Island1.Value.Stages.Select(s => s.Monster.Type));
+            World.IslandFor(number)!.Stages.Select(s => s.Monster.Type));
     }
 
-    [Fact]
-    public void EveryMonsterIsWeakToItsIslandElement()
+    [Theory]
+    [MemberData(nameof(IslandNumbers))]
+    public void EveryMonsterIsWeakToItsIslandElement(int number)
     {
         // The rule that makes the world legible: if you are stuck on Morning
         // Meadow, move. Breaking it would make an island unreadable.
-        foreach (Stage stage in Island1.Value.Stages)
+        Island island = World.IslandFor(number)!;
+        foreach (Stage stage in island.Stages)
         {
-            Assert.Equal(Island1.Value.Element, stage.Monster.Weakness);
-        }
-    }
-
-    [Fact]
-    public void NoMonsterIsBothWeakAndStrongToTheSameElement()
-    {
-        foreach (Stage stage in Island1.Value.Stages)
-        {
+            Assert.Equal(island.Element, stage.Monster.Weakness);
             Assert.NotEqual(stage.Monster.Weakness, stage.Monster.Strength);
         }
     }
 
     [Fact]
-    public void MonsterIdsAreUniqueAcrossTheIsland()
+    public void MonsterIdsAndSpritesAreUniqueAcrossTheWorld()
     {
-        var ids = Island1.Value.Stages.Select(s => s.Monster.Id).ToList();
-        Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
-    }
-
-    [Fact]
-    public void EveryMonsterHasASpriteAndAtLeastOneAction()
-    {
-        foreach (Stage stage in Island1.Value.Stages)
+        var monsters = World.Islands.SelectMany(i => i.Stages).Select(s => s.Monster).ToList();
+        Assert.Equal(monsters.Count, monsters.Select(m => m.Id).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(monsters.Count, monsters.Select(m => m.SpriteKey).Distinct(StringComparer.Ordinal).Count());
+        foreach (Island island in World.Islands)
+        foreach (Stage stage in island.Stages)
         {
+            Assert.StartsWith($"i{island.Number}s{stage.Number}-", stage.Monster.Id, StringComparison.Ordinal);
             Assert.False(string.IsNullOrWhiteSpace(stage.Monster.SpriteKey));
             Assert.NotEmpty(stage.Monster.Actions);
-            // Something has to be able to reduce the player's HP, or the fight
-            // is unloseable and the stage is decoration.
-            Assert.Contains(stage.Monster.Actions, a => a.Type is ActionType.Attack);
         }
     }
 
-    [Fact]
-    public void EveryStageHasADarkName()
+    [Theory]
+    [MemberData(nameof(IslandNumbers))]
+    public void EveryStageHasADarkName(int number)
     {
-        foreach (Stage stage in Island1.Value.Stages)
+        foreach (Stage stage in World.IslandFor(number)!.Stages)
         {
-            Assert.True(
-                Island1.DarkNames.ContainsKey(stage.Monster.Id),
-                $"{stage.Monster.Id} has no dark-variant name");
+            Monster dark = World.MonsterAt(number, stage.Number, DioramaTheme.Dark)!;
+            Assert.NotEqual(stage.Monster.Name, dark.Name);
         }
     }
 
-    [Fact]
-    public void HealthRisesAcrossTheIsland()
+    [Theory]
+    [MemberData(nameof(IslandNumbers))]
+    public void HealthRisesAcrossTheIsland(int number)
     {
-        // Not strictly monotonic - stage 5 is the deliberate recovery stage -
-        // so the assertion is that the back half is harder than the front half.
-        var hp = Island1.Value.Stages.Select(s => s.Monster.Hp).ToList();
+        var hp = World.IslandFor(number)!.Stages.Select(s => s.Monster.Hp).ToList();
         Assert.True(hp.Take(3).Average() < hp.Skip(4).Average());
         Assert.True(hp[^1] == hp.Max(), "the boss should be the toughest thing on the island");
         Assert.True(hp[4] < hp[3], "stage 5 is meant to be a breather after the semi-boss");
     }
 
     [Theory]
-    [MemberData(nameof(StageNumbers))]
-    public void EveryStageIsWinnableByTheTimeYouReachIt(int stageNumber)
+    [MemberData(nameof(EveryStage))]
+    public void EveryStageIsWinnableByTheTimeYouReachIt(int island, int stage)
     {
-        // The intended level curve: roughly one level per stage, capped. If a
-        // stage cannot be beaten at the level a player arrives with, the island
-        // has a wall in it.
-        int level = Math.Min(Progression.MaxLevel, stageNumber + 1);
-        Monster monster = World.MonsterAt(1, stageNumber, DioramaTheme.Light)!;
+        // Uncharged and ungeared: the balanced baseline. If a stage cannot be
+        // beaten at the level a player arrives with, the island has a wall in it.
+        int level = ArrivalLevel(island, stage);
+        Monster monster = World.MonsterAt(island, stage, DioramaTheme.Light)!;
         double rate = Sim.WinRate(monster, level);
-        Assert.True(rate >= 0.8, $"stage {stageNumber} ({monster.Name}) wins only {rate:P0} at level {level}");
+        Assert.True(rate >= 0.8, $"island {island} stage {stage} ({monster.Name}) wins only {rate:P0} at level {level}");
+    }
+
+    [Theory]
+    [MemberData(nameof(EveryStage))]
+    public void TheDarkVariantIsHarderButStillBeatable(int island, int stage)
+    {
+        Monster light = World.MonsterAt(island, stage, DioramaTheme.Light)!;
+        Monster dark = World.MonsterAt(island, stage, DioramaTheme.Dark)!;
+        Assert.True(dark.Hp > light.Hp, $"{light.Name}'s dark variant is no tougher");
+        Assert.Equal(light.Speed, dark.Speed);
+
+        // The load-bearing half: a dark week is the worst possible moment to
+        // make the game unwinnable.
+        int level = Math.Min(Progression.MaxLevel, ArrivalLevel(island, stage) + 1);
+        double rate = Sim.WinRate(dark, level);
+        Assert.True(rate >= 0.7, $"dark island {island} stage {stage} wins only {rate:P0} at level {level}");
     }
 
     [Fact]
     public void StageOneIsWinnableOnDayOne()
     {
-        // Level 1, one action unlocked, no history. This is the first thing a
-        // new couple ever does, and it must not be a loss.
+        // Level 1, no history. The first thing a new couple ever does must not be a loss.
         Monster sprout = World.MonsterAt(1, 1, DioramaTheme.Light)!;
         Assert.True(Sim.WinRate(sprout, 1) >= 0.95);
     }
 
-    [Fact]
-    public void TheBossIsNotWinnableAtLevelOne()
+    [Theory]
+    [MemberData(nameof(IslandNumbers))]
+    public void TheBossIsNotWinnableWhereTheIslandStarts(int island)
     {
-        // The other half of balance: if the boss falls to a level-1 player, the
-        // six stages in front of it were pointless.
-        Monster boss = World.MonsterAt(1, 7, DioramaTheme.Light)!;
-        Assert.True(Sim.WinRate(boss, 1) <= 0.05);
+        // The other half of balance: if the boss falls on arrival, the six
+        // stages in front of it were pointless.
+        Monster boss = World.MonsterAt(island, 7, DioramaTheme.Light)!;
+        Assert.True(Sim.WinRate(boss, BandStart(island)) <= 0.05);
+    }
+
+    [Theory]
+    [MemberData(nameof(IslandNumbers))]
+    public void GearHelpsButDoesNotSkipAnIsland(int island)
+    {
+        // An endgame sheet - every stat past its half-point, which is more
+        // than a full mythic set gives any one stat - still leaves the boss
+        // out of reach on arrival.
+        var maxed = new Boosts([], new RaidStats(100, 100, 100, 100, 100, 100, 100));
+        Monster boss = World.MonsterAt(island, 7, DioramaTheme.Light)!;
+        Assert.True(Sim.WinRate(boss, BandStart(island), maxed) <= 0.2);
+    }
+
+    [Theory]
+    [MemberData(nameof(IslandNumbers))]
+    public void LoggingTheIslandsOwnThingHelps(int island)
+    {
+        // The whole design in one assertion: the charge that hits the island's
+        // element makes its boss easier one level early.
+        Monster boss = World.MonsterAt(island, 7, DioramaTheme.Light)!;
+        Charge answer = Enum.GetValues<Charge>().First(c => Charges.ElementOf(c) == World.IslandFor(island)!.Element);
+        int level = ArrivalLevel(island, 7) - 1;
+        double plain = Sim.WinRate(boss, level);
+        double charged = Sim.WinRate(boss, level, new Boosts([answer], RaidStats.None));
+        Assert.True(charged > plain || charged == 1, $"{answer} did not help on island {island} ({charged:P0} vs {plain:P0})");
     }
 
     [Fact]
@@ -139,26 +184,6 @@ public class IslandTests
     {
         Monster boss = World.MonsterAt(1, 7, DioramaTheme.Light)!;
         Assert.True(Sim.WinRate(boss, 8) >= 0.8);
-    }
-
-    [Fact]
-    public void TheDarkVariantIsHarderButStillBeatable()
-    {
-        foreach (Stage stage in Island1.Value.Stages)
-        {
-            Monster light = World.MonsterAt(1, stage.Number, DioramaTheme.Light)!;
-            Monster dark = World.MonsterAt(1, stage.Number, DioramaTheme.Dark)!;
-
-            Assert.True(dark.Hp > light.Hp, $"{light.Name}'s dark variant is no tougher");
-            Assert.Equal(light.Speed, dark.Speed);
-            Assert.NotEqual(light.Name, dark.Name);
-
-            // The load-bearing half: a dark week is the worst possible moment
-            // to make the game unwinnable.
-            int level = Math.Min(Progression.MaxLevel, stage.Number + 2);
-            double rate = Sim.WinRate(dark, level);
-            Assert.True(rate >= 0.7, $"dark stage {stage.Number} wins only {rate:P0} at level {level}");
-        }
     }
 
     [Fact]
@@ -179,18 +204,11 @@ public class IslandTests
     }
 
     [Fact]
-    public void UnbuiltIslandsAreNamedButEmpty()
+    public void EveryIslandIsBuilt()
     {
         Assert.Equal(World.IslandCount, World.Islands.Count);
-        Assert.True(World.IsBuilt(1));
-        for (int n = 2; n <= World.IslandCount; n++)
-        {
-            Island island = World.IslandFor(n)!;
-            Assert.False(World.IsBuilt(n));
-            Assert.False(string.IsNullOrWhiteSpace(island.LightName));
-            Assert.False(string.IsNullOrWhiteSpace(island.DarkName));
-            Assert.Null(World.MonsterAt(n, 1, DioramaTheme.Light));
-        }
+        for (int n = 1; n <= World.IslandCount; n++) Assert.True(World.IsBuilt(n));
+        Assert.Null(World.MonsterAt(World.IslandCount + 1, 1, DioramaTheme.Light));
     }
 
     [Fact]

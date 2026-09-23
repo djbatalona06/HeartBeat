@@ -1,7 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  COMPANION_KITS, FALLBACK_KIT_ID, POTENCY_AT_MAX, TURN_FOR_ACTIVITY, TURN_NAMES, TURN_TYPES,
-  activityFor, fireSkill, kitFor, potencyAt, resolveModifiers, skillForTurn, skillsOf, turnFor,
+  ACTION_FOR_MOVE, COMPANION_KITS, FALLBACK_KIT_ID, MOVE_KEYS, POTENCY_AT_MAX,
+  fireSkill, kitFor, moveKeyFor, moveNamesFor, potencyAt, resolveModifiers, skillForMove, skillsOf,
   withinHours, type CompanionKit, type TurnContext,
 } from './companionSkills';
 import { MASCOT_ROSTER } from '../../features/pet/mascots/roster';
@@ -13,17 +15,29 @@ const ctx = (over: Partial<TurnContext> = {}): TurnContext => ({
 const kit = (themeId: string): CompanionKit =>
   COMPANION_KITS.find((k) => k.themeId === themeId)!;
 
-describe('turns', () => {
-  it('maps every log to a turn, and back again', () => {
-    for (const [activity, turn] of Object.entries(TURN_FOR_ACTIVITY)) {
-      expect(turnFor(activity as never)).toBe(turn);
-      expect(activityFor(turn)).toBe(activity);
+describe('moves', () => {
+  it('names all four moves for every kit, each one its own', () => {
+    const names = COMPANION_KITS.flatMap((k) => MOVE_KEYS.map((m) => k.moves[m].name));
+    expect(new Set(names).size).toBe(names.length);
+    for (const k of COMPANION_KITS) {
+      for (const m of MOVE_KEYS) {
+        expect(k.moves[m].name, `${k.themeId} ${m}`).toBeTruthy();
+        expect(k.moves[m].description, `${k.themeId} ${m}`).toBeTruthy();
+      }
     }
   });
 
-  it('uses each of the five turns exactly once across the five logs', () => {
-    expect(new Set(Object.values(TURN_FOR_ACTIVITY)).size).toBe(TURN_TYPES.length);
-    for (const turn of TURN_TYPES) expect(TURN_NAMES[turn]).toBeTruthy();
+  it('keys the kit names by the C# action ids, and maps every C# style but the couple\'s', () => {
+    expect(Object.keys(moveNamesFor(kitFor('pony'))).sort())
+      .toEqual(Object.values(ACTION_FOR_MOVE).sort());
+    expect(moveNamesFor(kitFor('pony')).spell).toBe('Wishfire');
+    expect(moveKeyFor('Physical')).toBe('physical');
+    expect(moveKeyFor('Together')).toBeUndefined();
+  });
+
+  it('keeps Actions.cs and the kit agreeing on the action ids', () => {
+    const cs = readFileSync(resolve(__dirname, '../../../../game/HeartBeat.Game.Core/Actions.cs'), 'utf8');
+    for (const id of Object.values(ACTION_FOR_MOVE)) expect(cs).toContain(`Id: "${id}"`);
   });
 });
 
@@ -39,6 +53,7 @@ describe('nobody else\'s characters', () => {
     for (const k of COMPANION_KITS) {
       const text = [
         k.mascot,
+        ...MOVE_KEYS.flatMap((m) => [k.moves[m].name, k.moves[m].description]),
         ...skillsOf(k).flatMap((s) => [s.name, s.description, s.vfx, s.id]),
         k.passive.name, k.passive.description, k.passive.id,
       ].join(' | ');
@@ -81,14 +96,14 @@ describe('the five kits', () => {
 
   /** The reason to own more than one: a week of workouts wants a different
    *  companion from a week of early nights. */
-  it('spreads the five signatures across different turns', () => {
-    const turns = COMPANION_KITS.map((k) => k.signature.turnType);
-    expect(new Set(turns).size).toBeGreaterThanOrEqual(3);
+  it('spreads the five signatures across different moves', () => {
+    const moves = COMPANION_KITS.map((k) => k.signature.move);
+    expect(new Set(moves).size).toBeGreaterThanOrEqual(3);
   });
 
-  it('never hangs a kit\'s two skills off the same turn', () => {
+  it('never hangs a kit\'s two skills off the same move', () => {
     for (const k of COMPANION_KITS) {
-      expect(k.signature.turnType, k.themeId).not.toBe(k.support.turnType);
+      expect(k.signature.move, k.themeId).not.toBe(k.support.move);
     }
   });
 
@@ -124,28 +139,28 @@ describe('kitFor', () => {
 });
 
 describe('firing a skill', () => {
-  it('fires the skill hung off that turn', () => {
-    const verdict = fireSkill(kit('pony'), 'strike', ctx());
+  it('fires the skill hung off that move', () => {
+    const verdict = fireSkill(kit('pony'), 'magic', ctx());
     expect(verdict.fires).toBe(true);
     if (verdict.fires) expect(verdict.skill.name).toBe('Star Missile');
   });
 
-  it('says why rather than going dead when the kit has nothing for a turn', () => {
-    const verdict = fireSkill(kit('pony'), 'recover', ctx());
+  it('says why rather than going dead when the kit has nothing for a move', () => {
+    const verdict = fireSkill(kit('pony'), 'mend', ctx());
     expect(verdict.fires).toBe(false);
     if (!verdict.fires) expect(verdict.reason).toContain('Wishbell');
   });
 
   it('holds a skill on cooldown, and counts the turns out loud', () => {
-    const verdict = fireSkill(kit('pony'), 'resonance', ctx({ sinceLastUse: 1 }));
+    const verdict = fireSkill(kit('pony'), 'defensive', ctx({ sinceLastUse: 1 }));
     expect(verdict.fires).toBe(false);
     if (!verdict.fires) expect(verdict.reason).toMatch(/ready in 1 turn\./);
   });
 
   it('refuses a once-a-raid skill that has already gone', () => {
-    const fresh = fireSkill(kit('shinobi'), 'strike', ctx());
+    const fresh = fireSkill(kit('shinobi'), 'physical', ctx());
     expect(fresh.fires).toBe(true);
-    const spent = fireSkill(kit('shinobi'), 'strike', ctx({ spentThisRaid: true }));
+    const spent = fireSkill(kit('shinobi'), 'physical', ctx({ spentThisRaid: true }));
     expect(spent.fires).toBe(false);
     if (!spent.fires) expect(spent.reason).toContain('once a raid');
   });
@@ -153,8 +168,8 @@ describe('firing a skill', () => {
 
 describe('settling the conditional modifiers', () => {
   it('adds a bonus against a foe the skill is for, and not otherwise', () => {
-    const against = fireSkill(kit('pony'), 'strike', ctx({ weakness: 'Mood' }));
-    const other = fireSkill(kit('pony'), 'strike', ctx({ weakness: 'Rest' }));
+    const against = fireSkill(kit('pony'), 'magic', ctx({ weakness: 'Mood' }));
+    const other = fireSkill(kit('pony'), 'magic', ctx({ weakness: 'Rest' }));
     expect(against.fires && other.fires).toBe(true);
     if (against.fires && other.fires) {
       expect(against.modifiers.damage!).toBeGreaterThan(other.modifiers.damage!);
@@ -164,8 +179,8 @@ describe('settling the conditional modifiers', () => {
   });
 
   it('pays desperation by how badly the fight has gone', () => {
-    const fine = fireSkill(kit('sponge'), 'reveal', ctx({ healthFraction: 1 }));
-    const rough = fireSkill(kit('sponge'), 'reveal', ctx({ healthFraction: 0.5 }));
+    const fine = fireSkill(kit('sponge'), 'physical', ctx({ healthFraction: 1 }));
+    const rough = fireSkill(kit('sponge'), 'physical', ctx({ healthFraction: 0.5 }));
     expect(fine.fires && rough.fires).toBe(true);
     if (fine.fires && rough.fires) {
       // Ten full five-percent steps of health gone, at 2.5% each.
@@ -233,9 +248,9 @@ describe('potency', () => {
   });
 });
 
-describe('skillForTurn', () => {
-  it('finds the skill on a turn, and nothing on a turn with none', () => {
-    expect(skillForTurn(kit('kitty'), 'recover')!.name).toBe("Starry Night's Watch");
-    expect(skillForTurn(kit('kitty'), 'strike')).toBeUndefined();
+describe('skillForMove', () => {
+  it('finds the skill on a move, and nothing on a move with none', () => {
+    expect(skillForMove(kit('kitty'), 'mend')!.name).toBe("Starry Night's Watch");
+    expect(skillForMove(kit('kitty'), 'physical')).toBeUndefined();
   });
 });

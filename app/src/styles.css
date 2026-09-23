@@ -2488,6 +2488,7 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
    only ever wraps the note field below the two columns. */
 .mood-set { margin-top: var(--space-4); }
 .mood-set-label { display: block; font-size: var(--text-sm); }
+.mood-flags { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
 
 .mood-note { margin-top: var(--space-2); resize: vertical; line-height: var(--line-body); }
 
@@ -5876,6 +5877,7 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   text-overflow: ellipsis;
 }
 .garden-compass-stage { color: var(--color-text-muted); }
+.garden-compass-boss { font-size: var(--text-xs); color: var(--color-text-muted); }
 .garden-compass-bar {
   display: block;
   width: 9rem;
@@ -6039,12 +6041,22 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 .garden-log li { margin-bottom: 2px; }
 .garden-log .is-them { color: var(--color-text-muted); }
 
-/* The action bar. Every button is a wellness log and a combat move at once,
-   which is the whole argument of the page, so it gets the most room. */
-.garden-actions { display: grid; gap: var(--space-2); }
+/* The controller: the move pad beside today's charge meter, on every width.
+   Two-thirds pad, one-third meter; the meter has a floor so its labels stay
+   readable on a 360px phone. */
+.garden-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(6.5rem, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+/* The move pad: a 2x2 of the companion's moves, the couple's move across the
+   bottom. Moves only — logging lives on the pages that own it. */
+.garden-actions { display: grid; gap: var(--space-2); min-width: 0; }
 .garden-action-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
   margin: 0;
   padding: 0;
@@ -6072,12 +6084,97 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 .garden-action:focus-visible { border-color: var(--color-accent); }
 .garden-action:active:not(:disabled) { transform: translateY(1px); }
 .garden-action:disabled { opacity: 0.55; cursor: default; }
-.garden-action-name { font-weight: 600; }
+.garden-action-name { font-weight: 600; overflow-wrap: anywhere; }
 .garden-action-note { font-size: var(--text-sm); color: var(--color-text-muted); }
+.garden-action-list .is-wide { grid-column: 1 / -1; }
+/* The boost bar: how much today's charges and the raid sheet lift this move.
+   A track and a fill, both from the palette, so it reads in every pack. */
+.garden-action-boost {
+  display: block;
+  height: 4px;
+  margin-top: var(--space-1);
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--color-accent) var(--boost, 0%), var(--color-surface-muted) var(--boost, 0%));
+}
+.garden-action.is-strong .garden-action-boost {
+  background: linear-gradient(to right, var(--color-success) var(--boost, 0%), var(--color-surface-muted) var(--boost, 0%));
+}
+@media (max-width: 420px) {
+  .garden-action { padding: var(--space-2); }
+  .garden-action-name { font-size: var(--text-sm); }
+  .garden-action-note { font-size: var(--text-xs); }
+}
 /* Effectiveness is carried by a border, not a colour swap, so it survives every
    pack and both variants. */
 .garden-action.is-strong { border-color: var(--color-success); }
-.garden-action.is-weak { border-color: color-mix(in srgb, var(--color-text-muted) 60%, transparent); }
+/* One stripe per fighting style, down the leading edge, so the three kinds of
+   move read apart before the names do. */
+.garden-action.is-physical { box-shadow: inset 3px 0 0 var(--color-danger); }
+.garden-action.is-defensive { box-shadow: inset 3px 0 0 var(--color-success); }
+.garden-action.is-magic { box-shadow: inset 3px 0 0 var(--color-accent); }
+.garden-action.is-mend { box-shadow: inset 3px 0 0 var(--color-text-muted); }
+.garden-action.is-charged .garden-action-note { color: var(--color-text); }
+
+/* ---- today's charge meter -------------------------------------------------
+   A picture of the day beside the move pad, never a control. Eight segments
+   stacked: the six loggable charges, a gap, then the two earned ones. A lit
+   segment fills; the one on the monster's weakness carries a ✦ in the label
+   (so the cue is never colour alone) and a slow pulse. */
+.garden-meter {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  min-width: 0;
+}
+.garden-meter-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+.garden-meter-count { color: var(--color-text); }
+.garden-meter-list { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.garden-meter-earned { margin-top: var(--space-1); padding-top: var(--space-1); border-top: 1px dashed var(--color-border); }
+.garden-meter-seg {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 1.35rem;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  overflow: hidden;
+  font-size: var(--text-xs);
+}
+.garden-meter-fill {
+  position: absolute;
+  inset: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: var(--color-accent);
+  transition: transform var(--motion-medium) var(--ease-soft);
+}
+.garden-meter-seg[data-on] .garden-meter-fill { transform: scaleX(1); }
+.garden-meter-seg[data-on] { color: var(--color-accent-text); font-weight: 600; }
+.garden-meter-label { position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.garden-meter-seg[data-answer] { outline: 1px solid var(--color-success); }
+.garden-meter-seg[data-answer][data-on] { color: var(--color-base); }
+.garden-meter-seg[data-answer][data-on] .garden-meter-fill {
+  background: var(--color-success);
+  animation: garden-meter-pulse 2.4s ease-in-out infinite;
+}
+@keyframes garden-meter-pulse { 0%, 100% { filter: none; } 50% { filter: brightness(1.12); } }
+.garden-meter-note { font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-tight); }
+:root[data-calm='true'] .garden-meter-seg .garden-meter-fill { animation: none; transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .garden-meter-seg .garden-meter-fill { animation: none; transition: none; }
+}
 .garden-action.is-locked { opacity: 0.4; }
 
 .garden-flee {
@@ -6261,14 +6358,10 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 }
 
 /* ---- the Raid Gate --------------------------------------------------------
-   The threshold you cross on the way into Eve's Garden.
-
-   The whole layout is one grid whose geometry comes from two custom properties
-   each pedestal carries — `--gate-x` along the arch and `--gate-depth` into it,
-   both written by `archLayout` in domain/rpg/raidGate.ts. That is why the same
-   five buttons become a scrollable row on a phone with no branch in the
-   component: the arch is a stylesheet decision, and the domain only says where
-   things stand relative to each other. */
+   The threshold you cross on the way into Eve's Garden. Four bands, top to
+   bottom: the seven islands as a trail, this island's boss in the arch, the
+   companions as a row of cards, and the button that commits. On a phone the
+   trail and the roster scroll sideways and nothing else changes. */
 
 .gate {
   display: grid;
@@ -6310,22 +6403,147 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 .gate-tether { animation: gate-pulse 4.5s ease-in-out infinite; }
 @keyframes gate-pulse { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } }
 
-/* The arch itself. A horizontal band of pedestals, scrollable when the screen
-   is too narrow to hold five at a readable size — which is most phones, and is
-   why this is a scroller rather than five things squeezed to nothing. */
-.gate-arch {
-  position: absolute;
-  inset: auto 0 0;
+/* -- the trail: seven islands, one line -- */
+.gate-trail {
   display: flex;
-  align-items: flex-end;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0 0 var(--space-1);
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.gate-trail::-webkit-scrollbar { display: none; }
+.gate-trail-step {
+  flex: 1 0 5.5rem;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  position: relative;
+}
+/* The line joining the dots. Drawn behind each dot towards the next one. */
+.gate-trail-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 0.8rem;
+  left: calc(50% + 0.9rem);
+  right: calc(-50% + 0.9rem);
+  height: 2px;
+  background: var(--color-border);
+}
+.gate-trail-dot {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  font-weight: 600;
+}
+.gate-trail-name { line-height: var(--line-tight); }
+.gate-trail-step[data-state='done'] .gate-trail-dot { border-color: var(--color-success); color: var(--color-success); }
+.gate-trail-step[data-state='here'] { color: var(--color-text); font-weight: 600; }
+.gate-trail-step[data-state='here'] .gate-trail-dot {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  box-shadow: 0 0 0.6rem 0.1rem color-mix(in srgb, var(--color-accent) 55%, transparent);
+}
+.gate-trail-step[data-state='locked'] { opacity: 0.55; }
+
+/* -- the boss, standing in the arch between the two trees -- */
+.gate-boss {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(7rem, 11rem) 1fr;
+  align-items: end;
+  gap: var(--space-3);
+  height: 100%;
+  min-height: inherit;
+  padding: var(--space-4);
+}
+.gate-boss-figure {
+  display: grid;
+  place-items: end center;
+  align-self: stretch;
+}
+/* A definite size, not a percentage: the figure centres its child, so a
+   percentage would resolve against the canvas's own 16px and draw a stamp. */
+.gate-boss-sprite {
+  width: clamp(6.5rem, 24vw, 11rem);
+  height: auto;
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0.4rem 0.6rem color-mix(in srgb, var(--color-base) 60%, transparent));
+  animation: gate-boss-breathe 4s ease-in-out infinite;
+}
+@keyframes gate-boss-breathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.2rem); }
+}
+.gate-boss-card {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
+}
+.gate-boss-island { font-size: var(--text-xs); color: var(--color-text-muted); }
+.gate-boss-name {
+  font-family: var(--font-display);
+  font-weight: var(--font-display-weight, 400);
+  font-size: var(--text-lg);
+  line-height: var(--line-tight);
+}
+.gate-boss-stats { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.gate-boss-stats span {
+  padding: 1px var(--space-2);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  font-size: var(--text-xs);
+}
+.gate-boss-stats span:nth-child(2) { outline: 1px solid var(--color-success); }
+.gate-boss-hint, .gate-boss-next { font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-body); }
+.gate-stages { display: flex; gap: 4px; margin: var(--space-1) 0 0; padding: 0; list-style: none; }
+.gate-stage-dot {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.gate-stage[data-type='SemiBoss'] .gate-stage-dot,
+.gate-stage[data-type='Boss'] .gate-stage-dot { border-color: var(--color-danger); color: var(--color-danger); }
+.gate-stage[data-type='Elite'] .gate-stage-dot { border-style: dashed; }
+.gate-stage[data-state='done'] .gate-stage-dot { background: var(--color-success); border-color: var(--color-success); color: var(--color-base); }
+.gate-stage[data-state='here'] .gate-stage-dot { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+
+@media (max-width: 520px) {
+  .gate-boss { grid-template-columns: 1fr; justify-items: center; }
+  .gate-boss-sprite { width: clamp(6.5rem, 34vw, 9rem); }
+  .gate-boss-card { width: 100%; }
+}
+
+/* -- the roster: the companions, as a row of cards -- */
+.gate-roster {
+  display: flex;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-3) var(--space-4);
+  padding-bottom: var(--space-1);
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
-.gate-arch::-webkit-scrollbar { display: none; }
+.gate-roster::-webkit-scrollbar { display: none; }
 
 .gate-pedestal {
   flex: 0 0 auto;
@@ -6333,16 +6551,13 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   display: grid;
   justify-items: center;
   gap: var(--space-1);
-  width: 8.5rem;
-  padding: 0;
+  width: 9.5rem;
+  padding: var(--space-2) 0 0;
   border: none;
   background: none;
   color: inherit;
   font: inherit;
   cursor: pointer;
-  /* Lifted by its place in the arch: the middle stands nearest and largest, the
-     ends sit back and slightly smaller. Both numbers come from the domain. */
-  transform: translateY(calc(var(--gate-depth, 0) * -0.9rem)) scale(var(--gate-scale, 1));
   transition: transform var(--motion-medium) var(--ease-soft), opacity var(--motion-fast) linear;
 }
 .gate-pedestal[data-unavailable] { opacity: 0.45; cursor: not-allowed; }
@@ -6403,7 +6618,8 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   line-height: 1.4;
 }
 
-.gate-skill { margin-top: 2px; font-size: var(--text-xs); color: var(--color-accent); font-weight: 600; }
+.gate-moves { margin-top: 2px; font-size: var(--text-xs); font-weight: 600; }
+.gate-skill { font-size: var(--text-xs); color: var(--color-accent); font-weight: 600; }
 .gate-foot, .gate-affinity {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
@@ -6692,6 +6908,7 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 @media (prefers-reduced-motion: reduce) {
   .gate-layer,
   .gate-tether,
+  .gate-boss-sprite,
   .garden-layer-sky,
   .garden-layer-mid,
   .garden-layer-near,

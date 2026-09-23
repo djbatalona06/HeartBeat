@@ -1,12 +1,12 @@
 import { ISLAND_COUNT, isIslandComplete, isIslandUnlocked, standingIsland, type WorldProgress } from '../../domain/rpg/world';
+import { bossOf, faceOf } from '../../domain/rpg/islands';
 import type { IslandDto } from './engine/types';
 
 /**
- * All five islands, and which of them you may walk to.
+ * All seven islands, who waits at the top of each, and which you may walk to.
  *
- * Opens from the compass. An island that has no stages authored yet still gets
- * a name and a row here rather than a gap — `World.Islands` on the C# side
- * carries the names for exactly that reason, so the shape of the world is
+ * Opens from the compass. An island you have not reached still gets its name
+ * and its boss here rather than a gap, so the shape of the whole climb is
  * visible from the first island.
  */
 
@@ -35,6 +35,7 @@ export function WorldMap({ islands, progress, dark, onTravel, onClose }: WorldMa
             const complete = isIslandComplete(progress, island.number);
             const here = standingIsland(progress) === island.number;
             const name = dark ? island.darkName : island.lightName;
+            const boss = faceOf(bossOf(island.number), dark).name;
 
             return (
               <li key={island.number}>
@@ -46,22 +47,21 @@ export function WorldMap({ islands, progress, dark, onTravel, onClose }: WorldMa
                     unlocked ? '' : 'is-locked',
                     complete ? 'is-done' : '',
                   ].filter(Boolean).join(' ')}
-                  disabled={!unlocked || !island.built}
+                  disabled={!unlocked}
                   onClick={() => onTravel(island.number)}
                 >
                   <span className="garden-map-number">{island.number}</span>
                   <span className="garden-map-name">
                     {name}
                     <span className="garden-map-note">
-                      {!island.built
-                        ? 'Still growing.'
-                        : !unlocked
-                          ? `Finish island ${island.number - 1} first.`
-                          : complete
-                            ? 'Cleared.'
-                            : here
-                              ? 'You are here.'
-                              : 'Open.'}
+                      {!unlocked
+                        ? `Finish island ${island.number - 1} first.`
+                        : complete
+                          ? 'Cleared.'
+                          : here
+                            ? 'You are here.'
+                            : 'Open.'}
+                      {' '}Boss: {boss}.
                     </span>
                   </span>
                   <span className="garden-map-element">{island.element}</span>
@@ -72,8 +72,9 @@ export function WorldMap({ islands, progress, dark, onTravel, onClose }: WorldMa
         </ol>
 
         <p className="garden-map-foot">
-          Each island answers to one thing. Morning Meadow gives way to movement;
-          log a workout and its monsters feel it.
+          Each island answers to one thing. Morning Meadow gives way to movement,
+          Focus Falls to study; log it today and every monster there feels it.
+          The last two answer to the two of you together.
         </p>
       </div>
     </div>

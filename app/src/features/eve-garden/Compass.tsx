@@ -5,7 +5,7 @@ import { ISLAND_COUNT, STAGES_PER_ISLAND } from '../../domain/rpg/world';
  *
  * Top-left of the garden, over the canvas. It is the only navigation Eve's
  * Garden has — tapping it opens the world map — so it carries the island name,
- * the stage, and a bar that fills as stages fall.
+ * the stage, who is waiting at the top, and a bar that fills as stages fall.
  */
 
 export interface CompassProps {
@@ -14,12 +14,14 @@ export interface CompassProps {
   stage: number;
   /** 0-1. */
   progress: number;
+  /** The island's boss, on the face that is showing. */
+  bossName: string;
   dark: boolean;
   onOpenMap(): void;
 }
 
 export function Compass({
-  islandNumber, islandName, stage, progress, dark, onOpenMap,
+  islandNumber, islandName, stage, progress, bossName, dark, onOpenMap,
 }: CompassProps) {
   const percent = Math.round(Math.min(1, Math.max(0, progress)) * 100);
 
@@ -28,7 +30,7 @@ export function Compass({
       type="button"
       className={`garden-compass${dark ? ' is-dark' : ''}`}
       onClick={onOpenMap}
-      aria-label={`Island ${islandNumber} of ${ISLAND_COUNT}, ${islandName}, stage ${stage} of ${STAGES_PER_ISLAND}. Open the map.`}
+      aria-label={`Island ${islandNumber} of ${ISLAND_COUNT}, ${islandName}, stage ${stage} of ${STAGES_PER_ISLAND}. The boss is ${bossName}. Open the map.`}
     >
       <span className="garden-compass-rose" aria-hidden="true">✳</span>
       <span className="garden-compass-text">
@@ -39,6 +41,7 @@ export function Compass({
             Stage {stage}/{STAGES_PER_ISLAND}
           </span>
         </span>
+        <span className="garden-compass-boss">Boss · {bossName}</span>
         <span className="garden-compass-bar">
           <span className="garden-compass-fill" style={{ width: `${percent}%` }} />
         </span>

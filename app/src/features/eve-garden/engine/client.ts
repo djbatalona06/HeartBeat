@@ -1,6 +1,6 @@
 import { isReady, type GameMethod, type GameRequest, type GameResponse } from './protocol';
 import type {
-  Activity, AwardDto, BattleDto, DioramaTheme, ProgressDto, StageDto, WorldDto,
+  Activity, AwardDto, BattleDto, Charge, DioramaTheme, ProgressDto, RaidStatsDto, StageDto, WorldDto,
 } from './types';
 
 /**
@@ -23,6 +23,7 @@ export interface GameClient {
   stage(island: number, stage: number, theme: DioramaTheme): Promise<StageDto | null>;
   beginBattle(
     island: number, stage: number, theme: DioramaTheme, level: number, seed: number,
+    charges: readonly Charge[], stats: RaidStatsDto,
   ): Promise<BattleDto | null>;
   act(battle: BattleDto, actionId: string): Promise<BattleDto | null>;
   monsterMove(battle: BattleDto): Promise<BattleDto | null>;
@@ -131,8 +132,11 @@ export function createGameClient(): GameClient {
 
     // `seed` is deliberately not clamped: it crosses as a double, which is what
     // `Api.ToSeed` expects and folds into a uint itself.
-    beginBattle: (island, stage, theme, level, seed) =>
-      json<BattleDto>('beginBattle', island, stage, theme, asInt(level), seed),
+    beginBattle: (island, stage, theme, level, seed, charges, stats) =>
+      json<BattleDto>(
+        'beginBattle', island, stage, theme, asInt(level), seed,
+        charges.join(','), JSON.stringify(stats),
+      ),
 
     // The battle state is handed straight back as the string it arrived as
     // would be cheaper, but re-serialising keeps `BattleDto` the only thing the

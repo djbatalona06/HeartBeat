@@ -1,3 +1,5 @@
+import { ISLAND_SPRITES, ISLAND_SPRITE_ORDER } from './monsterSprites';
+
 /**
  * Every pixel in the overworld, as text.
  *
@@ -585,6 +587,9 @@ export const SPRITES: Record<string, Sprite> = {
     '.oollo....olloo.',
     '..oooo....oooo..',
   ],
+
+  // --- islands 2 to 7, from their own file. ---
+  ...ISLAND_SPRITES,
 };
 
 /**
@@ -603,6 +608,16 @@ export const ISLAND_1_SPRITE_KEYS = [
   'sloth-sprout', 'dozing-beetle', 'snooze-thistle', 'lie-in',
   'dust-drifter', 'couch-moss', 'sedentary-sentinel',
 ] as const;
+
+/**
+ * Every island's monster sprites, in stage order: island 1's from above and
+ * the rest from `monsterSprites.ts`. `sprites.test.ts` holds each list against
+ * the `SpriteKey`s authored in the matching `Data/Island<N>.cs`.
+ */
+export const ISLAND_SPRITE_KEYS: Record<number, readonly string[]> = {
+  1: ISLAND_1_SPRITE_KEYS,
+  ...ISLAND_SPRITE_ORDER,
+};
 
 const KEYS = new Set(Object.keys(SPRITES));
 

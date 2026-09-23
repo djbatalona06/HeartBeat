@@ -1,16 +1,15 @@
 import { getMascot } from '../../pet/mascots';
 import { RAID_STAT_NAMES } from '../../../domain/rpg/raidStats';
 import { TIER_NAMES } from '../../../domain/rpg/tiers';
-import { MAX_AFFINITY_RANK, skillPreview, type GateCard } from '../../../domain/rpg/raidGate';
+import { MAX_AFFINITY_RANK, movePreview, skillPreview, type GateCard } from '../../../domain/rpg/raidGate';
 
 /**
- * One companion, on one pedestal, at its place in the arch.
+ * One companion, as a card in the gate's roster.
  *
  * A button rather than a div with a click handler, so it is reachable by
  * keyboard and announced as selectable without any aria plumbing of its own.
- * The arch position arrives as CSS custom properties rather than as inline
- * `left`/`top`, so the stylesheet owns the geometry and can lay the same five
- * cards out as a column on a narrow phone without this component knowing.
+ * It shows the three moves the companion fights with by name, because those
+ * are the buttons you are choosing between.
  */
 
 export interface GatePedestalProps {
@@ -30,12 +29,6 @@ export function GatePedestal({ card, selected, onSelect }: GatePedestalProps) {
       data-selected={selected || undefined}
       data-unavailable={!card.available || undefined}
       data-tier={card.tier}
-      style={{
-        '--gate-x': card.slot.x,
-        '--gate-depth': card.slot.depth,
-        '--gate-scale': card.slot.scale,
-        '--gate-index': card.slot.index,
-      } as React.CSSProperties}
       aria-pressed={selected}
       disabled={!card.available}
       onClick={() => onSelect(card.themeId)}
@@ -62,6 +55,7 @@ export function GatePedestal({ card, selected, onSelect }: GatePedestalProps) {
           ))}
         </span>
 
+        <span className="gate-moves">{movePreview(card)}</span>
         <span className="gate-skill">{skillPreview(card)}</span>
 
         <span className="gate-foot">

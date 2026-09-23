@@ -99,17 +99,78 @@ public class BattleTests
     }
 
     [Fact]
-    public void HittingAWeaknessHurtsMoreThanANeutralHit()
+    public void AChargeOnTheWeaknessHurtsMoreThanNoCharge()
     {
-        // The Mossling is weak to Movement and strong against Rest.
-        Assert.Equal(Battle.WeaknessMultiplier, Battle.Effectiveness(Element.Movement, Sprout));
-        Assert.Equal(Battle.StrengthMultiplier, Battle.Effectiveness(Element.Rest, Sprout));
-        Assert.Equal(1.0, Battle.Effectiveness(Element.Focus, Sprout));
+        // The Mossling is weak to Movement: a workout logged today lands on it.
+        BattleState plain = Battle.Begin(Sprout, 3, 1u);
+        BattleState charged = Battle.Begin(Sprout, 3, 1u, new Boosts([Charge.Exercise], RaidStats.None));
+        BattleState offAxis = Battle.Begin(Sprout, 3, 1u, new Boosts([Charge.Work], RaidStats.None));
 
-        int weak = Battle.Damage(10, 10, 3, Battle.WeaknessMultiplier, 1.0, 0);
-        int plain = Battle.Damage(10, 10, 3, 1.0, 1.0, 0);
-        int resisted = Battle.Damage(10, 10, 3, Battle.StrengthMultiplier, 1.0, 0);
-        Assert.True(weak > plain && plain > resisted);
+        int none = Battle.PreviewDamage(plain, Actions.Strike, Sprout);
+        int weak = Battle.PreviewDamage(charged, Actions.Strike, Sprout);
+        Assert.True(weak > none, $"a workout did not help ({weak} vs {none})");
+        // A charge that feeds another style and misses the weakness changes nothing for this move.
+        Assert.Equal(none, Battle.PreviewDamage(offAxis, Actions.Strike, Sprout));
+    }
+
+    [Fact]
+    public void AChargeNeverCostsAnything()
+    {
+        // Every charge, against every island-1 monster, every attack: at least the uncharged number.
+        foreach (Stage stage in Island1.Value.Stages)
+        {
+            Monster m = stage.Monster;
+            BattleState plain = Battle.Begin(m, 5, 1u);
+            foreach (Charge c in Enum.GetValues<Charge>())
+            {
+                BattleState charged = Battle.Begin(m, 5, 1u, new Boosts([c], RaidStats.None));
+                foreach (PlayerAction a in Actions.All.Where(a => a.Type == ActionType.Attack))
+                {
+                    Assert.True(
+                        Battle.PreviewDamage(charged, a, m) >= Battle.PreviewDamage(plain, a, m),
+                        $"{c} made {a.Name} worse against {m.Name}");
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void MagicIgnoresDefenseAndPhysicalDoesNot()
+    {
+        Monster golem = World.MonsterAt(1, 6, DioramaTheme.Light)!;
+        BattleState state = Battle.Begin(golem, 5, 1u);
+        BattleState armoured = state with { Monster = state.Monster with { Defense = 60 } };
+        Assert.Equal(Battle.PreviewDamage(state, Actions.Spell, golem), Battle.PreviewDamage(armoured, Actions.Spell, golem));
+        Assert.True(Battle.PreviewDamage(armoured, Actions.Strike, golem) < Battle.PreviewDamage(state, Actions.Strike, golem));
+    }
+
+    [Fact]
+    public void OpeningChargesChangeTheBody()
+    {
+        BattleState plain = Battle.Begin(Sprout, 5, 1u);
+        BattleState fed = Battle.Begin(Sprout, 5, 1u, new Boosts([Charge.Nourish, Charge.Gratitude], RaidStats.None));
+        Assert.True(fed.Player.MaxHp > plain.Player.MaxHp);
+        Assert.Equal(fed.Player.MaxHp, fed.Player.Hp);
+        Assert.True(fed.Player.Shield > 0);
+        Assert.Equal(0, plain.Player.Shield);
+    }
+
+    [Fact]
+    public void BalanceGoesFirstEvenAgainstSomethingFaster()
+    {
+        Monster wisp = World.MonsterAt(1, 5, DioramaTheme.Light)!; // speed 9 against level 1's 5
+        for (uint seed = 0; seed < 40; seed++)
+        {
+            Assert.Equal(Side.Player, Battle.Begin(wisp, 1, seed, new Boosts([Charge.Balance], RaidStats.None)).Turn);
+        }
+    }
+
+    [Fact]
+    public void TheCompanionsNameForAMoveIsWhatTheLogSays()
+    {
+        BattleState state = Battle.Begin(Sprout, 3, 1u) with { Turn = Side.Player };
+        BattleState after = Battle.Act(state, Actions.Spell.Id, Sprout, 3, "Wishfire");
+        Assert.StartsWith("Wishfire hits for", after.Log[^1].Text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -125,8 +186,8 @@ public class BattleTests
     {
         BattleState state = Battle.Begin(Sprout, 6, 3u);
         state = state with { Turn = Side.Player };
-        BattleState warded = Battle.Act(state, Actions.Gratitude.Id, Sprout, 6);
-        Assert.Equal(Actions.Gratitude.Power, warded.Player.Shield);
+        BattleState warded = Battle.Act(state, Actions.Guard.Id, Sprout, 6);
+        Assert.Equal(Actions.Guard.Power, warded.Player.Shield);
 
         BattleState hit = Battle.MonsterMove(warded with { Turn = Side.Monster }, Sprout);
         // Either the shield took it all, or HP only fell once the shield was spent.
@@ -138,7 +199,7 @@ public class BattleTests
     public void HealingNeverExceedsMaximum()
     {
         BattleState state = Battle.Begin(Sprout, 4, 5u) with { Turn = Side.Player };
-        BattleState healed = Battle.Act(state, Actions.Rest.Id, Sprout, 4);
+        BattleState healed = Battle.Act(state, Actions.Mend.Id, Sprout, 4);
         Assert.Equal(healed.Player.MaxHp, healed.Player.Hp);
         Assert.True(healed.Player.Hp <= healed.Player.MaxHp);
     }
@@ -217,12 +278,13 @@ public class BattleTests
     {
         // A fight that cannot end is the worst bug this reducer can have: the
         // overlay would simply never close. Every monster, every level.
-        foreach (Stage stage in Island1.Value.Stages)
+        foreach (Island island in World.Islands)
+        foreach (Stage stage in island.Stages)
         {
             foreach (DioramaTheme theme in new[] { DioramaTheme.Light, DioramaTheme.Dark })
             {
-                Monster monster = World.MonsterAt(1, stage.Number, theme)!;
-                for (int level = 1; level <= Progression.MaxLevel; level++)
+                Monster monster = World.MonsterAt(island.Number, stage.Number, theme)!;
+                for (int level = 1; level <= Progression.MaxLevel; level += 3)
                 {
                     BattleState end = Sim.Fight(monster, level, Rng.Hash($"{monster.Id}-{level}-{theme}"));
                     Assert.True(
@@ -238,7 +300,7 @@ public class BattleTests
     {
         BattleState start = Battle.Begin(Sentinel, 8, 7u);
         BattleState hurt = start with { Monster = start.Monster with { Hp = start.Monster.Hp / 4 } };
-        Assert.True(Battle.HitsLeft(hurt, Sentinel) < Battle.HitsLeft(start, Sentinel));
-        Assert.True(Battle.HitsLeft(start, Sentinel) > 0);
+        Assert.True(Battle.HitsLeft(hurt, Sentinel, 8) < Battle.HitsLeft(start, Sentinel, 8));
+        Assert.True(Battle.HitsLeft(start, Sentinel, 8) > 0);
     }
 }

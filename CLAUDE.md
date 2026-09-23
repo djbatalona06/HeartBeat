@@ -96,7 +96,11 @@ All writes go through `app/src/db/repository/`. Components call repository funct
 - `domain/rpg/tiers.ts` — the Common→Mythic ladder every ownable thing lands on
 - `domain/rpg/raidStats.ts` — the seven raid stats; `loadout.ts` turns what a
   couple owns into a sheet
-- `domain/rpg/companionSkills.ts` — one skill kit per mascot, keyed by theme id
+- `domain/rpg/companionSkills.ts` — one skill kit per mascot, keyed by theme id:
+  the names of its four moves, plus two skills and a passive
+- `domain/rpg/charges.ts` — what today's logging lights up in a fight
+- `domain/rpg/islands.ts` — the seven islands and their bosses, a tested mirror
+  of `game/.../Data/Island<N>.cs` for the screens that must not boot wasm
 - `domain/rpg/raidGate.ts` — who stands in the arch, and when the gate opens
 - `domain/rpg/chests.ts` — three chests, three pity counters
 - `domain/rpg/milestones.ts` — what each of the 50 levels is actually worth
@@ -210,8 +214,37 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   round rug do not go outdoors. `FLORA` is the garden's own, and nothing in it
   is mythic — the top rung should be something you won, and `KIND_TIERS` in
   `chests.ts` reads the catalogue to work that out for itself.
+- **A move is not a log, and a log is not a move.** The move bar is the
+  companion's physical / defensive / magic moves (plus Mend at 4 and Together
+  at 10), named per kit in `companionSkills.ts` and priced in C#. Logging a
+  workout, a study session or a mood lights a **charge** for the day
+  (`domain/rpg/charges.ts` decides which, `Charges.cs` what each is worth); a
+  charge on the monster's weakness makes every hit land at 1.5×. **The garden
+  has no logging controls** — `ChargeMeter` beside the move pad only shows what
+  other pages wrote. Rest, Gratitude and Nourish are the optional `rested` /
+  `grateful` / `ateWell` flags on a `MoodEntry`, ticked on the mood check-in;
+  they sync with the mood row, so a partner's flag lights both gardens. The
+  garden pays each lit charge's XP once a day under `garden-<day>-<activity>`,
+  deterministic so two phones never double-pay; never add the phone to that id. **Every fight must stay winnable with no charges and no gear**:
+  `IslandTests` simulates every stage of all seven islands uncharged, and a
+  charge may only ever help (`BattleTests.AChargeNeverCostsAnything`).
+- **The raid sheet reaches the fight.** `holdingsLoadout` + `loadoutSheet` is
+  the one assembly, used by the party page and by `EveGardenPage`, and its
+  totals go to C# at `beginBattle`. `Loadout.cs` puts every stat through
+  `cap × t / (t + 60)`; `gearLift` in `loadout.ts` restates that curve for the
+  move bar's "+N% gear" and `loadout.test.ts` reads the C# constants. The caps
+  are held by `IslandTests.GearHelpsButDoesNotSkipAnIsland`.
+- **Seven islands, one level band each.** Island *k* is entered at combat rank
+  `1 + 4(k−1)` and its boss beaten at `8 + 4(k−1)`; `Progression.MaxLevel` is
+  34 and growth past 10 compounds at 7%. Monster heals fade to nothing by
+  round 20 (`Battle.MonsterHealFadeRounds`) — without it an under-levelled
+  healer made a fight that could never end. The gate and the world map read
+  bosses from `domain/rpg/islands.ts`, which `islands.test.ts` parses the C#
+  to hold in step; change a monster's name, HP or sprite key in C# and that
+  test tells you to change the mirror. Sprites for islands 2–7 live in
+  `domain/rpg/monsterSprites.ts` and are spread into `SPRITES`.
 - **There are two level numbers and they are different on purpose.** C# owns
-  the combat rank that gates the action bar, pinned by `IslandTests`; the pet's
+  the combat rank that gates the move bar, pinned by `IslandTests`; the pet's
   level is the fifty-rung curve in `domain/xp.ts` that the couple climbs.
   Milestones hang off the second. `EveGardenPage`'s victory banner reads the
   pet's, because the first would announce a plot opening on the wrong level.

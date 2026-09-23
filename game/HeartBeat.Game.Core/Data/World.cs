@@ -3,30 +3,40 @@ using HeartBeat.Game.Core.Models;
 namespace HeartBeat.Game.Core.Data;
 
 /// <summary>
-/// The world: five islands of seven stages, of which one is built.
+/// The world: seven islands of seven stages, every one of them built.
 ///
-/// Islands 2-5 are named here and have no stages yet. That is on purpose and it
-/// is visible rather than hidden: the compass and the world map read
-/// <see cref="Islands"/>, so an unbuilt island renders as locked with a real
-/// name instead of a gap, and shipping island 2 is a single file in
-/// <c>Data/</c> plus one line here. <see cref="StageFor"/> returning null is
-/// the whole of the "not built yet" handling.
+/// Each island is one file in <c>Data/</c> and one line in <see cref="Islands"/>.
+/// <see cref="StageFor"/> returning null is still the whole of the "no such
+/// stage" handling, which the TypeScript side reads as "locked".
 /// </summary>
 public static class World
 {
-    public const int IslandCount = 5;
-
-    private static Island Planned(int number, string light, string dark, Element element) =>
-        new(number, light, dark, element, []);
+    public const int IslandCount = 7;
 
     public static readonly IReadOnlyList<Island> Islands =
     [
         Island1.Value,
-        Planned(2, "Kitchen Grove", "Craving Cavern", Element.Nourishment),
-        Planned(3, "Focus Falls", "Fog Marsh", Element.Focus),
-        Planned(4, "Joy Ridge", "Isolation Peak", Element.Mood),
-        Planned(5, "Rest Haven", "Burnout Abyss", Element.Rest),
+        Island2.Value,
+        Island3.Value,
+        Island4.Value,
+        Island5.Value,
+        Island6.Value,
+        Island7.Value,
     ];
+
+    /// <summary>
+    /// Every island's dark names in one map. Monster ids carry their island
+    /// (<c>i3s4-...</c>), so they are unique across the world and one map is
+    /// enough - which is what keeps adding an island a file plus a line.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string> DarkNames =
+        new[]
+        {
+            Island1.DarkNames, Island2.DarkNames, Island3.DarkNames, Island4.DarkNames,
+            Island5.DarkNames, Island6.DarkNames, Island7.DarkNames,
+        }
+        .SelectMany(names => names)
+        .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
 
     public static Island? IslandFor(int number) =>
         Islands.FirstOrDefault(i => i.Number == number);
@@ -46,7 +56,7 @@ public static class World
         Stage? found = StageFor(island, stage);
         if (found is null) return null;
 
-        string? darkName = island == 1 && Island1.DarkNames.TryGetValue(found.Monster.Id, out string? n) ? n : null;
+        string? darkName = DarkNames.TryGetValue(found.Monster.Id, out string? n) ? n : null;
         return found.Monster.Forged(theme, darkName);
     }
 

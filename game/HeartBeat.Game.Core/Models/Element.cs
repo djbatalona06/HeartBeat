@@ -1,13 +1,18 @@
 namespace HeartBeat.Game.Core.Models;
 
 /// <summary>
-/// The five wellness axes, doubling as the combat type chart.
+/// The seven wellness axes, doubling as the combat type chart.
 ///
-/// There are exactly five because there are five islands, and each island's
-/// element is the one its monsters are weak to. That is the whole design: the
-/// way to beat Morning Meadow is to log movement, because Morning Meadow's
-/// monsters are weak to <see cref="Movement"/>. The type chart is not
-/// decoration on top of the wellness tracking - it is the wellness tracking.
+/// There are exactly seven because there are seven islands, and each island's
+/// element is the one its monsters are weak to. A move carries no element of its
+/// own: the element arrives with a <see cref="Charge"/>, which is what logging
+/// the matching thing today buys. So the way to beat Morning Meadow is still to
+/// move - really move, on the exercise page - and the button you press in the
+/// fight is whichever of your companion's moves suits it.
+///
+/// <see cref="Bond"/> and <see cref="Balance"/> are the two that no single log
+/// provides: Bond is both of you logging on the same day, Balance is three
+/// different kinds of log in one day.
 /// </summary>
 public enum Element
 {
@@ -16,4 +21,6 @@ public enum Element
     Nourishment,
     Focus,
     Rest,
+    Bond,
+    Balance,
 }

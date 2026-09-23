@@ -19,16 +19,18 @@ namespace HeartBeat.Game.Core;
 ///   <see cref="BattleState"/>. Losing costs the fight and nothing else.
 ///
 /// What is new here is the element chart, which is the reason the battle is
-/// worth having at all: a monster's weakness is its island's wellness axis, so
-/// the way to beat Morning Meadow is to log movement.
+/// worth having at all: a monster's weakness is its island's wellness axis, and
+/// the thing that hits it is a <see cref="Charge"/> - what the couple logged
+/// today - rather than which button was pressed. The buttons are moves; see
+/// <see cref="Actions"/>.
 /// </summary>
 public static class Battle
 {
-    /// <summary>Damage multiplier when an action hits a weakness.</summary>
+    /// <summary>Damage multiplier when a charge hits the monster's weakness.</summary>
     public const double WeaknessMultiplier = 1.5;
 
-    /// <summary>Damage multiplier when an action hits a resistance.</summary>
-    public const double StrengthMultiplier = 0.5;
+    /// <summary>By this round a monster's heals have faded to nothing.</summary>
+    public const int MonsterHealFadeRounds = 20;
 
     /// <summary>
     /// A fresh fight.
@@ -36,18 +38,35 @@ public static class Battle
     /// The player always moves first when their speed is at least the
     /// monster's, and otherwise gets a coin flip rather than an automatic loss
     /// of tempo - the same rule <c>encounter.ts:firstMover</c> uses, for the
-    /// same reason: a fast monster should usually go first, never always.
+    /// same reason: a fast monster should usually go first, never always. A
+    /// Balance charge settles the flip in the player's favour.
+    ///
+    /// The opening is also where the charges and the raid sheet that change
+    /// the player's body land: Resilience and Nourish raise max HP, Energy adds
+    /// speed, and Gratitude starts the fight behind a ward.
     /// </summary>
-    public static BattleState Begin(Monster monster, int level, uint seed)
+    public static BattleState Begin(Monster monster, int level, uint seed, Boosts? boosts = null)
     {
+        Boosts carried = boosts ?? Boosts.None;
         PlayerStats stats = Progression.StatsAt(level);
+
+        int maxHp = stats.MaxHp + Loadout.BonusHp(carried.Stats, stats.MaxHp);
+        if (carried.Charges.Contains(Charge.Nourish))
+        {
+            maxHp += (int)Math.Round(stats.MaxHp * Charges.NourishHp, MidpointRounding.AwayFromZero);
+        }
+        int speed = stats.Speed + Loadout.BonusSpeed(carried.Stats);
+        int ward = carried.Charges.Contains(Charge.Gratitude)
+            ? (int)Math.Round(maxHp * Charges.GratitudeWard, MidpointRounding.AwayFromZero)
+            : 0;
+
         var player = new Combatant(
-            Hp: stats.MaxHp,
-            MaxHp: stats.MaxHp,
-            Shield: 0,
+            Hp: maxHp,
+            MaxHp: maxHp,
+            Shield: ward,
             Attack: stats.Attack,
             Defense: stats.Defense,
-            Speed: stats.Speed,
+            Speed: speed,
             Effects: []);
 
         var foe = new Combatant(
@@ -59,7 +78,7 @@ public static class Battle
             Speed: monster.Speed,
             Effects: []);
 
-        Side first = stats.Speed >= monster.Speed
+        Side first = speed >= monster.Speed || carried.Charges.Contains(Charge.Balance)
             ? Side.Player
             : Rng.Roll(seed, 0) < 0.5 ? Side.Player : Side.Monster;
 
@@ -72,22 +91,10 @@ public static class Battle
             Log: [new BattleLine(1, Side.Monster, $"{monster.Name} blocks the path.")],
             Outcome: Outcome.Fighting,
             Seed: seed,
-            XpOwed: 0);
-    }
-
-    /// <summary>
-    /// The element chart, in one expression.
-    ///
-    /// Weakness and strength are checked in that order and are not additive,
-    /// because a monster is never authored weak and strong to the same element
-    /// and a chart that quietly cancelled itself would be worse than one that
-    /// picked a side.
-    /// </summary>
-    public static double Effectiveness(Element attack, Monster monster)
-    {
-        if (attack == monster.Weakness) return WeaknessMultiplier;
-        if (attack == monster.Strength) return StrengthMultiplier;
-        return 1.0;
+            XpOwed: 0)
+        {
+            Boosts = carried,
+        };
     }
 
     /// <summary>
@@ -151,7 +158,11 @@ public static class Battle
     /// Returns the state untouched when the battle is over or it is not the
     /// player's turn, so a double tap costs nothing.
     /// </summary>
-    public static BattleState Act(BattleState state, string actionId, Monster monster, int level)
+    /// <param name="displayName">
+    /// The companion's name for the move, for the log line only. Absent means
+    /// the plain name from <see cref="Actions"/>.
+    /// </param>
+    public static BattleState Act(BattleState state, string actionId, Monster monster, int level, string? displayName = null)
     {
         if (state.Outcome != Outcome.Fighting || state.Turn != Side.Player) return state;
 
@@ -159,7 +170,8 @@ public static class Battle
 
         PlayerAction? action = Actions.ById(actionId);
         if (action is null) return Say(state, Side.Player, "Nothing happens.");
-        if (action.UnlockLevel > level) return Say(state, Side.Player, $"{action.Name} is not yours yet.");
+        string name = string.IsNullOrWhiteSpace(displayName) ? action.Name : displayName;
+        if (action.UnlockLevel > level) return Say(state, Side.Player, $"{name} is not yours yet.");
 
         double wobble = Rng.Wobble(state.Seed, state.Round * 3);
         BattleState next = state;
@@ -168,21 +180,13 @@ public static class Battle
         {
             case ActionType.Attack:
             {
-                double effectiveness = Effectiveness(action.Element, monster);
-                int damage = Damage(
-                    state.Player.Attack,
-                    action.Power,
-                    state.Monster.Defense,
-                    effectiveness,
-                    wobble,
-                    state.Player.MagnitudeOf(StatusKind.AttackDown));
-
+                int damage = PreviewDamage(state, action, monster, wobble);
                 (Combatant foe, int dealt, int blocked) = Absorb(state.Monster, damage);
-                string note = effectiveness > 1 ? " It flinches - that one landed."
-                    : effectiveness < 1 ? " It barely notices."
+                string note = Charges.HitsWeakness(state.Boosts.Charges, monster)
+                    ? " It flinches - today's logging landed."
                     : "";
                 string blockNote = blocked > 0 ? $" {blocked} turned aside." : "";
-                next = Say(next with { Monster = foe }, Side.Player, $"{action.Name} hits for {dealt}.{blockNote}{note}");
+                next = Say(next with { Monster = foe }, Side.Player, $"{name} hits for {dealt}.{blockNote}{note}");
                 break;
             }
 
@@ -190,21 +194,26 @@ public static class Battle
             {
                 // Power is a percentage of maximum HP for heals, so the
                 // level-4 unlock keeps its value as the island gets harder.
-                int amount = Math.Max(1, (int)Math.Round(state.Player.MaxHp * (action.Power / 100.0)));
+                double lift = Charges.StyleMultiplier(state.Boosts.Charges, action.Style, monster)
+                    * Loadout.StyleMultiplier(state.Boosts.Stats, action.Style);
+                int amount = Math.Max(1, (int)Math.Round(state.Player.MaxHp * (action.Power / 100.0) * lift));
                 int healed = Math.Min(amount, state.Player.MaxHp - state.Player.Hp);
                 next = Say(
                     next with { Player = state.Player with { Hp = state.Player.Hp + healed } },
                     Side.Player,
-                    healed > 0 ? $"{action.Name}. +{healed} back." : $"{action.Name}. Nothing left to mend.");
+                    healed > 0 ? $"{name}. +{healed} back." : $"{name}. Nothing left to mend.");
                 break;
             }
 
             case ActionType.Shield:
             {
+                double lift = Charges.StyleMultiplier(state.Boosts.Charges, action.Style, monster)
+                    * Loadout.StyleMultiplier(state.Boosts.Stats, action.Style);
+                int ward = Math.Max(1, (int)Math.Round(action.Power * lift, MidpointRounding.AwayFromZero));
                 next = Say(
-                    next with { Player = state.Player with { Shield = state.Player.Shield + action.Power } },
+                    next with { Player = state.Player with { Shield = state.Player.Shield + ward } },
                     Side.Player,
-                    $"{action.Name}. +{action.Power} ward.");
+                    $"{name}. +{ward} ward.");
                 break;
             }
 
@@ -214,7 +223,7 @@ public static class Battle
                 next = Say(
                     next with { Monster = state.Monster with { Effects = [.. state.Monster.Effects, effect] } },
                     Side.Player,
-                    $"{action.Name} takes hold.");
+                    $"{name} takes hold.");
                 break;
             }
         }
@@ -288,7 +297,12 @@ public static class Battle
 
             case ActionType.Heal:
             {
-                int healed = Math.Min(action.Power, state.Monster.MaxHp - state.Monster.Hp);
+                // A monster's second wind runs out. Without the fade, a
+                // healer met under-levelled out-heals every hit it takes and
+                // the fight never ends - the one bug this reducer must not have.
+                double fade = Math.Max(0, 1 - ((state.Round - 1) / (double)MonsterHealFadeRounds));
+                int power = (int)Math.Round(action.Power * fade, MidpointRounding.AwayFromZero);
+                int healed = Math.Min(power, state.Monster.MaxHp - state.Monster.Hp);
                 next = Say(
                     next with { Monster = state.Monster with { Hp = state.Monster.Hp + healed } },
                     Side.Monster,
@@ -324,13 +338,39 @@ public static class Battle
     }
 
     /// <summary>
-    /// Plain hits left, for the "is this going anywhere" read the battle log
-    /// panel shows. Assumes the player's opening action and no crits.
+    /// What one of the player's attacks would do right now, before the
+    /// monster's shield and guard.
+    ///
+    /// Magic ignores defense and Physical does not - that is the whole
+    /// difference between them. Everything else multiplies: today's charges
+    /// (weakness, style, Bond) and the raid sheet.
     /// </summary>
-    public static int HitsLeft(BattleState state, Monster monster)
+    public static int PreviewDamage(BattleState state, PlayerAction action, Monster monster, double wobble = 1.0)
     {
-        int perHit = Damage(state.Player.Attack, Actions.Strike.Power, state.Monster.Defense,
-            Effectiveness(Actions.Strike.Element, monster), 1.0, 0);
+        double multiplier = Charges.DamageMultiplier(state.Boosts.Charges, action.Style, monster)
+            * Loadout.StyleMultiplier(state.Boosts.Stats, action.Style);
+        int defense = action.Style == Style.Magic ? 0 : state.Monster.Defense;
+        return Damage(
+            state.Player.Attack,
+            action.Power,
+            defense,
+            multiplier,
+            wobble,
+            state.Player.MagnitudeOf(StatusKind.AttackDown));
+    }
+
+    /// <summary>
+    /// Hits left with the best attack available at this level, for the "is
+    /// this going anywhere" read the battle log panel shows. No crits, no
+    /// wobble.
+    /// </summary>
+    public static int HitsLeft(BattleState state, Monster monster, int level)
+    {
+        int perHit = Actions.UnlockedAt(level)
+            .Where(a => a.Type == ActionType.Attack)
+            .Select(a => PreviewDamage(state, a, monster))
+            .DefaultIfEmpty(1)
+            .Max();
         return (int)Math.Ceiling(state.Monster.Hp / (double)Math.Max(1, perHit));
     }
 }

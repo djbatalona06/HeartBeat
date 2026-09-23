@@ -7,6 +7,8 @@ import {
   comparisonLine,
   longDay,
   meterFor,
+  flagsChanged,
+  flagsOf,
   moodChanged,
   moodSummary,
   scaleWord,
@@ -241,5 +243,18 @@ describe('moodChanged', () => {
 
   it('is true when a note is cleared away', () => {
     expect(moodChanged({ ...STORED, note: 'slept badly' }, null, '')).toBe(true);
+  });
+});
+
+describe('the check-in flags', () => {
+  it('reads an old row as three noes', () => {
+    expect(flagsOf(STORED)).toEqual({ rested: false, grateful: false, ateWell: false });
+  });
+
+  it('counts a flipped flag as a change, and an untouched draft as none', () => {
+    expect(flagsChanged(STORED, null)).toBe(false);
+    expect(flagsChanged(STORED, { rested: false, grateful: false, ateWell: false })).toBe(false);
+    expect(flagsChanged(STORED, { rested: true })).toBe(true);
+    expect(flagsChanged({ ...STORED, grateful: true }, { grateful: false })).toBe(true);
   });
 });

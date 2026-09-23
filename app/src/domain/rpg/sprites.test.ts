@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  FALLBACK_MASCOT_SPRITE, ISLAND_1_SPRITE_KEYS, PALETTE_KEYS, SPRITES, SPRITE_SIZE,
+  FALLBACK_MASCOT_SPRITE, ISLAND_1_SPRITE_KEYS, ISLAND_SPRITE_KEYS, PALETTE_KEYS, SPRITES, SPRITE_SIZE,
   hasSprite, spriteFor, spriteKeyForTheme,
 } from './sprites';
 import { COMPANION_KITS } from './companionSkills';
@@ -89,6 +91,37 @@ describe("Eve's Garden island 1", () => {
   });
 });
 
+/**
+ * Every island, held against the C# that names its sprites. The keys cross a
+ * boundary TypeScript cannot typecheck, so this reads `Data/Island<N>.cs`
+ * directly: a key renamed on either side fails here.
+ */
+describe("Eve's Garden, every island", () => {
+  const authored = (island: number) => {
+    const cs = readFileSync(
+      resolve(__dirname, `../../../../game/HeartBeat.Game.Core/Data/Island${island}.cs`), 'utf8',
+    );
+    return [...cs.matchAll(/SpriteKey: "([^"]+)"/g)].map((m) => m[1]);
+  };
+
+  it('draws every monster on all seven islands, in stage order', () => {
+    for (let island = 1; island <= 7; island += 1) {
+      expect(ISLAND_SPRITE_KEYS[island], `island ${island}`).toEqual(authored(island));
+      for (const key of ISLAND_SPRITE_KEYS[island]) expect(hasSprite(key), key).toBe(true);
+    }
+  });
+
+  it('draws every boss heavier than its island\'s first monster, and the breather lighter than the semi-boss', () => {
+    const painted = (key: string) =>
+      (spriteFor(key) ?? []).join('').split('').filter((c) => c !== '.').length;
+    for (let island = 1; island <= 7; island += 1) {
+      const keys = ISLAND_SPRITE_KEYS[island];
+      expect(painted(keys[6]), `island ${island} boss`).toBeGreaterThan(painted(keys[0]));
+      expect(painted(keys[4]), `island ${island} breather`).toBeLessThan(painted(keys[3]));
+    }
+  });
+});
+
 // The drift checks. These are why the data is TypeScript and not a PNG: a
 // missing sprite is a failing test rather than a blank square in the garden.
 describe('coverage', () => {
@@ -140,7 +173,7 @@ describe('coverage', () => {
       // Referred to from C#, not from anything TypeScript can follow: these
       // are the `SpriteKey` values in Data/Island1.cs, baked by the Eve's
       // Garden scene. Without them this check reads them as dead art.
-      ...ISLAND_1_SPRITE_KEYS,
+      ...Object.values(ISLAND_SPRITE_KEYS).flat(),
       'bird-up', 'bird-down', 'bird-left', 'bird-right',
       // One per mascot, resolved by `spriteKeyForTheme` off the theme id, so
       // nothing in TypeScript names them as literals for this to follow.

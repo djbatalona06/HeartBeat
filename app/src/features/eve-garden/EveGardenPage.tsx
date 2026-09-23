@@ -4,7 +4,7 @@ import { db, loadSettings } from '../../db/database';
 import {
   awardPetXp, buyFlora, chooseRaidCompanion, clearStageFor, coupleVitals, ensureIdentity,
   gardenMomentum, loadWorldProgress, openChestFor, openRaidGate, ownedFlora, plantFlora,
-  recordRaidRounds, travelToIsland,
+  recordRaidRounds, todaysCharges, travelToIsland,
 } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { levelForXp } from '../../domain/xp';
@@ -15,23 +15,26 @@ import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import { gearBonusWithRefinement } from '../../domain/rpg/shop';
 import { refineByItemId } from '../../domain/rpg/inventory';
 import type { Garden } from '../../domain/rpg/plots';
-import { fireSkill, kitFor, turnFor } from '../../domain/rpg/companionSkills';
+import type { House } from '../../domain/rpg/furniture';
+import { holdingsLoadout, loadoutSheet } from '../../domain/rpg/loadout';
+import { chargeOnWeakness, gardenAwardId, payingActivities } from '../../domain/rpg/charges';
+import { bossOf, faceOf } from '../../domain/rpg/islands';
+import { fireSkill, kitFor, moveKeyFor, moveNamesFor } from '../../domain/rpg/companionSkills';
 import type { GateCard, GateVerdict } from '../../domain/rpg/raidGate';
 import { variantFor } from '../../domain/rpg/diorama';
 import {
-  BUILT_ISLAND_COUNT, currentStage, isIslandComplete, islandProgress, standingIsland,
+  ISLAND_COUNT, currentStage, isIslandComplete, islandProgress, standingIsland,
   newWorldProgress, type WorldProgress,
 } from '../../domain/rpg/world';
 import { createGameClient, isClosed, type GameClient } from './engine/client';
 import type {
-  ActionDto, BattleDto, DioramaTheme, IslandDto, MonsterDto, ProgressDto,
+  ActionDto, BattleDto, Charge, DioramaTheme, IslandDto, MonsterDto, ProgressDto,
 } from './engine/types';
 import type { SceneHandle } from './scene/events';
 import {
   blocksPlay, faultCopy, faultFrom, needsTextMode, type GardenFault,
 } from './fault';
 import { NotHere } from '../errors/NotHere';
-import { logActivity } from './logging';
 import { GardenBackdrop } from './GardenBackdrop';
 import { GardenPlaces } from './GardenPlaces';
 import { GardenDrawer } from './GardenDrawer';
@@ -46,6 +49,7 @@ import { WorldMap } from './WorldMap';
 import { WellnessCards } from './WellnessCards';
 import { BattleLog } from './BattleLog';
 import { ActionBar } from './ActionBar';
+import { ChargeMeter } from './ChargeMeter';
 import { VictoryBanner } from './VictoryBanner';
 
 /**
@@ -97,12 +101,12 @@ const TURN_GAP_MS = 220;
 
 /**
  * An XP total comfortably past the last level, for asking what the top of the
- * curve unlocks. `Progression.XpForLevel(10)` is 3162; this only has to be more
+ * curve unlocks. `Progression.XpForLevel(34)` is 19825; this only has to be more
  * than that and to fit in an `int`.
  */
 const TOP_OF_THE_CURVE = 1_000_000;
 
-type Busy = 'idle' | 'acting' | 'logging';
+type Busy = 'idle' | 'acting';
 
 export function EveGardenPage() {
   const host = useRef<HTMLDivElement | null>(null);
@@ -129,6 +133,10 @@ export function EveGardenPage() {
   // cycle — so the day key is computed above and passed in.
   const vitals = useLiveQuery(() => coupleVitals(day), [day]);
   const momentum = useLiveQuery(() => gardenMomentum(day), [day]);
+  // Today's logging, as the fight reads it. The garden has no logging controls:
+  // every charge lights from a row another page wrote.
+  const lit = useLiveQuery(() => todaysCharges(day), [day]);
+  const charges: Charge[] = useMemo(() => lit ?? [], [lit]);
   const pet = useLiveQuery(() => (coupleId ? db.pet.get(coupleId) : undefined), [coupleId]);
   const stored = useLiveQuery(
     () => (coupleId ? loadWorldProgress(coupleId) : undefined),
@@ -263,6 +271,22 @@ export function EveGardenPage() {
     ).stats.luck
     : 0;
 
+  /**
+   * The raid sheet the fight uses: gear, room, dye, companion, garden and the
+   * mascot at the gate. The same assembly the party page's sheet shows, so the
+   * numbers there are the numbers here. Handed to C# once, when a fight begins.
+   */
+  const sheet = useMemo(() => loadoutSheet(holdingsLoadout({
+    avatar,
+    owned: bag ?? [],
+    petXp,
+    house: (pet?.house ?? {}) as House,
+    garden,
+    pets: residents ?? [],
+    mascot: gate?.cards.find((card) => card.themeId === companion)?.source,
+  })), [avatar, bag, petXp, pet?.house, garden, residents, gate, companion]);
+  const moveNames = useMemo(() => moveNamesFor(kit), [kit]);
+
   /* ---- the worker ---- */
 
   useEffect(() => {
@@ -343,12 +367,12 @@ export function EveGardenPage() {
   const onEngage = useCallback(() => {
     const game = client.current;
     if (!game || !progress || !monster) return;
-    game.beginBattle(island, stage, theme, progress.level, Date.now())
-      .then((next) => setBattle(next))
+    game.beginBattle(island, stage, theme, progress.level, Date.now(), charges, sheet.total)
+      .then((next) => setBattle(next ? { ...next, moveNames } : next))
       // Was silent, which made walking into a monster and having nothing happen
       // indistinguishable from having missed the tile.
       .catch((error) => setFault(faultFrom('round', error)));
-  }, [island, stage, theme, progress, monster]);
+  }, [island, stage, theme, progress, monster, charges, sheet, moveNames]);
 
   // The scene is rebuilt when the stage or the island's face changes, and at no
   // other time. `onEngage` is deliberately absent from the dependencies: it
@@ -429,12 +453,9 @@ export function EveGardenPage() {
 
   /* ---- a round ---- */
 
-  /** How a hit should look, from the same chart C# used to price it. */
-  function edgeOf(element: ActionDto['element'], foe: MonsterDto | null) {
-    if (!foe) return 'plain' as const;
-    if (element === foe.weakness) return 'strong' as const;
-    if (element === foe.strength) return 'weak' as const;
-    return 'plain' as const;
+  /** How a hit should look: strong when today's logging is on its weakness, as C# priced it. */
+  function edgeOf(foe: MonsterDto | null) {
+    return chargeOnWeakness(charges, foe?.weakness) ? 'strong' as const : 'plain' as const;
   }
 
   const finish = useCallback(async (ended: BattleDto, foe: MonsterDto) => {
@@ -502,7 +523,9 @@ export function EveGardenPage() {
 
     setBusy('acting');
     try {
-      const mine = await game.act(opening, actionId);
+      // The charges are the one thing the page updates on a battle in flight:
+      // a workout logged between turns lands on the very next swing.
+      const mine = await game.act({ ...opening, charges, moveNames }, actionId);
       if (!mine) return;
       setBattle(mine);
 
@@ -516,8 +539,9 @@ export function EveGardenPage() {
         // The companion's own move, before the swing it decorates. C# has
         // already priced the turn — this is the picture, and `fireSkill` is
         // asked only whether it is the companion's to play.
-        if (action?.activity) {
-          const verdict = fireSkill(kit, turnFor(action.activity), {
+        const move = action ? moveKeyFor(action.style) : undefined;
+        if (move) {
+          const verdict = fireSkill(kit, move, {
             hour: new Date().getHours(),
             sinceLastUse: cooldowns.current[kit.themeId] ?? Infinity,
             spentThisRaid: spent.current.has(kit.signature.id),
@@ -533,7 +557,7 @@ export function EveGardenPage() {
         }
         for (const key of Object.keys(cooldowns.current)) cooldowns.current[key] += 1;
 
-        await scene.current?.strike('player-hits', edgeOf(action?.element ?? 'Movement', foe));
+        await scene.current?.strike('player-hits', action?.type === 'Attack' ? edgeOf(foe) : 'plain');
       }
 
       if (mine.outcome !== 'Fighting') {
@@ -555,39 +579,49 @@ export function EveGardenPage() {
     } finally {
       setBusy('idle');
     }
-  }, [monster, progress, finish, kit]);
+  }, [monster, progress, finish, kit, charges, moveNames]);
+
+  /** One tap of the move bar. A move is a move: nothing is logged by it. */
+  const onAct = useCallback(async (action: ActionDto) => {
+    if (busy !== 'idle') return;
+    if (battle?.outcome === 'Fighting') await playRound(battle, action.id);
+  }, [busy, battle, playRound]);
 
   /**
-   * One tap of the action bar: log it, pay it, then swing.
+   * Each lit charge pays its XP once a day, the first time the garden sees it.
    *
-   * The order is the point. The wellness row is written first and unconditionally
-   * — it is the thing that actually matters, and a fight that fails should not
-   * cost somebody their workout. The XP and the swing follow.
+   * The strip that used to log from here also paid for it; with logging moved
+   * to the pages that own it, this keeps that income without a second write
+   * path. The award id is the day and the activity, never the phone, so both
+   * partners' gardens seeing the same "rested" pay it once — `awardPetXp`
+   * dedups on it. `companion` is in the deps for the reason CLAUDE.md gives:
+   * the client only exists after the gate's pick.
    */
-  const onAct = useCallback(async (action: ActionDto) => {
-    if (busy !== 'idle' || !memberId || !coupleId) return;
+  const paid = useRef(new Set<string>());
+  useEffect(() => {
+    const game = client.current;
+    if (!game || !coupleId) return;
+    const owed = payingActivities(charges)
+      .map((activity) => ({ activity, awardId: gardenAwardId(day, activity) }))
+      .filter(({ awardId }) => !paid.current.has(awardId) && !(pet?.awardedXpIds ?? []).includes(awardId));
+    if (owed.length === 0) return;
 
-    if (action.activity) {
-      setBusy('logging');
-      setPulse((n) => n + 1);
-      try {
-        await logActivity(action.activity, memberId, day);
-        // One award per activity per day, so tapping "Log Mood" eight times in a
-        // fight pays once — the same shape as the row it writes, which upserts
-        // on [memberId+day].
-        const award = await client.current?.award(action.activity, petXp);
-        if (award && award.xp > 0) {
-          await awardPetXp(coupleId, `garden-${day}-${action.activity}`, award.xp);
+    (async () => {
+      let xp = petXp;
+      for (const { activity, awardId } of owed) {
+        paid.current.add(awardId);
+        const award = await game.award(activity, xp);
+        if (award.xp > 0) {
+          await awardPetXp(coupleId, awardId, award.xp);
+          xp += award.xp;
+          setPulse((n) => n + 1);
         }
-      } catch (error) {
-        if (!isClosed(error)) setNote('That did not save. Try the log page.');
-      } finally {
-        setBusy('idle');
       }
-    }
-
-    if (battle?.outcome === 'Fighting') await playRound(battle, action.id);
-  }, [busy, memberId, coupleId, day, petXp, battle, playRound]);
+    })().catch((error) => { if (!isClosed(error)) setNote('A charge did not pay out. It will try again.'); });
+  // `petXp` and `pet` are read, not watched: an award moving them must not
+  // re-run this, and the `paid` set is what stops a second payment anyway.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [charges, day, coupleId, companion]);
 
   const onFlee = useCallback(() => {
     if (battle?.outcome === 'Fighting') void playRound(battle, 'flee');
@@ -606,9 +640,9 @@ export function EveGardenPage() {
     : 'Eve’s Garden';
 
   const nextIslandName = useMemo(() => {
-    // Unbuilt islands are named on the map but cannot be walked to, so the
-    // banner says there is no further to go rather than naming one as open.
-    if (island >= BUILT_ISLAND_COUNT) return null;
+    // The last island has no next one, so the banner says there is no
+    // further to go rather than naming one as open.
+    if (island >= ISLAND_COUNT) return null;
     const next = islands.find((i) => i.number === island + 1);
     return next ? (dark ? next.darkName : next.lightName) : null;
   }, [islands, island, dark]);
@@ -669,6 +703,7 @@ export function EveGardenPage() {
         dark={dark}
         resonance={resonance}
         petLevel={petLevel}
+        world={world}
         onEnter={onEnter}
       />
     );
@@ -682,6 +717,7 @@ export function EveGardenPage() {
           islandName={islandName}
           stage={stage}
           progress={islandProgress(world)}
+          bossName={faceOf(bossOf(island), dark).name}
           dark={dark}
           onOpenMap={() => setMapOpen(true)}
         />
@@ -774,16 +810,25 @@ export function EveGardenPage() {
         <BattleLog battle={battle} monster={monster} />
       </div>
 
-      <ActionBar
-        actions={progress?.actions ?? []}
-        allActions={allActions}
-        battle={battle}
-        monster={monster}
-        level={progress?.level ?? 1}
-        busy={busy !== 'idle'}
-        onAct={(action) => { void onAct(action); }}
-        onFlee={onFlee}
-      />
+      {/* The controller: the move pad on the left, today's charges on the right,
+          side by side on every width. The meter is a picture of the day, never
+          a control — logging happens on the pages that own it. */}
+      <div className="garden-controls">
+        <ActionBar
+          actions={progress?.actions ?? []}
+          allActions={allActions}
+          battle={battle}
+          monster={monster}
+          level={progress?.level ?? 1}
+          busy={busy !== 'idle'}
+          kit={kit}
+          charges={charges}
+          stats={sheet.total}
+          onAct={(action) => { void onAct(action); }}
+          onFlee={onFlee}
+        />
+        <ChargeMeter charges={charges} weakness={monster?.weakness} />
+      </div>
 
       {/* The alcove and the plots, in the garden. The plan asked for the chest
           alcove to be part of the garden's architecture rather than a separate
