@@ -154,7 +154,11 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   re-entering is one tap. It is rendered *instead of* `EveGardenPage`'s garden
   rather than over it, which is what keeps Phaser and the 3.5 MB WebAssembly
   runtime from booting for a screen somebody backs out of. Both effects are
-  guarded on `companion`; keep them that way.
+  guarded on `companion`; keep them that way. **Every effect that reads
+  `client.current` must also list `companion` in its deps**: the client only
+  exists after the gate's pick, and a ref changing re-runs nothing, so an
+  effect without it runs once behind the gate, finds no client, and never asks
+  again. That left the garden on "Waking the garden…" for every fresh visit.
 - **A skill kit is character, not palette.** `companionSkills.test.ts` fails if
   a rights holder's name appears anywhere in that file, the same guard
   `pets.test.ts` and `mascots/roster.test.ts` already carry. Kits belong to the
