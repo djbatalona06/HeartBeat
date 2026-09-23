@@ -309,7 +309,11 @@ export function EveGardenPage() {
       // screen that did not load.
       .catch((error) => { if (live) setFault(faultFrom('stage', error)); });
     return () => { live = false; };
-  }, [petXp, reload]);
+    // `companion` because the client above only exists once one is picked. On
+    // first mount the gate is up, this runs, finds no client and returns; the
+    // pick then starts the worker, and without `companion` here nothing asks
+    // again. The garden sat on "Waking the garden…" for every fresh visit.
+  }, [petXp, companion, reload]);
 
   /* ---- which monster is standing on this stage ---- */
 
@@ -330,7 +334,9 @@ export function EveGardenPage() {
        */
       .catch((error) => { if (live) setFault(faultFrom('stage', error)); });
     return () => { live = false; };
-  }, [island, stage, theme, reload]);
+    // `companion` for the same reason as the progress effect above: the client
+    // is created by the gate's pick, which changes none of the other deps.
+  }, [island, stage, theme, companion, reload]);
 
   /* ---- the canvas ---- */
 
