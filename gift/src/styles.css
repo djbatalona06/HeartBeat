@@ -501,6 +501,32 @@ body {
 .flat.is-heart { padding: 4vh 4vw 20vh; justify-content: center; }
 .flat.is-heart .flat-bin { width: min(92vw, 560px); cursor: default; }
 
+/* The record player at three sizes. Only the container is sized here: the
+   grid's shape is --flat-cols / --flat-rows, which crate.js sets from the
+   heart mask, and stays JS-driven.
+
+   Each width is also capped in dvh, because the deck and the bin stack
+   vertically and a width that fits a phone's width can still overflow its
+   height. The deck is 5:4 and the bin 7:6 until the finale re-shapes it. */
+@media (max-width: 640px) {
+  .flat { padding: 4vh 4vw 20vh; }
+  .flat-deck { width: min(74vw, 300px, 34dvh); }
+  .flat-bin { width: min(88vw, 360px, 45dvh); }
+  .flat.is-heart .flat-bin { width: min(92vw, 560px, 66dvh); }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+  .flat { padding: 5vh 6vw 20vh; }
+  .flat-deck { width: min(46vw, 340px, 34dvh); }
+  .flat-bin { width: min(60vw, 440px, 45dvh); }
+  .flat.is-heart .flat-bin { width: min(80vw, 600px, 66dvh); }
+}
+@media (min-width: 1025px) {
+  .flat { padding: 5vh 4vw 22vh; }
+  .flat-deck { width: min(320px, 34dvh); }
+  .flat-bin { width: min(400px, 45dvh); }
+  .flat.is-heart .flat-bin { width: min(620px, 66dvh); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .flat-deck.on .flat-disc { animation: none; }
   .flat-arm, .flat-card { transition-duration: 0.01ms !important; }
@@ -803,15 +829,37 @@ body {
   transition: opacity 420ms ease;
 }
 
-/* Under 560px the screen takes the whole width and there is no room beside it,
+/* Three sizes, and only the leaf numbers change in each: --screen-h, the
+   roller, the floor and the paw are all measured from these and follow.
+
+   Every tier also caps the screen by the height left over once the bottom
+   band and a margin are taken, at the screen's own 4:3. Width alone let a
+   landscape phone or a short laptop window push the screen under the button.
+
+   Mobile: the screen takes the whole width and there is no room beside it,
    so the cat steps in front of its bottom-left corner rather than being
-   cropped off the page. Only these three numbers change; everything else is
-   already measured from them. */
-@media (max-width: 560px) {
+   cropped off the page. */
+@media (max-width: 640px) {
   .proj-stage {
-    --screen-w: 88vw;
+    --screen-w: min(88vw, calc((100dvh - var(--bottom-band) - 72px) * 4 / 3));
     --cat-w: clamp(46px, 13vw, 68px);
     --cat-left: 3vw;
+  }
+}
+/* Tablet: narrower than the default so an iPad keeps a visible margin, and
+   wide enough that the cat still stands beside the screen, not on it. */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .proj-stage {
+    --screen-w: min(68vw, 520px, calc((100dvh - var(--bottom-band) - 96px) * 4 / 3));
+    --cat-w: clamp(58px, 9vw, 84px);
+  }
+}
+/* Desktop: stated rather than left to the base rule, which was tuned before
+   there were tiers. */
+@media (min-width: 1025px) {
+  .proj-stage {
+    --screen-w: min(640px, 48vw, calc((100dvh - var(--bottom-band) - 96px) * 4 / 3));
+    --cat-w: 92px;
   }
 }
 

@@ -366,6 +366,10 @@ await run('iphone', { width: 390, height: 844 }, false);
 await run('touch', { width: 390, height: 844 }, false, true);
 await run('nowebgl', { width: 1280, height: 800 }, true);
 await run('touch-nowebgl', { width: 390, height: 844 }, true, true);
+// The tablet breakpoint, both ways up. Touch and flat, because that is the
+// iPad a no-WebGL fallback lands on and the layout the tablet tier sizes.
+await run('ipad', { width: 820, height: 1180 }, true, true);
+await run('ipad-landscape', { width: 1180, height: 820 }, false, true);
 await naturalReveal();
 
 await browser.close();
