@@ -17,7 +17,8 @@ import { id, now } from './shared';
 export async function putMood(
   memberId: MemberId,
   day: DayKey,
-  values: Pick<MoodEntry, 'hunger' | 'joy' | 'moody'> & { note?: string },
+  values: Pick<MoodEntry, 'hunger' | 'joy' | 'moody'>
+    & Partial<Pick<MoodEntry, 'note' | 'rested' | 'grateful' | 'ateWell'>>,
 ): Promise<void> {
   const existing = await db.moods.where('[memberId+day]').equals([memberId, day]).first();
   await db.moods.put({

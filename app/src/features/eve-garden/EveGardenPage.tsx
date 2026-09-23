@@ -17,7 +17,7 @@ import { refineByItemId } from '../../domain/rpg/inventory';
 import type { Garden } from '../../domain/rpg/plots';
 import type { House } from '../../domain/rpg/furniture';
 import { holdingsLoadout, loadoutSheet } from '../../domain/rpg/loadout';
-import { chargeOnWeakness, gardenAwardId } from '../../domain/rpg/charges';
+import { chargeOnWeakness, gardenAwardId, payingActivities } from '../../domain/rpg/charges';
 import { bossOf, faceOf } from '../../domain/rpg/islands';
 import { fireSkill, kitFor, moveKeyFor, moveNamesFor } from '../../domain/rpg/companionSkills';
 import type { GateCard, GateVerdict } from '../../domain/rpg/raidGate';
@@ -28,14 +28,13 @@ import {
 } from '../../domain/rpg/world';
 import { createGameClient, isClosed, type GameClient } from './engine/client';
 import type {
-  ActionDto, Activity, BattleDto, Charge, DioramaTheme, IslandDto, MonsterDto, ProgressDto,
+  ActionDto, BattleDto, Charge, DioramaTheme, IslandDto, MonsterDto, ProgressDto,
 } from './engine/types';
 import type { SceneHandle } from './scene/events';
 import {
   blocksPlay, faultCopy, faultFrom, needsTextMode, type GardenFault,
 } from './fault';
 import { NotHere } from '../errors/NotHere';
-import { logActivity } from './logging';
 import { GardenBackdrop } from './GardenBackdrop';
 import { GardenPlaces } from './GardenPlaces';
 import { GardenDrawer } from './GardenDrawer';
@@ -50,7 +49,7 @@ import { WorldMap } from './WorldMap';
 import { WellnessCards } from './WellnessCards';
 import { BattleLog } from './BattleLog';
 import { ActionBar } from './ActionBar';
-import { ChargeStrip } from './ChargeStrip';
+import { ChargeMeter } from './ChargeMeter';
 import { VictoryBanner } from './VictoryBanner';
 
 /**
@@ -107,7 +106,7 @@ const TURN_GAP_MS = 220;
  */
 const TOP_OF_THE_CURVE = 1_000_000;
 
-type Busy = 'idle' | 'acting' | 'logging';
+type Busy = 'idle' | 'acting';
 
 export function EveGardenPage() {
   const host = useRef<HTMLDivElement | null>(null);
@@ -134,9 +133,9 @@ export function EveGardenPage() {
   // cycle — so the day key is computed above and passed in.
   const vitals = useLiveQuery(() => coupleVitals(day), [day]);
   const momentum = useLiveQuery(() => gardenMomentum(day), [day]);
-  // Today's logging, as the fight reads it. A workout logged on the exercise
-  // page lights this exactly as one logged from the strip below does.
-  const lit = useLiveQuery(() => todaysCharges(coupleId, day), [coupleId, day]);
+  // Today's logging, as the fight reads it. The garden has no logging controls:
+  // every charge lights from a row another page wrote.
+  const lit = useLiveQuery(() => todaysCharges(day), [day]);
   const charges: Charge[] = useMemo(() => lit ?? [], [lit]);
   const pet = useLiveQuery(() => (coupleId ? db.pet.get(coupleId) : undefined), [coupleId]);
   const stored = useLiveQuery(
@@ -589,26 +588,40 @@ export function EveGardenPage() {
   }, [busy, battle, playRound]);
 
   /**
-   * One tap of the charge strip: log it, then pay it.
+   * Each lit charge pays its XP once a day, the first time the garden sees it.
    *
-   * The wellness row is written first and unconditionally — it is the thing
-   * that actually matters. The XP follows, once per activity per day, under
-   * the same award id the charge is read back from.
+   * The strip that used to log from here also paid for it; with logging moved
+   * to the pages that own it, this keeps that income without a second write
+   * path. The award id is the day and the activity, never the phone, so both
+   * partners' gardens seeing the same "rested" pay it once — `awardPetXp`
+   * dedups on it. `companion` is in the deps for the reason CLAUDE.md gives:
+   * the client only exists after the gate's pick.
    */
-  const onLog = useCallback(async (activity: Activity) => {
-    if (busy !== 'idle' || !memberId || !coupleId) return;
-    setBusy('logging');
-    setPulse((n) => n + 1);
-    try {
-      await logActivity(activity, memberId, day);
-      const award = await client.current?.award(activity, petXp);
-      if (award && award.xp > 0) await awardPetXp(coupleId, gardenAwardId(day, activity), award.xp);
-    } catch (error) {
-      if (!isClosed(error)) setNote('That did not save. Try the log page.');
-    } finally {
-      setBusy('idle');
-    }
-  }, [busy, memberId, coupleId, day, petXp]);
+  const paid = useRef(new Set<string>());
+  useEffect(() => {
+    const game = client.current;
+    if (!game || !coupleId) return;
+    const owed = payingActivities(charges)
+      .map((activity) => ({ activity, awardId: gardenAwardId(day, activity) }))
+      .filter(({ awardId }) => !paid.current.has(awardId) && !(pet?.awardedXpIds ?? []).includes(awardId));
+    if (owed.length === 0) return;
+
+    (async () => {
+      let xp = petXp;
+      for (const { activity, awardId } of owed) {
+        paid.current.add(awardId);
+        const award = await game.award(activity, xp);
+        if (award.xp > 0) {
+          await awardPetXp(coupleId, awardId, award.xp);
+          xp += award.xp;
+          setPulse((n) => n + 1);
+        }
+      }
+    })().catch((error) => { if (!isClosed(error)) setNote('A charge did not pay out. It will try again.'); });
+  // `petXp` and `pet` are read, not watched: an award moving them must not
+  // re-run this, and the `paid` set is what stops a second payment anyway.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [charges, day, coupleId, companion]);
 
   const onFlee = useCallback(() => {
     if (battle?.outcome === 'Fighting') void playRound(battle, 'flee');
@@ -797,26 +810,25 @@ export function EveGardenPage() {
         <BattleLog battle={battle} monster={monster} />
       </div>
 
-      <ActionBar
-        actions={progress?.actions ?? []}
-        allActions={allActions}
-        battle={battle}
-        monster={monster}
-        level={progress?.level ?? 1}
-        busy={busy !== 'idle'}
-        kit={kit}
-        charges={charges}
-        stats={sheet.total}
-        onAct={(action) => { void onAct(action); }}
-        onFlee={onFlee}
-      />
-
-      <ChargeStrip
-        charges={charges}
-        weakness={monster?.weakness}
-        busy={busy !== 'idle' || !identityReady}
-        onLog={(activity) => { void onLog(activity); }}
-      />
+      {/* The controller: the move pad on the left, today's charges on the right,
+          side by side on every width. The meter is a picture of the day, never
+          a control — logging happens on the pages that own it. */}
+      <div className="garden-controls">
+        <ActionBar
+          actions={progress?.actions ?? []}
+          allActions={allActions}
+          battle={battle}
+          monster={monster}
+          level={progress?.level ?? 1}
+          busy={busy !== 'idle'}
+          kit={kit}
+          charges={charges}
+          stats={sheet.total}
+          onAct={(action) => { void onAct(action); }}
+          onFlee={onFlee}
+        />
+        <ChargeMeter charges={charges} weakness={monster?.weakness} />
+      </div>
 
       {/* The alcove and the plots, in the garden. The plan asked for the chest
           alcove to be part of the garden's architecture rather than a separate

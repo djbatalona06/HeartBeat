@@ -217,12 +217,15 @@ Full deploy walkthrough: `docs/DEPLOY.md`
 - **A move is not a log, and a log is not a move.** The move bar is the
   companion's physical / defensive / magic moves (plus Mend at 4 and Together
   at 10), named per kit in `companionSkills.ts` and priced in C#. Logging a
-  workout, a study session, a mood or a rest lights a **charge** for the day
+  workout, a study session or a mood lights a **charge** for the day
   (`domain/rpg/charges.ts` decides which, `Charges.cs` what each is worth); a
-  charge on the monster's weakness makes every hit land at 1.5×. Rest,
-  Gratitude and Nourish have no table — their `garden-<day>-<activity>` pet-XP
-  award id *is* the record `todaysCharges` reads back, so never rename that
-  id shape. **Every fight must stay winnable with no charges and no gear**:
+  charge on the monster's weakness makes every hit land at 1.5×. **The garden
+  has no logging controls** — `ChargeMeter` beside the move pad only shows what
+  other pages wrote. Rest, Gratitude and Nourish are the optional `rested` /
+  `grateful` / `ateWell` flags on a `MoodEntry`, ticked on the mood check-in;
+  they sync with the mood row, so a partner's flag lights both gardens. The
+  garden pays each lit charge's XP once a day under `garden-<day>-<activity>`,
+  deterministic so two phones never double-pay; never add the phone to that id. **Every fight must stay winnable with no charges and no gear**:
   `IslandTests` simulates every stage of all seven islands uncharged, and a
   charge may only ever help (`BattleTests.AChargeNeverCostsAnything`).
 - **The raid sheet reaches the fight.** `holdingsLoadout` + `loadoutSheet` is

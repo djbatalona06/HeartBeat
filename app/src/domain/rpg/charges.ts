@@ -1,14 +1,16 @@
-import type { Activity, Charge, Element } from '../../features/eve-garden/engine/types';
+import type { Activity, Charge, Element, MoveStyle, RaidStatsDto } from '../../features/eve-garden/engine/types';
+import { gearLift } from './loadout';
 import type { DayKey, MemberId } from '../types';
 
 /**
  * What today's logging is worth in Eve's Garden.
  *
- * A log is not a move. Logging a workout on the exercise page, a study session
- * on the calendar, a mood, or a night's rest from the garden's charge strip
- * lights a **charge** for the day, and the charges change how the companion's
- * moves land. The arithmetic is `Charges.cs`; this module only decides which
- * are lit, and says in words what each one does.
+ * A log is not a move, and the garden has no logging controls at all. Logging
+ * a workout on the exercise page, a study session on the calendar, or a mood —
+ * with "rested", "grateful" and "ate well" ticked on the same check-in — lights
+ * a **charge** for the day, and the charges change how the companion's moves
+ * land. The arithmetic is `Charges.cs`; this module decides which are lit,
+ * says in words what each one does, and restates the multipliers for the meter.
  *
  * Two of them cannot be logged at all. **Bond** lights when both of you have
  * logged something today, and **Balance** when three different kinds of log
@@ -52,19 +54,17 @@ export interface ChargeCopy {
   label: string;
   /** What it does in a fight. The numbers are `Charges.cs`'s constants. */
   effect: string;
-  /** The button text for logging it from the strip, when it can be logged. */
-  log?: string;
   /** What to do today to light it, finishing "once you log …" or "Log … today". */
   nudge: string;
 }
 
 export const CHARGE_COPY: Record<Charge, ChargeCopy> = {
-  Exercise: { label: 'Workout', effect: 'Physical moves +25%', log: 'Worked out', nudge: 'a workout' },
-  Work: { label: 'Study & work', effect: 'Magic moves +25%', log: 'Studied', nudge: 'some study or focused work' },
-  Mood: { label: 'Mood', effect: 'Wards +25%', log: 'Checked in', nudge: 'how you feel' },
-  Rest: { label: 'Rest', effect: 'Mend heals +50%', log: 'Rested', nudge: 'a proper rest' },
-  Gratitude: { label: 'Gratitude', effect: 'Start behind a ward', log: 'Grateful', nudge: 'something you are grateful for' },
-  Nourish: { label: 'Ate well', effect: '+15% max HP', log: 'Ate well', nudge: 'a good meal' },
+  Exercise: { label: 'Workout', effect: 'Physical moves +25%', nudge: 'a workout' },
+  Work: { label: 'Study & work', effect: 'Magic moves +25%', nudge: 'some study or focused work' },
+  Mood: { label: 'Mood', effect: 'Wards +25%', nudge: 'how you feel' },
+  Rest: { label: 'Rest', effect: 'Mend heals +50%', nudge: 'a proper rest' },
+  Gratitude: { label: 'Gratitude', effect: 'Start behind a ward', nudge: 'something you are grateful for' },
+  Nourish: { label: 'Ate well', effect: '+15% max HP', nudge: 'a good meal' },
   Bond: { label: 'Both of you', effect: 'Every hit +10%', nudge: 'something each, the two of you' },
   Balance: { label: 'Three kinds', effect: 'You go first', nudge: 'three different kinds of thing' },
 };
@@ -76,36 +76,38 @@ export interface TodayRow {
 }
 
 export interface ChargeInput {
-  day: DayKey;
-  /** Mood, exercise and hand-logged work rows for today, from either partner. */
-  rows: readonly TodayRow[];
   /**
-   * The pet's recent award ids. Rest, Gratitude and Nourish have no table —
-   * their `garden-<day>-<activity>` XP award is the only record they happened.
+   * Today's rows from either partner: mood, exercise and hand-logged work, plus
+   * one Rest / Gratitude / Nourish row for each flag ticked on a mood check-in.
    */
-  awardIds: readonly string[];
+  rows: readonly TodayRow[];
 }
 
-/** The award id the garden pays a log under. The same one `awardPetXp` dedups on. */
+/**
+ * The award id the garden pays a lit charge's XP under, once a day. The same
+ * id on both phones, so `awardPetXp` pays it once however many see it lit.
+ */
 export function gardenAwardId(day: DayKey, activity: Activity): string {
   return `garden-${day}-${activity}`;
 }
 
 /** Which charges are lit today, in `CHARGES` order. */
-export function chargesFor({ day, rows, awardIds }: ChargeInput): Charge[] {
-  const awarded = new Set(awardIds);
+export function chargesFor({ rows }: ChargeInput): Charge[] {
   const lit = new Set<Charge>();
 
   for (const { charge, activity } of LOGGABLE) {
-    if (rows.some((row) => row.activity === activity) || awarded.has(gardenAwardId(day, activity))) {
-      lit.add(charge);
-    }
+    if (rows.some((row) => row.activity === activity)) lit.add(charge);
   }
 
   if (new Set(rows.map((row) => row.memberId)).size >= 2) lit.add('Bond');
   if (lit.size - (lit.has('Bond') ? 1 : 0) >= BALANCE_KINDS) lit.add('Balance');
 
   return CHARGES.filter((charge) => lit.has(charge));
+}
+
+/** The charges that come from one log, and so pay XP. Bond and Balance are earned. */
+export function payingActivities(charges: readonly Charge[]): Activity[] {
+  return LOGGABLE.filter(({ charge }) => charges.includes(charge)).map(({ activity }) => activity);
 }
 
 /** True when a charge hits what the monster is weak to. The hint the move bar shows. */
@@ -117,4 +119,53 @@ export function chargeOnWeakness(charges: readonly Charge[], weakness: Element |
 /** The charge that answers an element, for the "log this" nudge. */
 export function chargeForElement(element: Element): Charge {
   return CHARGES.find((charge) => CHARGE_ELEMENT[charge] === element) ?? 'Mood';
+}
+
+/* -- what the move bar shows ------------------------------------------------- */
+
+/** Mirrors `Charges.cs` and `Battle.WeaknessMultiplier`; `charges.test.ts` reads both. */
+export const STYLE_BONUS = 0.25;
+export const MEND_BONUS = 0.5;
+export const BOND_BONUS = 0.1;
+export const WEAKNESS_MULTIPLIER = 1.5;
+
+/** Which charge feeds each move style. Mirrors `Charges.StyleOf`. */
+export const FEEDS: Partial<Record<MoveStyle, Charge>> = {
+  Physical: 'Exercise',
+  Magic: 'Work',
+  Defensive: 'Mood',
+  Mend: 'Rest',
+};
+
+/** A full boost bar. Past this the bar stays full; the number keeps counting. */
+export const LIFT_FULL = 150;
+
+export interface LiftInput {
+  charges: readonly Charge[];
+  stats: RaidStatsDto;
+  style: MoveStyle;
+  /** The monster in front of you, when there is one. */
+  weakness?: Element;
+  strength?: Element;
+}
+
+/**
+ * How much today's charges and the raid sheet lift one move, as a whole
+ * percentage. The same product `Battle.PreviewDamage` takes for a hit and
+ * `Battle.Act` takes for a ward or a heal — restated here only so the bar can
+ * be drawn without a round trip. Never below zero: a charge only ever helps.
+ */
+export function moveLift({ charges, stats, style, weakness, strength }: LiftInput): number {
+  let multiplier = 1;
+  const fed = FEEDS[style];
+  if (fed && charges.includes(fed)) {
+    let bonus = fed === 'Rest' ? MEND_BONUS : STYLE_BONUS;
+    if (CHARGE_ELEMENT[fed] === strength) bonus /= 2;
+    multiplier *= 1 + bonus;
+  }
+  const hits = style === 'Physical' || style === 'Magic' || style === 'Together';
+  if (hits && chargeOnWeakness(charges, weakness)) multiplier *= WEAKNESS_MULTIPLIER;
+  if (hits && charges.includes('Bond')) multiplier *= 1 + BOND_BONUS;
+  multiplier *= 1 + gearLift(stats, style) / 100;
+  return Math.max(0, Math.round((multiplier - 1) * 100));
 }

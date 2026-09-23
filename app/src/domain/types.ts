@@ -65,6 +65,15 @@ export interface MoodEntry {
   joy: number;
   moody: number;
   note?: string;
+  /**
+   * Three yes/no answers from the mood check-in. They are what lights Rest,
+   * Gratitude and Nourish in Eve's Garden (`domain/rpg/charges.ts`). Optional,
+   * because a row written before they existed simply said no, and the entries
+   * payload is opaque JSON, so they sync to the partner with no migration.
+   */
+  rested?: boolean;
+  grateful?: boolean;
+  ateWell?: boolean;
   updatedAt: number;
 }
 

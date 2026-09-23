@@ -7,12 +7,17 @@ import { todayKey } from '../../domain/day';
 import { isPaired } from '../../domain/identity/rekey';
 import { DEFAULT_TIMEZONE, type MoodEntry } from '../../domain/types';
 import { Meter } from '../../components/Meter';
+import { Chip } from '../../ui/Chip';
 import { ComplimentComposer } from './ComplimentComposer';
 import { CycleSection } from '../cycle/CyclePage';
 import { WellnessNote } from './WellnessNote';
 import {
+  MOOD_FLAGS,
   MOOD_METERS,
   NEUTRAL_MOOD,
+  flagsChanged,
+  flagsOf,
+  type MoodFlags,
   PARTNER_FALLBACK_NAME,
   comparisonLine,
   longDay,
@@ -80,6 +85,7 @@ export function MoodPage() {
 
   const [draft, setDraft] = useState<MoodValues | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [flags, setFlags] = useState<MoodFlags | null>(null);
   const [saving, setSaving] = useState(false);
 
   // A new day — or a new identity after pairing — is a different row, so
@@ -87,6 +93,7 @@ export function MoodPage() {
   useEffect(() => {
     setDraft(null);
     setNote(null);
+    setFlags(null);
   }, [day, memberId]);
 
   const ready = settings !== undefined && mineQuery !== undefined;
@@ -100,7 +107,8 @@ export function MoodPage() {
   const partnerName = PARTNER_FALLBACK_NAME;
 
   const metersChanged = moodChanged(mineRow, draft, null);
-  const changed = moodChanged(mineRow, draft, note);
+  const shownFlags = flags ?? flagsOf(mineRow);
+  const changed = moodChanged(mineRow, draft, note) || flagsChanged(mineRow, flags);
   // With no row yet, the middle of every scale is still a real answer about the
   // day, so it can be saved without moving anything first.
   const canSave = ready && (changed || !mineRow);
@@ -116,12 +124,16 @@ export function MoodPage() {
     try {
       const { memberId: writeTo } = await ensureIdentity();
       const trimmed = noteValue.trim();
+      // The whole row is written, so the flags go with every save — a meter
+      // nudged after ticking "Rested" must not quietly untick it.
       await putMood(writeTo, day, {
         ...(shown ?? NEUTRAL_MOOD),
         note: trimmed || undefined,
+        ...shownFlags,
       });
       setDraft(null);
       setNote(null);
+      setFlags(null);
     } finally {
       setSaving(false);
     }
@@ -173,6 +185,22 @@ export function MoodPage() {
       <section className="panel">
         <h2 className="section-title">Anything to add?</h2>
         <p className="section-sub">Nothing here goes down on its own.</p>
+
+        <div className="mood-set">
+          <span className="mood-set-label" id="mood-flags-label">Today I was</span>
+          <div className="mood-flags" role="group" aria-labelledby="mood-flags-label">
+            {MOOD_FLAGS.map(({ key, label }) => (
+              <Chip
+                key={key}
+                on={Boolean(shownFlags[key])}
+                onClick={() => setFlags({ ...shownFlags, [key]: !shownFlags[key] })}
+              >
+                {label}
+              </Chip>
+            ))}
+          </div>
+          <p className="section-sub">These charge your moves in Eve&rsquo;s Garden.</p>
+        </div>
 
         <div className="mood-set">
           <label className="mood-set-label" htmlFor="mood-note">Note</label>

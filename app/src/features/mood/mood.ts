@@ -29,6 +29,28 @@ export const MOOD_MAX = 10;
 /** Where a slider sits before it has been touched. Never written on its own. */
 export const NEUTRAL_MOOD: MoodValues = { hunger: 5, joy: 5, moody: 5 };
 
+/** The three yes/no answers under the meters, in the order the page shows them. */
+export type MoodFlag = 'rested' | 'grateful' | 'ateWell';
+export type MoodFlags = Partial<Record<MoodFlag, boolean>>;
+
+export const MOOD_FLAGS: readonly { key: MoodFlag; label: string }[] = [
+  { key: 'rested', label: 'Rested' },
+  { key: 'grateful', label: 'Grateful' },
+  { key: 'ateWell', label: 'Ate well' },
+];
+
+/** The flags a stored row says yes to. Absent means no. */
+export function flagsOf(entry: MoodEntry | null | undefined): MoodFlags {
+  return Object.fromEntries(MOOD_FLAGS.map(({ key }) => [key, entry?.[key] === true]));
+}
+
+/** True when a draft of the flags says something the stored row does not. */
+export function flagsChanged(entry: MoodEntry | null | undefined, flags: MoodFlags | null): boolean {
+  if (!flags) return false;
+  const stored = flagsOf(entry);
+  return MOOD_FLAGS.some(({ key }) => Boolean(flags[key]) !== Boolean(stored[key]));
+}
+
 /** Used until pairing gives the other column a real name to wear. */
 export const PARTNER_FALLBACK_NAME = 'Your partner';
 

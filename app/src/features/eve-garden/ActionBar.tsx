@@ -2,17 +2,18 @@ import type { ActionDto, BattleDto, Charge, MonsterDto, MoveStyle, RaidStatsDto 
 import {
   MOVE_STYLE_NAMES, moveKeyFor, type CompanionKit,
 } from '../../domain/rpg/companionSkills';
-import { CHARGE_COPY, chargeForElement, chargeOnWeakness } from '../../domain/rpg/charges';
-import { gearLift } from '../../domain/rpg/loadout';
+import {
+  CHARGE_COPY, FEEDS, LIFT_FULL, chargeForElement, chargeOnWeakness, moveLift,
+} from '../../domain/rpg/charges';
 
 /**
- * The move bar.
+ * The move pad.
  *
  * Every button is one of the companion's moves — Wishbell's Hoofbeat,
  * Foxglove's Foxfire — and pressing it logs nothing. What the couple logged
- * today arrives as charges (see `ChargeStrip`), and this bar says what those
- * charges and the raid sheet are doing to each move, because a bonus nobody
- * can see is a bonus nobody plays towards.
+ * today arrives as charges (drawn beside this in `ChargeMeter`), and each
+ * move carries a boost bar saying what those charges and the raid sheet are
+ * doing to it, because a bonus nobody can see is a bonus nobody plays towards.
  *
  * Locked moves are rendered rather than hidden: the level curve is a promise
  * about what is coming, and an empty bar makes no promises.
@@ -33,14 +34,6 @@ export interface ActionBarProps {
   onAct(action: ActionDto): void;
   onFlee(): void;
 }
-
-/** The charge that feeds each style. Mirrors `Charges.StyleOf`. */
-const FEEDS: Partial<Record<MoveStyle, Charge>> = {
-  Physical: 'Exercise',
-  Magic: 'Work',
-  Defensive: 'Mood',
-  Mend: 'Rest',
-};
 
 /** What to log to hit this monster's weakness, in a sentence. */
 function weaknessHint(monster: MonsterDto): string {
@@ -73,15 +66,13 @@ export function ActionBar({
         {actions.map((action) => {
           const fed = FEEDS[action.style];
           const charged = fed !== undefined && charges.includes(fed);
-          const lift = gearLift(stats, action.style);
+          const lift = moveLift({
+            charges, stats, style: action.style,
+            weakness: monster?.weakness, strength: monster?.strength,
+          });
           const strong = fighting && action.type === 'Attack' && onWeakness !== undefined;
-          const notes = [
-            styleName(action.style),
-            charged ? `${CHARGE_COPY[fed].label} +` : '',
-            lift > 0 ? `+${lift}% gear` : '',
-          ].filter(Boolean);
           return (
-            <li key={action.id}>
+            <li key={action.id} className={action.style === 'Together' ? 'is-wide' : undefined}>
               <button
                 type="button"
                 className={`garden-action is-${action.style.toLowerCase()}${strong ? ' is-strong' : ''}${charged ? ' is-charged' : ''}`}
@@ -95,9 +86,17 @@ export function ActionBar({
               >
                 <span className="garden-action-name">{moveName(action, kit)}</span>
                 <span className="garden-action-note">
-                  {notes.join(' · ')}
+                  {styleName(action.style)}
+                  {lift > 0 ? ` · +${lift}%` : ''}
                   {strong ? ' · it feels this' : ''}
                 </span>
+                {/* The boost bar. Full at +LIFT_FULL%; the number above keeps
+                    counting past it, the bar does not pretend to. */}
+                <span
+                  className="garden-action-boost"
+                  aria-hidden="true"
+                  style={{ '--boost': `${Math.min(100, (lift / LIFT_FULL) * 100)}%` } as React.CSSProperties}
+                />
               </button>
             </li>
           );
