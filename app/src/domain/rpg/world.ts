@@ -22,6 +22,29 @@ export const STAGES_PER_ISLAND = 7;
 export const ISLAND_COUNT = 5;
 
 /**
+ * How many islands have stages authored. Mirrors `World.IsBuilt` in C#, which
+ * this module cannot see across the wasm boundary; `world.test.ts` counts the
+ * `Planned(...)` rows in `World.cs` so the two cannot drift.
+ *
+ * Distinct from `ISLAND_COUNT` on purpose. Advancing onto an unbuilt island
+ * put the couple on a stage `Api.Stage` answers with null, and the garden sat
+ * on its loading skeleton forever with no monster and no error. Bump this with
+ * the file that builds the next island.
+ */
+export const BUILT_ISLAND_COUNT = 1;
+
+/**
+ * The island the couple are actually on, clamped to the built ones.
+ *
+ * A row can already say `island: 2`: every couple who finished island 1 before
+ * `BUILT_ISLAND_COUNT` existed was advanced there. Clamping on read rescues
+ * them without a migration, and the row fixes itself on its next write.
+ */
+export function standingIsland(progress: WorldProgress): number {
+  return Math.min(BUILT_ISLAND_COUNT, Math.max(1, progress.island));
+}
+
+/**
  * Which face of an island is showing.
  *
  * Not a difficulty the player picks — it is read off the couple's recent
@@ -77,12 +100,12 @@ export function clearedCount(progress: WorldProgress, island: number): number {
  * Derived from the clear list rather than stored, so the two can never
  * disagree. Mirrors `World.CurrentStage` in C#.
  */
-export function currentStage(progress: WorldProgress, island = progress.island): number {
+export function currentStage(progress: WorldProgress, island = standingIsland(progress)): number {
   return Math.min(STAGES_PER_ISLAND, Math.max(1, clearedCount(progress, island) + 1));
 }
 
 /** How far through an island they are, in [0, 1]. What the compass bar draws. */
-export function islandProgress(progress: WorldProgress, island = progress.island): number {
+export function islandProgress(progress: WorldProgress, island = standingIsland(progress)): number {
   return Math.min(1, Math.max(0, clearedCount(progress, island) / STAGES_PER_ISLAND));
 }
 
@@ -128,22 +151,22 @@ export function clearStage(
   const island = islandOfMonster(monsterId) ?? progress.island;
   const next: WorldProgress = { ...progress, cleared, updatedAt: at };
 
-  // Finishing an island moves them to the next one, if there is a next one.
-  // Staying put on a finished island would leave the compass reading 7/7 with
-  // nothing to walk towards.
+  // Finishing an island moves them to the next one, if there is a next one
+  // *built*. An unbuilt next island has no monster to draw, so staying on a
+  // finished island at 7/7 is the lesser evil until it ships.
   const finished = clearedOn(next, island).length >= STAGES_PER_ISLAND;
-  if (finished && island === progress.island && island < ISLAND_COUNT) {
+  if (finished && island === standingIsland(progress) && island < BUILT_ISLAND_COUNT) {
     return { ...next, island: island + 1 };
   }
   return next;
 }
 
 /**
- * Move to an island the couple have unlocked. Refuses anything else by
+ * Move to an island the couple have unlocked and that is built. Refuses anything else by
  * returning the row untouched, so the world map can call it on any tap.
  */
 export function travelTo(progress: WorldProgress, island: number, at: number): WorldProgress {
   if (island === progress.island) return progress;
-  if (!isIslandUnlocked(progress, island)) return progress;
+  if (!isIslandUnlocked(progress, island) || island > BUILT_ISLAND_COUNT) return progress;
   return { ...progress, island, updatedAt: at };
 }

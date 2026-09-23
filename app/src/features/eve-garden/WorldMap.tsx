@@ -1,4 +1,4 @@
-import { ISLAND_COUNT, isIslandComplete, isIslandUnlocked, type WorldProgress } from '../../domain/rpg/world';
+import { ISLAND_COUNT, isIslandComplete, isIslandUnlocked, standingIsland, type WorldProgress } from '../../domain/rpg/world';
 import type { IslandDto } from './engine/types';
 
 /**
@@ -33,7 +33,7 @@ export function WorldMap({ islands, progress, dark, onTravel, onClose }: WorldMa
           {islands.slice(0, ISLAND_COUNT).map((island) => {
             const unlocked = isIslandUnlocked(progress, island.number);
             const complete = isIslandComplete(progress, island.number);
-            const here = progress.island === island.number;
+            const here = standingIsland(progress) === island.number;
             const name = dark ? island.darkName : island.lightName;
 
             return (
