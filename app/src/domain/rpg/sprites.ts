@@ -430,154 +430,159 @@ export const SPRITES: Record<string, Sprite> = {
   // and `IslandTests.EveryMonsterHasASpriteAndAtLeastOneAction` guards the
   // other end.
   //
-  // Drawn as silhouettes that get heavier down the island: the stage-1 sprout
-  // is small and open, the stage-7 boss fills the frame. A player who cannot
-  // read a stat block can still read that.
+  // Drawn as four friendly elemental spirits, Earth, Water, Fire and Air, and
+  // as silhouettes that get heavier down the island: the stage-1 Mossling is
+  // small and open, the stage-7 boss fills the frame. A player who cannot read
+  // a stat block can still read that. The elements are the spirits' look only;
+  // the fight's type chart is `Element` in C# and is untouched by them.
 
-  // Stage 1. A seedling that has not got up: two leaves folded over a
-  // round, shut-eyed bulb. The smallest silhouette on the island, so the first
-  // thing a new couple fights reads as something they can beat.
+  // Stage 1, Earth: the Mossling. A pebble with a sprout curling off
+  // the top and its eyes open. The smallest silhouette on the island, so the
+  // first thing a new couple fights reads as something they can beat.
   'sloth-sprout': [
+    '................',
     '................',
     '.......oo.......',
     '......ollo......',
-    '.....olllo......',
-    '....ollllo......',
-    '.....oollo......',
-    '.......oo.......',
-    '.....oommoo.....',
-    '...oommmmmmoo...',
-    '..ommmmmmmmmmo..',
-    '..ommoommoommo..',
-    '..ommmmmmmmmmo..',
-    '..ommmmaammmmo..',
+    '.....olloo......',
+    '......oo.oo.....',
+    '.......oolo.....',
+    '.....oooooo.....',
+    '....ommmmmmo....',
+    '...omlmmmmmmo...',
+    '...omommmmomo...',
     '...ommmmmmmmo...',
-    '....oooooooo....',
-    '.....oo..oo.....',
+    '...ommmaammmo...',
+    '....ommmmmmo....',
+    '.....oooooo.....',
+    '................',
   ],
-  // Stage 2. Curled in with its legs tucked under. Wider than the
-  // sprout and closed rather than drooping, which is what `Shell Up` looks
+  // Stage 2, Water: the Dewdrop. A single fat drop, wider than the
+  // Mossling and closed all the way round, which is what `Shell Up` looks
   // like when it lands.
   'dozing-beetle': [
     '................',
-    '................',
-    '.....oooooo.....',
-    '...oommmmmmoo...',
-    '..ommllmmllmmo..',
-    '.ommmmmmmmmmmmo.',
-    '.ommoommmmoommo.',
-    '.ommmmmmmmmmmmo.',
-    '.ommllmmmmllmmo.',
-    '.ommmmmmmmmmmmo.',
-    '..ommmaaaammmo..',
-    '...oommmmmmoo...',
-    '.....oooooo.....',
-    '....o.o..o.o....',
-    '...o...o..o..o..',
-    '................',
-  ],
-  // Stage 3. The first monster drawn upward rather than outward -
-  // spines above a heavy base - because it is the first that can out-speed the
-  // player.
-  'snooze-thistle': [
-    '................',
-    '....o.....o.....',
-    '...oao...oao....',
-    '...oao...oao....',
-    '....oo.o.oo.....',
-    '.....oaoao......',
-    '....ooaaaoo.....',
-    '...ommaaammo....',
-    '..ommmaaammmo...',
-    '..ommoommoommo..',
+    '.......oo.......',
+    '......olmo......',
+    '......olmo......',
+    '.....olmmmo.....',
+    '....olmmmmmo....',
+    '...olmmmmmmmo...',
+    '..olmmmmmmmmmo..',
+    '..olmommmmommo..',
+    '..olmmmmmmmmmo..',
+    '..ommmmaammmmo..',
     '..ommmmmmmmmmo..',
     '...ommmmmmmmo...',
     '....oommmmoo....',
-    '......omo.......',
-    '......omo.......',
-    '.....ooooo......',
+    '......oooo......',
+    '................',
   ],
-  // Stage 4, the semi-boss. A quilt with something under it, filling
-  // the frame edge to edge. It is the only Island 1 sprite that touches both
-  // side walls, which is the whole read: you cannot go round it.
+  // Stage 3, Fire: the Cinder Sprite. The first spirit drawn upward
+  // rather than outward, three flame tongues above a round glow, because it
+  // is the first that can out-speed the player.
+  'snooze-thistle': [
+    '.......oo.......',
+    '......oaao......',
+    '..o...oaao...o..',
+    '.oao.oaaaao.oao.',
+    '.oaaooallaooaao.',
+    '.oaaaallllaaaao.',
+    '.oaallllllllaao.',
+    '..oalollllolao..',
+    '..oallllllllao..',
+    '..ollllllllllo..',
+    '...olllaalllo...',
+    '....ollllllo....',
+    '.....oolloo.....',
+    '......oooo......',
+    '................',
+    '................',
+  ],
+  // Stage 4, the semi-boss, Water: the Long Drizzle. A raincloud
+  // filling the frame edge to edge with its rain hanging underneath. It is
+  // the only Island 1 sprite that touches both side walls, which is the whole
+  // read: you cannot go round it.
   'lie-in': [
     '................',
-    '.....oooooo.....',
-    '...oollllllooo..',
-    '..ollllllllllo..',
-    '.olloollooollo..',
+    '....ooo..oooo...',
+    '...olllooolllo..',
+    '..olllllllllllo.',
     '.ollllllllllllo.',
-    'olllllllllllllo.',
-    'ollmmllmmllmmlo.',
     'ollllllllllllllo',
-    'olmmllmmllmmlllo',
+    'ollloolllloolllo',
     'ollllllllllllllo',
-    'ollmmllmmllmmllo',
-    '.olllllaallllo..',
-    '..oollllllloo...',
-    '....oooooooo....',
+    'ollllllaallllllo',
+    'ollllllllllllllo',
+    '.oommmmmmmmmmoo.',
+    '...oooooooooo...',
+    '..o...o...o...o.',
+    '.omo.omo.omo.omo',
+    '..o...o...o...o.',
     '................',
   ],
-  // Stage 5, the breather. Deliberately the least solid thing here -
-  // scattered motes with gaps straight through it - so the recovery stage looks
-  // like one before the first turn is taken.
+  // Stage 5, the breather, Air: the Breeze Wisp. Deliberately the
+  // least solid thing here, loose curls of wind with gaps straight through,
+  // so the recovery stage looks like one before the first turn is taken.
   'dust-drifter': [
     '................',
-    '.......o........',
-    '......olo.......',
-    '.....ollo...o...',
-    '....ollllo.olo..',
-    '...ollaallo.o...',
-    '...olaoolalo....',
-    '...ollaalllo....',
-    '....ollllo......',
-    '..o..oollo...o..',
-    '.olo...oo...olo.',
-    '..o.....o....o..',
-    '.....o.....o....',
-    '....olo...olo...',
-    '.....o.....o....',
+    '....oooooo......',
+    '...o......o.....',
+    '..o..oooo..o....',
+    '..o.o....o.o..o.',
+    '..o.o.lo.o.o.olo',
+    '..o.o.aa...o..o.',
+    '..o..o....o.....',
+    '...o..oooo....o.',
+    '....o........olo',
+    '.....oooooooo.o.',
+    '..o.............',
+    '.olo.....ooooo..',
+    '..o.....o.......',
+    '.........ooooo..',
     '................',
   ],
-  // Stage 6, the elite. The beetle's mass with the thistle's growth
-  // on top: a blocky torso under moss, standing on two stubs.
+  // Stage 6, the elite, Earth: the Mossback Golem. The Mossling grown
+  // up, a boulder torso with moss across the shoulders, standing on two
+  // stubs.
   'couch-moss': [
-    '..oo........oo..',
-    '.ollo......ollo.',
-    '.ommo.oooo.ommo.',
-    '.ommooommmooommo',
-    '.ommmmmllmmmmmo.',
-    '.ommoommmmoommo.',
+    '...oo.oooo.oo...',
+    '.olloolllloollo.',
+    '.ollllllllllllo.',
     '.ommmmmmmmmmmmo.',
-    'oommmaammaammmoo',
+    'oommaammmmaammoo',
     'ommmmmmmmmmmmmmo',
+    'ommmmmoooommmmmo',
     'ommlmmmmmmmmlmmo',
     'ommmmmmmmmmmmmmo',
+    'oommmmmllmmmmmoo',
     '.ommmmmmmmmmmmo.',
-    '.oommmmmmmmmmoo.',
-    '...ooommmooo....',
-    '...oommo.ommo...',
-    '...oooo..oooo...',
+    '.ommmmoooommmmo.',
+    '..ommo....ommo..',
+    '..ommo....ommo..',
+    '..oooo....oooo..',
+    '................',
   ],
-  // Stage 7, the boss. Armoured, symmetrical, and the only sprite
-  // with a plate across its middle. It fills the frame top to bottom where the
-  // Lie-In only filled it side to side.
+  // Stage 7, the boss, Fire: the Hearthkeeper. Armoured, symmetrical,
+  // crowned in flame, and the only sprite with a lit hearth across its
+  // middle. It fills the frame top to bottom where the Drizzle only filled it
+  // side to side.
   'sedentary-sentinel': [
-    '....oooooooo....',
-    '..oollllllloo...',
-    '.olloooooooollo.',
+    '..o....oo....o..',
+    '.oao..oaao..oao.',
+    '.oaaooaaaaooaao.',
+    '..ooollllllooo..',
     '.ollommmmmmollo.',
     'ollommoaaommollo',
-    'ollommmaammmollo',
-    'olloommmmmmoollo',
+    'ollommmmmmmmollo',
     'ollloooooooolllo',
-    'ollllllllllllllo',
-    'olmmllllllllmmlo',
-    'olmmllaaaallmmlo',
-    'olmmllaaaallmmlo',
-    'ollllllllllllllo',
+    'ollomoooooomollo',
+    'olmmoaaaaaaommlo',
+    'olmmoallllaommlo',
+    'olmmoaaaaaaommlo',
+    'ollloooooooolllo',
     '.ollllllllllllo.',
-    '.oollo....ollo..',
+    '.oollo....olloo.',
     '..oooo....oooo..',
   ],
 };

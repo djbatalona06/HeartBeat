@@ -101,7 +101,7 @@ public class BattleTests
     [Fact]
     public void HittingAWeaknessHurtsMoreThanANeutralHit()
     {
-        // Sloth Sprout is weak to Movement and strong against Rest.
+        // The Mossling is weak to Movement and strong against Rest.
         Assert.Equal(Battle.WeaknessMultiplier, Battle.Effectiveness(Element.Movement, Sprout));
         Assert.Equal(Battle.StrengthMultiplier, Battle.Effectiveness(Element.Rest, Sprout));
         Assert.Equal(1.0, Battle.Effectiveness(Element.Focus, Sprout));

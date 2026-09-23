@@ -5,7 +5,7 @@
    walks a screen down out of the ceiling and shows her the photographs before
    she ever touches one.
 
-   It reads window.GIFT_PHOTOS -- the same 44 data: URIs the crate cuts into
+   It reads window.GIFT_PHOTOS -- the same data: URIs the crate cuts into
    vinyl -- so the two scenes cannot drift apart and the file does not grow.
    Nothing here is 3D. Five of the six phases are DOM and CSS, three.js is
    already carrying one WebGL context for the crate, and a second one for a

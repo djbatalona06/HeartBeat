@@ -1,8 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
-  ISLAND_COUNT, STAGES_PER_ISLAND, clearStage, clearedCount, currentStage,
+  BUILT_ISLAND_COUNT, ISLAND_COUNT, STAGES_PER_ISLAND, clearStage, clearedCount, currentStage,
   isIslandComplete, isIslandUnlocked, islandOfMonster, islandProgress,
-  newWorldProgress, stageOfMonster, travelTo, type WorldProgress,
+  newWorldProgress, stageOfMonster, standingIsland, travelTo, type WorldProgress,
 } from './world';
 
 const AT = 1_700_000_000_000;
@@ -94,11 +96,34 @@ describe('clearing a stage', () => {
     expect(isIslandComplete(done, 1)).toBe(true);
   });
 
-  it('moves on to the next island when one is finished', () => {
+  it('unlocks the next island when one is finished, but stays on the last built one', () => {
+    // This test used to expect island 2, which pinned the bug: island 2 has no
+    // stages, so the garden waited forever for a monster that never came.
     const done = afterClearing(ISLAND_1);
-    expect(done.island).toBe(2);
+    expect(done.island).toBe(BUILT_ISLAND_COUNT);
+    expect(currentStage(done)).toBe(STAGES_PER_ISLAND);
     expect(isIslandUnlocked(done, 2)).toBe(true);
     expect(isIslandUnlocked(done, 3)).toBe(false);
+  });
+
+  it('rescues a row already stranded on an unbuilt island', () => {
+    // Every couple who finished island 1 before the fix was stored as island 2.
+    const stranded: WorldProgress = { ...afterClearing(ISLAND_1), island: BUILT_ISLAND_COUNT + 1 };
+    expect(standingIsland(stranded)).toBe(BUILT_ISLAND_COUNT);
+    expect(currentStage(stranded)).toBe(STAGES_PER_ISLAND);
+    expect(islandProgress(stranded)).toBe(1);
+  });
+
+  it('counts built islands the same way World.cs does', () => {
+    // C# cannot be imported here, so read it: every island not built is a
+    // `Planned(...)` row, and the rest are built.
+    const world = readFileSync(
+      fileURLToPath(new URL('../../../../game/HeartBeat.Game.Core/Data/World.cs', import.meta.url)),
+      'utf8',
+    );
+    const planned = world.match(/^\s*Planned\(\d+,/gm) ?? [];
+    expect(planned.length).toBeGreaterThan(0);
+    expect(BUILT_ISLAND_COUNT).toBe(ISLAND_COUNT - planned.length);
   });
 
   it('stays put when the last island is finished', () => {
@@ -139,10 +164,15 @@ describe('travelling', () => {
     expect(travelTo(start, 0, AT)).toBe(start);
   });
 
-  it('allows a hop back to an island already finished', () => {
+  it('refuses an unlocked island that is not built yet', () => {
     const done = afterClearing(ISLAND_1);
-    expect(done.island).toBe(2);
-    const back = travelTo(done, 1, AT + 10);
+    expect(isIslandUnlocked(done, 2)).toBe(true);
+    expect(travelTo(done, BUILT_ISLAND_COUNT + 1, AT + 10)).toBe(done);
+  });
+
+  it('allows a hop back to an island already finished', () => {
+    const stranded: WorldProgress = { ...afterClearing(ISLAND_1), island: 2 };
+    const back = travelTo(stranded, 1, AT + 10);
     expect(back.island).toBe(1);
     expect(back.updatedAt).toBe(AT + 10);
   });

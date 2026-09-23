@@ -2,7 +2,7 @@
 //
 // She will open this by double-clicking it off a USB stick in four years, on a
 // laptop with no internet, long after unpkg has reorganised its URLs. So every
-// byte it needs lives inside it: three.js, both typefaces, all 29 photographs
+// byte it needs lives inside it: three.js, both typefaces, every photograph
 // and the song. Nothing is fetched at runtime.
 //
 // Usage: node gift/build.mjs
@@ -49,7 +49,7 @@ for (const file of readdirSync(fontDir)) {
 const leftover = fonts.match(/url\("(?!data:)[^"]*"\)/g);
 if (leftover) throw new Error(`unresolved font refs: ${[...new Set(leftover)].slice(0, 3).join(', ')}`);
 
-// ---- photos: p01..p26 then m1..m3, so the heart fills in a sensible order ---
+// ---- photos: every p* then every m*, so the heart fills in a sensible order -
 const photoDir = join(SRC, 'photos');
 const photoFiles = readdirSync(photoDir)
   .filter((f) => f.endsWith('.jpg'))

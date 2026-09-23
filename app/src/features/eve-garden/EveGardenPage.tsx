@@ -19,7 +19,7 @@ import { fireSkill, kitFor, turnFor } from '../../domain/rpg/companionSkills';
 import type { GateCard, GateVerdict } from '../../domain/rpg/raidGate';
 import { variantFor } from '../../domain/rpg/diorama';
 import {
-  ISLAND_COUNT, currentStage, isIslandComplete, islandProgress,
+  BUILT_ISLAND_COUNT, currentStage, isIslandComplete, islandProgress, standingIsland,
   newWorldProgress, type WorldProgress,
 } from '../../domain/rpg/world';
 import { createGameClient, isClosed, type GameClient } from './engine/client';
@@ -158,7 +158,7 @@ export function EveGardenPage() {
   const theme: DioramaTheme = momentum ? variantFor(momentum) : 'Light';
   const dark = theme === 'Dark';
 
-  const island = world.island;
+  const island = standingIsland(world);
   const stage = currentStage(world);
 
   const [islands, setIslands] = useState<IslandDto[]>([]);
@@ -600,7 +600,9 @@ export function EveGardenPage() {
     : 'Eve’s Garden';
 
   const nextIslandName = useMemo(() => {
-    if (island >= ISLAND_COUNT) return null;
+    // Unbuilt islands are named on the map but cannot be walked to, so the
+    // banner says there is no further to go rather than naming one as open.
+    if (island >= BUILT_ISLAND_COUNT) return null;
     const next = islands.find((i) => i.number === island + 1);
     return next ? (dark ? next.darkName : next.lightName) : null;
   }, [islands, island, dark]);

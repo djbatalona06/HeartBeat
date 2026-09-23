@@ -66,7 +66,7 @@ public class ApiTests
         Assert.False(string.IsNullOrWhiteSpace(stage.GetProperty("name").GetString()));
 
         JsonElement monster = stage.GetProperty("monster");
-        Assert.Equal("Sloth Sprout", monster.GetProperty("name").GetString());
+        Assert.Equal("Mossling", monster.GetProperty("name").GetString());
         Assert.Equal("sloth-sprout", monster.GetProperty("spriteKey").GetString());
         Assert.Equal(30, monster.GetProperty("hp").GetInt32());
         Assert.Equal(30, monster.GetProperty("xp").GetInt32());
@@ -78,8 +78,8 @@ public class ApiTests
     {
         JsonElement light = Parse(Api.Stage(1, 7, "light")).GetProperty("monster");
         JsonElement dark = Parse(Api.Stage(1, 7, "dark")).GetProperty("monster");
-        Assert.Equal("The Sedentary Sentinel", light.GetProperty("name").GetString());
-        Assert.Equal("The Sunken Sentinel", dark.GetProperty("name").GetString());
+        Assert.Equal("The Hearthkeeper", light.GetProperty("name").GetString());
+        Assert.Equal("The Ashen Hearthkeeper", dark.GetProperty("name").GetString());
         Assert.True(dark.GetProperty("hp").GetInt32() > light.GetProperty("hp").GetInt32());
     }
 
