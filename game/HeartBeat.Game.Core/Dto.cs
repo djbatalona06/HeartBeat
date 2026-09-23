@@ -25,11 +25,9 @@ public sealed record ActionDto(
     string Id,
     string Name,
     int Power,
-    Element Element,
+    Style Style,
     ActionType Type,
-    int UnlockLevel,
-    Activity? Activity,
-    int Xp);
+    int UnlockLevel);
 
 public sealed record MonsterDto(
     string Id,
@@ -95,7 +93,10 @@ public sealed record BattleDto(
     Outcome Outcome,
     uint Seed,
     int XpOwed,
-    int HitsLeft);
+    int HitsLeft,
+    IReadOnlyList<Charge>? Charges = null,
+    RaidStats? Stats = null,
+    IReadOnlyDictionary<string, string>? MoveNames = null);
 
 public sealed record ProgressDto(
     int Xp,
@@ -140,5 +141,6 @@ public sealed record AwardDto(
 [JsonSerializable(typeof(ProgressDto))]
 [JsonSerializable(typeof(AwardDto))]
 [JsonSerializable(typeof(ActionDto))]
+[JsonSerializable(typeof(RaidStats))]
 [JsonSerializable(typeof(IReadOnlyList<ActionDto>))]
 public partial class GameJson : JsonSerializerContext;

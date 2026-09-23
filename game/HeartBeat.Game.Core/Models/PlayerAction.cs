@@ -1,33 +1,50 @@
 namespace HeartBeat.Game.Core.Models;
 
 /// <summary>
-/// One thing the player can do on their turn, and the wellness log behind it.
+/// One move the player can make on their turn.
 ///
-/// Every player action is a wellness activity. That is the point of Eve's
-/// Garden: there is no "Attack" button that is only a button. Striking is
-/// logging a workout, healing is logging rest, and the action bar and the
-/// tracker are the same control.
+/// A move is a move, not a log. Logging a workout, a study session or a good
+/// night's sleep happens on its own page (or on the garden's charge strip), and
+/// what it buys in a fight is a <see cref="Charge"/> that changes how these land
+/// - see <see cref="Charges"/>. Keeping the two apart is what lets a button be
+/// pressed as often as a fight needs without writing a row every time.
 ///
-/// <paramref name="Activity"/> is what the TypeScript side writes to the
-/// repository when this action resolves. It is nullable only for actions that
-/// spend something already logged rather than logging something new.
+/// <paramref name="Name"/> is the plain name. The companion's own name for the
+/// move ("Wishfire", "Ink Claw") comes across from TypeScript on the battle and
+/// is only ever used for the log line.
 /// </summary>
 public sealed record PlayerAction(
     string Id,
     string Name,
     int Power,
-    Element Element,
+    Style Style,
     ActionType Type,
     int UnlockLevel,
-    Activity? Activity,
     StatusEffect? Status = null);
+
+/// <summary>
+/// The three kinds of move a companion has, plus the heal and the couple's move.
+///
+/// Physical and Magic both hit; the difference is that Magic ignores defense and
+/// hits for less, so it is the answer to the armoured elites and Physical is the
+/// answer to everything else. Defensive raises a ward.
+/// </summary>
+public enum Style
+{
+    Physical,
+    Defensive,
+    Magic,
+    Mend,
+    Together,
+}
 
 /// <summary>
 /// The wellness activities that pay XP.
 ///
 /// The names match what <c>repository/entries</c> and <c>repository/vitals</c>
-/// already store on the TypeScript side; the enum exists so the XP table and
-/// the action table cannot disagree about what counts as a log.
+/// already store on the TypeScript side. <see cref="Nourish"/>, like
+/// <see cref="Rest"/> and <see cref="Gratitude"/>, has no table - its XP award
+/// is the record.
 /// </summary>
 public enum Activity
 {
@@ -36,4 +53,5 @@ public enum Activity
     Work,
     Rest,
     Gratitude,
+    Nourish,
 }

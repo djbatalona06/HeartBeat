@@ -27,7 +27,7 @@ public static class Api
     private static string Write<T>(T value, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> info) =>
         JsonSerializer.Serialize(value, info);
 
-    /// <summary>The five islands, for the compass and the world map.</summary>
+    /// <summary>The seven islands, for the compass and the world map.</summary>
     public static string World()
     {
         var islands = Data.World.Islands
@@ -52,13 +52,16 @@ public static class Api
     }
 
     /// <summary>Opens a fight. Returns <c>null</c> if there is nothing on that stage to fight.</summary>
-    public static string? BeginBattle(int island, int stage, string theme, int level, double seed)
+    public static string? BeginBattle(
+        int island, int stage, string theme, int level, double seed,
+        string? charges = null, string? statsJson = null)
     {
         DioramaTheme face = ParseTheme(theme);
         Monster? monster = Data.World.MonsterAt(island, stage, face);
         if (monster is null) return null;
 
-        BattleState state = Battle.Begin(monster, level, ToSeed(seed));
+        var boosts = new Boosts(Charges.Parse(charges), ReadStats(statsJson));
+        BattleState state = Battle.Begin(monster, level, ToSeed(seed), boosts);
         return Write(ToDto(state, island, stage, face, level, monster), GameJson.Default.BattleDto);
     }
 
@@ -69,8 +72,9 @@ public static class Api
     public static string? Act(string battleJson, string actionId)
     {
         if (!TryRead(battleJson, out BattleDto? dto, out Monster? monster)) return null;
-        BattleState next = Battle.Act(FromDto(dto!), actionId, monster!, dto!.Level);
-        return Write(ToDto(next, dto.Island, dto.Stage, dto.Theme, dto.Level, monster!), GameJson.Default.BattleDto);
+        string? name = dto!.MoveNames is { } names && names.TryGetValue(actionId, out string? n) ? n : null;
+        BattleState next = Battle.Act(FromDto(dto), actionId, monster!, dto.Level, name);
+        return Write(ToDto(next, dto.Island, dto.Stage, dto.Theme, dto.Level, monster!, dto.MoveNames), GameJson.Default.BattleDto);
     }
 
     /// <summary>The monster's turn. Kept separate so the overlay can animate between the two.</summary>
@@ -78,7 +82,7 @@ public static class Api
     {
         if (!TryRead(battleJson, out BattleDto? dto, out Monster? monster)) return null;
         BattleState next = Battle.MonsterMove(FromDto(dto!), monster!);
-        return Write(ToDto(next, dto!.Island, dto.Stage, dto.Theme, dto.Level, monster!), GameJson.Default.BattleDto);
+        return Write(ToDto(next, dto!.Island, dto.Stage, dto.Theme, dto.Level, monster!, dto.MoveNames), GameJson.Default.BattleDto);
     }
 
     /// <summary>Level, stats and unlocked actions for a total XP figure.</summary>
@@ -147,8 +151,7 @@ public static class Api
     }
 
     private static ActionDto ToDto(PlayerAction a) => new(
-        a.Id, a.Name, a.Power, a.Element, a.Type, a.UnlockLevel, a.Activity,
-        Xp: a.Activity is { } act ? Progression.XpFor(act) : 0);
+        a.Id, a.Name, a.Power, a.Style, a.Type, a.UnlockLevel);
 
     private static MonsterDto ToDto(Monster m) => new(
         m.Id, m.Name, m.Type, m.Hp, m.Attack, m.Defense, m.Speed,
@@ -161,18 +164,28 @@ public static class Api
         c.Effects.Select(e => new EffectDto(e.Kind, e.Magnitude, e.TurnsLeft)).ToList());
 
     private static BattleDto ToDto(
-        BattleState s, int island, int stage, DioramaTheme theme, int level, Monster monster) => new(
+        BattleState s, int island, int stage, DioramaTheme theme, int level, Monster monster,
+        IReadOnlyDictionary<string, string>? moveNames = null) => new(
         s.MonsterId, island, stage, theme, level, s.Round, s.Turn,
         ToDto(s.Player), ToDto(s.Monster),
         s.Log.Select(l => new LineDto(l.Round, l.Who, l.Text)).ToList(),
         s.Outcome, s.Seed, s.XpOwed,
-        HitsLeft: s.Outcome == Outcome.Fighting ? Battle.HitsLeft(s, monster) : 0);
+        HitsLeft: s.Outcome == Outcome.Fighting ? Battle.HitsLeft(s, monster, level) : 0,
+        Charges: s.Boosts.Charges,
+        Stats: s.Boosts.Stats,
+        MoveNames: moveNames);
 
     private static BattleState FromDto(BattleDto d) => new(
         d.MonsterId, d.Round, d.Turn,
         FromDto(d.Player), FromDto(d.Monster),
         d.Log.Select(l => new BattleLine(l.Round, l.Who, l.Text)).ToList(),
-        d.Outcome, d.Seed, d.XpOwed);
+        d.Outcome, d.Seed, d.XpOwed)
+    {
+        // Charges are read back from the battle rather than fixed at Begin, so
+        // a workout logged mid-fight lands on the next swing. The opening-only
+        // ones (Nourish, Gratitude, Balance) have already done their work.
+        Boosts = new Boosts(d.Charges?.Distinct().ToList() ?? [], d.Stats ?? RaidStats.None),
+    };
 
     private static Combatant FromDto(CombatantDto c) => new(
         c.Hp, c.MaxHp, c.Shield, c.Attack, c.Defense, c.Speed,
@@ -197,6 +210,19 @@ public static class Api
         // stats cannot be edited by anything that can reach the JSON.
         monster = Data.World.MonsterAt(dto.Island, dto.Stage, dto.Theme);
         return monster is not null;
+    }
+
+    private static RaidStats ReadStats(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return RaidStats.None;
+        try
+        {
+            return JsonSerializer.Deserialize(json, GameJson.Default.RaidStats) ?? RaidStats.None;
+        }
+        catch (JsonException)
+        {
+            return RaidStats.None;
+        }
     }
 
     private static DioramaTheme ParseTheme(string theme) =>

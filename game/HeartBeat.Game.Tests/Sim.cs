@@ -16,15 +16,16 @@ public static class Sim
 {
     public const int RoundCap = 300;
 
-    public static BattleState Fight(Monster monster, int level, uint seed)
+    public static BattleState Fight(Monster monster, int level, uint seed, Boosts? boosts = null)
     {
-        BattleState state = Battle.Begin(monster, level, seed);
+        BattleState state = Battle.Begin(monster, level, seed, boosts);
         var available = Actions.UnlockedAt(level);
 
         PlayerAction? heal = available.FirstOrDefault(a => a.Type == ActionType.Heal);
+        BattleState opening = state;
         PlayerAction best = available
             .Where(a => a.Type == ActionType.Attack)
-            .OrderByDescending(a => Battle.Effectiveness(a.Element, monster) * a.Power)
+            .OrderByDescending(a => Battle.PreviewDamage(opening, a, monster))
             .First();
 
         int guard = 0;
@@ -48,12 +49,12 @@ public static class Sim
     /// How often a level beats a monster across many seeds. Balance is a
     /// distribution, not a single fight - one unlucky seed proves nothing.
     /// </summary>
-    public static double WinRate(Monster monster, int level, int trials = 60)
+    public static double WinRate(Monster monster, int level, Boosts? boosts = null, int trials = 60)
     {
         int wins = 0;
         for (int t = 0; t < trials; t++)
         {
-            if (Fight(monster, level, Rng.Hash($"{monster.Id}/{level}/{t}")).Outcome == Outcome.Won) wins++;
+            if (Fight(monster, level, Rng.Hash($"{monster.Id}/{level}/{t}"), boosts).Outcome == Outcome.Won) wins++;
         }
         return wins / (double)trials;
     }

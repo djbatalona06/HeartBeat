@@ -28,7 +28,7 @@ public static partial class Bridge
     [JSExport]
     internal static int Ping(int value) => value + 1;
 
-    /// <summary>The five islands, for the compass and the world map.</summary>
+    /// <summary>The seven islands, for the compass and the world map.</summary>
     [JSExport]
     internal static string World() => Api.World();
 
@@ -38,8 +38,9 @@ public static partial class Bridge
 
     /// <summary>Opens a fight, or null if there is nothing on that stage.</summary>
     [JSExport]
-    internal static string? BeginBattle(int island, int stage, string theme, int level, double seed) =>
-        Api.BeginBattle(island, stage, theme, level, seed);
+    internal static string? BeginBattle(
+        int island, int stage, string theme, int level, double seed, string charges, string statsJson) =>
+        Api.BeginBattle(island, stage, theme, level, seed, charges, statsJson);
 
     /// <summary>The player's turn. Returns the next state, or null if the state was malformed.</summary>
     [JSExport]

@@ -55,11 +55,11 @@ public class ProgressionTests
     public void StatsFollowTheRewardTable()
     {
         Assert.Equal(new PlayerStats(60, 12, 5, 5), Progression.StatsAt(1));
-        Assert.Equal(new PlayerStats(60, 12, 5, 5), Progression.StatsAt(2));
-        Assert.Equal(new PlayerStats(80, 12, 5, 5), Progression.StatsAt(3));
-        Assert.Equal(new PlayerStats(80, 18, 5, 5), Progression.StatsAt(5));
-        Assert.Equal(new PlayerStats(80, 18, 10, 5), Progression.StatsAt(7));
-        Assert.Equal(new PlayerStats(120, 18, 10, 5), Progression.StatsAt(10));
+        Assert.Equal(new PlayerStats(70, 12, 5, 5), Progression.StatsAt(2));
+        Assert.Equal(new PlayerStats(90, 12, 5, 5), Progression.StatsAt(3));
+        Assert.Equal(new PlayerStats(90, 18, 5, 5), Progression.StatsAt(5));
+        Assert.Equal(new PlayerStats(90, 18, 10, 6), Progression.StatsAt(7));
+        Assert.Equal(new PlayerStats(130, 21, 10, 6), Progression.StatsAt(10));
     }
 
     [Fact]
@@ -92,6 +92,7 @@ public class ProgressionTests
     [InlineData(Activity.Work, 15)]
     [InlineData(Activity.Rest, 10)]
     [InlineData(Activity.Gratitude, 20)]
+    [InlineData(Activity.Nourish, 10)]
     public void ActivityXpMatchesTheSpec(Activity activity, int expected) =>
         Assert.Equal(expected, Progression.XpFor(activity));
 
@@ -119,8 +120,13 @@ public class ProgressionTests
     }
 
     [Fact]
-    public void ANewCoupleCanAlreadyFight() =>
-        Assert.Contains(Actions.Strike, Actions.UnlockedAt(1));
+    public void ANewCoupleHasAMoveOfEveryFightingStyle()
+    {
+        var first = Actions.UnlockedAt(1).Select(a => a.Style).ToHashSet();
+        Assert.Contains(Style.Physical, first);
+        Assert.Contains(Style.Defensive, first);
+        Assert.Contains(Style.Magic, first);
+    }
 
     [Fact]
     public void UnlocksOnlyEverGrow()

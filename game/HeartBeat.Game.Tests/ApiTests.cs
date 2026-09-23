@@ -23,13 +23,13 @@ public class ApiTests
     }
 
     [Fact]
-    public void WorldListsFiveIslandsWithCamelCaseFields()
+    public void WorldListsSevenIslandsWithCamelCaseFields()
     {
         JsonElement world = Parse(Api.World());
         Assert.Equal(7, world.GetProperty("stagesPerIsland").GetInt32());
 
         JsonElement islands = world.GetProperty("islands");
-        Assert.Equal(5, islands.GetArrayLength());
+        Assert.Equal(7, islands.GetArrayLength());
 
         JsonElement first = islands[0];
         Assert.Equal(1, first.GetProperty("number").GetInt32());
@@ -93,10 +93,10 @@ public class ApiTests
     public void StagesThatDoNotExistComeBackNullRatherThanThrowing()
     {
         Assert.Null(Api.Stage(1, 99, "light"));
-        Assert.Null(Api.Stage(2, 1, "light"));   // island 2 is named but unbuilt
+        Assert.Null(Api.Stage(8, 1, "light"));   // there are seven islands
         Assert.Null(Api.Stage(99, 1, "light"));
-        Assert.Null(Api.BeginBattle(2, 1, "light", 5, 1));
-        Assert.Equal(0, Api.DefeatXp(2, 1));
+        Assert.Null(Api.BeginBattle(99, 1, "light", 5, 1));
+        Assert.Equal(0, Api.DefeatXp(8, 1));
     }
 
     [Fact]
@@ -170,15 +170,15 @@ public class ApiTests
         Assert.Equal(1, start.GetProperty("level").GetInt32());
         Assert.Equal(60, start.GetProperty("maxHp").GetInt32());
         Assert.False(start.GetProperty("atMaxLevel").GetBoolean());
-        Assert.Equal(1, start.GetProperty("actions").GetArrayLength());
+        Assert.Equal(3, start.GetProperty("actions").GetArrayLength());
         Assert.Equal("strike", start.GetProperty("actions")[0].GetProperty("id").GetString());
-        Assert.Equal(25, start.GetProperty("actions")[0].GetProperty("xp").GetInt32());
+        Assert.Equal("Physical", start.GetProperty("actions")[0].GetProperty("style").GetString());
 
         JsonElement capped = Parse(Api.Progress(int.MaxValue));
-        Assert.Equal(10, capped.GetProperty("level").GetInt32());
+        Assert.Equal(Progression.MaxLevel, capped.GetProperty("level").GetInt32());
         Assert.True(capped.GetProperty("atMaxLevel").GetBoolean());
         Assert.Equal(0, capped.GetProperty("xpForNextLevel").GetInt32());
-        Assert.Equal(6, capped.GetProperty("actions").GetArrayLength());
+        Assert.Equal(Actions.All.Count, capped.GetProperty("actions").GetArrayLength());
     }
 
     [Fact]
@@ -228,4 +228,31 @@ public class ApiTests
         Assert.Equal(75, Api.DefeatXp(1, 4));
         Assert.Equal(200, Api.DefeatXp(1, 7));
     }
+
+    [Fact]
+    public void ChargesStatsAndMoveNamesSurviveTheRoundTrip()
+    {
+        string begun = Api.BeginBattle(
+            1, 1, "light", 3, 99, "exercise,bond,nonsense", """{"burden":40,"resilience":30}""")!;
+        JsonElement start = Parse(begun);
+        Assert.Equal(2, start.GetProperty("charges").GetArrayLength());
+        Assert.Equal("Exercise", start.GetProperty("charges")[0].GetString());
+        Assert.Equal(40, start.GetProperty("stats").GetProperty("burden").GetInt32());
+        Assert.True(start.GetProperty("player").GetProperty("maxHp").GetInt32() > Progression.StatsAt(3).MaxHp);
+
+        // TypeScript names the moves for the companion by setting moveNames on
+        // the battle it hands back. The log line uses the name; nothing else does.
+        string named = begun.Replace("\"moveNames\":null", "\"moveNames\":{\"strike\":\"Hoofbeat\"}", StringComparison.Ordinal)
+            .Replace("\"turn\":\"Monster\"", "\"turn\":\"Player\"", StringComparison.Ordinal);
+        JsonElement after = Parse(Api.Act(named, "strike")!);
+        JsonElement log = after.GetProperty("log");
+        Assert.StartsWith("Hoofbeat hits for", log[log.GetArrayLength() - 1].GetProperty("text").GetString(), StringComparison.Ordinal);
+        Assert.Equal("Hoofbeat", after.GetProperty("moveNames").GetProperty("strike").GetString());
+        Assert.Equal(2, after.GetProperty("charges").GetArrayLength());
+    }
+
+    [Fact]
+    public void ABadStatsArgumentIsNoStatsRatherThanAFailure() =>
+        Assert.Equal(0, Parse(Api.BeginBattle(1, 1, "light", 3, 1, "", "{not json")!)
+            .GetProperty("stats").GetProperty("burden").GetInt32());
 }

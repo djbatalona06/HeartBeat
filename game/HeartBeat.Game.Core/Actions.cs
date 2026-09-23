@@ -5,79 +5,61 @@ namespace HeartBeat.Game.Core;
 /// <summary>
 /// The player's whole move list, and when each move arrives.
 ///
-/// Five entries, because a wellness tracker has five things worth logging and
-/// this is that list with damage attached. <c>Strike</c> is unlocked at level 1
-/// so a brand-new couple can fight on day one with the only activity that needs
-/// no history behind it.
+/// Three moves from day one - one of each <see cref="Style"/> a companion
+/// fights with - so a brand-new couple has a real choice on their first turn.
+/// The heal arrives at level 4 and the couple's move at 10. The names here are
+/// the plain ones; each companion's kit renames them on the TypeScript side.
 /// </summary>
 public static class Actions
 {
     public static readonly PlayerAction Strike = new(
         Id: "strike",
-        Name: "Log Exercise",
-        Power: 10,
-        Element: Element.Movement,
+        Name: "Strike",
+        Power: 15,
+        Style: Style.Physical,
         Type: ActionType.Attack,
-        UnlockLevel: 1,
-        Activity: Activity.Exercise);
+        UnlockLevel: 1);
 
-    public static readonly PlayerAction Mood = new(
-        Id: "mood",
-        Name: "Log Mood",
-        Power: 12,
-        Element: Element.Mood,
-        Type: ActionType.Attack,
-        UnlockLevel: 2,
-        Activity: Activity.Mood);
-
-    /// <summary>
-    /// Restores a percentage of maximum HP rather than a flat amount - see
-    /// <c>Battle.Act</c>. A flat heal is worth less and less as the island gets
-    /// harder, which makes the level-4 unlock feel like it expires.
-    /// </summary>
-    public static readonly PlayerAction Rest = new(
-        Id: "rest",
-        Name: "Log Rest",
-        Power: 30,
-        Element: Element.Rest,
-        Type: ActionType.Heal,
-        UnlockLevel: 4,
-        Activity: Activity.Rest);
-
-    public static readonly PlayerAction Gratitude = new(
-        Id: "gratitude",
-        Name: "Log Gratitude",
-        Power: 10,
-        Element: Element.Mood,
+    public static readonly PlayerAction Guard = new(
+        Id: "guard",
+        Name: "Guard",
+        Power: 14,
+        Style: Style.Defensive,
         Type: ActionType.Shield,
-        UnlockLevel: 6,
-        Activity: Activity.Gratitude);
+        UnlockLevel: 1);
 
-    public static readonly PlayerAction Focus = new(
-        Id: "focus",
-        Name: "Log Work",
-        Power: 11,
-        Element: Element.Focus,
+    /// <summary>Hits for less and ignores defense - see <c>Battle.Act</c>.</summary>
+    public static readonly PlayerAction Spell = new(
+        Id: "spell",
+        Name: "Spell",
+        Power: 12,
+        Style: Style.Magic,
         Type: ActionType.Attack,
-        UnlockLevel: 8,
-        Activity: Activity.Work);
+        UnlockLevel: 1);
 
     /// <summary>
-    /// The couple's synergy move, and the only action that is not one person's
-    /// log. It hits for a lot and costs the whole turn; level 10 is the end of
-    /// the curve, so this is what the end of the curve is for.
+    /// Restores a percentage of maximum HP rather than a flat amount, so the
+    /// level-4 unlock does not quietly expire as the islands get harder.
     /// </summary>
+    public static readonly PlayerAction Mend = new(
+        Id: "mend",
+        Name: "Mend",
+        Power: 30,
+        Style: Style.Mend,
+        Type: ActionType.Heal,
+        UnlockLevel: 4);
+
+    /// <summary>The couple's move. Hits hardest, and Resonance is what feeds it.</summary>
     public static readonly PlayerAction Together = new(
         Id: "together",
         Name: "Together",
-        Power: 25,
-        Element: Element.Mood,
+        Power: 28,
+        Style: Style.Together,
         Type: ActionType.Attack,
-        UnlockLevel: 10,
-        Activity: null);
+        UnlockLevel: 10);
 
     public static readonly IReadOnlyList<PlayerAction> All =
-        [Strike, Mood, Rest, Gratitude, Focus, Together];
+        [Strike, Guard, Spell, Mend, Together];
 
     /// <summary>Everything available at a level, in unlock order.</summary>
     public static IReadOnlyList<PlayerAction> UnlockedAt(int level) =>

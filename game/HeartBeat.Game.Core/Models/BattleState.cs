@@ -62,4 +62,12 @@ public sealed record BattleState(
     Outcome Outcome,
     uint Seed,
     /// <summary>XP banked by this fight so far, for the TypeScript side to pay out.</summary>
-    int XpOwed);
+    int XpOwed)
+{
+    /// <summary>
+    /// Today's charges and the raid sheet, fixed at <c>Battle.Begin</c>. An init
+    /// property rather than a positional one so a state built in a test without
+    /// thinking about boosts gets none, which is the balanced baseline.
+    /// </summary>
+    public Boosts Boosts { get; init; } = Boosts.None;
+}
