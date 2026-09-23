@@ -6488,6 +6488,39 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   border-radius: 0;
 }
 
+/* A phone held upright: the garden is the screen.
+
+   The drawing is 400x240, so fitted to a portrait width it was a strip about
+   a quarter of the height, sat at the very bottom -- exactly where the first
+   card, the tab bar and the bottom veil are. The tree was drawn and nobody
+   could see it.
+
+   So here the drawing takes the lower 62% of the height at its own shape and
+   runs off both sides, centred on x=282 of 400: the fountain at the left edge,
+   the whole tree across the middle. `transform` rather than a second
+   preserveAspectRatio, because none of the nine alignments lands there. */
+@media (orientation: portrait) and (max-width: 640px) {
+  .home-scene .garden-backdrop {
+    inset: auto 0 0 auto;
+    left: 50%;
+    height: 62svh;
+    width: calc(62svh * 400 / 240);
+    transform: translateX(-70.5%);
+  }
+
+  /* And the first screen is the header and the pet standing in the garden,
+     with the cards below it. Smaller, and to the left of the trunk, so it
+     stands on the grass under the canopy rather than in front of it; the top
+     margin tracks the drawing's 62svh so its feet stay on the ground on a
+     short phone and a tall one alike. The cards start below, their top edge
+     showing above the tab bar so there is plainly more. */
+  .home-mascot-standalone {
+    width: min(38vw, 170px);
+    height: min(38vw, 170px);
+    margin: max(var(--space-5), calc(58svh - 90px)) auto var(--space-6) 6vw;
+  }
+}
+
 /* The garden's own sky is opaque `--color-base` at its top edge, so it covers
    the wash above exactly where it starts. Nothing to blend, nothing to line up
    — which is the reason `fit="ground"` was worth a prop rather than a second
