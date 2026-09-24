@@ -12,6 +12,7 @@ import { NotificationsBlock } from './NotificationsBlock';
 import { StudyLinkBlock } from './StudyLinkBlock';
 import { ComplimentBlock } from './ComplimentBlock';
 import { RecoveryBlock } from './RecoveryBlock';
+import { WhatsOnBlock } from './WhatsOnBlock';
 import {
   MAX_GENDER_NOTE,
   clearPendingInvite,
@@ -272,6 +273,11 @@ export function SettingsPage() {
       <NotificationsBlock />
       <StudyLinkBlock token={settings?.workerSecret} />
       {paired ? <ComplimentBlock /> : null}
+
+      {/* Last on the page, the way a footnote is last: everything above is a
+          setting to change, this is just what the deploy is currently
+          running with. */}
+      <WhatsOnBlock />
     </div>
   );
 }

@@ -2196,6 +2196,14 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 /* ---- settings ------------------------------------------------------------- */
 .set-block { margin-bottom: var(--space-6); }
 
+.whats-on-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 .set-toggle {
   display: flex;
   align-items: center;
@@ -2330,10 +2338,29 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   border-radius: var(--radius-large);
 }
 
+/* A lean toward an existing palette token, not a new colour — the same rule
+   `--color-accent-live` follows for the pet's mood (see styles.css above).
+   Decorative only: the phase name in `.cycle-summary-phase` carries the
+   meaning, so this border needs no AA guarantee of its own. Menstrual reuses
+   the same danger token the flow markers below already paint with. */
+.cycle-summary[data-phase] { border-left-width: 3px; }
+.cycle-summary[data-phase='menstrual'] { border-left-color: var(--color-danger); }
+.cycle-summary[data-phase='follicular'] { border-left-color: var(--color-success); }
+.cycle-summary[data-phase='ovulatory'] { border-left-color: var(--color-accent); }
+.cycle-summary[data-phase='luteal'] { border-left-color: var(--color-base); }
+
 .cycle-summary-lead {
   font-family: var(--font-display);
   font-size: var(--text-xl);
   line-height: var(--line-tight);
+}
+
+.cycle-summary-phase {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .cycle-summary-sub {

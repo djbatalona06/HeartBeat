@@ -9,8 +9,6 @@ import {
   type BossState,
 } from './boss';
 import { drainNudges, prepareVapid } from './push';
-import { REFUSAL_MESSAGE, REFUSAL_STATUS, joinCouple } from './pairing';
-import { recordAuthEvent } from './audit';
 
 export interface Env {
   DB: D1Database;
@@ -20,27 +18,11 @@ export interface Env {
   VAPID_PRIVATE_KEY?: string;
 }
 
-const INVITE_TTL_MS = 15 * 60 * 1000;
-
 /** Tokens are stored hashed: a leaked database should not be a set of logins. */
 async function hashToken(token: string): Promise<string> {
   const bytes = new TextEncoder().encode(token);
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-function newToken(): string {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-/** Short, human-readable, and single-use — meant to be typed if a link fails. */
-function newInviteCode(): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const bytes = new Uint8Array(6);
-  crypto.getRandomValues(bytes);
-  return [...bytes].map((b) => alphabet[b % alphabet.length]).join('');
 }
 
 interface Caller {
@@ -193,133 +175,12 @@ export default {
       return json({ ok: true, push: Boolean(env.VAPID_PUBLIC_KEY) }, 200, origin);
     }
 
-    // Start a couple. The first device calls this and keeps the token.
-    if (url.pathname === '/pair/start' && request.method === 'POST') {
-      const now = Date.now();
-      const coupleId = crypto.randomUUID();
-      const memberId = crypto.randomUUID();
-      const token = newToken();
-      const invite = newInviteCode();
-
-      await env.DB.batch([
-        env.DB.prepare('INSERT INTO couples (id, created_at) VALUES (?, ?)').bind(coupleId, now),
-        env.DB.prepare(
-          'INSERT INTO members (id, couple_id, token_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-        ).bind(memberId, coupleId, await hashToken(token), now, now),
-        env.DB.prepare(
-          'INSERT INTO invites (token, couple_id, created_at, expires_at) VALUES (?, ?, ?, ?)',
-        ).bind(invite, coupleId, now, now + INVITE_TTL_MS),
-        env.DB.prepare('INSERT INTO pets (couple_id, fed_at) VALUES (?, ?)').bind(coupleId, now),
-      ]);
-
-      await recordAuthEvent(env.DB, request, { kind: 'pair_start', coupleId, memberId }, now);
-      return json({ coupleId, memberId, token, invite }, 200, origin);
-    }
-
-    // Redeem an invite. The second device calls this and gets its own token.
-    // The admission check lives inside the INSERT — see worker/src/pairing.ts,
-    // which is tested against real SQLite, race included.
-    if (url.pathname === '/pair/join' && request.method === 'POST') {
-      const body = (await request.json().catch(() => ({}))) as { invite?: string };
-      const code = (body.invite ?? '').trim().toUpperCase();
-      if (!code) return json({ error: 'invite required' }, 400, origin);
-
-      const now = Date.now();
-      const memberId = crypto.randomUUID();
-      const token = newToken();
-      const outcome = await joinCouple(env.DB, code, memberId, await hashToken(token), now);
-
-      if (!outcome.ok) {
-        const refusal = outcome.refusal!;
-        // The refusal is the event most worth keeping: a third device trying to
-        // get in leaves no other trace anywhere.
-        await recordAuthEvent(
-          env.DB,
-          request,
-          { kind: 'join_refused', coupleId: outcome.coupleId, detail: refusal },
-          now,
-        );
-        return json({ error: REFUSAL_MESSAGE[refusal] }, REFUSAL_STATUS[refusal], origin);
-      }
-
-      await recordAuthEvent(
-        env.DB,
-        request,
-        { kind: 'pair_join', coupleId: outcome.coupleId, memberId },
-        now,
-      );
-      return json({ coupleId: outcome.coupleId, memberId, token }, 200, origin);
-    }
-
+    // Pairing, entries and push-subscription registration all live on the
+    // Pages side now (app/functions/api/pair/*, entries.ts, subscribe.ts) —
+    // the shipped client is same-origin and never calls this Worker's own
+    // origin for them. Only the boss fight stays here, for the reason below.
     const caller = await authenticate(request, env);
     if (!caller) return json({ error: 'unauthorized' }, 401, origin);
-
-    // Push registration for this device.
-    if (url.pathname === '/subscribe' && request.method === 'POST') {
-      const body = (await request.json().catch(() => ({}))) as {
-        endpoint?: string; p256dh?: string; auth?: string;
-      };
-      if (!body.endpoint || !body.p256dh || !body.auth) {
-        return json({ error: 'endpoint, p256dh and auth are required' }, 400, origin);
-      }
-      const now = Date.now();
-      await env.DB.prepare(
-        `INSERT INTO push_subscriptions (endpoint, member_id, p256dh, auth, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(endpoint) DO UPDATE SET
-           member_id = excluded.member_id, p256dh = excluded.p256dh,
-           auth = excluded.auth, updated_at = excluded.updated_at`,
-      ).bind(body.endpoint, caller.memberId, body.p256dh, body.auth, now, now).run();
-      return json({ ok: true }, 200, origin);
-    }
-
-    // Push the caller's own entries. Last write wins on updated_at.
-    if (url.pathname === '/entries' && request.method === 'POST') {
-      const body = (await request.json().catch(() => ({}))) as {
-        entries?: Array<{ id: string; kind: string; day: string; payload: unknown; updatedAt: number }>;
-      };
-      const entries = body.entries ?? [];
-      if (!entries.length) return json({ ok: true, written: 0 }, 200, origin);
-
-      const statements = entries.map((e) =>
-        env.DB.prepare(
-          `INSERT INTO entries (id, couple_id, member_id, kind, day, payload, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
-           ON CONFLICT(member_id, kind, day) DO UPDATE SET
-             payload = excluded.payload, updated_at = excluded.updated_at
-           WHERE excluded.updated_at > entries.updated_at`,
-        ).bind(
-          e.id, caller.coupleId, caller.memberId, e.kind, e.day,
-          JSON.stringify(e.payload), e.updatedAt,
-        ),
-      );
-      await env.DB.batch(statements);
-      return json({ ok: true, written: entries.length }, 200, origin);
-    }
-
-    // Pull everything in the couple changed since `since`, both members.
-    if (url.pathname === '/entries' && request.method === 'GET') {
-      const since = Number(url.searchParams.get('since') ?? 0) || 0;
-      const rows = await env.DB.prepare(
-        `SELECT id, member_id, kind, day, payload, updated_at
-           FROM entries WHERE couple_id = ? AND updated_at > ?
-          ORDER BY updated_at ASC LIMIT 500`,
-      )
-        .bind(caller.coupleId, since)
-        .all<{ id: string; member_id: string; kind: string; day: string; payload: string; updated_at: number }>();
-
-      return json(
-        {
-          entries: rows.results.map((r) => ({
-            id: r.id, memberId: r.member_id, kind: r.kind, day: r.day,
-            payload: JSON.parse(r.payload), updatedAt: r.updated_at,
-          })),
-        },
-        200,
-        origin,
-      );
-    }
-
 
     /* -- the boss fight ------------------------------------------------------
      *
