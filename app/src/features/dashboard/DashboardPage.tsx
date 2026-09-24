@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
 import { ensureIdentity, completeTask, coupleVitals, seedStarterPlan } from '../../db/repository';
@@ -17,6 +17,7 @@ import { moodFor, moodWords } from '../../domain/pet/mood';
 import { useHour } from '../home/useHour';
 import { TogetherPanel } from '../pet/TogetherPanel';
 import { PetGreeting, usePlayGreetingOnce } from '../pet/PetGreeting';
+import { useLevelUpMoment } from '../pet/useLevelUpMoment';
 import { greetingFor } from '../../domain/pet/greeting';
 import { FeedPanel } from '../party/FeedPanel';
 import { gearArt } from '../party/art/gear';
@@ -87,10 +88,18 @@ export function DashboardPage() {
   );
   const open = dailies ? openDailies(dailies, day) : [];
 
-  const pet = useLiveQuery(
-    () => (settings?.coupleId ? db.pet.get(settings.coupleId) : undefined),
+  // Tagged with the couple it was read for. A live query keeps its last answer
+  // while a new one is on its way, so without the tag the "no pet" read taken
+  // before settings loaded would pass for this couple's answer for a frame, and
+  // the level-up below would wave the greeting through before it had looked.
+  const petRead = useLiveQuery(
+    async () => ({
+      for: settings?.coupleId ?? null,
+      pet: settings?.coupleId ? (await db.pet.get(settings.coupleId)) ?? null : null,
+    }),
     [settings?.coupleId],
   );
+  const pet = petRead?.pet;
   const avatar = useLiveQuery(
     () => (memberId ? db.avatars.get(memberId) : undefined),
     [memberId],
@@ -121,6 +130,19 @@ export function DashboardPage() {
   const greeting = greetingFor({ coupleId: coupleId ?? 'solo', day, mood: petMood, name: mascot.name });
   const firstVisit = usePlayGreetingOnce(day);
 
+  // The level-up plays first and the greeting pose waits for it: both move the
+  // mascot's `transform`. See features/pet/useLevelUpMoment.ts.
+  const mascotRef = useRef<HTMLDivElement>(null);
+  const fillRef = useRef<HTMLDivElement>(null);
+  const holdGreeting = useLevelUpMoment({
+    ready: settings !== undefined && petRead?.for === (settings.coupleId ?? null),
+    level: pet ? progress.level : null,
+    calm,
+    sound: settings?.sound === true,
+    mascot: mascotRef,
+    fill: fillRef,
+  });
+
   // The same mood, spent on the accent for the whole app rather than on one
   // drawing. Set here because this is the only screen that already derives it
   // -- lifting it into `ThemeProvider` would mean a Dexie import in a module
@@ -143,10 +165,11 @@ export function DashboardPage() {
           whole of how a colourway reaches the drawing — every mascot paints in
           those and nothing else, so none of the five files knows dyes exist. */}
       <div
+        ref={mascotRef}
         className="home-mascot-standalone"
         data-mood={petMood}
         data-calm={calm ? 'true' : 'false'}
-        data-greet={firstVisit && !calm ? greeting.pose : undefined}
+        data-greet={firstVisit && !calm && !holdGreeting ? greeting.pose : undefined}
         style={{
           ...dyeStyle(avatar?.dye),
           // The radiance, as 0..1. The pet never turns sad — it only loses its
@@ -172,7 +195,7 @@ export function DashboardPage() {
           </span>
         </div>
         <div className="home-pet-bar">
-          <div className="home-pet-fill" style={{ width: `${progress.fraction * 100}%` }} />
+          <div ref={fillRef} className="home-pet-fill" style={{ width: `${progress.fraction * 100}%` }} />
         </div>
         <p className="home-pet-blurb">{mascot.blurb}</p>
       </section>

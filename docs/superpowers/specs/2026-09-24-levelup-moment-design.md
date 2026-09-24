@@ -48,7 +48,17 @@ not the combat rank C# owns (CLAUDE.md, "two level numbers").
      glow ring on the mascot's `::after` can't be targeted by `animate()`, so the
      glow is a `filter: drop-shadow` pulse on the mascot element itself. The bar
      sweeps from full back to its new fraction.
-3. **Home**, in `DashboardPage`:
+3. **Home**: the effect lives in `features/pet/useLevelUpMoment.ts` and
+   `DashboardPage` calls it. Two details that only showed up in a browser:
+   - The pet read is tagged with the couple it was read for (`petRead.for`).
+     A live query keeps its last answer while its deps change, so the untagged
+     "no pet" read from before settings loaded passed for this couple's answer
+     for a frame. That let the greeting pose start and then get cut off.
+   - The baseline sits in a ref and only moves forward once the animation
+     finishes, so StrictMode's double effect in development replays the moment
+     instead of eating it.
+
+   What the hook does, in order:
    - One effect on `progress.level`, guarded on `pet !== undefined` (or the first
      render's `xp ?? 0` would record level 1). It reads `hb.petLevelSeen`, calls
      `levelUpSince` and, on a hit, `isBigLevelUp`, then runs the animator on refs

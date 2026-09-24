@@ -267,6 +267,7 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   would erase the packs and escape every contrast proof** — see `docs/PULSE.md`
   §3 and §4, which is also the written answer on why there is no CSS-in-JS
   layer.
+- **A `useLiveQuery` keeps its last answer while its deps change.** When `settings.coupleId` arrives, a query keyed on it still returns what it read *before* settings loaded until the new read lands. So "undefined means loading" is not enough whenever the old answer was a real value (such as `null` for "no pet"). Tag the result with the key it was read for, as `petRead.for` does in `DashboardPage`, and treat a mismatch as still loading. Without the tag, the level-up check waved the greeting pose through for a frame.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)
