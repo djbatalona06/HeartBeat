@@ -327,6 +327,67 @@ body {
   50% { transform: scale(1.025) translateY(-1.4%); }
 }
 
+/* ---- the day's hello --------------------------------------------------------
+   One line under the pet, and on the first visit of the day one small move.
+   The move is on the wrapper and the breathing is on the drawing inside it,
+   so the two transforms compose rather than fight. Transform only, once
+   through, under a second: nothing here flashes. Calm never sets
+   `data-greet`, and reduced motion never reaches the keyframes. */
+.home-greeting {
+  position: relative;
+  max-width: 22rem;
+  margin: calc(-1 * var(--space-2)) auto var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  text-align: center;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+}
+/* The bubble's tail, pointing up at the pet. */
+.home-greeting::before {
+  content: '';
+  position: absolute;
+  top: -0.4rem;
+  left: 50%;
+  width: 0.7rem;
+  height: 0.7rem;
+  background: inherit;
+  border-top: inherit;
+  border-left: inherit;
+  transform: translateX(-50%) rotate(45deg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .home-mascot-standalone[data-greet='wave'] { animation: greet-wave 0.8s var(--ease-soft, ease) 0.2s 1; }
+  .home-mascot-standalone[data-greet='hop'] { animation: greet-hop 0.7s var(--ease-soft, ease) 0.2s 1; }
+  .home-mascot-standalone[data-greet='peek'] { animation: greet-peek 0.9s var(--ease-soft, ease) 0.2s 1 backwards; }
+  .home-mascot-standalone[data-greet='wiggle'] { animation: greet-wiggle 0.8s var(--ease-soft, ease) 0.2s 1; }
+}
+@keyframes greet-wave {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-5deg); }
+  50% { transform: rotate(4deg); }
+  75% { transform: rotate(-2deg); }
+}
+@keyframes greet-hop {
+  0%, 100% { transform: translateY(0); }
+  35% { transform: translateY(-9%); }
+  60% { transform: translateY(0); }
+  75% { transform: translateY(-3%); }
+}
+@keyframes greet-peek {
+  0% { transform: translateY(8%) scale(0.94); }
+  60% { transform: translateY(-2%) scale(1.02); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes greet-wiggle {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3%); }
+  40% { transform: translateX(3%); }
+  60% { transform: translateX(-2%); }
+  80% { transform: translateX(1%); }
+}
+
 /* ---- today ------------------------------------------------------------------
    The eight-task starter plan lands here first, and stays here once it has
    been edited into something else entirely — this is a live view of whatever
@@ -5923,12 +5984,12 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   gap: var(--space-3);
 }
 
-/* The canvas and the walking pad over its bottom-right corner. */
-.garden-stage-box { position: relative; }
+/* The canvas, and the walking pad under it at the right. Under rather than
+   over: the monster stands on the right of the arena, and a pad on top of the
+   canvas covered exactly the tile you were walking towards. */
+.garden-stage-box { display: grid; gap: var(--space-2); }
 .garden-dpad {
-  position: absolute;
-  right: var(--space-2);
-  bottom: var(--space-2);
+  justify-self: end;
   display: grid;
   grid-template-columns: repeat(3, 2.75rem);
   grid-template-rows: repeat(3, 2.75rem);

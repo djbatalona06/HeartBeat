@@ -13,7 +13,7 @@ the fight.
 | Question | Decision |
 |---|---|
 | New movement logic? | None. The pad calls the existing `step()`, so walls, the monster tile and "walk into it to fight" behave the same for all three inputs. |
-| Where does it sit? | Over the canvas, bottom-right, inside the garden's stage box. |
+| Where does it sit? | Under the canvas, right-aligned, inside a new `.garden-stage-box`. (The first try put it over the canvas's bottom-right corner, but on a 390 px phone that covered the monster's side of the arena, so it moved.) |
 | When is it shown? | Only while walking: hidden during a fight (`battle.outcome === 'Fighting'`), and absent in text mode, because there's no canvas to walk on. |
 | Centre button? | No. The garden has no "interact" verb: engaging is walking into the monster. A button with nothing behind it is YAGNI. The centre is a blank hub. |
 | Hold to keep walking? | Yes. Pointer down steps once, then repeats every 180 ms until the pointer is released or leaves the button. `step()` already refuses while a tween runs, so a repeat can never stack. |
@@ -38,7 +38,7 @@ the fight.
 4. **Page.** `EveGardenPage` renders the pad inside the stage wrapper when a
    scene exists and no fight is open. The hint text becomes "Arrow keys, WASD,
    the pad, or tap a tile beside you."
-5. **Style.** `.garden-dpad` is absolutely positioned bottom-right. The buttons
+5. **Style.** `.garden-dpad` sits in normal flow under the canvas, `justify-self: end`. The buttons
    use surface/ink tokens (no new colours) with a visible `:focus-visible` ring.
    Under forced colours, a `ButtonText` outline replaces the fill.
 

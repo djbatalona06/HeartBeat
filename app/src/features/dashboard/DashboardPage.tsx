@@ -16,6 +16,8 @@ import { VitalsPanel, glowOf } from '../pet/VitalsPanel';
 import { moodFor, moodWords } from '../../domain/pet/mood';
 import { useHour } from '../home/useHour';
 import { TogetherPanel } from '../pet/TogetherPanel';
+import { PetGreeting, usePlayGreetingOnce } from '../pet/PetGreeting';
+import { greetingFor } from '../../domain/pet/greeting';
 import { FeedPanel } from '../party/FeedPanel';
 import { gearArt } from '../party/art/gear';
 import { Screen } from '../../ui/layout/Screen';
@@ -114,6 +116,11 @@ export function DashboardPage() {
   const { hour } = useHour();
   const petMood = moodFor({ hour, glow: vitals ? glowOf(vitals) : 1 });
 
+  // Seeded by the couple and the day, so both phones get the same hello. A
+  // lone phone has a provisional coupleId, which is stable on that phone.
+  const greeting = greetingFor({ coupleId: coupleId ?? 'solo', day, mood: petMood, name: mascot.name });
+  const firstVisit = usePlayGreetingOnce(day);
+
   // The same mood, spent on the accent for the whole app rather than on one
   // drawing. Set here because this is the only screen that already derives it
   // -- lifting it into `ThemeProvider` would mean a Dexie import in a module
@@ -139,6 +146,7 @@ export function DashboardPage() {
         className="home-mascot-standalone"
         data-mood={petMood}
         data-calm={calm ? 'true' : 'false'}
+        data-greet={firstVisit && !calm ? greeting.pose : undefined}
         style={{
           ...dyeStyle(avatar?.dye),
           // The radiance, as 0..1. The pet never turns sad — it only loses its
@@ -153,6 +161,8 @@ export function DashboardPage() {
       >
         <mascot.Art mood={petMood} />
       </div>
+
+      <PetGreeting line={greeting.line} />
 
       <section className="home-pet">
         <div className="home-pet-head">
