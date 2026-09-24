@@ -2628,6 +2628,34 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
 
 .mood-note { margin-top: var(--space-2); resize: vertical; line-height: var(--line-body); }
 
+/* Mood trends: identity is solid-vs-dashed as well as colour, so neither line
+   depends on telling two tokens apart. Grid and axis words stay recessive. */
+.mood-trend-spans { display: flex; gap: var(--space-2); margin: var(--space-2) 0; }
+.mood-trend-legend {
+  display: flex; gap: var(--space-4); margin-top: var(--space-2);
+  font-size: var(--text-sm); color: var(--color-text-muted);
+}
+.mood-trend-legend > span { display: inline-flex; align-items: center; gap: var(--space-1); }
+.mood-trend { margin: var(--space-4) 0 0; }
+.mood-trend-head { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--text-sm); }
+.mood-trend-avg { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.mood-trend-plot { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2); margin-top: var(--space-1); }
+.mood-trend-axis {
+  display: flex; flex-direction: column; justify-content: space-between;
+  font-size: var(--text-xs); color: var(--color-text-muted); text-align: right;
+}
+.mood-trend-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.mood-trend-grid { stroke: var(--color-border); stroke-width: 1; }
+.mood-trend-mine, .mood-trend-theirs {
+  fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.mood-trend-mine { stroke: var(--color-accent); }
+.mood-trend-theirs { stroke: var(--color-text-muted); stroke-dasharray: 5 4; }
+.mood-trend-dot-mine { fill: var(--color-accent); stroke: var(--color-surface); stroke-width: 2; }
+.mood-trend-dot-theirs { fill: var(--color-surface); stroke: var(--color-text-muted); stroke-width: 2; }
+.mood-trend-hit { fill: transparent; }
+.mood-trend-hit:hover { fill: color-mix(in srgb, var(--color-text) 6%, transparent); }
+
 /* Calm mode stills the columns. Reduced motion is already handled globally. */
 :root[data-calm='true'] .mood-meters .meter-fill { transition: none; }
 

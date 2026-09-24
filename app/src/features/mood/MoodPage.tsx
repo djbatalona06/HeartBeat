@@ -10,6 +10,7 @@ import { Meter } from '../../components/Meter';
 import { Chip } from '../../ui/Chip';
 import { ComplimentComposer } from './ComplimentComposer';
 import { CycleSection } from '../cycle/CyclePage';
+import { MoodTrends } from './MoodTrends';
 import { WellnessNote } from './WellnessNote';
 import {
   MOOD_FLAGS,
@@ -218,6 +219,10 @@ export function MoodPage() {
           {canSave || !ready ? 'Save today' : 'Saved'}
         </button>
       </section>
+
+      {/* After today's panel, because today is what this page is for; the
+          last week or month is what you read once today is down. */}
+      <MoodTrends memberId={memberId} today={day} partnerName={partnerName} paired={paired} />
 
       {/* One line for today, above the lock and therefore never a cycle one --
           `openLanes` is what enforces that, not this call site. */}

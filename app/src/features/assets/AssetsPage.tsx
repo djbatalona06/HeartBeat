@@ -194,6 +194,7 @@ export function AssetsPage() {
           <h2 className="section-title">Kept up</h2>
           <p className="section-sub">
             Running streaks. These are not finished — that is rather the point of them.
+            If one ends, nothing it earned goes with it: every badge stays on the shelf.
           </p>
           <ul className="asset-done">
             {streaks.map(({ task, streak }) => (
