@@ -8,6 +8,7 @@ import {
   cycleLengths,
   daysLate,
   periodStartsFrom,
+  phaseFor,
   predict,
 } from './predict';
 
@@ -145,6 +146,39 @@ describe('predict', () => {
       const scattered = predict({ periodStarts: starts('2026-01-01', [22, 35, 25, 38]), today: '2026-05-10' });
       expect(scattered.uncertaintyDays).toBeGreaterThan(steady.uncertaintyDays);
     });
+  });
+});
+
+describe('phaseFor', () => {
+  // Starts on 2026-01-01, 01-29, 02-26, 03-26; no ovulation evidence, so
+  // nextPeriodStart is 2026-04-23 and ovulationDate falls back to
+  // nextPeriodStart minus the default 14-day luteal length: 2026-04-09.
+  const periodStarts = starts('2026-01-01', [28, 28, 28]);
+
+  it('has nothing to say without a forecast', () => {
+    const p = predict({ periodStarts: [], today: '2026-03-01' });
+    expect(phaseFor(p, '2026-03-01')).toBeNull();
+  });
+
+  it('names the first days of bleeding menstrual', () => {
+    const p = predict({ periodStarts, today: '2026-03-26' });
+    expect(phaseFor(p, '2026-03-26')).toBe('menstrual');
+  });
+
+  it('names the stretch before ovulation follicular', () => {
+    const p = predict({ periodStarts, today: '2026-04-05' });
+    expect(p.ovulationDate).toBe('2026-04-09');
+    expect(phaseFor(p, '2026-04-05')).toBe('follicular');
+  });
+
+  it('names the day of estimated ovulation ovulatory', () => {
+    const p = predict({ periodStarts, today: '2026-04-09' });
+    expect(phaseFor(p, '2026-04-09')).toBe('ovulatory');
+  });
+
+  it('names the stretch after ovulation luteal', () => {
+    const p = predict({ periodStarts, today: '2026-04-15' });
+    expect(phaseFor(p, '2026-04-15')).toBe('luteal');
   });
 });
 

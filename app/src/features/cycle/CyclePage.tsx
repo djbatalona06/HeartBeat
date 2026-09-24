@@ -6,8 +6,10 @@ import {
   addDays, daysBetween, daysInMonth, monthOf, shiftMonth, sundayIndex, todayKey,
 } from '../../domain/day';
 import { DEFAULT_TIMEZONE, type CycleEntry, type DayKey } from '../../domain/types';
-import { FLOWS, MOODS, SYMPTOM_GROUPS } from '../../domain/cycle/taxonomy';
-import { daysLate, periodStartsFrom, predict, type Prediction } from '../../domain/cycle/predict';
+import { FLOWS, MOODS, PHASE_LABEL, SYMPTOM_GROUPS } from '../../domain/cycle/taxonomy';
+import {
+  daysLate, periodStartsFrom, phaseFor, predict, type Prediction,
+} from '../../domain/cycle/predict';
 import { Icon } from '../../components/icons';
 import { CycleLock } from './CycleLock';
 import { WellnessNote } from '../mood/WellnessNote';
@@ -309,9 +311,10 @@ function Summary({ prediction, today }: { prediction: Prediction; today: DayKey 
 
   const late = daysLate(p, today);
   const until = p.nextPeriodStart ? daysBetween(today, p.nextPeriodStart) : null;
+  const phase = phaseFor(p, today);
 
   return (
-    <section className="cycle-summary">
+    <section className="cycle-summary" data-phase={phase ?? undefined}>
       <p className="cycle-summary-lead">
         {late > 0
           ? `${late} day${late > 1 ? 's' : ''} late`
@@ -319,6 +322,7 @@ function Summary({ prediction, today }: { prediction: Prediction; today: DayKey 
             ? 'Period expected today'
             : `Period in ${until} day${until === 1 ? '' : 's'}`}
       </p>
+      {phase ? <p className="cycle-summary-phase">{PHASE_LABEL[phase]} phase</p> : null}
       <p className="cycle-summary-sub">
         {p.cycleDay ? `Day ${p.cycleDay} · ` : ''}
         around {shortDay(p.nextPeriodStart!)}, give or take {p.uncertaintyDays} days

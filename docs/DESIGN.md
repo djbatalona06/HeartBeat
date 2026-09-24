@@ -844,7 +844,7 @@ would serve it an hour late for the eight months Pacific is on daylight time.
 | Invite link leaks from a chat thread | Fifteen-minute expiry, single use, third join refused |
 | Push subscription silently expires | Re-subscribe on launch and re-upload the endpoint |
 | Theme added with unreadable text | Contrast enforced in CI by `tokens.test.ts`, over both palettes |
-| Photos make sync expensive | Photos never sync; they stay on-device by design |
+| Photos make sync expensive | Synced via a dedicated R2 bucket, not D1 — unguessable per-object keys, no cross-couple read (`DEPLOY.md` §7) |
 
 ## Order of work
 

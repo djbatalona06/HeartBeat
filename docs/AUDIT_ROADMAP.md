@@ -77,7 +77,13 @@ explaining why.
 Concrete items, each checked against the current tree rather than assumed
 from a doc.
 
-### 2.1 The visual regression gate is only half-armed
+### 2.1 The visual regression gate is only half-armed — still open
+
+Deliberately not closed in the same pass as 2.2–2.6 below: real baselines
+have to come from a green CI run's `visual-frames` artifact, not from this
+container's fonts (see `docs/design-system.md` §"Baselines are not
+committed yet" and the pitfall in `CLAUDE.md`). Closing it needs a CI run,
+a pulled artifact, and a follow-up commit — not something to fake locally.
 
 `npm run visual` runs the walk, screenshots every route in two themes,
 and runs axe — all of that **is** enforced today (a console error or a
@@ -89,7 +95,17 @@ a green CI run, commit it, add the flag — it just hasn't happened. This is
 the single clearest gap between what the docs say should exist and what
 does; closing it is small and the instructions are already written.
 
-### 2.2 The Worker has four routes the app never calls
+### 2.2 The Worker has four routes the app never calls — closed
+
+Deleted `/pair/start`, `/pair/join`, `/subscribe`, and both `/entries`
+routes from `worker/src/index.ts`. `worker/src/audit.ts` (and its test)
+went with them — nothing else called `recordAuthEvent` on the Worker side
+once those routes were gone, and the Pages side already has its own
+independent copy in `app/functions/api/_lib.ts`. `worker/src/pairing.ts`
+and `pairing.test.ts` stay: unlike `audit.ts`, that test is the drift-guard
+between the Worker's admission SQL and `app/functions/api/pair/join.ts`'s,
+verified against real SQLite, and that value doesn't depend on whether the
+Worker's own route is still wired up.
 
 `worker/src/index.ts` implements `/pair/start`, `/pair/join`, `/entries`
 (GET+POST) and `/subscribe` — the same features `app/functions/api/pair/*`,
@@ -107,7 +123,9 @@ depends on `worker.<account>.workers.dev/pair/*` directly, then delete the
 four dead routes from `worker/src/index.ts`** — less surface for the next
 person to wonder about, and one less place a security fix has to land twice.
 
-### 2.3 One doc actively contradicts shipped behavior
+### 2.3 One doc actively contradicts shipped behavior — closed
+
+The Risks row now says the truth and points at `DEPLOY.md` §7.
 
 `docs/DESIGN.md`'s Risks table (§"Risks") lists "Photos make sync expensive"
 → "Photos never sync; they stay on-device by design." That was true when
@@ -120,7 +138,11 @@ likely to be read as ground truth by someone new — a one-line fix to that
 risk row (or a pointer to `DEPLOY.md` §7) removes a real "which is true"
 trap.
 
-### 2.4 Quests and achievements don't survive a device loss
+### 2.4 Quests and achievements don't survive a device loss — still open
+
+Left for its own PR, as §3 item 5 below already recommended: it needs a
+new D1 table and API surface, not a wiring fix, and bundling it with 2.1–2.3
+and 2.5–2.6 would have made a small, low-risk pass into a schema change.
 
 Documented, not hidden — `docs/DEPLOY.md` says recovery brings back entries,
 holdings and the pet, but quests and achievements finished **before** the
@@ -131,7 +153,14 @@ is a real gap for the one scenario the OAuth recovery feature exists to
 cover — a lost or replaced phone — and it's the kind of loss a person
 notices only after it's happened.
 
-### 2.5 The cycle-phase tint's blocker is gone, but nobody wired it
+### 2.5 The cycle-phase tint's blocker is gone, but nobody wired it — closed
+
+`domain/cycle/predict.ts` now exports `phaseFor()`, and `CycleSection`'s
+`Summary` card — the one inside `CycleLock`, not the open `mood-summary`
+card `WellnessNote` sits above — carries a `data-phase` attribute and a
+`PHASE_LABEL` line. The tint landed on the locked card specifically:
+tinting the card above the PIN would have leaked cycle phase past the same
+lock `CycleLock`/`openLanes`/`lockedLanes` exist to enforce.
 
 `PULSE.md` §5 named "cycle phase tints the wellness card" as the best
 open idea, blocked on "a `Phase` type first — nothing names
@@ -144,7 +173,10 @@ shipped since — `domain/scene/schedule.ts` computes sun position live off one
 clock read and `home/useHour.ts`/`SceneBackdrop.tsx` render it.) The type
 being ready makes this the cheapest remaining item in that doc.
 
-### 2.6 No single place says what's actually turned on
+### 2.6 No single place says what's actually turned on — closed
+
+`SettingsPage` now renders a `WhatsOnBlock` at the foot of the page, reading
+`/api/health` once and rendering four plain sentences.
 
 Four features self-disable cleanly when a deploy hasn't configured them:
 Workers AI (`ask`/`transcribe`), GitHub OAuth, Google OAuth, and Push
@@ -232,11 +264,11 @@ the member's zone. Ordered roughly cheapest-and-most-valuable first.
 | RPG/game (7 islands, chests, garden) | Built, no placeholder content |
 | Push notifications | Built, RFC-pinned, one of the most careful modules in the repo |
 | AI ask / transcribe | Built, gated on `env.AI`, sound prompt-injection design |
-| Visual regression pixel-diff | **Half-wired** — instructions written, not executed (§2.1) |
-| Worker's pair/entries/subscribe routes | **Dead code** — superseded by Pages Functions, not deleted (§2.2) |
-| `DESIGN.md` photo-sync claim | **Stale** — contradicts shipped R2 sync (§2.3) |
-| Pre-sync quests/achievements | **Documented gap** — lost on device loss, doesn't come back via recovery (§2.4) |
-| Cycle-phase wellness tint | **Unblocked, unwired** — type shipped, no UI reads it (§2.5) |
-| "What's on" visibility | **Missing** — `/api/health` exists, nothing surfaces it to users (§2.6) |
+| Visual regression pixel-diff | **Half-wired** — instructions written, not executed; needs a real CI artifact (§2.1) |
+| Worker's pair/entries/subscribe routes | **Closed** — four routes deleted from `worker/src/index.ts`, `audit.ts` with them (§2.2) |
+| `DESIGN.md` photo-sync claim | **Closed** — Risks row now points at `DEPLOY.md` §7 (§2.3) |
+| Pre-sync quests/achievements | **Documented gap** — deliberately left for its own PR, needs a new D1 table (§2.4) |
+| Cycle-phase wellness tint | **Closed** — `phaseFor()` wired into the locked `cycle-summary` card (§2.5) |
+| "What's on" visibility | **Closed** — `WhatsOnBlock` in Settings reads `/api/health` (§2.6) |
 | Third-party study deck ingestion | **Speced, not built** — plan.md Phase 3 |
 | Data export | **Not present** — gap in an otherwise strong privacy story |

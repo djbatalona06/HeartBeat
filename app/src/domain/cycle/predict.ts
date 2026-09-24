@@ -15,6 +15,7 @@
 
 import { addDays, daysBetween } from '../day';
 import type { CycleEntry, DayKey } from '../types';
+import type { CyclePhase } from './taxonomy';
 
 /** Cycles outside this range are data-entry noise, not biology, and are excluded. */
 export const MIN_CYCLE_DAYS = 15;
@@ -226,4 +227,35 @@ export function periodStartsFrom(entries: CycleEntry[]): DayKey[] {
 export function daysLate(prediction: Prediction, today: DayKey): number {
   if (!prediction.nextPeriodStart) return 0;
   return Math.max(0, daysBetween(prediction.nextPeriodStart, today));
+}
+
+/**
+ * How long the bleeding phase is treated as lasting from a period's first
+ * day, absent a logged end — the same kind of default `DEFAULT_LUTEAL_DAYS`
+ * already is above.
+ */
+export const MENSTRUAL_PHASE_DAYS = 5;
+
+/**
+ * Days either side of the estimated ovulation date that count as the
+ * ovulatory phase itself — narrower than `fertileWindowAround`, which is
+ * about conception odds rather than naming a stretch of the cycle.
+ */
+export const OVULATORY_PHASE_DAYS = 1;
+
+/**
+ * Which of the four named stretches `today` falls in, or null wherever the
+ * forecast has nothing to stand on. A reading aid derived from the same
+ * numbers `predict()` already produced, not a second estimate — cycle day 1
+ * is exact (it is counted, not predicted) while the other boundaries move
+ * with the least reliable numbers in this file, same as the forecast itself.
+ */
+export function phaseFor(prediction: Prediction, today: DayKey): CyclePhase | null {
+  if (prediction.cycleDay == null || !prediction.ovulationDate || !prediction.nextPeriodStart) {
+    return null;
+  }
+  if (prediction.cycleDay <= MENSTRUAL_PHASE_DAYS) return 'menstrual';
+  const toOvulation = daysBetween(today, prediction.ovulationDate);
+  if (Math.abs(toOvulation) <= OVULATORY_PHASE_DAYS) return 'ovulatory';
+  return toOvulation > OVULATORY_PHASE_DAYS ? 'follicular' : 'luteal';
 }
