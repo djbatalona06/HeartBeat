@@ -98,10 +98,12 @@ export const shinobiTheme: Theme = {
     },
   },
   typography: {
-    display: "'Outfit', system-ui, sans-serif",
+    display: "'Handjet', 'Outfit', system-ui, sans-serif",
     body: "'Outfit', system-ui, sans-serif",
-    displayTracking: '0.06em',
-    displayWeight: '600',
+    // Handjet is condensed and built from LED-like segments; Outfit's 0.06em
+    // spread it apart until a sentence stopped reading as words.
+    displayTracking: '0.03em',
+    displayWeight: '700',
     displayTransform: 'uppercase',
   },
   motion: { fast: 130, medium: 260, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1)' },

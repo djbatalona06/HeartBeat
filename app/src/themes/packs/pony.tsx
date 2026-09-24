@@ -119,7 +119,7 @@ export const ponyTheme: Theme = {
     },
   },
   typography: {
-    display: "'Outfit', system-ui, sans-serif",
+    display: "'Shantell Sans', 'Outfit', system-ui, sans-serif",
     body: "'Outfit', system-ui, sans-serif",
     displayTracking: '-0.01em',
     displayWeight: '500',

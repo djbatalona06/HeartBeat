@@ -15,6 +15,32 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+/**
+ * Headline faces, cache-first on first use.
+ *
+ * They are kept out of the precache (see `globIgnores` in vite.config.ts) —
+ * five packs' worth of fonts would push every install past the budget in
+ * tools/lighthouse.mjs for faces most couples never switch to. A browser only
+ * requests the active pack's face, so this caches exactly the fonts somebody
+ * has seen. The file names never change content, so a hit never goes stale;
+ * bump the cache name if one ever does.
+ */
+const DISPLAY_FONTS = 'display-fonts-v1';
+
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin || !url.pathname.includes('/fonts/display/')) return;
+  event.respondWith(
+    caches.open(DISPLAY_FONTS).then(async (cache) => {
+      const hit = await cache.match(event.request);
+      if (hit) return hit;
+      const response = await fetch(event.request);
+      if (response.ok) await cache.put(event.request, response.clone());
+      return response;
+    }),
+  );
+});
+
 interface PushBody {
   title?: string;
   body?: string;

@@ -100,7 +100,7 @@ export const avatarTheme: Theme = {
     },
   },
   typography: {
-    display: "'Outfit', system-ui, sans-serif",
+    display: "'Fraunces', 'Outfit', system-ui, sans-serif",
     body: "'Outfit', system-ui, sans-serif",
     displayTracking: '0.03em',
     displayWeight: '400',
