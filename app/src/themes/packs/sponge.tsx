@@ -108,7 +108,7 @@ export const spongeTheme: Theme = {
     },
   },
   typography: {
-    display: "'Outfit', system-ui, sans-serif",
+    display: "'Bricolage Grotesque', 'Outfit', system-ui, sans-serif",
     body: "'Outfit', system-ui, sans-serif",
     displayTracking: '0.01em',
     displayWeight: '600',

@@ -105,6 +105,9 @@ export default defineConfig({
         globIgnores: [
           'assets/phaser-*.js',
           'assets/game.worker-*.js',
+          // The per-pack headline faces, ~160 KiB together. Cached on first
+          // use by `pwa/sw.ts` instead; see the @font-face note in styles.css.
+          'fonts/display/**',
         ],
       },
       manifest: {
