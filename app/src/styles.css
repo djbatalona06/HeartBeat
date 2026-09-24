@@ -5923,6 +5923,44 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   gap: var(--space-3);
 }
 
+/* The canvas and the walking pad over its bottom-right corner. */
+.garden-stage-box { position: relative; }
+.garden-dpad {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  display: grid;
+  grid-template-columns: repeat(3, 2.75rem);
+  grid-template-rows: repeat(3, 2.75rem);
+  grid-template-areas: ". up ." "left . right" ". down .";
+  /* A thumb resting on the pad should not scroll the page or zoom it. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.garden-dpad button {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  font-size: 1rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+.garden-dpad button:active { background: var(--color-surface-muted); }
+.garden-dpad button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.garden-dpad-up { grid-area: up; }
+.garden-dpad-left { grid-area: left; }
+.garden-dpad-right { grid-area: right; }
+.garden-dpad-down { grid-area: down; }
+@media (forced-colors: active) {
+  .garden-dpad button { border-color: ButtonText; }
+}
+
 /* The dashboard, as cards rather than a panel. */
 .garden-cards {
   display: grid;

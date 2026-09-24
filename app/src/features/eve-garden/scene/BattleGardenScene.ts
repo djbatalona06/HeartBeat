@@ -7,7 +7,7 @@ import {
 import { lightingAt } from '../../../domain/rpg/diorama';
 import { bakeAll } from '../../rpg/overworld/bake';
 import { shapeFor } from './vfx';
-import type { Blow, SceneHooks } from './events';
+import type { Blow, SceneHooks, StepResult } from './events';
 
 /**
  * One stage of Eve's Garden, drawn.
@@ -204,9 +204,14 @@ export class BattleGardenScene extends Phaser.Scene {
     this.applyLighting();
   }
 
-  /** Step one tile, if that tile exists and nothing solid is on it. */
-  step(dx: number, dy: number): void {
-    if (this.moving || this.engaged) return;
+  /**
+   * Step one tile, if that tile exists and nothing solid is on it.
+   *
+   * Says what happened, for the on-screen pad's haptics. The keyboard and the
+   * canvas tap ignore the answer, so they behave exactly as they did.
+   */
+  step(dx: number, dy: number): StepResult {
+    if (this.moving || this.engaged) return 'busy';
     const next = { x: this.tile.x + dx, y: this.tile.y + dy };
 
     // Each mascot is drawn once, facing right, and turned by flipping rather
@@ -218,10 +223,11 @@ export class BattleGardenScene extends Phaser.Scene {
     // walkable even though the ground under it is.
     const ontoMonster = next.x === this.arena.monster.x && next.y === this.arena.monster.y;
     if (ontoMonster) {
-      if (!this.beaten) this.engage();
-      return;
+      if (this.beaten) return 'blocked';
+      this.engage();
+      return 'engaged';
     }
-    if (!isWalkable(this.arena, next.x, next.y)) return;
+    if (!isWalkable(this.arena, next.x, next.y)) return 'blocked';
 
     const size = this.size;
     this.moving = true;
@@ -238,6 +244,7 @@ export class BattleGardenScene extends Phaser.Scene {
         if (!this.beaten && isAdjacentToMonster(this.arena, next.x, next.y)) this.engage();
       },
     });
+    return 'moved';
   }
 
   private engage(): void {

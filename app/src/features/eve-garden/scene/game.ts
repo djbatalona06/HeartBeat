@@ -81,6 +81,7 @@ export function startGarden(
     skill: (vfx: string) => live()?.skill(vfx) ?? Promise.resolve(),
     defeat: () => live()?.defeat() ?? Promise.resolve(),
     withdraw: () => live()?.withdraw(),
+    step: (dx, dy) => live()?.step(dx, dy) ?? 'busy',
     relight: (hour, dark) => live()?.relight(hour, dark),
     // `loop.sleep()` rather than `scene.pause()`: it stops the game loop itself,
     // so the rAF callback and the physics step both stop rather than the scene

@@ -28,6 +28,12 @@ export interface SceneHooks {
 /** Which way a hit is going, and how it should look. */
 export type Blow = 'player-hits' | 'monster-hits';
 
+/**
+ * What one step did. `busy` covers a tween still running, a fight open, and a
+ * scene that has not finished booting — all three mean "try again in a moment".
+ */
+export type StepResult = 'moved' | 'blocked' | 'engaged' | 'busy';
+
 /** What the page tells the scene. Every method is safe to call at any time. */
 export interface SceneHandle {
   /** Play one exchange. Resolves when the animation is done. */
@@ -45,6 +51,8 @@ export interface SceneHandle {
   defeat(): Promise<void>;
   /** The fight ended without a win. Walk the pet back to its spawn tile. */
   withdraw(): void;
+  /** Walk one tile — the on-screen pad's way in, beside the keys and the tap. */
+  step(dx: number, dy: number): StepResult;
   /** Re-light the scene for a new hour or a changed diorama variant. */
   relight(hour: number, dark: boolean): void;
   /**

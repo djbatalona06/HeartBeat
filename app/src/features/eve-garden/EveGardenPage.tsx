@@ -30,7 +30,10 @@ import { createGameClient, isClosed, type GameClient } from './engine/client';
 import type {
   ActionDto, BattleDto, Charge, DioramaTheme, IslandDto, MonsterDto, ProgressDto,
 } from './engine/types';
-import type { SceneHandle } from './scene/events';
+import type { SceneHandle, StepResult } from './scene/events';
+import { DirectionPad } from './DirectionPad';
+import { buzz } from '../../pwa/haptics';
+import { useTheme } from '../../themes/ThemeProvider';
 import {
   blocksPlay, faultCopy, faultFrom, needsTextMode, type GardenFault,
 } from './fault';
@@ -114,6 +117,7 @@ export function EveGardenPage() {
   const client = useRef<GameClient | null>(null);
 
   const settings = useLiveQuery(loadSettings, []);
+  const { calm } = useTheme();
   const zone = settings?.timeZone ?? FALLBACK_ZONE;
   const day = todayKey(zone);
 
@@ -775,7 +779,20 @@ export function EveGardenPage() {
             is a skeleton, because the empty host and a loading host used to be
             the same pixels. */}
         {textMode ? null : sprite ? (
-          <div className="garden-stage" ref={host} aria-label={islandName} role="img" />
+          <div className="garden-stage-box">
+            <div className="garden-stage" ref={host} aria-label={islandName} role="img" />
+            {/* Walking only: in a fight the move pad is the controller, and a
+                second one beside it would be a pad that does nothing. */}
+            {battle?.outcome !== 'Fighting' && (
+              <DirectionPad
+                onStep={(dx, dy): StepResult => scene.current?.step(dx, dy) ?? 'busy'}
+                onResult={(result) => {
+                  if (result === 'moved') buzz('tap', { calm, enabled: settings?.haptics !== false });
+                  else if (result === 'blocked') buzz('error', { calm, enabled: settings?.haptics !== false });
+                }}
+              />
+            )}
+          </div>
         ) : (
           <div className="garden-stage" aria-busy="true">
             <div className="skeleton skeleton-stage" aria-hidden="true" />
@@ -870,7 +887,7 @@ export function EveGardenPage() {
       <GardenPlaces companion={kit.mascot} onChangeCompanion={() => openGate(true)} />
 
       <p className="section-sub garden-hint">
-        Arrow keys or WASD to walk; on a phone, tap a tile beside you. Walk into
+        Arrow keys, WASD or the pad to walk, or tap a tile beside you. Walk into
         something to start a fight — walking away from one costs nothing.
       </p>
 
