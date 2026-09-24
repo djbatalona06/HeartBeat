@@ -48,7 +48,18 @@ export default defineConfig({
         // way, but into a chunk named after whichever module imported it — a
         // name that changes the next time a file is renamed, which is worse
         // than no exception at all.
-        manualChunks: (id) => (id.includes('node_modules/phaser') ? 'phaser' : undefined),
+        //
+        // Rollup's CommonJS helpers get their own chunk. Phaser is CommonJS, so
+        // without this Rollup parks `getDefaultExportFromCjs` and
+        // `commonjsGlobal` inside the phaser chunk, and the entry — which needs
+        // them for its own CJS dependencies — imports the whole 1.4 MB engine
+        // to reach two one-liners. The precache ignores that chunk, so offline
+        // the entry's graph cannot resolve and the app boots to a blank page.
+        manualChunks: (id) => {
+          if (id.includes('node_modules/phaser')) return 'phaser';
+          if (id.includes('commonjsHelpers')) return 'cjs-helpers';
+          return undefined;
+        },
       },
     },
   },
