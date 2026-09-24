@@ -1,22 +1,28 @@
 # Level-up moment — implementation plan
 
-Spec: `../specs/2026-09-24-levelup-moment-design.md`. Builds on C (interface sounds)
-for the optional tone. Do step 5 last.
+Spec: `../specs/2026-09-24-levelup-moment-design.md`. B and C are merged, so start
+from the latest `main`. Do step 6 last.
 
 1. **Domain + test first** (`app/src/domain/pet/levelUp.ts`, `levelUp.test.ts`):
-   write the three cases from the spec, watch them fail, then write `levelUpSince`.
+   write the cases from the spec for `levelUpSince` and `isBigLevelUp`, watch them
+   fail, then implement both. `isBigLevelUp` reads `milestonesAt` and doesn't
+   hard-code the plot levels.
 2. **Animator + test** (`app/src/features/pet/levelUpAnimator.ts`, `.test.ts`):
-   copy the shape of `features/chest/animator.ts`: timings object, pure plan,
-   class with `run()` / `cancel()`. Test the plan and the no-`animate` path.
-3. **Home** (`features/dashboard/DashboardPage.tsx`): refs on
-   `.home-mascot-standalone` and `.home-pet-fill`, and one effect keyed on
-   `progress.level` that is guarded on `pet !== undefined`. The localStorage
-   read/write goes through try/catch. Call `play('levelUp', …)` only for a live
-   jump, not the catch-up on mount (a `useRef` flag set after the first run).
-   No new CSS unless the hop needs `transform-origin: bottom`. If it does, add
-   it to the existing `.home-mascot-standalone` rule.
-4. **Check by hand**, both themes, Calm on and off (see the spec's Testing).
-5. **Gates:** `npm run typecheck`, `npm test`, `APP_BASE=/ npm run build`,
+   copy the shape of `features/chest/animator.ts`: one timings object for small
+   and big, a pure `levelUpPlan({ calm, big })`, and a class with `run()` /
+   `cancel()`. Test the plan totals and the no-`animate` path.
+3. **Home** (`features/dashboard/DashboardPage.tsx`):
+   - Refs on `.home-mascot-standalone` and `.home-pet-fill`.
+   - One effect keyed on `progress.level`, guarded on `pet !== undefined`, with the
+     `localStorage` read/write in try/catch.
+   - `levelUpRunning` state, and add `!levelUpRunning` to the existing `data-greet`
+     condition so B's pose waits for the level-up.
+   - `play('levelUp', …)` only for a live jump, not the catch-up on mount (a
+     `useRef` flag set after the first run of the effect).
+4. **CSS**: none expected. If the hop needs `transform-origin: bottom`, add it to
+   the existing `.home-mascot-standalone` rule.
+5. **Check by hand** in both themes, Calm on and off, and once across a plot
+   level (see the spec's Testing).
+6. **Gates:** `npm run typecheck`, `npm test`, `APP_BASE=/ npm run build`,
    `npm run visual` (then delete `app/tools/baselines/`), and
-   `npm run study:build` **last**. `DashboardPage` isn't reachable from
-   `standalone.tsx`, but a `styles.css` edit is, so rebuild anyway.
+   `npm run study:build` **last**.

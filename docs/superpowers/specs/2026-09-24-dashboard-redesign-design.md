@@ -1,6 +1,6 @@
 # Dashboard redesign — design
 
-**Status:** draft 2026-09-24 (item E). Not built yet.
+**Status:** decisions settled 2026-09-24 (item E). Not built yet. Build it after D, since both edit `DashboardPage.tsx`.
 
 ## What Home renders today
 Checked against `app/src/features/dashboard/DashboardPage.tsx`, top to bottom:
@@ -41,8 +41,8 @@ answer "log it".
 |---|---|
 | Inline forms on Home, or links? | **Links.** Each logging page already has its own form, validation and receipt. Duplicating a form on Home is two places to keep in step, the same trap `ChestReveal` avoids by existing once. |
 | Which logs? | The three that light a charge by themselves: **Mood** → `/mood`, **Move** → `/exercise`, **Work** → `/work`. Rest, Gratitude and Nourish are flags on the mood check-in, so the Mood link covers them. |
-| Shows done/not done? | Yes, from `todaysCharges(day)` (`db/repository/charges.ts`), the query Eve's Garden already runs. No new repository code. A lit charge means *either* of you logged it today, which is exactly what the garden will use. The label says "today" rather than "you". |
-| Where on the page? | Straight after the pet header, before `VitalsPanel`. The pet, then "log", then what logging has added up to. |
+| Shows done/not done? | **Settled: either of you.** Yes, from `todaysCharges(day)` (`db/repository/charges.ts`), the query Eve's Garden already runs. No new repository code. A lit charge means *either* of you logged it today, which is exactly what the garden will use. The label says "today" rather than "you". |
+| Where on the page? | **Settled:** straight after the pet header (`.home-pet`), before `VitalsPanel`. Since B merged, the order is mascot, greeting line, pet header, log row, vitals. |
 | What moves out? | Nothing is removed. The unpaired invite's "Move" tile becomes redundant, so it's dropped and only "Pair up" remains. That's the one deletion. |
 | Guilt | No red, no "missed", no counts of what is left. An unlit log is a plain button and a lit one gets a check. This follows the tone rule the greeting and the notify schedule already hold. |
 | New component? | One: `features/dashboard/LogStrip.tsx`. It uses the existing `Tile` or a button-styled `Link`, and its CSS goes next to the `.home-*` rules. |
