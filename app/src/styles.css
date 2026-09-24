@@ -464,9 +464,10 @@ body {
 
 /* ---- the invitation on a lone phone ----------------------------------------
 
-   Shown only while unpaired. Two tiles rather than a grid of six: the whole
+   Shown only while unpaired. One tile rather than a grid of six: the whole
    point is that there is one thing worth doing here, and a wall of equal
-   choices is what the old six-door ring got wrong. `.tile*` is already in this
+   choices is what the old six-door ring got wrong. (There used to be a Move
+   tile too; the log row above now covers it on every phone.) `.tile*` is already in this
    stylesheet from when the dashboard was a grid. */
 .home-invite {
   margin-bottom: var(--space-4);
@@ -477,6 +478,53 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: var(--space-2);
   margin-top: var(--space-3);
+}
+
+/* ---- the log row ------------------------------------------------------------
+   Under the pet card: the three logs that each light a charge, one tap away.
+   A lit one gets a check in the accent pair `mood.test.ts` proves for
+   contrast; an unlit one is a plain button, never a warning. */
+.home-log {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.home-log-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  color: inherit;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-lift);
+  transition: transform var(--motion-fast) var(--motion-easing);
+}
+.home-log-item:active { transform: translateY(var(--press)); }
+.home-log-item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.home-log-item[data-lit='true'] { border-color: var(--color-accent-live); }
+.home-log-glyph { color: var(--color-accent); font-size: 20px; }
+
+.home-log-done {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  line-height: 1;
+  border-radius: 999px;
+  background: var(--color-accent-live);
+  color: var(--color-accent-text);
 }
 
 /* ---- the home pet card ----------------------------------------------------
