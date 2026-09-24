@@ -21,6 +21,7 @@ import {
   setCalmMode as storeCalmMode,
   setHaptics,
   setResolveQuickly,
+  setSound,
   setThemeChoice,
   setGender,
   setShareCycleNudge,
@@ -238,6 +239,17 @@ export function SettingsPage() {
             A short buzz when something lands.{' '}
             {supportsHaptics() ? '' : 'This phone’s browser has no vibration, so it does nothing here.'}
           </span>
+        </label>
+        {/* Off unless turned on: a sound is louder in a room than a buzz is in
+            a pocket. Calm silences it like it silences the buzz. */}
+        <label className="set-toggle">
+          <input
+            type="checkbox"
+            checked={settings?.sound === true}
+            disabled={calmMode}
+            onChange={(e) => void setSound(e.target.checked)}
+          />
+          <span>A soft sound when something lands.</span>
         </label>
         {/* Beside Calm because it is the same kind of question, and separate
             from it because it is a different cost: Calm damps motion the app is

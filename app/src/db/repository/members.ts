@@ -95,6 +95,11 @@ export async function setHaptics(haptics: boolean): Promise<void> {
   await saveSettings({ haptics });
 }
 
+/** Off unless turned on, and Calm still wins over it, like `setHaptics`. */
+export async function setSound(sound: boolean): Promise<void> {
+  await saveSettings({ sound });
+}
+
 /**
  * Read the fight in Eve's Garden instead of watching it.
  *
