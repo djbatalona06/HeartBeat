@@ -386,6 +386,12 @@ export interface Settings {
    */
   haptics?: boolean;
   /**
+   * Interface sounds. Optional, and absent means **off** — the opposite of
+   * `haptics`, because a sound is louder in a room than a buzz is in a pocket.
+   * Calm still overrides it — see `pwa/sound.ts`.
+   */
+  sound?: boolean;
+  /**
    * Skip the animated fight in Eve's Garden and read it in the log instead.
    *
    * Optional, absent meaning **off**, so nobody's garden changes shape because

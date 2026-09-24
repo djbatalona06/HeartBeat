@@ -6,6 +6,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import { useTheme } from '../themes/ThemeProvider';
 import { buzz } from '../pwa/haptics';
+import { play } from '../pwa/sound';
 import type { Payout } from '../domain/rpg/types';
 import type { HapticKind } from '../domain/feedback/haptics';
 
@@ -113,14 +114,19 @@ export function ToastHost({ children }: { children: ReactNode }) {
   // re-fires the query up to twenty times a foreground cycle — see CLAUDE.md.
   const settings = useLiveQuery(() => db.settings.get('settings'), []);
   const enabled = settings?.haptics !== false;
+  const sound = settings?.sound === true;
 
   const show = useCallback((content: ReceiptContent) => {
     const kind = content.haptic ?? (content.payout ? 'success' : 'tap');
     // Before the state update and outside any await: this is the line that
     // keeps the user activation alive.
-    if (kind !== 'none') buzz(content.level ? 'levelUp' : kind, { calm, enabled });
+    if (kind !== 'none') {
+      const said = content.level ? 'levelUp' : kind;
+      buzz(said, { calm, enabled });
+      play(said, { calm, enabled: sound });
+    }
     setStack((prev) => [...prev, { ...content, id: nextId.current++ }].slice(-MAX_STACK));
-  }, [calm, enabled]);
+  }, [calm, enabled, sound]);
 
   const say = useCallback((note: string | null, haptic: ReceiptContent['haptic'] = 'tap') => {
     // `null` clears, because the call sites this replaces were all
