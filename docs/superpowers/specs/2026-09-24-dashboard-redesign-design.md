@@ -45,7 +45,7 @@ answer "log it".
 | Where on the page? | **Settled:** straight after the pet header (`.home-pet`), before `VitalsPanel`. Since B merged, the order is mascot, greeting line, pet header, log row, vitals. |
 | What moves out? | Nothing is removed. The unpaired invite's "Move" tile becomes redundant, so it's dropped and only "Pair up" remains. That's the one deletion. |
 | Guilt | No red, no "missed", no counts of what is left. An unlit log is a plain button and a lit one gets a check. This follows the tone rule the greeting and the notify schedule already hold. |
-| New component? | One: `features/dashboard/LogStrip.tsx`. It uses the existing `Tile` or a button-styled `Link`, and its CSS goes next to the `.home-*` rules. |
+| New component? | One: `features/dashboard/LogStrip.tsx`. It's a row of compact `Link`s, not `Tile`s, because a `Tile` is 120 px tall and three of them would push the pet card off the screen. Its CSS (`.home-log*`) sits next to the `.home-*` rules. A lit link gets a check badge in the `--color-accent-live` / `--color-accent-text` pair that `mood.test.ts` proves for contrast. |
 
 ## Design
 - `LogStrip({ day })`: `useLiveQuery(() => todaysCharges(day), [day])`, then renders

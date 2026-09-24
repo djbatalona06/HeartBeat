@@ -25,6 +25,7 @@ import { Screen } from '../../ui/layout/Screen';
 import { isPaired } from '../../domain/identity/rekey';
 import { Tile } from '../../components/Tile';
 import { EmptyState } from '../../ui/EmptyState';
+import { LogStrip } from './LogStrip';
 
 /**
  * Home. What the pet is doing, and what is left to do today.
@@ -200,6 +201,10 @@ export function DashboardPage() {
         <p className="home-pet-blurb">{mascot.blurb}</p>
       </section>
 
+      {/* Logging is what feeds everything below it, so it comes straight
+          after the pet and before what logging has added up to. */}
+      <LogStrip day={day} />
+
       {/* Directly under the pet, because it is the rest of the same sentence:
           the bar above is what the two of you have been *given* — quests, boss
           victories, tasks — and this is what you have *done*. */}
@@ -229,13 +234,6 @@ export function DashboardPage() {
               icon="friends"
               value="Start"
               hint="One code, once. Nothing you have logged is lost."
-            />
-            <Tile
-              to="/exercise"
-              title="Move"
-              icon="dumbbell"
-              value={open.length > 0 ? 'Today waits' : 'Log one'}
-              hint="Sets, a photo, and the week at a glance."
             />
           </div>
         </section>
