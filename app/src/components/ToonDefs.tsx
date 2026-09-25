@@ -10,7 +10,8 @@
  * styles.css — no drawing knows it is lit.
  *
  * It works on the rendered pixels, so it repaints with the theme like the art
- * underneath it: nothing here names a palette colour. The light is from the
+ * underneath it: the highlight is `rig.ts`'s near-white and the shade is
+ * `--shadow-color`; nothing here names a palette colour. The light is from the
  * shape's silhouette (`SourceAlpha`) rather than from each part, which is what
  * makes it one object under one light instead of a pile of stickers.
  *
@@ -47,7 +48,9 @@ function Toon({ id, shine, exponent, bands }: {
           toward the light, does not cover — a crescent on the lower right. */}
       <feOffset in="SourceAlpha" dx="-2.5" dy="-2.5" result="nudged" />
       <feComposite in="SourceAlpha" in2="nudged" operator="out" result="rim" />
-      <feFlood floodColor="#000" floodOpacity="0.16" />
+      {/* The theme's own shadow colour, already mode-corrected (themes/tokens.ts).
+          A style rather than an attribute: presentation attributes take no var(). */}
+      <feFlood style={{ floodColor: 'var(--shadow-color)', floodOpacity: 0.6 }} />
       <feComposite in2="rim" operator="in" result="shade" />
       <feMerge>
         <feMergeNode in="SourceGraphic" />
