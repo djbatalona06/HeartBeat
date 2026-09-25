@@ -183,7 +183,7 @@ function toRgb(css: string): [number, number, number] | null {
   probe ??= document.createElement('canvas').getContext('2d', { willReadFrequently: true });
   if (!probe) return null;
   probe.clearRect(0, 0, 1, 1);
-  probe.fillStyle = '#000';
+  probe.fillStyle = 'transparent'; // so a colour the browser rejects cannot inherit the last one
   probe.fillStyle = css;
   probe.fillRect(0, 0, 1, 1);
   const [r, g, b] = probe.getImageData(0, 0, 1, 1).data;

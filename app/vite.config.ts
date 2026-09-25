@@ -53,7 +53,18 @@ export default defineConfig({
         // and the rig that drives it go into one chunk with a fixed name, so
         // the ignore below can name it. Nothing outside `mascots/3d/` imports
         // either except through the `import()` in `Mascot3D.tsx`.
+        //
+        // Rollup's CommonJS interop helpers get a chunk of their own, and that
+        // line is what keeps the other two lazy. Phaser is CommonJS, so the
+        // helper module is a plain dependency of the `phaser` manual chunk, and
+        // Rollup put it *inside* that chunk. Every other CJS module in the
+        // entry then imported `getDefaultExportFromCjs` from `phaser-*.js`:
+        // index.html modulepreloaded all 1.48 MB of it and it evaluated on
+        // every boot, which you could see as Phaser's WebGL probe context
+        // appearing on `#/welcome`. Its own chunk is a few hundred bytes, and
+        // `lighthouse.mjs` fails a build that preloads either lazy chunk.
         manualChunks: (id) => {
+          if (id.includes('commonjsHelpers')) return 'cjs-helpers';
           if (id.includes('node_modules/phaser')) return 'phaser';
           if (id.includes('node_modules/three') || id.includes('/mascots/3d/')) return 'mascot3d';
           return undefined;
