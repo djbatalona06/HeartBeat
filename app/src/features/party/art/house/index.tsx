@@ -15,7 +15,7 @@ import { FURNITURE } from '../../../../domain/rpg/furniture';
  * They paint in `--color-text`, `--color-accent` and `--color-text-muted`,
  * like everything else drawn in this app, so the room re-themes with the pack
  * and never fights the bird standing in it. Coordinates are in the scene's own
- * 100×100 space — see `Birbhouse` in PartyPage.
+ * 100×100 space — see `Birbhouse` in ShopPage.
  */
 
 const WALL = 'var(--color-text-muted)';

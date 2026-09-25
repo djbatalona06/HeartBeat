@@ -2,47 +2,48 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useToast } from '../../ui/Toast';
+import { Sheet } from '../../ui/Sheet';
+import { SecondaryAction } from '../../ui/SecondaryAction';
 import {
-  ensureIdentity, equipItem, getOrCreateAvatar, holdingsOf, setCompanion, unequipSlot,
+  ensureIdentity, equipItem, getOrCreateAvatar, holdingsOf, unequipSlot,
 } from '../../db/repository';
 import { levelOf } from '../../domain/rpg/avatar';
-import { RARITY_NAMES, SLOT_NAMES } from '../../domain/rpg/gear';
-import { petKindById, petSheet } from '../../domain/rpg/pets';
+import { levelForXp } from '../../domain/xp';
 import {
-  finishedTodos, gearShelves, keptUp, ownedPets, summarize,
-  type GearShelf, type OwnedGear, type OwnedPet,
-} from '../../domain/rpg/holdings';
+  AMULET_UNLOCK_LEVEL, RARITY_NAMES, SLOT_NAMES, slotOpen, type GearItem,
+} from '../../domain/rpg/gear';
+import { gearShelves, summarize, type GearShelf, type OwnedGear } from '../../domain/rpg/holdings';
+import { refineByItemId } from '../../domain/rpg/inventory';
+import { gearSources } from '../../domain/rpg/loadout';
+import { passiveFor } from '../../domain/rpg/tiers';
+import type { GearSlot } from '../../domain/rpg/types';
 import { gearArt } from '../party/art/gear';
-import { petArt } from '../party/art/pets';
 import { RaidSheet } from '../party/RaidSheet';
-import { GEAR_RAID_ORDER, RAID_STAT_NAMES } from '../../domain/rpg/raidStats';
-import { REFINE_GAIN, REFINE_MAX } from '../../domain/rpg/shop';
+import { RAID_STAT_NAMES } from '../../domain/rpg/raidStats';
 import type { House } from '../../domain/rpg/furniture';
 import type { Garden } from '../../domain/rpg/plots';
 
 /**
- * The bag: everything this member owns, in one place.
+ * The bag: your gear, and the sheet it adds up to.
  *
- * It exists because the app already knew all of this and had nowhere to say
- * it. Owned gear was visible only as a "bought" flag inside the *shop*, so the
- * only way to see what you had was to scroll a price list. Companions were a
- * row on the Party page beside a boss fight. And a finished to-do set
- * `done: true`, got archived, and vanished from the one screen that had ever
- * shown it — so the app quietly threw away the record of everything anyone had
- * actually completed.
+ * It used to be everything this member owned — gear, companions, finished
+ * to-dos and streaks — on the argument that the app knew all of it and had
+ * nowhere to say it. Each of those has a better home now: companions are
+ * chosen on Birb, next to the colourway and the room, and the finished list
+ * sits under Tasks, the list it came from. What is left is the wardrobe, and
+ * the raid sheet that says what the wardrobe is worth.
  *
- * Party keeps the fight and the shop; this keeps the holdings. The split is
- * "what am I doing" against "what do I have", and every write here goes to the
- * same repository call Party already used, so there is exactly one code path
- * that can equip an item.
+ * Every write here goes to the same `equipItem` / `unequipSlot` the rest of the
+ * app uses, so there is exactly one code path that can put an item on.
  */
 
-function dateOf(at: number): string {
-  return new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
+/** The four slots of the grid, head to foot with the hand last. The amulet
+ *  stands beside it, because it opens later — see `AMULET_UNLOCK_LEVEL`. */
+const GRID_SLOTS: readonly GearSlot[] = ['helmet', 'chestplate', 'boots', 'weapon'];
 
 export function AssetsPage() {
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
+  const [looking, setLooking] = useState<GearSlot | null>(null);
   const { say } = useToast();
 
   // The avatar has to exist before the shelves can know what level gates what.
@@ -55,10 +56,9 @@ export function AssetsPage() {
     return () => { live = false; };
   }, []);
 
-
-  // One live query over all four tables rather than four. Dexie observes every
-  // table the callback reads, so this stays reactive to a purchase, an equip
-  // and a completed task alike — without the intermediate renders where the
+  // One live query over every table the page reads rather than one each.
+  // Dexie observes every table the callback reads, so this stays reactive to a
+  // purchase and an equip alike — without the intermediate renders where the
   // wallet has been debited and the item has not arrived. See `holdingsOf`.
   const holdings = useLiveQuery(
     async () => (identity ? holdingsOf(identity.memberId) : undefined),
@@ -78,41 +78,44 @@ export function AssetsPage() {
   }
 
   const level = levelOf(avatar);
+  const petLevel = levelForXp(holdings.pet?.xp ?? 0);
+  const refine = refineByItemId(holdings.gear);
   const shelves = gearShelves(holdings.gear, avatar.gear, level);
-  const companions = ownedPets(holdings.pets, avatar.companionId);
-  const finished = finishedTodos(holdings.tasks);
-  const streaks = keptUp(holdings.tasks);
-  const totals = summarize(shelves, companions, finished, streaks);
+  const totals = summarize(shelves, [], [], []);
+  const shelfOf = (slot: GearSlot) => shelves.find((shelf) => shelf.slot === slot)!;
+
+  const onEquip = async (itemId: string) => {
+    const result = await equipItem(identity.memberId, identity.coupleId, itemId);
+    if (result && !result.ok) say(result.reason ?? 'That would not go on.', 'error');
+  };
+  const onUnequip = (slot: GearSlot) => unequipSlot(identity.memberId, identity.coupleId, slot);
+
+  // What one item is worth on the sheet, through the sheet's own arithmetic:
+  // `gearSources` is what `RaidSheet` above adds up, so the tile and the sheet
+  // cannot disagree about refinement, the cap on it, or a level gate.
+  const worth = (item: GearItem) => gearSources({ [item.slot]: item.id }, level, refine)[0];
 
   return (
     <div className="page">
       <header className="page-head">
         <h1 className="page-title">Bag</h1>
-        <p className="page-sub">
-          Everything you own, and everything you have finished.
-        </p>
+        <p className="page-sub">Your gear, and the stat sheet it adds up to.</p>
       </header>
 
       <section className="panel">
         <div className="asset-totals">
           <Total value={avatar.coins} label={avatar.coins === 1 ? 'coin' : 'coins'} />
           <Total value={totals.gearCount} label="gear" sub={`${totals.wornCount} worn`} />
-          <Total value={totals.petCount} label={totals.petCount === 1 ? 'companion' : 'companions'} />
-          <Total value={totals.finishedCount} label="finished" />
         </div>
         <p className="section-sub asset-shop-note">
-          New gear and eggs are bought on <Link to="/party">Party</Link>.
+          New gear is bought in the <Link to="/shop">Shop</Link>.
         </p>
       </section>
 
-      {/* The sheet, where the gear it is made of lives.
-          `RaidSheet`'s own header has always argued that "would the other
-          boots be better" is a question asked at the wardrobe rather than
-          mid-fight, and the bag *is* the wardrobe. This is the same component
-          `/raid` renders, not a copy — one implementation, two callers, the
-          same argument `ChestAlcove` makes about published odds. The bag
-          showed counts, coins, rarity names, refine levels and bonds, and not
-          one stat. */}
+      {/* The same component `/raid` renders, not a copy — one implementation,
+          two callers, the argument `ChestAlcove` makes about published odds.
+          "Would the other boots be better" is a question asked at the
+          wardrobe, and this is the wardrobe. */}
       <RaidSheet
         avatar={avatar}
         owned={holdings.gear}
@@ -125,87 +128,38 @@ export function AssetsPage() {
       <section className="panel">
         <h2 className="section-title">Gear</h2>
         <p className="section-sub">
-          One slot at a time. Tap something to put it on; tap what is on to take it off.
+          Tap a slot to see what it gives, and to swap it for something else you own.
         </p>
-        {totals.gearCount === 0 ? (
-          <p className="empty">
-            Nothing yet. The shop on <Link to="/party">Party</Link> is where the first one comes from.
-          </p>
-        ) : (
-          shelves.map((shelf) => (
-            <Shelf
-              key={shelf.slot}
-              shelf={shelf}
-              onEquip={async (itemId) => {
-                const result = await equipItem(identity.memberId, identity.coupleId, itemId);
-                if (result && !result.ok) say(result.reason ?? 'That would not go on.', 'error');
-              }}
-              onUnequip={async (slot) => {
-                await unequipSlot(identity.memberId, identity.coupleId, slot);
-              }}
-            />
-          ))
-        )}
-      </section>
-
-      <section className="panel">
-        <h2 className="section-title">Companions</h2>
-        <p className="section-sub">
-          One walks with you at a time. The rest keep their bond while they wait.
-        </p>
-        {companions.length === 0 ? (
-          <p className="empty">
-            No eggs hatched yet. They come from the shop on <Link to="/party">Party</Link>.
-          </p>
-        ) : (
-          <ul className="asset-pets">
-            {companions.map((entry) => (
-              <PetRow
-                key={entry.pet.id}
-                entry={entry}
-                onChoose={() => setCompanion(identity.memberId, identity.coupleId, entry.pet.id)}
+        <div className="gear-board">
+          <ul className="gear-grid">
+            {GRID_SLOTS.map((slot) => (
+              <SlotTile
+                key={slot}
+                shelf={shelfOf(slot)}
+                open
+                worth={worth}
+                onOpen={() => setLooking(slot)}
               />
             ))}
           </ul>
-        )}
+          <ul className="gear-side">
+            <SlotTile
+              shelf={shelfOf('amulet')}
+              open={slotOpen('amulet', petLevel)}
+              worth={worth}
+              onOpen={() => setLooking('amulet')}
+            />
+          </ul>
+        </div>
       </section>
 
-      <section className="panel">
-        <h2 className="section-title">Finished</h2>
-        <p className="section-sub">
-          To-dos you have closed. They used to disappear the moment they were ticked.
-        </p>
-        {finished.length === 0 ? (
-          <p className="empty">Nothing closed yet.</p>
-        ) : (
-          <ul className="asset-done">
-            {finished.map(({ task, finishedAt }) => (
-              <li key={task.id} className="asset-done-row">
-                <span className="asset-done-title">{task.title}</span>
-                <span className="asset-done-when">{dateOf(finishedAt)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {streaks.length > 0 ? (
-        <section className="panel">
-          <h2 className="section-title">Kept up</h2>
-          <p className="section-sub">
-            Running streaks. These are not finished — that is rather the point of them.
-            If one ends, nothing it earned goes with it: every badge stays on the shelf.
-          </p>
-          <ul className="asset-done">
-            {streaks.map(({ task, streak }) => (
-              <li key={task.id} className="asset-done-row">
-                <span className="asset-done-title">{task.title}</span>
-                <span className="asset-streak">{streak} in a row</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <SlotSheet
+        shelf={looking ? shelfOf(looking) : null}
+        worth={worth}
+        onClose={() => setLooking(null)}
+        onEquip={onEquip}
+        onUnequip={onUnequip}
+      />
     </div>
   );
 }
@@ -220,101 +174,181 @@ function Total({ value, label, sub }: { value: number; label: string; sub?: stri
   );
 }
 
-interface ShelfProps {
+type Worth = (item: GearItem) => ReturnType<typeof gearSources>[number] | undefined;
+
+/**
+ * An item's number on the sheet, in words: the stat level on the slot's first
+ * raid stat, and its passive if its tier carries one. The passive lands on that
+ * same stat and nowhere else — see `raidStats.ts`.
+ */
+function worthLine(source: NonNullable<ReturnType<Worth>>): string {
+  const stat = RAID_STAT_NAMES[source.order[0]];
+  const passive = passiveFor(source.tier, source.statLevel);
+  return `${source.statLevel} ${stat}${passive > 0 ? ` · +${passive}% ${stat}` : ''}`;
+}
+
+/**
+ * One slot of the grid: what is on it, or that nothing is.
+ *
+ * A closed slot is not a button. It has nothing to open, and a control that
+ * silently does nothing is indistinguishable from a broken one — so it is a
+ * tile that says when it opens, in words rather than only in a tooltip.
+ */
+function SlotTile({ shelf, open, worth, onOpen }: {
   shelf: GearShelf;
-  onEquip: (itemId: string) => void;
-  onUnequip: (slot: GearShelf['slot']) => void;
-}
+  open: boolean;
+  worth: Worth;
+  onOpen: () => void;
+}) {
+  const name = SLOT_NAMES[shelf.slot];
 
-function Shelf({ shelf, onEquip, onUnequip }: ShelfProps) {
-  return (
-    <div className="asset-shelf">
-      <h3 className="asset-shelf-name">{SLOT_NAMES[shelf.slot]}</h3>
-      {shelf.owned.length === 0 ? (
-        <p className="asset-shelf-empty">Empty.</p>
-      ) : (
-        <ul className="asset-grid">
-          {shelf.owned.map((entry) => (
-            <GearCard
-              key={entry.row.id}
-              entry={entry}
-              onToggle={() => (entry.worn ? onUnequip(shelf.slot) : onEquip(entry.item.id))}
-            />
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
+  if (!open) {
+    return (
+      <li>
+        <div
+          className="asset-card gear-slot"
+          data-locked="true"
+          title={`From level ${AMULET_UNLOCK_LEVEL}`}
+        >
+          <span className="gear-slot-name">{name}</span>
+          <span className="asset-card-art" aria-hidden="true" />
+          <span className="asset-card-flag asset-card-flag-locked">
+            Opens at pet level {AMULET_UNLOCK_LEVEL}
+          </span>
+        </div>
+      </li>
+    );
+  }
 
-function GearCard({ entry, onToggle }: { entry: OwnedGear; onToggle: () => void }) {
-  const { item, row, worn, locked } = entry;
-  const Art = gearArt(item.id);
+  const worn = shelf.owned.find((entry) => entry.worn);
+  const Art = worn ? gearArt(worn.item.id) : undefined;
+  const source = worn ? worth(worn.item) : undefined;
+  const spare = shelf.owned.length - (worn ? 1 : 0);
+
   return (
     <li>
       <button
         type="button"
-        className="asset-card"
+        className="asset-card gear-slot"
+        data-tier={worn?.item.rarity}
         data-worn={worn ? 'true' : undefined}
-        data-locked={locked ? 'true' : undefined}
-        onClick={onToggle}
-        // Locked gear stays pressable on purpose: `equipItem` answers with the
-        // reason, which is more use than a dead button.
-        aria-pressed={worn}
+        onClick={onOpen}
+        aria-haspopup="dialog"
       >
+        <span className="gear-slot-name">{name}</span>
         <span className="asset-card-art">{Art ? <Art /> : null}</span>
-        <span className="asset-card-name">{item.name}</span>
-        <span className="asset-card-meta">
-          {RARITY_NAMES[item.rarity]}
-          {row.refine > 0 ? ` +${row.refine}` : ''}
-        </span>
-        {/* What this piece is actually worth, which the bag never said.
-            The stat named is the slot's **first** raid stat, because that is
-            where a source's passive lands and nowhere else — see
-            `raidStats.ts`. Refinement is added in rather than shown apart: a
-            +2 helm's stat level really is higher.
-            Clamped at `REFINE_MAX` exactly as `gearSources` clamps it. The
-            card and the sheet above it are the same number twice, and a row
-            carrying a refine past the cap — from an older build, or a synced
-            row this version does not agree with — must not make the card
-            claim more than the sheet counts. */}
-        <span className="asset-card-stat">
-          {`${item.statLevel + Math.min(REFINE_MAX, Math.max(0, row.refine)) * REFINE_GAIN} `
-            + RAID_STAT_NAMES[GEAR_RAID_ORDER[item.slot][0]]}
-        </span>
-        {worn ? <span className="asset-card-flag">Worn</span> : null}
-        {locked && !worn ? (
-          <span className="asset-card-flag asset-card-flag-locked">Level {item.minLevel}</span>
+        <span className="asset-card-name">{worn ? worn.item.name : 'Empty'}</span>
+        {worn ? (
+          <span className="asset-card-meta">
+            {RARITY_NAMES[worn.item.rarity]}{worn.row.refine > 0 ? ` +${worn.row.refine}` : ''}
+          </span>
+        ) : null}
+        {source ? <span className="asset-card-stat">{worthLine(source)}</span> : null}
+        {spare > 0 ? (
+          <span className="asset-card-flag">{spare} {worn ? 'more ' : ''}in the bag</span>
         ) : null}
       </button>
     </li>
   );
 }
 
-function PetRow({ entry, onChoose }: { entry: OwnedPet; onChoose: () => void }) {
-  const kind = petKindById(entry.pet.kindId);
-  if (!kind) return null; // A kind retired between releases; see `ownedInSlot`.
-  const sheet = petSheet(entry.pet);
-  const Art = petArt(entry.pet.kindId);
+/**
+ * One slot, looked at: what is on it and what it gives, and everything else
+ * you own for it beside that, with the difference each would make.
+ *
+ * The only detail view gear has anywhere. Before it, what an item was worth
+ * was one number on a card, and comparing two meant remembering the first.
+ */
+function SlotSheet({ shelf, worth, onClose, onEquip, onUnequip }: {
+  shelf: GearShelf | null;
+  worth: Worth;
+  onClose: () => void;
+  onEquip: (itemId: string) => void;
+  onUnequip: (slot: GearSlot) => void;
+}) {
+  const worn = shelf?.owned.find((entry) => entry.worn);
+  const others = shelf?.owned.filter((entry) => !entry.worn) ?? [];
+  const wornLevel = worn ? worth(worn.item)?.statLevel ?? 0 : 0;
+
   return (
-    <li>
-      <button
-        type="button"
-        className="asset-pet"
-        data-active={entry.active ? 'true' : undefined}
-        onClick={onChoose}
-        aria-pressed={entry.active}
-      >
-        <span className="asset-pet-art">{Art ? <Art /> : null}</span>
-        <span className="asset-pet-text">
-          <span className="asset-pet-name">{kind.name}</span>
-          <span className="asset-pet-meta">
-            Rank {sheet.rank} · {sheet.bond} bond
-            {sheet.toNextRank === null ? '' : ` · ${sheet.toNextRank} to go`}
-          </span>
+    <Sheet
+      open={shelf !== null}
+      onClose={onClose}
+      label={shelf ? SLOT_NAMES[shelf.slot] : 'Gear'}
+      scrimClassName="menu-scrim"
+      panelClassName="gear-sheet"
+    >
+      {shelf ? (
+        <>
+          <h2 className="section-title">{SLOT_NAMES[shelf.slot]}</h2>
+
+          {worn ? (
+            <div className="gear-detail" data-tier={worn.item.rarity}>
+              <ItemFace entry={worn} worth={worth} />
+              <p className="section-sub">{worn.item.blurb}</p>
+              <SecondaryAction onClick={() => onUnequip(shelf.slot)}>Take it off</SecondaryAction>
+            </div>
+          ) : (
+            <p className="section-sub">Nothing on this slot.</p>
+          )}
+
+          <h3 className="gear-sheet-sub">In the bag</h3>
+          {others.length === 0 ? (
+            <p className="section-sub">
+              Nothing else for this slot. <Link to="/shop" onClick={onClose}>The Shop</Link> has more.
+            </p>
+          ) : (
+            <ul className="gear-swap">
+              {others.map((entry) => {
+                const source = worth(entry.item);
+                const delta = source ? source.statLevel - wornLevel : 0;
+                return (
+                  <li key={entry.row.id} className="gear-swap-row" data-tier={entry.item.rarity}>
+                    <ItemFace entry={entry} worth={worth} />
+                    {source && worn && delta !== 0 ? (
+                      <span className="gear-swap-delta" data-up={delta > 0 || undefined}>
+                        {delta > 0 ? `+${delta}` : `−${-delta}`}
+                      </span>
+                    ) : null}
+                    {/* Locked gear stays pressable on purpose: `equipItem`
+                        answers with the reason, which is more use than a dead
+                        button. */}
+                    <SecondaryAction onClick={() => onEquip(entry.item.id)}>
+                      {entry.locked ? `Level ${entry.item.minLevel}` : 'Wear'}
+                    </SecondaryAction>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <SecondaryAction onClick={onClose}>Done</SecondaryAction>
+        </>
+      ) : null}
+    </Sheet>
+  );
+}
+
+/** Art, name, tier and refine, and the number: one item, the same way twice. */
+function ItemFace({ entry, worth }: { entry: OwnedGear; worth: Worth }) {
+  const { item, row } = entry;
+  const Art = gearArt(item.id);
+  const source = worth(item);
+  return (
+    <div className="gear-face">
+      <span className="asset-card-art">{Art ? <Art /> : null}</span>
+      <span className="gear-face-text">
+        <span className="asset-card-name">{item.name}</span>
+        <span className="asset-card-meta">
+          {RARITY_NAMES[item.rarity]}{row.refine > 0 ? ` +${row.refine}` : ''}
         </span>
-        {entry.active ? <span className="asset-card-flag">Walking with you</span> : null}
-      </button>
-    </li>
+        <span className="asset-card-stat">
+          {/* Above its level an item gives nothing, and `gearSources` says so
+              by leaving it out — the sheet counts it as nothing, and so does
+              this line. */}
+          {source ? worthLine(source) : `Gives nothing until level ${item.minLevel}`}
+        </span>
+      </span>
+    </div>
   );
 }

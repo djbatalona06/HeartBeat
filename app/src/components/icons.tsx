@@ -245,12 +245,32 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M11 8.6v6.8" />
     </>
   ),
+  // A chevron on a stem, pointing up; `turn` points it anywhere else. The
+  // garden's walk pad and the gate's way back, which were ▲ ◀ ▶ ▼ as text —
+  // glyph-as-icon, the thing this file exists to replace.
+  arrow: (
+    <>
+      <path d="M12 19.5V5" />
+      <path d="M5.5 11.5 12 5l6.5 6.5" />
+    </>
+  ),
+  // A heater shield. The defensive move, beside the sword's attack.
+  shield: (
+    <>
+      <path d="M12 3.4 19.2 6v5.4c0 4.3-3 7.6-7.2 9.2-4.2-1.6-7.2-4.9-7.2-9.2V6Z" className="body" />
+      <path d="M12 7.4v9" />
+    </>
+  ),
 };
+
+const TURNS = { up: 0, right: 90, down: 180, left: 270 } as const;
 
 interface IconProps {
   name: IconName;
   /** Overrides the inherited font-size. Anything CSS accepts as a length. */
   size?: string;
+  /** Which way a directional drawing points. Every drawing faces up. */
+  turn?: keyof typeof TURNS;
 }
 
 /**
@@ -260,10 +280,11 @@ interface IconProps {
  * visible text label beside the icon, so announcing it would read the same word
  * twice. If that ever stops being true, the caller labels the control, not this.
  */
-export function Icon({ name, size = '1em' }: IconProps) {
+export function Icon({ name, size = '1em', turn }: IconProps) {
   return (
     <svg
       className="icon"
+      style={turn ? { rotate: `${TURNS[turn]}deg` } : undefined}
       viewBox="0 0 24 24"
       width={size}
       height={size}

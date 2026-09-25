@@ -54,6 +54,7 @@ import { BattleLog } from './BattleLog';
 import { ActionBar } from './ActionBar';
 import { ChargeMeter } from './ChargeMeter';
 import { VictoryBanner } from './VictoryBanner';
+import { Icon } from '../../components/icons';
 
 /**
  * Eve's Garden.
@@ -732,7 +733,7 @@ export function EveGardenPage() {
           title={`${kit.mascot} · ${kit.signature.name}`}
         >
           <span className="garden-companion-name">{kit.mascot}</span>
-          <span className="garden-companion-swap">Change</span>
+          <span className="garden-companion-swap"><Icon name="bird" />Change</span>
         </button>
       </div>
 

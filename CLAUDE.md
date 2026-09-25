@@ -291,6 +291,16 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   - Idle motion is `3d/pose.ts`, pure and tested. Under calm (`data-calm`, which
     folds in reduced motion) the pose is independent of time and the loop draws
     once and stops.
+- **Shop, Birb and Raid are one page; the Bag is another.** `shop/ShopPage.tsx`
+  renders whichever `ShopSection`s its route asks for — `/shop` the chests and
+  purchases, `/birb` companions, colours and the room, `/raid` the sheet and the
+  boss. `/party` (all of them at once) is now a redirect. Gear is **worn only on
+  the Bag** (`assets/AssetsPage.tsx`), on a 2×2 slot grid with the amulet beside
+  it; finished to-dos, streaks and the achievement shelf live under Tasks.
+- **The amulet slot is gated by pet level, not member level.** `slotOpen` /
+  `AMULET_UNLOCK_LEVEL` in `gear.ts` is a slot gate, separate from the per-item
+  `canEquip`. It is enforced on the Bag's grid only: `equipItem` does not check
+  it and an amulet already on is never stripped.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)

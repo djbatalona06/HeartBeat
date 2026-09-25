@@ -11,19 +11,17 @@ import {
   buyOffer,
   ensureIdentity,
   getOrCreateAvatar,
-  equipItem,
   markLoreSeen,
   openChestFor,
   setCompanion,
   spendMp,
   spendPetMp,
   startAdventure,
-  unequipSlot,
   wearDye,
 } from '../../db/repository';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import {
-  GEAR, RARITIES, RARITY_NAMES, canEquip, gearForSlot, type GearItem, type Rarity,
+  GEAR, RARITIES, RARITY_NAMES, type GearItem, type Rarity,
 } from '../../domain/rpg/gear';
 import { adventureCost } from '../../domain/rpg/stage';
 import {
@@ -32,7 +30,7 @@ import {
 import { offerFor } from '../../domain/rpg/mysteryShop';
 import { todayKey } from '../../domain/day';
 import type { DayKey } from '../../domain/types';
-import { GEAR_SLOTS, type Avatar, type GearSlot } from '../../domain/rpg/types';
+import type { Avatar } from '../../domain/rpg/types';
 import { findOwned, ownsItem, refineByItemId, type InventoryItem } from '../../domain/rpg/inventory';
 import { EGG_PRICE, GEAR_PRICE, REFINE_MAX, gearBonusWithRefinement, refinePrice } from '../../domain/rpg/shop';
 import { DEFAULT_DYE_ID, DYES, dyeStyle } from '../../domain/rpg/dyes';
@@ -45,19 +43,18 @@ import {
   type House,
 } from '../../domain/rpg/furniture';
 import type { Garden } from '../../domain/rpg/plots';
-import { houseArt } from './art/house';
+import { houseArt } from '../party/art/house';
 import { PLACES, canTravel, nextPlace, travelCost } from '../../domain/rpg/locations';
 import { useTheme } from '../../themes/ThemeProvider';
 import { getMascot } from '../pet/mascots';
 import { BorderGlow } from '../../components/BorderGlow';
-import { AchievementShelf } from '../achievements/AchievementShelf';
-import { gearArt } from './art/gear';
-import { petArt } from './art/pets';
-import { ChestAlcove } from './ChestAlcove';
-import { Purchases } from './Purchases';
-import { RaidSheet } from './RaidSheet';
-import { Boss } from './Boss';
-import { GearDiff } from './GearDiff';
+import { gearArt } from '../party/art/gear';
+import { petArt } from '../party/art/pets';
+import { ChestAlcove } from '../party/ChestAlcove';
+import { Purchases } from '../party/Purchases';
+import { RaidSheet } from '../party/RaidSheet';
+import { Boss } from '../party/Boss';
+import { GearDiff } from '../party/GearDiff';
 import { PRIZES_PER_CHEST } from '../../domain/rpg/chests';
 import type { ChestOutcome } from '../../db/repository/chests';
 import { ChestReveal } from '../chest/ChestReveal';
@@ -112,30 +109,31 @@ const RARITY_INTENSITY: Record<Rarity, number> = {
 /**
  * The things this page can show, and the order they read in.
  *
- * The tab bar gives Shop, Bag and Birb a screen each, and all three are
- * sections of this page — so they are selected here rather than copied into
- * three new files. Nothing forks: the identity effect, the three live queries
- * and the receipt are written once and every route gets the same ones, which
- * is what stops "the shop" behaving differently depending on how you reached
- * it. `/party` passes nothing and still shows all of them.
+ * Three routes are sections of this one page — Shop, Birb and Raid — so they
+ * are selected here rather than copied into three files. Nothing forks: the
+ * identity effect, the live queries and the receipt are written once and every
+ * route gets the same ones, which is what stops "the shop" behaving
+ * differently depending on how you reached it.
+ *
+ * There used to be a fourth, `/party`, which passed nothing and showed all of
+ * it at once. Every section had a better home by then, so it went, and the
+ * page took the name of what it shows when asked for nothing: the shop. `/party`
+ * redirects here for the links that still carry it. Wearing gear lives on the
+ * Bag's slot grid now, and the achievement shelf on Tasks.
  */
-export type PartySection =
-  'companions' | 'worn' | 'colours' | 'house' | 'raid' | 'shop' | 'achievements';
-
-export const ALL_SECTIONS: readonly PartySection[] =
-  ['companions', 'worn', 'colours', 'house', 'raid', 'shop', 'achievements'];
+export type ShopSection = 'companions' | 'colours' | 'house' | 'raid' | 'shop';
 
 /**
- * The party: who is walking with you, what you are wearing, and the one fight
- * where health exists at all.
+ * The shop: what coins are for. Birb and Raid are this page asked for other
+ * sections — see `ShopSection`.
  *
- * The boss panel is the only screen in the app that cannot render from
+ * The boss panel (Raid) is the only screen in the app that cannot render from
  * IndexedDB, because boss HP is contested state — see `worker/src/boss.ts`. It
  * says so plainly when there is no Worker configured rather than showing a bar
  * that is quietly a lie.
  */
-export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
-  only?: readonly PartySection[];
+export function ShopPage({ only = ['shop'], title = 'Shop' }: {
+  only?: readonly ShopSection[];
   title?: string;
 }) {
   const settings = useLiveQuery(loadSettings, []);
@@ -226,21 +224,6 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
               const result = await startAdventure(identity.memberId, identity.coupleId);
               say(result.ok ? `Gone for ${result.hours} hours.` : result.reason ?? null);
             }}
-          />
-          ) : null}
-
-          {only.includes('worn') ? (
-          <Worn
-            avatar={avatar}
-            owned={owned ?? []}
-            onEquip={async (itemId) => {
-              const result = await equipItem(identity.memberId, identity.coupleId, itemId);
-              if (!result.ok) say(result.reason ?? null, 'error');
-            }}
-            onUnequip={(slot) => unequipSlot(identity.memberId, identity.coupleId, slot)}
-            /* Worn no longer carries the shop with it, so it can no longer send
-               you "below" to a panel that is on another tab now. */
-            shopIsHere={only.includes('shop')}
           />
           ) : null}
 
@@ -398,9 +381,6 @@ export function PartyPage({ only = ALL_SECTIONS, title = 'Party' }: {
           </Purchases>
           ) : null}
 
-          {/* The shelf has its own tab now, alongside the quests it rhymes
-              with. It stays on /party because /party is the everything view. */}
-          {only.includes('achievements') ? <AchievementShelf coupleId={identity.coupleId} /> : null}
         </>
       ) : null}
 
@@ -516,67 +496,6 @@ function Companions({ avatar, pets, owned, onChoose, onSeeLore, onHatch, onAdven
         one you have, the same way a duplicate item refines rather than stacks.
       </p>
     </section>
-  );
-}
-
-function Worn({ avatar, owned, onEquip, onUnequip, shopIsHere }: {
-  avatar: Avatar;
-  owned: InventoryItem[];
-  onEquip: (itemId: string) => void;
-  onUnequip: (slot: GearSlot) => void;
-  /** Whether the shop panel is on this screen too, or a tab away. */
-  shopIsHere: boolean;
-}) {
-  const level = levelOf(avatar);
-  const refine = refineByItemId(owned);
-  const bonus = gearBonusWithRefinement(avatar.gear, level, refine);
-
-  return (
-      <section className="panel">
-        <h2 className="section-title">Worn</h2>
-        <p className="section-sub">
-          Five slots. Levelling is flat so nobody can build themselves out of a
-          boss; this is where a choice lives, and it comes off in one tap.
-        </p>
-
-        {GEAR_SLOTS.map((slot) => {
-          const slotOwned = gearForSlot(slot).filter((item) => ownsItem(owned, item.id));
-          return (
-            <div key={slot} className="slot">
-              <div className="slot-name">{slot}</div>
-              {slotOwned.length === 0 ? (
-                <p className="section-sub">
-                  {shopIsHere ? 'Nothing owned yet. See the shop below.' : 'Nothing owned yet — the Shop tab has some.'}
-                </p>
-              ) : (
-                <div className="chips">
-                  {slotOwned.map((item) => {
-                    const worn = avatar.gear[slot] === item.id;
-                    const allowed = canEquip(item, level);
-                    const itemRefine = refine[item.id] ?? 0;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`chip ${worn ? 'chip-on' : ''} ${allowed ? '' : 'chip-locked'}`}
-                        title={allowed ? item.blurb : `From level ${item.minLevel}`}
-                        onClick={() => (worn ? onUnequip(slot) : onEquip(item.id))}
-                      >
-                        {item.name}{itemRefine > 0 ? ` +${itemRefine}` : ''}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        <p className="section-sub">
-          Worn: +{bonus.strength} strength · +{bonus.insight} insight ·
-          +{bonus.heart} heart · +{bonus.luck} luck
-        </p>
-      </section>
   );
 }
 
@@ -964,7 +883,7 @@ function Surprise({ avatar, owned, day, onBuy }: {
 }
 
 /**
- * Furniture, sold here and placed on the Birb tab.
+ * Furniture, sold here and moved in on its own — see `Birbhouse`.
  *
  * Its own section rather than more rows in the gear grid, because a rug has no
  * rarity, no stat bonus and no refine level — the three things every column of
@@ -980,7 +899,7 @@ function Decor({ avatar, owned, onBuy }: {
     <section className="panel">
       <h2 className="section-title">For the birbhouse</h2>
       <p className="section-sub">
-        Bought with your coins, into a room you both see. Place them on the Birb tab.
+        Bought with your coins, into a room you both see. It moves in by itself; the Birb tab shows the room.
       </p>
 
       <ul className="decor-list">

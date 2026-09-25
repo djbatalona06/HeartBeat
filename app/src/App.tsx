@@ -7,7 +7,7 @@ import { ExercisePage } from './features/exercise/ExercisePage';
 import { MoodPage } from './features/mood/MoodPage';
 import { WorkPage } from './features/work/WorkPage';
 import { TasksPage } from './features/tasks/TasksPage';
-import { PartyPage } from './features/party/PartyPage';
+import { ShopPage } from './features/shop/ShopPage';
 import { AssetsPage } from './features/assets/AssetsPage';
 import { StudyRoute } from './features/study/StudyRoute';
 import { ChatPanel } from './features/chat/ChatPanel';
@@ -129,11 +129,9 @@ export function App() {
                     <Routes>
                       <Route path="/" element={<DashboardPage />} />
                       <Route path="/tasks" element={<TasksPage />} />
-                      {/* The five tabs that are not Home. Party is still a route
-                          of its own — it is all of these at once, which is the
-                          view somebody who has been away for a week wants — and
-                          the four below are the same sections, one screen each,
-                          so the bar can lead somewhere specific. */}
+                      {/* The five tabs that are not Home. Shop, Birb and Raid
+                          are sections of one page, one screen each, so the bar
+                          can lead somewhere specific. */}
                       <Route path="/quests" element={<QuestsPage />} />
                       {/* Ideas before the bare /goals so the more specific path
                           is not swallowed by it. */}
@@ -154,19 +152,22 @@ export function App() {
                       <Route path="/activities/support" element={<SupportPage />} />
                       <Route path="/activities/first-aid" element={<FirstAidPage />} />
                       <Route path="/activities" element={<ActivitiesPage />} />
-                      <Route path="/shop" element={<PartyPage only={['shop']} title="Shop" />} />
+                      <Route path="/shop" element={<ShopPage />} />
                       <Route path="/friends" element={<FriendsPage />} />
                       {/* No /bag of its own: `main` grew AssetsPage, which is the
                           same idea done properly, so the Bag tab points there.
-                          Worn and Colours move onto Birb, where dressing the bird
-                          sits next to its house.
+                          Colours and companions sit on Birb, next to the house;
+                          wearing gear is the Bag's slot grid.
 
                           The raid left: the sheet, the boss and the adventures
                           are one subject and now have one screen, so /birb is
                           the bird and the room it lives in. */}
-                      <Route path="/birb" element={<PartyPage only={['worn', 'colours', 'house', 'companions']} title="Birb" />} />
-                      <Route path="/raid" element={<PartyPage only={['raid']} title="Raid" />} />
-                      <Route path="/party" element={<PartyPage />} />
+                      <Route path="/birb" element={<ShopPage only={['colours', 'house', 'companions']} title="Birb" />} />
+                      <Route path="/raid" element={<ShopPage only={['raid']} title="Raid" />} />
+                      {/* The everything view went when each of its sections had a
+                          home of its own. Kept as a redirect, like /cycle, for
+                          the links and home screens that still carry it. */}
+                      <Route path="/party" element={<Navigate to="/shop" replace />} />
                       <Route path="/eve-garden" element={(
                         <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>
                           <EveGardenPage />

@@ -250,7 +250,7 @@ pairing needs a `workerSecret` only the server can issue — and `/` is not in
 `OPEN_WHILE_UNPAIRED`, so an unpaired browser at `#/` gets the pair invitation
 **rendered in place, at the same hash, with no redirect**.
 
-So four of the five screens the walk visits — home, mood, tasks, party — are
+So four of the five screens the walk visits — home, mood, tasks, shop — are
 almost certainly the same invitation five times over, and only `/settings` is
 itself. The per-screen "is reachable" check cannot see this: it compares the
 hash, and the hash is exactly what it asked for. That is also why it went

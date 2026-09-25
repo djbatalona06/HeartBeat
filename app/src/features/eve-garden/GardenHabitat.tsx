@@ -16,7 +16,7 @@ import type { PetInstance } from '../../domain/rpg/pets';
  * tile. Putting five idle figures into the Phaser scene would mean five more
  * baked textures per theme and five more things the collision model has to be
  * told to ignore, to draw something that is deliberately in the background.
- * They are the same `petArt` drawings the Party page uses.
+ * They are the same `petArt` drawings the Birb page uses.
  *
  * ## Roaming, and reacting
  *

@@ -1,5 +1,6 @@
 import type { Charge, Element } from './engine/types';
 import { CHARGE_COPY, CHARGE_ELEMENT, LOGGABLE, chargeOnWeakness } from '../../domain/rpg/charges';
+import { Icon } from '../../components/icons';
 
 /**
  * Today's charges, as a meter beside the move pad.
@@ -9,7 +10,7 @@ import { CHARGE_COPY, CHARGE_ELEMENT, LOGGABLE, chargeOnWeakness } from '../../d
  * exercise page, study on the calendar, a mood check-in and its three flags —
  * so the meter is a mirror of the day, not a second place to fill it in.
  *
- * The segment on the monster's weakness carries a ✦ and says so in words,
+ * The segment on the monster's weakness carries a sparkle and says so in words,
  * because a colour on its own is not an answer for everybody.
  */
 
@@ -53,7 +54,7 @@ export function ChargeMeter({ charges, weakness }: ChargeMeterProps) {
         <span className="garden-meter-fill" aria-hidden="true" />
         <span className="garden-meter-label">
           {SHORT[charge]}
-          {isAnswer ? <span aria-hidden="true"> ✦</span> : null}
+          {isAnswer ? <Icon name="sparkle" /> : null}
         </span>
       </li>
     );

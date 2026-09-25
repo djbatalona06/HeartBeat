@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AMULET_UNLOCK_LEVEL,
   GEAR,
   LEGACY_SLOT_KEYS,
   RARITIES,
@@ -10,6 +11,7 @@ import {
   gearBonus,
   gearById,
   gearForSlot,
+  slotOpen,
   needsGearMigration,
   normalizeGear,
   unequip,
@@ -275,5 +277,15 @@ describe('equip', () => {
     const veil = gearById('head-aurora-veil')!;
     expect(canEquip(veil, 15)).toBe(false);
     expect(canEquip(veil, 16)).toBe(true);
+  });
+});
+
+describe('slotOpen', () => {
+  it('keeps the amulet shut below the unlock level, and only the amulet', () => {
+    expect(slotOpen('amulet', AMULET_UNLOCK_LEVEL - 1)).toBe(false);
+    expect(slotOpen('amulet', AMULET_UNLOCK_LEVEL)).toBe(true);
+    for (const slot of ['helmet', 'chestplate', 'boots', 'weapon'] as const) {
+      expect(slotOpen(slot, 1)).toBe(true);
+    }
   });
 });

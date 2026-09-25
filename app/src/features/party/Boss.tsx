@@ -29,7 +29,7 @@ import { PrimaryAction } from '../../ui/PrimaryAction';
  *
  * ## Why it is its own file
  *
- * It was module-private inside `PartyPage.tsx` and came out when the raid got
+ * It was module-private inside `PartyPage.tsx` (now `shop/ShopPage.tsx`) and came out when the raid got
  * a section of its own. Nothing about it was shared with the page: it takes
  * what it needs as props, and the two `onSpend*` callbacks are there precisely
  * so the fetching panel still writes through the repository like everything

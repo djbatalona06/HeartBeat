@@ -23,7 +23,7 @@
   "app/src/features/mood/MoodPage.tsx": 1,
   "app/src/features/onboarding/OnboardingPage.tsx": 1,
   "app/src/features/onboarding/WelcomePage.tsx": 1,
-  "app/src/features/party/PartyPage.tsx": 1,
+  "app/src/features/shop/ShopPage.tsx": 1,
   "app/src/features/quests/QuestBoard.tsx": 1,
   "app/src/features/rpg/EncounterOverlay.tsx": 1,
   "app/src/features/settings/StudyLinkBlock.tsx": 3,

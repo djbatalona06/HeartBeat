@@ -41,7 +41,7 @@ describe('fuzzyScore', () => {
 });
 
 describe('rank', () => {
-  const all = [cmd('Mood'), cmd('Move'), cmd('Work'), cmd('Settings'), cmd('Party')];
+  const all = [cmd('Mood'), cmd('Move'), cmd('Work'), cmd('Settings'), cmd('Shop')];
 
   it('returns everything for an empty query', () => {
     expect(rank('', all)).toHaveLength(all.length);
@@ -60,7 +60,7 @@ describe('rank', () => {
   });
 
   it('finds a command by its hint as well as its name', () => {
-    const withHint = [cmd('Party', 'the pet and boss fights')];
+    const withHint = [cmd('Birb', 'the pet and its room')];
     expect(rank('pet', withHint)).toHaveLength(1);
   });
 
