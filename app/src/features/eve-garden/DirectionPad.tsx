@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { StepResult } from './scene/events';
 import { DIRECTIONS, HOLD_REPEAT_MS, type Direction } from './dpad';
+import { Icon } from '../../components/icons';
 
 /**
  * A four-way pad over the garden, for a thumb that has no arrow keys.
@@ -56,7 +57,7 @@ export function DirectionPad({ onStep, onResult }: DirectionPadProps) {
           onClick={(event) => { if (event.detail === 0) walk(d); }}
           onContextMenu={(event) => event.preventDefault()}
         >
-          <span aria-hidden="true">{d.glyph}</span>
+          <Icon name="arrow" turn={d.turn} />
         </button>
       ))}
     </div>

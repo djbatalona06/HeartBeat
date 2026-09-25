@@ -112,7 +112,7 @@ export async function plantFlora(
 
     // Upserted with the same defaults `awardPetXp` uses, because the pet row is
     // created lazily by whichever of the two happens first — and a couple can
-    // reach level 2 and want to plant something before either has opened Party.
+    // reach level 2 and want to plant something before either has opened Birb.
     //
     // No `updatedAt`: `Pet` carries none, because it is reconciled by the XP
     // ledger rather than by last-write-wins like the other tables.

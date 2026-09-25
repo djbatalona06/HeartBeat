@@ -254,6 +254,25 @@ export function canEquip(item: GearItem, level: number): boolean {
   return level >= item.minLevel;
 }
 
+/**
+ * The amulet slot opens at this **pet** level, not this member's.
+ *
+ * A different gate from `canEquip`, and from a different number. That one asks
+ * whether *this item* is within the member's level; this asks whether the slot
+ * exists yet at all, and reads the couple's shared pet — the level
+ * `milestones.ts` hangs everything else off, where 2 already opens the first
+ * garden plot. Four slots to start is one less thing on a first screen.
+ *
+ * Enforced on the Bag, which is where gear is worn. It does not strip an
+ * amulet already on: a gate that took something away would be the only one in
+ * the app that did.
+ */
+export const AMULET_UNLOCK_LEVEL = 2;
+
+export function slotOpen(slot: GearSlot, petLevel: number): boolean {
+  return slot !== 'amulet' || petLevel >= AMULET_UNLOCK_LEVEL;
+}
+
 export type Equipped = Partial<Record<GearSlot, string>>;
 
 /**

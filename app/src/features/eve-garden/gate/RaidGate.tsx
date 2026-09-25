@@ -7,6 +7,7 @@ import { GateBackdrop } from './GateBackdrop';
 import { GateBoss } from './GateBoss';
 import { GatePedestal } from './GatePedestal';
 import { IslandTrail } from './IslandTrail';
+import { Icon } from '../../../components/icons';
 
 /**
  * The Raid Gate.
@@ -123,12 +124,14 @@ export function RaidGate({
             onClick={enter}
             disabled={!selected}
           >
+            {selected ? <Icon name="sword" /> : null}
             {selected
               ? verdict.onlyOne ? `Go in with ${selected.name}` : `Enter with ${selected.name}`
               : 'Pick a companion'}
           </button>
           {onCancel && (
             <button type="button" className="gate-back" onClick={onCancel}>
+              <Icon name="arrow" turn="left" />
               Not yet
             </button>
           )}

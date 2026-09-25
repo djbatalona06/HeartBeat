@@ -157,7 +157,7 @@ const SCREENS = [
   { name: 'home', hash: '#/' },
   { name: 'mood', hash: '#/mood' },
   { name: 'tasks', hash: '#/tasks' },
-  { name: 'party', hash: '#/party' },
+  { name: 'shop', hash: '#/shop' },
   { name: 'settings', hash: '#/settings' },
 ];
 

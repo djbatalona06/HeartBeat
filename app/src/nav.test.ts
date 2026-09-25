@@ -30,6 +30,9 @@ const NOT_ON_A_SURFACE = new Set([
   // Redirects to the section of Mood the log became. Kept as a route because
   // it is in notification deep links and possibly on somebody's home screen.
   '/cycle',
+  // The everything view, until each of its sections had a screen. Redirects to
+  // the Shop for the links that still carry it.
+  '/party',
   // Run before pairing is even the question, by FirstRunGate.
   '/welcome',
   '/onboarding',

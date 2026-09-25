@@ -1,4 +1,6 @@
 import type { ActionDto, BattleDto, Charge, MonsterDto, MoveStyle, RaidStatsDto } from './engine/types';
+import { Icon } from '../../components/icons';
+import type { IconName } from '../../nav';
 import {
   MOVE_STYLE_NAMES, moveKeyFor, type CompanionKit,
 } from '../../domain/rpg/companionSkills';
@@ -46,6 +48,15 @@ function moveName(action: ActionDto, kit: CompanionKit): string {
   return key ? kit.moves[key].name : action.name;
 }
 
+/** One drawing per kind of move, so the pad reads before its words do. */
+const STYLE_ICON: Record<MoveStyle, IconName> = {
+  Physical: 'sword',
+  Defensive: 'shield',
+  Magic: 'sparkle',
+  Mend: 'heart',
+  Together: 'friends',
+};
+
 function styleName(style: MoveStyle): string {
   const key = moveKeyFor(style);
   return key ? MOVE_STYLE_NAMES[key] : 'Together';
@@ -84,7 +95,10 @@ export function ActionBar({
                   return key ? kit.moves[key].description : undefined;
                 })()}
               >
-                <span className="garden-action-name">{moveName(action, kit)}</span>
+                <span className="garden-action-name">
+                  <Icon name={STYLE_ICON[action.style]} />
+                  {moveName(action, kit)}
+                </span>
                 <span className="garden-action-note">
                   {styleName(action.style)}
                   {lift > 0 ? ` · +${lift}%` : ''}
@@ -105,7 +119,10 @@ export function ActionBar({
         {locked.map((action) => (
           <li key={action.id}>
             <button type="button" className="garden-action is-locked" disabled>
-              <span className="garden-action-name">{moveName(action, kit)}</span>
+              <span className="garden-action-name">
+                <Icon name={STYLE_ICON[action.style]} />
+                {moveName(action, kit)}
+              </span>
               <span className="garden-action-note">Level {action.unlockLevel}</span>
             </button>
           </li>
@@ -119,6 +136,7 @@ export function ActionBar({
           disabled={busy || !yourTurn}
           onClick={onFlee}
         >
+          <Icon name="arrow" turn="left" />
           Walk away
         </button>
       )}

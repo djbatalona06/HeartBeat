@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useToast } from '../../ui/Toast';
 import { QuestBoard } from '../quests/QuestBoard';
+import { AchievementShelf } from '../achievements/AchievementShelf';
 import { db, loadSettings } from '../../db/database';
 import { VoiceInput } from '../../components/VoiceInput';
 import { parseTask } from '../../domain/voice/parseTask';
@@ -21,6 +22,7 @@ import { isCompletedOn, isDue, toneFor, toneLine } from '../../domain/rpg/task';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import { gearBonus } from '../../domain/rpg/gear';
 import { nextStageLevel } from '../../domain/rpg/stage';
+import { finishedTodos, keptUp } from '../../domain/rpg/holdings';
 import {
   DIFFICULTY_WEIGHT,
   isScheduled,
@@ -139,7 +141,71 @@ export function TasksPage() {
           onAdd={(draft) => putTask({ ...identity, ...draft }, day)}
         />
       ) : null}
+
+      {/* The record, under the list it came from. These lived in the Bag while
+          it was "everything you have", which put a to-do you closed on the
+          same screen as a helmet; the Bag is gear now, and a finished task is
+          a task. */}
+      <Finished tasks={tasks ?? []} />
+      {identity ? <AchievementShelf coupleId={identity.coupleId} /> : null}
     </div>
+  );
+}
+
+function dateOf(at: number): string {
+  return new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/**
+ * Closed to-dos, and the streaks still running.
+ *
+ * Read from the same `tasks` query as the list above, archived rows included —
+ * a finished to-do is archived in the write that ticks it, which is why it
+ * used to vanish from the one screen that had shown it.
+ */
+function Finished({ tasks }: { tasks: Task[] }) {
+  const finished = finishedTodos(tasks);
+  const streaks = keptUp(tasks);
+
+  return (
+    <>
+      <section className="panel">
+        <h2 className="section-title">Finished</h2>
+        <p className="section-sub">
+          To-dos you have closed. They used to disappear the moment they were ticked.
+        </p>
+        {finished.length === 0 ? (
+          <p className="empty">Nothing closed yet.</p>
+        ) : (
+          <ul className="asset-done">
+            {finished.map(({ task, finishedAt }) => (
+              <li key={task.id} className="asset-done-row">
+                <span className="asset-done-title">{task.title}</span>
+                <span className="asset-done-when">{dateOf(finishedAt)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {streaks.length > 0 ? (
+        <section className="panel">
+          <h2 className="section-title">Kept up</h2>
+          <p className="section-sub">
+            Running streaks. These are not finished — that is rather the point of them.
+            If one ends, nothing it earned goes with it: every badge stays on the shelf.
+          </p>
+          <ul className="asset-done">
+            {streaks.map(({ task, streak }) => (
+              <li key={task.id} className="asset-done-row">
+                <span className="asset-done-title">{task.title}</span>
+                <span className="asset-streak">{streak} in a row</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </>
   );
 }
 
@@ -156,7 +222,7 @@ function CharacterCard({ avatar }: { avatar: Avatar }) {
           <div className="sheet-stage">{sheet.stage.name}</div>
           <div className="sheet-level">Level {sheet.level}</div>
         </div>
-        <Link className="sheet-party" to="/party">Party →</Link>
+        <Link className="sheet-party" to="/birb">Birb →</Link>
       </div>
 
       <p className="sheet-blurb">{sheet.stage.blurb}</p>

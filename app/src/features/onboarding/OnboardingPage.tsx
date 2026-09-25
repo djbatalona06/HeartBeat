@@ -144,7 +144,7 @@ export function OnboardingPage() {
             <p className="section-sub">Settling in…</p>
           )}
           <p className="section-sub">
-            Already in your wardrobe on the Party page. Coins from doing your
+            Already in your Bag, on its slot. Coins from doing your
             list buy more, and a second one refines it instead of stacking.
           </p>
         </section>

@@ -53,6 +53,8 @@ export const ICON_NAMES = [
   'timer',
   'gift',
   'coin',
+  'arrow',
+  'shield',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
@@ -80,11 +82,9 @@ export interface MenuGroup {
  * bird it is all for. Everything else is a place you go on purpose, which is
  * what the menu is.
  *
- * Bag points at `/assets` rather than a section of Party. `main` grew a real
- * holdings page while this branch was open — owned gear, companions, and the
- * finished to-dos the app used to archive and forget — which is strictly more
- * than the three Party sections this tab pointed at before. Its route keeps the
- * name it shipped under; only the tab label is Finch's.
+ * Bag points at `/assets`: owned gear on a slot grid, and the raid sheet it
+ * adds up to. Its route keeps the name it shipped under; only the tab label is
+ * Finch's.
  *
  * Friends is the partner, not a network. This app is for two people, so Tree
  * Town has one other house in it — that is a smaller feature than Finch's and
@@ -95,8 +95,8 @@ export const PRIMARY_TABS: Tab[] = [
   { to: '/quests', label: 'Quests', icon: 'sparkle', hint: 'Extra ways to earn, and the shelf' },
   { to: '/shop', label: 'Shop', icon: 'shop', hint: 'Gear, eggs, and what coins are for' },
   { to: '/friends', label: 'Friends', icon: 'friends', hint: 'Their birb, and something kind to send' },
-  { to: '/assets', label: 'Bag', icon: 'bag', hint: 'Gear, companions, and everything you finished' },
-  { to: '/birb', label: 'Birb', icon: 'bird', hint: 'Your companion, what it wears, and its room' },
+  { to: '/assets', label: 'Bag', icon: 'bag', hint: 'Gear and your stat sheet' },
+  { to: '/birb', label: 'Birb', icon: 'bird', hint: 'Your companions, colours, and room' },
 ];
 
 /**
@@ -110,7 +110,7 @@ export const MENU_GROUPS: MenuGroup[] = [
   {
     title: 'Your day',
     tabs: [
-      { to: '/tasks', label: 'Tasks', icon: 'checklist', hint: 'Dailies, habits and to-dos' },
+      { to: '/tasks', label: 'Tasks', icon: 'checklist', hint: 'Dailies, habits, to-dos, and what you finished' },
       { to: '/mood', label: 'Mood', icon: 'mood', hint: 'Three meters, the cycle log, something sweet' },
       { to: '/exercise', label: 'Move', icon: 'dumbbell', hint: 'Workouts and proof' },
       { to: '/work', label: 'Work', icon: 'calendar', hint: 'The shared calendar' },
@@ -130,7 +130,6 @@ export const MENU_GROUPS: MenuGroup[] = [
     title: 'The app',
     tabs: [
       { to: '/raid', label: 'Raid', icon: 'sword', hint: 'The sheet, the boss, and where to go' },
-      { to: '/party', label: 'Party', icon: 'sword', hint: 'Everything about the two of you at once' },
       { to: '/eve-garden', label: "Eve's Garden", icon: 'sword', hint: 'The islands, and what stands on them' },
       { to: '/settings', label: 'You', icon: 'person', hint: 'Pairing, theme, notifications' },
     ],
@@ -163,6 +162,9 @@ export const ALIASES: Tab[] = [
   // bookmarked it, or typed it into the command menu out of habit, should still
   // land somewhere rather than on a blank route.
   { to: '/eve-garden', label: 'Overworld', icon: 'sword', hint: 'Now Eve\u2019s Garden' },
+  // `/party` was the everything view until its sections each had a screen. The
+  // route redirects to the shop, and the word still finds it.
+  { to: '/shop', label: 'Party', icon: 'shop', hint: 'Now the Shop, with Birb and Bag beside it' },
 ];
 
 /**
