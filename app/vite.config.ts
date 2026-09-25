@@ -48,7 +48,16 @@ export default defineConfig({
         // way, but into a chunk named after whichever module imported it — a
         // name that changes the next time a file is renamed, which is worse
         // than no exception at all.
-        manualChunks: (id) => (id.includes('node_modules/phaser') ? 'phaser' : undefined),
+        //
+        // The 3D mascots get the same treatment for the same reason: three.js
+        // and the rig that drives it go into one chunk with a fixed name, so
+        // the ignore below can name it. Nothing outside `mascots/3d/` imports
+        // either except through the `import()` in `Mascot3D.tsx`.
+        manualChunks: (id) => {
+          if (id.includes('node_modules/phaser')) return 'phaser';
+          if (id.includes('node_modules/three') || id.includes('/mascots/3d/')) return 'mascot3d';
+          return undefined;
+        },
       },
     },
   },
@@ -102,9 +111,17 @@ export default defineConfig({
         // each and belong in the precache, because they are what renders the
         // "needs one online visit" message when the heavy parts are missing.
         // The two that must never appear are named below.
+        //
+        // The third is the 3D mascots: 566 KB raw / 147 KB gzip when it was
+        // added, against a precache ceiling with ~55 KB to spare. Unlike the
+        // other two it belongs to the home screen, so the trade is spelled out:
+        // every mascot is drawn as an SVG first and the 3D pet fades in over it
+        // once this chunk loads. Offline before that first load, or with no
+        // WebGL at all, the SVG simply stays — the pet is never missing.
         globIgnores: [
           'assets/phaser-*.js',
           'assets/game.worker-*.js',
+          'assets/mascot3d-*.js',
         ],
       },
       manifest: {

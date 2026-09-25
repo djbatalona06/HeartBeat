@@ -718,10 +718,13 @@ function Birbhouse({ house, avatar }: {
             const Art = houseArt(placed[slot]);
             return Art ? <Art key={slot} /> : null;
           })}
-          <g transform="translate(28 40) scale(0.44)" style={dyeStyle(avatar.dye) as React.CSSProperties}>
-            <mascot.Art mood="content" />
-          </g>
         </svg>
+        {/* Over the room rather than inside its SVG, at the box the old
+            `translate(28 40) scale(0.44)` gave it: the mascot may be a canvas,
+            and a canvas cannot live in an SVG. */}
+        <div className="house-birb" style={dyeStyle(avatar.dye) as React.CSSProperties}>
+          <mascot.Art mood="content" />
+        </div>
       </div>
 
       {/* An inventory of the room rather than a control for it. Each line is

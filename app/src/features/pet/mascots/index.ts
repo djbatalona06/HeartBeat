@@ -4,6 +4,7 @@ import { Foxglove } from './Foxglove';
 import { Marigold } from './Marigold';
 import { Mochi } from './Mochi';
 import { Wishbell } from './Wishbell';
+import { withDepth } from './Mascot3D';
 import { FALLBACK_MASCOT_ID, MASCOT_ROSTER, type MascotIdentity, type MascotMood } from './roster';
 
 /**
@@ -28,11 +29,11 @@ export interface Mascot extends MascotIdentity {
 }
 
 const ART: Record<string, ComponentType<MascotProps>> = {
-  kitty: Mochi,
-  sponge: Marigold,
-  shinobi: Foxglove,
-  avatar: Cirrus,
-  pony: Wishbell,
+  kitty: withDepth('kitty', Mochi),
+  sponge: withDepth('sponge', Marigold),
+  shinobi: withDepth('shinobi', Foxglove),
+  avatar: withDepth('avatar', Cirrus),
+  pony: withDepth('pony', Wishbell),
 };
 
 /**

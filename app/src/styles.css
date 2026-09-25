@@ -315,6 +315,24 @@ body {
   animation: home-breathe 5.5s ease-in-out infinite;
 }
 
+/* A 3D mascot stands on its own drawing (see `mascots/Mascot3D.tsx`): the SVG
+   paints first and stays underneath, and the canvas fades in over it once a
+   real frame exists. The drawing's CSS breathing stops then — the 3D pet
+   breathes for itself, and damps itself under calm and reduced motion. */
+.mascot-3d { position: relative; z-index: 1; display: block; width: 100%; height: 100%; }
+.mascot-3d-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+.mascot-3d > svg { transition: opacity 0.35s ease; }
+.mascot-3d[data-ready] > .mascot-3d-canvas { opacity: 1; }
+.mascot-3d[data-ready] > svg { opacity: 0; animation: none; }
+
 /* Calm mode stops it, and so does reduced motion further down. A pet that will
    not hold still is the opposite of what this screen is for. */
 .home-mascot-standalone[data-calm='true'] .home-mascot-art,
@@ -5054,11 +5072,13 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
    and perch in front of it. Separate boxes would have meant a rug always
    painted over the feet standing on it. */
 .house {
+  position: relative;
   margin-top: var(--space-4);
   border-radius: var(--radius-large);
   overflow: hidden;
 }
 .house-scene { display: block; width: 100%; height: auto; }
+.house-birb { position: absolute; left: 28%; top: 40%; width: 44%; height: 44%; }
 
 /* What is in the room, now that nothing arranges it.
    An inventory rather than a control: the twelve placement chips that used to

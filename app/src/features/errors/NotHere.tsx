@@ -1,6 +1,9 @@
 import type { CSSProperties } from 'react';
-import { Foxglove } from '../pet/mascots/Foxglove';
+import { getMascot } from '../pet/mascots';
 import { getTheme } from '../../themes';
+
+/** Through the registry, so the error page gets the 3D fox when there is one. */
+const Fox = getMascot('shinobi').Art;
 
 /**
  * "There is nothing here, and that is alright."
@@ -81,7 +84,7 @@ export function NotHere({
         } as CSSProperties}
         aria-hidden="true"
       >
-        <Foxglove mood="sleepy" />
+        <Fox mood="sleepy" />
       </div>
 
       <h1 className="nothere-title">{title}</h1>

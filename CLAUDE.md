@@ -268,6 +268,29 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   §3 and §4, which is also the written answer on why there is no CSS-in-JS
   layer.
 - **A `useLiveQuery` keeps its last answer while its deps change.** When `settings.coupleId` arrives, a query keyed on it still returns what it read *before* settings loaded until the new read lands. So "undefined means loading" is not enough whenever the old answer was a real value (such as `null` for "no pet"). Tag the result with the key it was read for, as `petRead.for` does in `DashboardPage`, and treat a mismatch as still loading. Without the tag, the level-up check waved the greeting pose through for a frame.
+- **The mascots are 3D, standing on their SVGs.** `mascots/index.ts` wraps each
+  drawing in `withDepth` (`Mascot3D.tsx`): the SVG paints first, and the canvas
+  fades in over it once three.js has drawn a frame. The SVGs and `face.tsx` are
+  therefore **not dead code** — they are the loading state, the offline state
+  and the no-WebGL state. Everything 3D lives in `mascots/3d/`, one builder per
+  mascot at the drawings' own viewBox coordinates (`P(sx, sy)`, `S(n)`).
+  - **One WebGL context for every mascot on screen** (`3d/engine.ts`): pets are
+    drawn into one hidden renderer and copied onto their own 2D canvases. It is
+    released the moment the last mascot unmounts, which is what lets the Raid
+    Gate hand over to Phaser without two contexts alive. Never give a mascot
+    its own `WebGLRenderer`.
+  - **Colours are read off each pet's canvas, not the root**, so a dye (custom
+    properties on a wrapper) repaints that one pet. The shader does no colour
+    management on purpose: the lit face of a part *is* the CSS colour.
+  - **`mascot3d-*.js` is lazy and kept out of the precache**, like Phaser. Code
+    under `mascots/3d/` must make **no value imports from outside `3d/`** other
+    than `three`: Rollup pulls a manual chunk's plain dependencies into it, the
+    entry chunk then imports them from there, and three.js gets modulepreloaded
+    on every boot. That happened once with `../roster`; `lighthouse.mjs` now
+    fails a build that preloads the chunk. Type imports are fine.
+  - Idle motion is `3d/pose.ts`, pure and tested. Under calm (`data-calm`, which
+    folds in reduced motion) the pose is independent of time and the loop draws
+    once and stops.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)
