@@ -10,12 +10,18 @@ import type { IconName } from '../nav';
  * triangle is coherent with a crosshatched square and neither of them is a
  * workout or a week.
  *
- * Drawn rather than imported. The five mascots in features/pet/mascots are the
- * precedent and the constraint: flat shapes, no gradients, everything painted
- * in `currentColor` so an icon inherits whatever the theme and the state around
- * it already decided. That is what lets the same file serve a tab (muted, then
- * accent when selected), a home bubble (accent), and a tile (accent) without
- * any of them passing a colour.
+ * Drawn rather than imported, everything painted in `currentColor` so an icon
+ * inherits whatever the theme and the state around it already decided. That is
+ * what lets the same file serve a tab (muted, then accent when selected), a
+ * home bubble (accent), and a tile (accent) without any of them passing a
+ * colour.
+ *
+ * Duotone: the one shape in each drawing that is the object — the face, the
+ * box, the walls — carries `className="body"`, and styles.css gives it a faint
+ * fill of the same `currentColor`. It is the flat answer to the lit form the
+ * mascots and the party art now have (see components/ToonDefs.tsx): a lighting
+ * filter on a 2px stroke at 24px is mud, a tinted body under the line is not.
+ * Drawings that are only lines — a list, a menu, the wind — have no body.
  *
  * One 24×24 grid, one 2.1 stroke, round caps and joins throughout. Sized in
  * `em` so it takes the font-size the surrounding rule already sets — the tab
@@ -34,7 +40,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   house: (
     <>
       <path d="M3.5 10.5 12 3.5l8.5 7" />
-      <path d="M5.5 9.6V20h13V9.6" />
+      <path d="M5.5 9.6V20h13V9.6" className="body" />
       <path d="M9.8 20v-5.4h4.4V20" />
     </>
   ),
@@ -53,7 +59,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   // curve rather than a grin: the page logs a range, not a verdict.
   mood: (
     <>
-      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="8.5" className="body" />
       <path d="M8.6 15c.9.9 2.1 1.4 3.4 1.4s2.5-.5 3.4-1.4" />
       <path d="M9.2 9.6v.9M14.8 9.6v.9" />
     </>
@@ -71,7 +77,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   // A month, with its header rule and its hanging rings. Work.
   calendar: (
     <>
-      <rect x="3.5" y="5.2" width="17" height="15.3" rx="2.2" />
+      <rect x="3.5" y="5.2" width="17" height="15.3" rx="2.2" className="body" />
       <path d="M3.5 10h17" />
       <path d="M8.2 3.5v3.2M15.8 3.5v3.2" />
       <path d="M7.8 13.6h2M11 13.6h2M14.2 13.6h2M7.8 16.9h2M11 16.9h2" />
@@ -82,15 +88,15 @@ const PATHS: Record<IconName, JSX.Element> = {
   // a cog: the page behind it is mostly the two of you, and only then settings.
   person: (
     <>
-      <circle cx="12" cy="8.4" r="3.9" />
-      <path d="M4.8 20.2a7.2 7.2 0 0 1 14.4 0" />
+      <circle cx="12" cy="8.4" r="3.9" className="body" />
+      <path d="M4.8 20.2a7.2 7.2 0 0 1 14.4 0" className="body" />
     </>
   ),
 
   // Two cards, one behind the other. Study.
   cards: (
     <>
-      <rect x="8.2" y="6.4" width="12.3" height="14.1" rx="2" />
+      <rect x="8.2" y="6.4" width="12.3" height="14.1" rx="2" className="body" />
       <path d="M5.4 17.4A2 2 0 0 1 4 15.5V5.5a2 2 0 0 1 2-2h7.4" />
       <path d="M11.4 11.4h5.9M11.4 15h3.6" />
     </>
@@ -108,7 +114,7 @@ const PATHS: Record<IconName, JSX.Element> = {
 
   // A crescent. The cycle half of the mood page, where it labels the section
   // rather than a route.
-  moon: <path d="M20 14.3A8.6 8.6 0 0 1 9.7 4a8.6 8.6 0 1 0 10.3 10.3z" />,
+  moon: <path d="M20 14.3A8.6 8.6 0 0 1 9.7 4a8.6 8.6 0 1 0 10.3 10.3z" className="body" />,
 
   // Three lines. The one control that is a control rather than a place, so it
   // is the one drawing here that is deliberately not a picture of anything.
@@ -124,7 +130,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   // top of the day, which is what a sparkle is for.
   sparkle: (
     <>
-      <path d="M10.5 3.5Q11 9.5 17 10q-6 .5-6.5 6.5Q10 10.5 4 10q6-.5 6.5-6.5Z" />
+      <path d="M10.5 3.5Q11 9.5 17 10q-6 .5-6.5 6.5Q10 10.5 4 10q6-.5 6.5-6.5Z" className="body" />
       <path d="M18.2 14.6q.3 2 2.2 2.3-1.9.3-2.2 2.3-.3-2-2.2-2.3 1.9-.3 2.2-2.3Z" />
       <path d="M5.2 18.4h.01" />
     </>
@@ -133,7 +139,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   // A tote with two handles. Where coins go out.
   shop: (
     <>
-      <path d="M4.6 8.4h14.8l-1.1 11a1.4 1.4 0 0 1-1.4 1.2H7.1a1.4 1.4 0 0 1-1.4-1.2z" />
+      <path d="M4.6 8.4h14.8l-1.1 11a1.4 1.4 0 0 1-1.4 1.2H7.1a1.4 1.4 0 0 1-1.4-1.2z" className="body" />
       <path d="M9 10.6V7a3 3 0 0 1 6 0v3.6" />
     </>
   ),
@@ -141,8 +147,8 @@ const PATHS: Record<IconName, JSX.Element> = {
   // Two birds side by side, one smaller. Two people, which is the whole app.
   friends: (
     <>
-      <path d="M10.6 8.2a3.1 3.1 0 1 1-6.2 0 3.1 3.1 0 0 1 6.2 0z" />
-      <path d="M2.9 20.1a4.6 4.6 0 0 1 9.2 0" />
+      <path d="M10.6 8.2a3.1 3.1 0 1 1-6.2 0 3.1 3.1 0 0 1 6.2 0z" className="body" />
+      <path d="M2.9 20.1a4.6 4.6 0 0 1 9.2 0" className="body" />
       <path d="M15.8 5.4a3.1 3.1 0 0 1 0 5.6" />
       <path d="M17 15.9a4.6 4.6 0 0 1 4.1 4.2" />
     </>
@@ -151,7 +157,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   // A satchel with a flap. What you already own, as against what the shop has.
   bag: (
     <>
-      <path d="M3.9 9.7h16.2v9.2a1.6 1.6 0 0 1-1.6 1.6H5.5a1.6 1.6 0 0 1-1.6-1.6z" />
+      <path d="M3.9 9.7h16.2v9.2a1.6 1.6 0 0 1-1.6 1.6H5.5a1.6 1.6 0 0 1-1.6-1.6z" className="body" />
       <path d="M3.9 9.7 6.6 4.2h10.8l2.7 5.5" />
       <path d="M9.4 13.1h5.2" />
     </>
@@ -160,7 +166,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   // A bird on a perch. The one this is all for.
   bird: (
     <>
-      <path d="M9.9 9.6a4.6 4.6 0 0 1 9.2 0c0 5.4-3.4 9.4-8.4 9.4-3 0-5.3-1.9-6.2-4.6L3 11.4l3.8 1.2Z" />
+      <path d="M9.9 9.6a4.6 4.6 0 0 1 9.2 0c0 5.4-3.4 9.4-8.4 9.4-3 0-5.3-1.9-6.2-4.6L3 11.4l3.8 1.2Z" className="body" />
       <path d="m19.1 9.8 2.3.9-2.3 1" />
       <path d="M15.6 8.6h.01" />
       <path d="M10 13.6c1.2 2.2 3.6 2.6 5.4 1.2" />
@@ -170,7 +176,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   /** Goals: rings closing on a centre, which is what a goal is. */
   target: (
     <>
-      <circle cx="12" cy="12" r="8.2" />
+      <circle cx="12" cy="12" r="8.2" className="body" />
       <circle cx="12" cy="12" r="4.4" />
       <circle cx="12" cy="12" r="0.9" />
     </>
@@ -178,7 +184,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   /** Areas: something growing, because the six of them are a garden, not a score. */
   leaf: (
     <>
-      <path d="M19.4 4.6c0 7.4-4 11.4-10.2 11.4H5.6C5.6 8.6 9.6 4.6 15.8 4.6Z" />
+      <path d="M19.4 4.6c0 7.4-4 11.4-10.2 11.4H5.6C5.6 8.6 9.6 4.6 15.8 4.6Z" className="body" />
       <path d="M4.6 19.4c1.7-3.6 4.1-6.2 7.3-7.9" />
     </>
   ),
@@ -193,21 +199,21 @@ const PATHS: Record<IconName, JSX.Element> = {
   /** First aid. A heart rather than a cross: this is not a medical service. */
   heart: (
     <>
-      <path d="M12 20.2S4 15.8 4 10.2a4.4 4.4 0 0 1 8-2.5 4.2 4.2 0 0 1 7.9 2.8c-.2 5-7.9 9.7-7.9 9.7Z" />
+      <path d="M12 20.2S4 15.8 4 10.2a4.4 4.4 0 0 1 8-2.5 4.2 4.2 0 0 1 7.9 2.8c-.2 5-7.9 9.7-7.9 9.7Z" className="body" />
       <path d="M6.9 11.2a2.6 2.6 0 0 1 1-2.7" />
     </>
   ),
   /** Reflections: writing, which is the whole of what that screen is. */
   pen: (
     <>
-      <path d="M15.5 4.8 19.2 8.5 8.9 18.8l-4.6.9.9-4.6Z" />
+      <path d="M15.5 4.8 19.2 8.5 8.9 18.8l-4.6.9.9-4.6Z" className="body" />
       <path d="M13.7 6.6 17.4 10.3" />
     </>
   ),
   /** Soundscapes: a sound, leaving. */
   sound: (
     <>
-      <path d="M4.4 9.4h3.3L12 5.6v12.8l-4.3-3.8H4.4Z" />
+      <path d="M4.4 9.4h3.3L12 5.6v12.8l-4.3-3.8H4.4Z" className="body" />
       <path d="M15.7 9.2a4 4 0 0 1 0 5.6" />
       <path d="M18.3 6.6a7.6 7.6 0 0 1 0 10.8" />
     </>
@@ -215,7 +221,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   /** Timers: a clock face, at the only time a timer icon is ever drawn. */
   timer: (
     <>
-      <circle cx="12" cy="13.4" r="7.4" />
+      <circle cx="12" cy="13.4" r="7.4" className="body" />
       <path d="M12 9.6v3.8l2.6 1.8" />
       <path d="M9.4 3h5.2" />
     </>
@@ -223,7 +229,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   /** An act of kindness: something handed over. */
   gift: (
     <>
-      <rect x="3.8" y="9.6" width="16.4" height="10.6" rx="1.8" />
+      <rect x="3.8" y="9.6" width="16.4" height="10.6" rx="1.8" className="body" />
       <path d="M3.8 13.6h16.4M12 9.6v10.6" />
       <path d="M12 9.6S10.8 5 8.6 5a2 2 0 0 0 0 4.6Z" />
       <path d="M12 9.6S13.2 5 15.4 5a2 2 0 0 1 0 4.6Z" />
@@ -234,7 +240,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   // wallet badge sits beside a level and two glyphs would be read as a word.
   coin: (
     <>
-      <ellipse cx="11" cy="12" rx="7" ry="8.4" />
+      <ellipse cx="11" cy="12" rx="7" ry="8.4" className="body" />
       <path d="M11 3.6h2.4a7 8.4 0 0 1 0 16.8H11" />
       <path d="M11 8.6v6.8" />
     </>

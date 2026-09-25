@@ -455,7 +455,7 @@ function Companions({ avatar, pets, owned, onChoose, onSeeLore, onHatch, onAdven
                   intensity={RARITY_INTENSITY[view.kind.rarity]}
                   animated={chosen}
                 >
-                {Art ? <div className="pet-portrait"><Art /></div> : null}
+                {Art ? <div className="pet-portrait" data-tier={view.kind.rarity}><Art /></div> : null}
                 <div className="pet-head">
                   <span className="pet-name">{view.kind.name}</span>
                   <span className="pet-rarity">{RARITY_NAMES[view.kind.rarity]} · rank {view.rank}</span>
@@ -845,6 +845,7 @@ function Shop({ avatar, owned, onBuy }: {
               <button
                 type="button"
                 className="shop-item-button"
+                data-tier={item.rarity}
                 disabled={!afford || atCap}
                 title={item.blurb}
                 onClick={() => onBuy(item.id)}

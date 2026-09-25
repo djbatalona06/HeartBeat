@@ -43,6 +43,9 @@ export function ChestArt({ id }: { id: string }) {
         x="44" y="40" width="12" height="12" rx="2"
         fill={bands === 3 ? '#f5c85c' : 'var(--color-accent)'}
       />
+      {/* A catchlight on the gold, top-left where the toon light sits, so it
+          reads as metal and not as a yellow square. Near-white, like rig.ts. */}
+      {bands === 3 ? <rect x="46" y="42" width="4" height="3" rx="1" fill="#fdfcfb" opacity="0.8" /> : null}
     </svg>
   );
 }
