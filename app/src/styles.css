@@ -1353,6 +1353,10 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
    every one of the places these are used. They paint in currentColor, so the
    rules above already colour them without either knowing about the other. */
 .icon { display: block; }
+/* Duotone: the shape that is the object gets a faint fill of its own line
+   colour, and the selected tab a firmer one. See the header of icons.tsx. */
+.icon .body { fill: currentColor; fill-opacity: 0.16; }
+.tabbar-tab.active .icon .body { fill-opacity: 0.28; }
 
 /* ---- the menu button ------------------------------------------------------
    Top-left, where Finch puts it, and where the app's own title used to sit
@@ -1758,6 +1762,16 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
    Companions had no artwork at all before this and rendered as text cards. */
 .pet-portrait { width: 56px; height: 56px; margin-bottom: var(--space-2); }
 .pet-art { width: 100%; height: 100%; }
+
+/* The toon light (components/ToonDefs.tsx): every flat drawing that is not a
+   mascot, lit from the mascots' key, above and to the left. The birbhouse is
+   lit as one room rather than piece by piece, so no two pieces disagree about
+   where the window is. A rarer thing catches the light harder -- the tier the
+   tile already carries, not a sixth rung. */
+.gear-art, .pet-art, .chest-art, .house-scene, .decor-art svg { filter: url(#hb-toon); }
+[data-tier='legendary'] :is(.gear-art, .pet-art),
+[data-tier='mythic'] :is(.gear-art, .pet-art),
+.chest-art[data-chest='gilded'] { filter: url(#hb-toon-gloss); }
 
 .slot { margin-top: var(--space-4); }
 .slot-name { font-size: var(--text-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; }

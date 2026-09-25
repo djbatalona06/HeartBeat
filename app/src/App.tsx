@@ -65,6 +65,7 @@ import { SupportPage } from './features/activities/SupportPage';
 import { KindnessPage } from './features/activities/KindnessPage';
 import { FirstAidPage } from './features/activities/FirstAidPage';
 import { FriendsPage } from './features/party/FriendsPage';
+import { ToonDefs } from './components/ToonDefs';
 import { OPEN_WHILE_UNPAIRED } from './nav';
 
 
@@ -92,6 +93,9 @@ export function App() {
     // most needs to survive. The fallback carries its own literal colours.
     <ErrorBoundary scope="app">
       <ThemeProvider>
+        {/* The toon light the party art, chests and birbhouse are drawn under.
+            Once, here, because a filter id must be unique on the page. */}
+        <ToonDefs />
         {/* HashRouter, not BrowserRouter: notification deep links and a cold
             reload both have to resolve without a server-side rewrite rule. */}
         <HashRouter>
