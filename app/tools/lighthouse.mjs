@@ -74,13 +74,24 @@ if (manifest.length === 0) {
     kib <= PRECACHE_CEILING_KIB,
     `${kib} KiB`);
 
-  // The two chunks vite.config.ts names in `globIgnores`, checked here rather
+  // The chunks vite.config.ts names in `globIgnores`, checked here rather
   // than trusted there. Phaser is over a megabyte and the .NET worker chunk is
   // 300 KB; either one entering the precache doubles a cold install for the
-  // phones that never open Eve's Garden.
-  const leaked = manifest.filter((u) => /phaser-|game\.worker-/.test(u));
-  check('neither phaser nor the game worker is precached', leaked.length === 0,
+  // phones that never open Eve's Garden. The 3D mascots' chunk is three.js,
+  // several times the precache's headroom on its own, and every mascot has an
+  // SVG to stand on until it arrives.
+  const leaked = manifest.filter((u) => /phaser-|game\.worker-|mascot3d-/.test(u));
+  check('neither phaser, the game worker nor the 3D mascots is precached', leaked.length === 0,
     leaked.join(', '));
+  // Kept out of the precache is not the same as kept out of the first load.
+  // A lazy chunk that the entry chunk imports anything from gets a
+  // `modulepreload` in index.html and is fetched and evaluated on every boot.
+  // Both have happened: Phaser's chunk captured Rollup's CommonJS helpers (see
+  // `cjs-helpers` in vite.config.ts), and the 3D chunk captured `../roster`
+  // (see `buildMascot` in `mascots/3d/models.ts`).
+  const html = await readFile(join(DIST, 'index.html'), 'utf8');
+  const preloaded = [...html.matchAll(/rel="modulepreload"[^>]*href="[^"]*((?:phaser|mascot3d)-[^"]+)"/g)].map((m) => m[1]);
+  check('neither phaser nor the 3D mascots is preloaded on boot', preloaded.length === 0, preloaded.join(', '));
   const wasm = manifest.filter((u) => u.endsWith('.wasm'));
   check('no .wasm is precached', wasm.length === 0, `${wasm.length} found`);
 }

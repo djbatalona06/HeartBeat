@@ -49,15 +49,26 @@ export default defineConfig({
         // name that changes the next time a file is renamed, which is worse
         // than no exception at all.
         //
-        // Rollup's CommonJS helpers get their own chunk. Phaser is CommonJS, so
-        // without this Rollup parks `getDefaultExportFromCjs` and
-        // `commonjsGlobal` inside the phaser chunk, and the entry — which needs
-        // them for its own CJS dependencies — imports the whole 1.4 MB engine
-        // to reach two one-liners. The precache ignores that chunk, so offline
-        // the entry's graph cannot resolve and the app boots to a blank page.
+        // The 3D mascots get the same treatment for the same reason: three.js
+        // and the rig that drives it go into one chunk with a fixed name, so
+        // the ignore below can name it. Nothing outside `mascots/3d/` imports
+        // either except through the `import()` in `Mascot3D.tsx`.
+        //
+        // Rollup's CommonJS interop helpers get a chunk of their own, and that
+        // line is what keeps the other two lazy. Phaser is CommonJS, so the
+        // helper module is a plain dependency of the `phaser` manual chunk, and
+        // Rollup put it *inside* that chunk. Every other CJS module in the
+        // entry then imported `getDefaultExportFromCjs` from `phaser-*.js`:
+        // index.html modulepreloaded all 1.48 MB of it and it evaluated on
+        // every boot, which you could see as Phaser's WebGL probe context
+        // appearing on `#/welcome`. Worse, the precache ignores that chunk, so
+        // offline the entry's graph could not resolve and the app booted to a
+        // blank page. Its own chunk is a few hundred bytes, and `lighthouse.mjs`
+        // fails a build that preloads either lazy chunk.
         manualChunks: (id) => {
-          if (id.includes('node_modules/phaser')) return 'phaser';
           if (id.includes('commonjsHelpers')) return 'cjs-helpers';
+          if (id.includes('node_modules/phaser')) return 'phaser';
+          if (id.includes('node_modules/three') || id.includes('/mascots/3d/')) return 'mascot3d';
           return undefined;
         },
       },
@@ -113,9 +124,17 @@ export default defineConfig({
         // each and belong in the precache, because they are what renders the
         // "needs one online visit" message when the heavy parts are missing.
         // The two that must never appear are named below.
+        //
+        // The third is the 3D mascots: 566 KB raw / 147 KB gzip when it was
+        // added, against a precache ceiling with ~55 KB to spare. Unlike the
+        // other two it belongs to the home screen, so the trade is spelled out:
+        // every mascot is drawn as an SVG first and the 3D pet fades in over it
+        // once this chunk loads. Offline before that first load, or with no
+        // WebGL at all, the SVG simply stays — the pet is never missing.
         globIgnores: [
           'assets/phaser-*.js',
           'assets/game.worker-*.js',
+          'assets/mascot3d-*.js',
           // The per-pack headline faces, ~160 KiB together. Cached on first
           // use by `pwa/sw.ts` instead; see the @font-face note in styles.css.
           'fonts/display/**',
