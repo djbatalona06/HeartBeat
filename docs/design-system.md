@@ -27,6 +27,25 @@ the same question asked about a first-party CSS-in-JS layer.
 | `--shell-max` / `--shell-gutter` | 560px / 18px | The column. |
 | `--tabbar-h` / `--shell-bottom-clear` | 62px / bar + `--space-5` | What a page must leave clear. |
 
+**Faces.** `--font-body` is Outfit in every pack: it carries the numbers,
+dates and lists, and one body face means no screen reflows when the pack
+changes. `--font-display` is where a pack gets its voice:
+
+| Pack | Headline face |
+|---|---|
+| kitty, pony | Shantell Sans |
+| sponge | Bricolage Grotesque |
+| avatar | Fraunces |
+| shinobi | Handjet |
+
+Each stack falls back to Outfit. The headline faces are latin-only variable
+files in `app/public/fonts/display/`, and they are **not precached**: together
+they are ~160 KiB, against a precache ceiling (`tools/lighthouse.mjs`) that had
+~55 KiB of room. `pwa/sw.ts` caches each one the first time a pack asks for it.
+A browser never requests a face no text uses, so an unused pack costs nothing.
+Adding a face means the `@font-face` block in `styles.css`, the file, and
+nothing in `vite.config.ts` — the `fonts/display/**` ignore already covers it.
+
 ### Colour
 
 `--color-base` · `--color-surface` · `--color-surface-muted` · `--color-border` ·

@@ -145,7 +145,7 @@ export const kittyTheme: Theme = {
     },
   },
   typography: {
-    display: "'Outfit', system-ui, sans-serif",
+    display: "'Shantell Sans', 'Outfit', system-ui, sans-serif",
     body: "'Outfit', system-ui, sans-serif",
     displayTracking: '-0.02em',
     displayWeight: '300',

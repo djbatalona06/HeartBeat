@@ -61,8 +61,10 @@ export default defineConfig({
         // entry then imported `getDefaultExportFromCjs` from `phaser-*.js`:
         // index.html modulepreloaded all 1.48 MB of it and it evaluated on
         // every boot, which you could see as Phaser's WebGL probe context
-        // appearing on `#/welcome`. Its own chunk is a few hundred bytes, and
-        // `lighthouse.mjs` fails a build that preloads either lazy chunk.
+        // appearing on `#/welcome`. Worse, the precache ignores that chunk, so
+        // offline the entry's graph could not resolve and the app booted to a
+        // blank page. Its own chunk is a few hundred bytes, and `lighthouse.mjs`
+        // fails a build that preloads either lazy chunk.
         manualChunks: (id) => {
           if (id.includes('commonjsHelpers')) return 'cjs-helpers';
           if (id.includes('node_modules/phaser')) return 'phaser';
@@ -133,6 +135,9 @@ export default defineConfig({
           'assets/phaser-*.js',
           'assets/game.worker-*.js',
           'assets/mascot3d-*.js',
+          // The per-pack headline faces, ~160 KiB together. Cached on first
+          // use by `pwa/sw.ts` instead; see the @font-face note in styles.css.
+          'fonts/display/**',
         ],
       },
       manifest: {

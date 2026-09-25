@@ -17,7 +17,7 @@ import type { IconName } from '../nav';
  * accent when selected), a home bubble (accent), and a tile (accent) without
  * any of them passing a colour.
  *
- * One 24×24 grid, one 1.7 stroke, round caps and joins throughout. Sized in
+ * One 24×24 grid, one 2.1 stroke, round caps and joins throughout. Sized in
  * `em` so it takes the font-size the surrounding rule already sets — the tab
  * bar asks for `var(--text-lg)` and gets it without knowing this file exists.
  */
@@ -124,8 +124,9 @@ const PATHS: Record<IconName, JSX.Element> = {
   // top of the day, which is what a sparkle is for.
   sparkle: (
     <>
-      <path d="M10 3.6 11.7 8 16 9.7 11.7 11.4 10 15.8 8.3 11.4 4 9.7 8.3 8z" />
-      <path d="M17.2 14.4 18.1 16.7 20.4 17.6 18.1 18.5 17.2 20.8 16.3 18.5 14 17.6 16.3 16.7z" />
+      <path d="M10.5 3.5Q11 9.5 17 10q-6 .5-6.5 6.5Q10 10.5 4 10q6-.5 6.5-6.5Z" />
+      <path d="M18.2 14.6q.3 2 2.2 2.3-1.9.3-2.2 2.3-.3-2-2.2-2.3 1.9-.3 2.2-2.3Z" />
+      <path d="M5.2 18.4h.01" />
     </>
   ),
 
@@ -159,10 +160,11 @@ const PATHS: Record<IconName, JSX.Element> = {
   // A bird on a perch. The one this is all for.
   bird: (
     <>
-      <path d="M8.6 4.3a3.7 3.7 0 0 1 3.7 3.7v3.3a6.3 6.3 0 0 1-6.3 6.3H5a7.5 7.5 0 0 0 3.6-6.4" />
-      <path d="M12.3 8h4.4l3.1 3.1-3.1.9" />
-      <path d="M7.1 6.6h.01" />
-      <path d="M9.6 17.6v2.8" />
+      <path d="M9.9 9.6a4.6 4.6 0 0 1 9.2 0c0 5.4-3.4 9.4-8.4 9.4-3 0-5.3-1.9-6.2-4.6L3 11.4l3.8 1.2Z" />
+      <path d="m19.1 9.8 2.3.9-2.3 1" />
+      <path d="M15.6 8.6h.01" />
+      <path d="M10 13.6c1.2 2.2 3.6 2.6 5.4 1.2" />
+      <path d="M10.6 19v1.8M13.2 18.8v2" />
     </>
   ),
   /** Goals: rings closing on a centre, which is what a goal is. */
@@ -190,7 +192,10 @@ const PATHS: Record<IconName, JSX.Element> = {
   ),
   /** First aid. A heart rather than a cross: this is not a medical service. */
   heart: (
-    <path d="M12 20.2s-7.8-4.6-7.8-9.8a4.3 4.3 0 0 1 7.8-2.5 4.3 4.3 0 0 1 7.8 2.5c0 5.2-7.8 9.8-7.8 9.8Z" />
+    <>
+      <path d="M12 20.2S4 15.8 4 10.2a4.4 4.4 0 0 1 8-2.5 4.2 4.2 0 0 1 7.9 2.8c-.2 5-7.9 9.7-7.9 9.7Z" />
+      <path d="M6.9 11.2a2.6 2.6 0 0 1 1-2.7" />
+    </>
   ),
   /** Reflections: writing, which is the whole of what that screen is. */
   pen: (
@@ -224,12 +229,14 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M12 9.6S13.2 5 15.4 5a2 2 0 0 1 0 4.6Z" />
     </>
   ),
-  // A coin, edge-on ring and all. Deliberately not a currency letter: the
+  // A coin, turned a little so its edge shows. Two flat rings read as a small
+  // `target` beside the real one. Still deliberately not a currency letter: the
   // wallet badge sits beside a level and two glyphs would be read as a word.
   coin: (
     <>
-      <circle cx="12" cy="12" r="8.2" />
-      <circle cx="12" cy="12" r="4.4" />
+      <ellipse cx="11" cy="12" rx="7" ry="8.4" />
+      <path d="M11 3.6h2.4a7 8.4 0 0 1 0 16.8H11" />
+      <path d="M11 8.6v6.8" />
     </>
   ),
 };
@@ -256,7 +263,7 @@ export function Icon({ name, size = '1em' }: IconProps) {
       height={size}
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.7}
+      strokeWidth={2.1}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
