@@ -32,6 +32,11 @@ VAPID_SUBJECT = "mailto:batalona06@gmail.com"
 # Secrets are set with `wrangler secret put`, never committed:
 #   VAPID_PUBLIC_KEY   — base64url P-256 public key
 #   VAPID_PRIVATE_KEY  — base64url P-256 private scalar
+#
+# The public key must ALSO be set as a Pages secret on heartbeat-app (see
+# app/wrangler.toml) — the client reads it from that project's /api/health,
+# never from this Worker, so setting it only here leaves every phone unable
+# to get a valid push key even though this Worker is fully configured.
 
 # Photographs live here rather than in D1. Workout proof and profile faces were
 # base64 inside rows — D1 has a row-size ceiling and is not a blob store, and a

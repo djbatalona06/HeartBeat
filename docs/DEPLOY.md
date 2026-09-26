@@ -74,6 +74,22 @@ npx wrangler secret put VAPID_PUBLIC_KEY
 npx wrangler secret put VAPID_PRIVATE_KEY
 ```
 
+**The public key also has to be set on the Pages project**, as its own secret,
+or every phone gets stuck unable to load a valid push key even though the
+Worker above is fully configured. Pages and Workers are separate Cloudflare
+services with separate secrets, despite sharing one D1 database — and the app
+calls this project's own `/api/health` (`app/functions/api/health.ts`) to fetch
+the key it hands to `pushManager.subscribe`, never the Worker's `/health`. Use
+the **same** value as `VAPID_PUBLIC_KEY` above:
+
+```bash
+cd app
+npx wrangler pages secret put VAPID_PUBLIC_KEY --project-name heartbeat-app
+```
+
+The private key is never set on Pages — only the Worker signs a VAPID JWT, so
+Pages has no use for it and it must not exist there.
+
 ### By hand, if you need to
 
 ```bash
