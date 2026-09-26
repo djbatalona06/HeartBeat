@@ -77,6 +77,11 @@ export async function clearPendingInvite(): Promise<void> {
   await saveSettings({ pendingInvite: undefined, pendingInviteExpiresAt: undefined });
 }
 
+/** The naming gate does not need to ask again — named or skipped either way. */
+export async function acknowledgeNamingGate(): Promise<void> {
+  await saveSettings({ namingGateSeen: true });
+}
+
 /**
  * The durable half of the theme choice. ThemeProvider writes localStorage for
  * the first paint; this is the copy that outlives site data being cleared.
