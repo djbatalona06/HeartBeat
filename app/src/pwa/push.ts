@@ -5,10 +5,18 @@ export class PushError extends Error {}
  * buffer is allocated explicitly rather than via `new Uint8Array(length)`:
  * TypeScript 5.7 widened that to `Uint8Array<ArrayBufferLike>`, which no longer
  * satisfies `BufferSource` because it might be backed by a SharedArrayBuffer.
+ *
+ * Trimmed first: the key crosses an operator-typed boundary (`wrangler secret
+ * put`, a pasted value in the Cloudflare dashboard) before it ever reaches
+ * here, and a stray trailing newline throws the padding math off by one
+ * without atob rejecting it outright — `pushManager.subscribe` then fails
+ * with "the provided applicationServerKey is not valid" for a key that reads
+ * as correct everywhere it was copied from.
  */
 export function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
-  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
-  const normal = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const trimmed = base64.trim();
+  const padding = '='.repeat((4 - (trimmed.length % 4)) % 4);
+  const normal = (trimmed + padding).replace(/-/g, '+').replace(/_/g, '/');
   const raw = atob(normal);
   const out = new Uint8Array(new ArrayBuffer(raw.length));
   for (let i = 0; i < raw.length; i += 1) out[i] = raw.charCodeAt(i);

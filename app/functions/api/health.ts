@@ -25,7 +25,11 @@ export const onRequestGet: PagesFunction<GitHubEnv & GoogleEnv> = async ({ env }
   } catch {
     db = false;
   }
-  const vapidPublicKey = env.VAPID_PUBLIC_KEY ?? null;
+  // Trimmed: this crosses the same operator-typed boundary as the Worker's
+  // copy of the same key (`wrangler pages secret put`), and a stray trailing
+  // newline from how it was set reads as configured here while failing
+  // `pushManager.subscribe` on the client with an "invalid applicationServerKey".
+  const vapidPublicKey = env.VAPID_PUBLIC_KEY?.trim() || null;
   return json({
     ok: db && Boolean(env.AI),
     db,
