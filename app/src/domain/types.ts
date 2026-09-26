@@ -557,6 +557,15 @@ export interface Settings {
   pendingInvite?: string;
   pendingInviteExpiresAt?: number;
   /**
+   * Set once this device has been through the naming gate — the screen a
+   * phone sees the moment pairing actually completes (a real partner exists,
+   * not just a token this phone minted by starting one), prompting for the
+   * name the other half of the couple will see. Per-device and never synced,
+   * like `raidGateVisited`: it only changes whether the screen appears again,
+   * never what either phone is called. See `features/pairing/namingGate.ts`.
+   */
+  namingGateSeen?: boolean;
+  /**
    * Set the moment the starter plan is seeded, so it is planted exactly once
    * per install rather than re-appearing after every one of its eight tasks
    * has been renamed or retired. See `seedStarterPlan` in

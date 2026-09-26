@@ -7,7 +7,7 @@ import { useTheme, type ModePreference } from '../../themes/ThemeProvider';
 import { variantOf } from '../../themes/tokens';
 import { supportsHaptics } from '../../pwa/haptics';
 import { THEMES } from '../../themes';
-import { fetchProfiles, health, pairStart, putProfile } from '../../pwa/api';
+import { fetchProfiles, health, pairStart } from '../../pwa/api';
 import { NotificationsBlock } from './NotificationsBlock';
 import { StudyLinkBlock } from './StudyLinkBlock';
 import { ComplimentBlock } from './ComplimentBlock';
@@ -16,7 +16,6 @@ import { WhatsOnBlock } from './WhatsOnBlock';
 import {
   MAX_GENDER_NOTE,
   clearPendingInvite,
-  putMyProfile,
   saveMembersFromServer,
   savePairing,
   setCalmMode as storeCalmMode,
@@ -36,6 +35,7 @@ import {
   pairFailure,
 } from './pairing';
 import { receivePairingCode } from './receivePairingCode';
+import { saveProfile } from './profile';
 import { isPaired } from '../../domain/identity/rekey';
 import { reconcileTheme, readStoredTheme, writeStoredTheme } from './theme';
 import { PHOTO_BUDGET_BYTES, coverBox, formatKb, photoBytes, withinBudget } from './photo';
@@ -478,8 +478,7 @@ function Partner({
     setBusy(true);
     setNote(null);
     try {
-      await putMyProfile(patch);
-      if (token) await saveMembersFromServer(await putProfile(token, patch));
+      await saveProfile(patch, token);
       setTouched(false);
     } catch (e) {
       setNote(e instanceof Error ? e.message : 'That did not save.');

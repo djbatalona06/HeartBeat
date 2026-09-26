@@ -13,6 +13,8 @@ import { StudyRoute } from './features/study/StudyRoute';
 import { ChatPanel } from './features/chat/ChatPanel';
 import { PairGate } from './features/pairing/PairGate';
 import { usePairing } from './features/pairing/usePairing';
+import { NamingGate } from './features/pairing/NamingGate';
+import { useNamingGate } from './features/pairing/useNamingGate';
 import { FirstRunGate } from './features/onboarding/FirstRunGate';
 import { RouteNotFound } from './features/errors/NotHere';
 import { BottomNav } from './ui/layout/BottomNav';
@@ -78,6 +80,11 @@ export function App() {
   // over the moment there are. See features/pairing/usePairing.ts.
   const { ready, paired } = usePairing();
 
+  // Whether the screen naming your specific partner should be showing right
+  // now. See features/pairing/useNamingGate.ts for what makes a pairing real
+  // rather than merely started.
+  const naming = useNamingGate();
+
   // Every dot in the app, derived once here and handed to the two surfaces that
   // wear them. Nothing below computes its own — see
   // domain/notifications/derive.ts, and the test there that walks the source to
@@ -115,92 +122,103 @@ export function App() {
                     real once the second phone joins, rather than being redirected
                     away and forgotten. */}
                 <PairGate ready={ready} paired={paired} open={OPEN_WHILE_UNPAIRED}>
-                  {/* Above the routes rather than inside `Screen`, because only
-                      five of the twenty-five pages use `Screen` -- the rest still
-                      write `.page` by hand, so mounting it there would show the
-                      line on a fifth of the app. It renders nothing at all unless
-                      something is waiting, and it is handed the badges `App`
-                      already holds rather than reading its own. */}
-                  <NotificationHeader badges={badges} notices={notices} />
-                  {/* Around the routes only. A single page throwing should leave the
-                      nav bar and the thread standing, so there is still a way out of
-                      the broken screen without force-quitting the app. */}
-                  <ErrorBoundary scope="route" recoverTo="#/">
-                    <Routes>
-                      <Route path="/" element={<DashboardPage />} />
-                      <Route path="/tasks" element={<TasksPage />} />
-                      {/* The five tabs that are not Home. Shop, Birb and Raid
-                          are sections of one page, one screen each, so the bar
-                          can lead somewhere specific. */}
-                      <Route path="/quests" element={<QuestsPage />} />
-                      {/* Ideas before the bare /goals so the more specific path
-                          is not swallowed by it. */}
-                      <Route path="/goals/ideas" element={<GoalIdeasPage />} />
-                      <Route path="/goals" element={<GoalsPage />} />
-                      <Route path="/areas" element={<AreasPage />} />
-                      {/* The hub's children, most specific first. Reachable from
-                          /activities rather than from the menu — nine more menu
-                          tiles would be the clutter the hub exists to avoid; see
-                          the hub-child rule in nav.test.ts. */}
-                      <Route path="/activities/breathe" element={<BreathePage />} />
-                      <Route path="/activities/reflections" element={<ReflectionsPage />} />
-                      <Route path="/activities/soundscapes" element={<SoundscapesPage />} />
-                      <Route path="/activities/movements" element={<MovementsPage />} />
-                      <Route path="/activities/quizzes" element={<QuizzesPage />} />
-                      <Route path="/activities/timer" element={<TimerPage />} />
-                      <Route path="/activities/kindness" element={<KindnessPage />} />
-                      <Route path="/activities/support" element={<SupportPage />} />
-                      <Route path="/activities/first-aid" element={<FirstAidPage />} />
-                      <Route path="/activities" element={<ActivitiesPage />} />
-                      <Route path="/shop" element={<ShopPage />} />
-                      <Route path="/friends" element={<FriendsPage />} />
-                      {/* No /bag of its own: `main` grew AssetsPage, which is the
-                          same idea done properly, so the Bag tab points there.
-                          Colours and companions sit on Birb, next to the house;
-                          wearing gear is the Bag's slot grid.
+                  {/* Inside PairGate on purpose: this asks the next question —
+                      not whether there are two of you, but who specifically the
+                      other one is, the moment there actually is one. See
+                      features/pairing/useNamingGate.ts. */}
+                  <NamingGate
+                    ready={naming.ready}
+                    show={naming.show}
+                    partnerName={naming.partnerName}
+                    workerSecret={naming.workerSecret}
+                  >
+                    {/* Above the routes rather than inside `Screen`, because only
+                        five of the twenty-five pages use `Screen` -- the rest still
+                        write `.page` by hand, so mounting it there would show the
+                        line on a fifth of the app. It renders nothing at all unless
+                        something is waiting, and it is handed the badges `App`
+                        already holds rather than reading its own. */}
+                    <NotificationHeader badges={badges} notices={notices} />
+                    {/* Around the routes only. A single page throwing should leave the
+                        nav bar and the thread standing, so there is still a way out of
+                        the broken screen without force-quitting the app. */}
+                    <ErrorBoundary scope="route" recoverTo="#/">
+                      <Routes>
+                        <Route path="/" element={<DashboardPage />} />
+                        <Route path="/tasks" element={<TasksPage />} />
+                        {/* The five tabs that are not Home. Shop, Birb and Raid
+                            are sections of one page, one screen each, so the bar
+                            can lead somewhere specific. */}
+                        <Route path="/quests" element={<QuestsPage />} />
+                        {/* Ideas before the bare /goals so the more specific path
+                            is not swallowed by it. */}
+                        <Route path="/goals/ideas" element={<GoalIdeasPage />} />
+                        <Route path="/goals" element={<GoalsPage />} />
+                        <Route path="/areas" element={<AreasPage />} />
+                        {/* The hub's children, most specific first. Reachable from
+                            /activities rather than from the menu — nine more menu
+                            tiles would be the clutter the hub exists to avoid; see
+                            the hub-child rule in nav.test.ts. */}
+                        <Route path="/activities/breathe" element={<BreathePage />} />
+                        <Route path="/activities/reflections" element={<ReflectionsPage />} />
+                        <Route path="/activities/soundscapes" element={<SoundscapesPage />} />
+                        <Route path="/activities/movements" element={<MovementsPage />} />
+                        <Route path="/activities/quizzes" element={<QuizzesPage />} />
+                        <Route path="/activities/timer" element={<TimerPage />} />
+                        <Route path="/activities/kindness" element={<KindnessPage />} />
+                        <Route path="/activities/support" element={<SupportPage />} />
+                        <Route path="/activities/first-aid" element={<FirstAidPage />} />
+                        <Route path="/activities" element={<ActivitiesPage />} />
+                        <Route path="/shop" element={<ShopPage />} />
+                        <Route path="/friends" element={<FriendsPage />} />
+                        {/* No /bag of its own: `main` grew AssetsPage, which is the
+                            same idea done properly, so the Bag tab points there.
+                            Colours and companions sit on Birb, next to the house;
+                            wearing gear is the Bag's slot grid.
 
-                          The raid left: the sheet, the boss and the adventures
-                          are one subject and now have one screen, so /birb is
-                          the bird and the room it lives in. */}
-                      <Route path="/birb" element={<ShopPage only={['colours', 'house', 'companions']} title="Birb" />} />
-                      <Route path="/raid" element={<ShopPage only={['raid']} title="Raid" />} />
-                      {/* The everything view went when each of its sections had a
-                          home of its own. Kept as a redirect, like /cycle, for
-                          the links and home screens that still carry it. */}
-                      <Route path="/party" element={<Navigate to="/shop" replace />} />
-                      <Route path="/eve-garden" element={(
-                        <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>
-                          <EveGardenPage />
-                        </Suspense>
-                      )}
-                      />
-                      <Route path="/overworld" element={(
-                        <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>
-                          <OverworldPage />
-                        </Suspense>
-                      )}
-                      />
-                      <Route path="/assets" element={<AssetsPage />} />
-                      {/* The cycle log is the last section of Mood now. The old
-                          route is kept as a redirect rather than dropped: it is in
-                          notification deep links, in the command menu, and quite
-                          possibly on somebody's home screen. */}
-                      <Route path="/cycle" element={<Navigate to="/mood" replace />} />
-                      <Route path="/study" element={<StudyRoute />} />
-                      <Route path="/mood" element={<MoodPage />} />
-                      <Route path="/exercise" element={<ExercisePage />} />
-                      <Route path="/work" element={<WorkPage />} />
-                      <Route path="/settings" element={<SettingsPage />} />
-                      <Route path="/welcome" element={<WelcomePage />} />
-                      <Route path="/onboarding" element={<OnboardingPage />} />
-                      {/* Not a redirect. `<Navigate to="/" />` sent an unknown
-                          hash silently home, which reads as the app having
-                          swallowed the tap rather than as the address being
-                          wrong — and it hid every typo'd deep link from a
-                          notification instead of reporting one. */}
-                      <Route path="*" element={<RouteNotFound />} />
-                    </Routes>
-                  </ErrorBoundary>
+                            The raid left: the sheet, the boss and the adventures
+                            are one subject and now have one screen, so /birb is
+                            the bird and the room it lives in. */}
+                        <Route path="/birb" element={<ShopPage only={['colours', 'house', 'companions']} title="Birb" />} />
+                        <Route path="/raid" element={<ShopPage only={['raid']} title="Raid" />} />
+                        {/* The everything view went when each of its sections had a
+                            home of its own. Kept as a redirect, like /cycle, for
+                            the links and home screens that still carry it. */}
+                        <Route path="/party" element={<Navigate to="/shop" replace />} />
+                        <Route path="/eve-garden" element={(
+                          <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>
+                            <EveGardenPage />
+                          </Suspense>
+                        )}
+                        />
+                        <Route path="/overworld" element={(
+                          <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>
+                            <OverworldPage />
+                          </Suspense>
+                        )}
+                        />
+                        <Route path="/assets" element={<AssetsPage />} />
+                        {/* The cycle log is the last section of Mood now. The old
+                            route is kept as a redirect rather than dropped: it is in
+                            notification deep links, in the command menu, and quite
+                            possibly on somebody's home screen. */}
+                        <Route path="/cycle" element={<Navigate to="/mood" replace />} />
+                        <Route path="/study" element={<StudyRoute />} />
+                        <Route path="/mood" element={<MoodPage />} />
+                        <Route path="/exercise" element={<ExercisePage />} />
+                        <Route path="/work" element={<WorkPage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
+                        <Route path="/welcome" element={<WelcomePage />} />
+                        <Route path="/onboarding" element={<OnboardingPage />} />
+                        {/* Not a redirect. `<Navigate to="/" />` sent an unknown
+                            hash silently home, which reads as the app having
+                            swallowed the tap rather than as the address being
+                            wrong — and it hid every typo'd deep link from a
+                            notification instead of reporting one. */}
+                        <Route path="*" element={<RouteNotFound />} />
+                      </Routes>
+                    </ErrorBoundary>
+                  </NamingGate>
                 </PairGate>
               </FirstRunGate>
             </main>
@@ -219,13 +237,13 @@ export function App() {
                 Locked only once the answer is in, for the reason the gate waits:
                 otherwise a phone that paired months ago dims its whole bar for a
                 frame on every cold start. */}
-            <MenuSheet locked={ready && !paired} />
+            <MenuSheet locked={(ready && !paired) || naming.show} />
             {/* The opposite corner to the menu button, and the same reasoning as
                 the bar below: shown while unpaired too. Level and coins are this
                 phone's own — a solo first run earns and spends both — so there is
                 nothing here that waits on a second person. */}
             <StatusHud />
-            <BottomNav locked={ready && !paired} badges={badges.byRoute} />
+            <BottomNav locked={(ready && !paired) || naming.show} badges={badges.byRoute} />
           </ToastHost>
         </HashRouter>
       </ThemeProvider>
