@@ -7,7 +7,7 @@ import { useTheme, type ModePreference } from '../../themes/ThemeProvider';
 import { variantOf } from '../../themes/tokens';
 import { supportsHaptics } from '../../pwa/haptics';
 import { THEMES } from '../../themes';
-import { fetchProfiles, health, pairJoin, pairStart, putProfile } from '../../pwa/api';
+import { fetchProfiles, health, pairStart, putProfile } from '../../pwa/api';
 import { NotificationsBlock } from './NotificationsBlock';
 import { StudyLinkBlock } from './StudyLinkBlock';
 import { ComplimentBlock } from './ComplimentBlock';
@@ -35,6 +35,7 @@ import {
   normalizeInvite,
   pairFailure,
 } from './pairing';
+import { receivePairingCode } from './receivePairingCode';
 import { isPaired } from '../../domain/identity/rekey';
 import { reconcileTheme, readStoredTheme, writeStoredTheme } from './theme';
 import { PHOTO_BUDGET_BYTES, coverBox, formatKb, photoBytes, withinBudget } from './photo';
@@ -329,16 +330,14 @@ function Pairing({
   const join = async () => {
     setBusy(true);
     setNote(null);
-    try {
-      const result = await pairJoin(normalizeInvite(code));
-      await savePairing(result);
+    const result = await receivePairingCode(code);
+    if (result.ok) {
       setCode('');
       setNote('Paired. You are both looking at the same thing now.');
-    } catch (e) {
-      setNote(pairFailure(e).message);
-    } finally {
-      setBusy(false);
+    } else {
+      setNote(result.failure.message);
     }
+    setBusy(false);
   };
 
   return (
