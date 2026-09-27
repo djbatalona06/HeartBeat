@@ -16,11 +16,13 @@
  * collects .ts.
  */
 
+import type { Member } from '../../domain/types';
+
 export interface NamingGateState {
   /** From `isPaired(settings)` — this device holds a token. */
   paired: boolean;
-  /** `db.members.count()`. Two, not one, is what makes a pairing real. */
-  memberCount: number;
+  /** `partnerOf(...) !== undefined`. A partner, not a token, makes a pairing real. */
+  hasPartner: boolean;
   /** This device's own `Member.displayName`, if any. */
   myName: string | undefined;
   /** `settings.namingGateSeen === true`. */
@@ -28,8 +30,47 @@ export interface NamingGateState {
 }
 
 export function showNamingGate(state: NamingGateState): boolean {
-  return state.paired && state.memberCount >= 2 && !hasName(state.myName) && !state.seen;
+  return state.paired && state.hasPartner && !hasName(state.myName) && !state.seen;
 }
+
+/**
+ * The other person in *this* couple, if their row has arrived.
+ *
+ * The one definition of "linked" — counting rows is not it, because a row can
+ * outlive the couple it came from (an earlier pairing, a re-key) and would
+ * pass for a partner who is not there.
+ */
+export function partnerOf(
+  members: readonly Member[] | undefined,
+  me: { coupleId?: string; memberId?: string } | undefined,
+): Member | undefined {
+  if (!me?.coupleId || !me.memberId) return undefined;
+  return members?.find((m) => m.coupleId === me.coupleId && m.id !== me.memberId);
+}
+
+/**
+ * How often to ask the server about the other person, or `null` to stop.
+ *
+ * Nothing else ever reads the members table after pairing — sync, holdings
+ * and the pet all skip it — so this is the only way a phone learns two things:
+ *
+ *   - that its partner arrived at all. The phone that *started* holds a token
+ *     before anybody joins and has no other way to hear the code was used, so
+ *     it asks briskly;
+ *   - that its partner picked a name. The screen promises it "will show up
+ *     here the moment they do", but they may skip naming for good, so this
+ *     asks gently and stops for good once a name lands.
+ *
+ * Only ever run while the app is on screen (see `useNamingGate`).
+ */
+export function partnerPollMs(paired: boolean, partner: Member | undefined): number | null {
+  if (!paired) return null;
+  if (!partner) return PARTNER_POLL_MS;
+  return hasName(partner.displayName) ? null : PARTNER_NAME_POLL_MS;
+}
+
+export const PARTNER_POLL_MS = 5000;
+export const PARTNER_NAME_POLL_MS = 30000;
 
 function hasName(name: string | undefined): boolean {
   return Boolean(name && name.trim().length > 0);

@@ -1,0 +1,148 @@
+name: Preview
+
+# A live copy of every pull request, for testing on two real phones before it
+# merges. CI's `npm run pair:live` proves pairing against the real functions on
+# a local database; this is the same build on Cloudflare, on its own URL, so a
+# couple can actually hold two phones and pair them.
+#
+# It must never touch the production couple's data, so it deploys with the
+# `[env.preview]` bindings in app/wrangler.toml — a separate D1 database
+# (`heartbeat-preview`) and a separate R2 bucket. Until that block exists this
+# workflow deploys nothing and says why in the job summary; see "Preview
+# deploys" in docs/DEPLOY.md for the one command that sets it up.
+#
+# Same-repository pull requests only: a fork's PR has no business holding the
+# Cloudflare token, and GitHub would not hand it over anyway.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  PAGES_PROJECT: heartbeat-app
+  PREVIEW_DB: heartbeat-preview
+  PREVIEW_BUCKET: heartbeat-preview
+
+jobs:
+  preview:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Is a preview database configured?
+        id: gate
+        run: |
+          if grep -q '^\[env\.preview\]' app/wrangler.toml; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### No preview deployed"
+              echo
+              echo "app/wrangler.toml has no \`[env.preview]\` block, so there is no separate database to deploy against, and a preview on the production database is not something this workflow will do."
+              echo
+              echo "See **Preview deploys** in docs/DEPLOY.md: one \`wrangler d1 create\` and one pasted id."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-dotnet@v6
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install the wasm workload
+        if: steps.gate.outputs.ready == 'true'
+        run: dotnet workload install wasm-tools
+
+      - name: Install
+        if: steps.gate.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Build
+        if: steps.gate.outputs.ready == 'true'
+        run: npm run build
+        env:
+          APP_BASE: /
+
+      - name: Migrate the preview database
+        # `d1 migrations apply` finds a database by name in the config it reads,
+        # and worker/wrangler.toml only knows production. So the preview is
+        # migrated from a throwaway config naming it, pointed at the same
+        # migrations production runs — one schema, two databases.
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          id=$(awk '/^\[\[env\.preview\.d1_databases\]\]/{f=1} f && /database_id/{gsub(/.*= *"|".*/, ""); print; exit}' app/wrangler.toml)
+          [ -n "$id" ] || { echo "::error::No database_id under [[env.preview.d1_databases]] in app/wrangler.toml."; exit 1; }
+          dir=$(mktemp -d)
+          cat > "$dir/wrangler.toml" <<EOF
+          name = "heartbeat-preview-migrations"
+          compatibility_date = "2024-12-30"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "$PREVIEW_DB"
+          database_id = "$id"
+          migrations_dir = "$GITHUB_WORKSPACE/worker/migrations"
+          EOF
+          cd "$dir" && npx --prefix "$GITHUB_WORKSPACE" wrangler d1 migrations apply "$PREVIEW_DB" --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Ensure the preview R2 bucket exists
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          code=$(curl -sS -o bucket.json -w '%{http_code}' -H "$auth" "$api/r2/buckets/$PREVIEW_BUCKET")
+          case "$code" in
+            200) echo "R2 bucket '$PREVIEW_BUCKET' exists." ;;
+            404)
+              curl -sS --fail-with-body -X POST -H "$auth" -H 'content-type: application/json' \
+                --data "{\"name\":\"$PREVIEW_BUCKET\"}" "$api/r2/buckets" > /dev/null
+              echo "Created R2 bucket '$PREVIEW_BUCKET'."
+              ;;
+            *) echo "::error::Cloudflare answered $code for the preview R2 bucket."; cat bucket.json; exit 1 ;;
+          esac
+          rm -f bucket.json
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy the preview
+        # Any branch other than the production one (main) is a Pages preview,
+        # and a preview reads the `[env.preview]` bindings. The branch name
+        # arrives through env, never interpolated into the script.
+        if: steps.gate.outputs.ready == 'true'
+        working-directory: app
+        run: |
+          set -euo pipefail
+          npx wrangler pages deploy --project-name="$PAGES_PROJECT" --branch="$BRANCH" 2>&1 | tee deploy.log
+          url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.pages\.dev' deploy.log | tail -1 || true)
+          {
+            echo "### Preview for two real phones"
+            echo
+            if [ -n "$url" ]; then echo "**$url**"; else echo "Deployed; the URL is in the step log above."; fi
+            echo
+            echo "Separate database and photo bucket from production — pair freely."
+            echo "Open it on both phones, then walk the checklist under **Testing pairing** in docs/DEVELOPING.md."
+          } >> "$GITHUB_STEP_SUMMARY"
+          rm -f deploy.log
+        env:
+          BRANCH: ${{ github.head_ref }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

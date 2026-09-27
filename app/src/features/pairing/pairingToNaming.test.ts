@@ -2,11 +2,11 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db, loadSettings, saveSettings } from '../../db/database';
 import { isPaired } from '../../domain/identity/rekey';
-import { fetchProfiles, pairStart } from '../../pwa/api';
-import { saveMembersFromServer } from '../../db/repository';
+import { fetchProfiles, pairJoin, pairStart } from '../../pwa/api';
+import { saveMembersFromServer, savePairing } from '../../db/repository';
 import { receivePairingCode } from '../settings/receivePairingCode';
 import { saveProfile } from '../settings/profile';
-import { partnerLinkMessage, showNamingGate } from './namingGate';
+import { partnerLinkMessage, partnerOf, showNamingGate } from './namingGate';
 
 /**
  * The whole thing, live: one phone starts a pairing, a second phone receives
@@ -99,7 +99,7 @@ describe('pairing through to the naming gate, live against a fake server', () =>
     let settings = await loadSettings();
     expect(showNamingGate({
       paired: isPaired(settings),
-      memberCount: await db.members.count(),
+      hasPartner: partnerOf(await db.members.toArray(), settings) !== undefined,
       myName: undefined,
       seen: settings.namingGateSeen === true,
     })).toBe(false);
@@ -117,7 +117,7 @@ describe('pairing through to the naming gate, live against a fake server', () =>
     // so rather than inventing a name.
     expect(showNamingGate({
       paired: isPaired(settings),
-      memberCount: members.length,
+      hasPartner: partnerOf(members, settings) !== undefined,
       myName: mine?.displayName,
       seen: settings.namingGateSeen === true,
     })).toBe(true);
@@ -146,9 +146,37 @@ describe('pairing through to the naming gate, live against a fake server', () =>
 
     expect(showNamingGate({
       paired: isPaired(settings),
-      memberCount: (await db.members.toArray()).length,
+      hasPartner: partnerOf(await db.members.toArray(), settings) !== undefined,
       myName: mineNamed?.displayName,
       seen: settings.namingGateSeen === true,
     })).toBe(false);
+  });
+
+  it('the phone that started finds its partner from its own token, without joining anything itself', async () => {
+    const server = fakeServer();
+    vi.stubGlobal('fetch', server);
+
+    // This Dexie is device A's, and only A's: it starts and keeps its pairing.
+    const started = await pairStart();
+    await savePairing(started);
+    const settings = await loadSettings();
+    await saveMembersFromServer(await fetchProfiles(settings.workerSecret!));
+    expect(isPaired(settings)).toBe(true);
+    expect(partnerOf(await db.members.toArray(), settings)).toBeUndefined();
+
+    // Device B joins on its own phone — nothing written here.
+    await pairJoin(started.invite);
+
+    // One more ask from A is all it takes; that ask is what useNamingGate now
+    // repeats while A has a token and no partner.
+    await saveMembersFromServer(await fetchProfiles(settings.workerSecret!));
+    const partner = partnerOf(await db.members.toArray(), settings);
+    expect(partner?.id).toBe('member-b');
+    expect(showNamingGate({
+      paired: true,
+      hasPartner: partner !== undefined,
+      myName: undefined,
+      seen: false,
+    })).toBe(true);
   });
 });

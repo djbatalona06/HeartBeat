@@ -27,7 +27,8 @@
     "ui:check": "node scripts/check-ui-review.mjs",
     "visual": "node app/tools/visual.mjs",
     "visual:update": "node app/tools/visual.mjs --update",
-    "lighthouse": "node app/tools/lighthouse.mjs"
+    "lighthouse": "node app/tools/lighthouse.mjs",
+    "pair:live": "node app/tools/pair-live.mjs"
   },
   "devDependencies": {
     "axe-core": "^4.13.0",
