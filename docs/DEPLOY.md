@@ -175,11 +175,58 @@ Pages project → Custom domains), update `ALLOWED_ORIGIN` in
 otherwise the browser gets CORS-blocked on every call to the Worker's
 endpoints.
 
+## 6. Preview deploys (two real phones, before merging)
+
+`.github/workflows/preview.yml` deploys every same-repository pull request to
+its own Pages preview URL, so two real phones can pair against the change
+before it reaches `main`. It deploys against a **separate D1 database and R2
+bucket** — never the couple's real data — and until those exist it deploys
+nothing and says why in the job summary.
+
+Once, from any machine logged in to the Cloudflare account:
+
+```bash
+cd worker
+npx wrangler d1 create heartbeat-preview
+```
+
+Paste the `database_id` it prints into this block at the **end** of
+`app/wrangler.toml`. Every binding is repeated on purpose: in a Pages config,
+bindings are not inherited by an environment, so a block naming only D1 would
+leave previews with no Workers AI and no photographs.
+
+```toml
+[env.preview]
+
+[env.preview.ai]
+binding = "AI"
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "heartbeat-preview"
+database_id = "<the id wrangler printed>"
+
+[[env.preview.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "heartbeat-preview"
+```
+
+The workflow migrates the preview database from the same `worker/migrations/`
+production runs, and creates the preview bucket if it is missing.
+`npm run check:config` fails if the preview id is ever the production one.
+Pages secrets are per environment, so push notifications on a preview need
+`VAPID_PUBLIC_KEY` added to the Pages project's **Preview** environment as
+well (Cloudflare dashboard → the Pages project → Settings → Variables and
+Secrets); pairing does not need it.
+
 ## What CI (`ci.yml`) does *not* do
 
 `.github/workflows/ci.yml` runs typecheck/test/build on every PR but holds
 **no Cloudflare credentials on purpose** (it runs on fork PRs too) — it never
-deploys anything. Only `deploy.yml`, gated to `main`, has secrets.
+deploys anything. Its `npm run pair:live` step pairs two phones against the
+real Pages Functions on a *local* D1, which is why it needs no account. Only
+`deploy.yml` (gated to `main`) and `preview.yml` (same-repository pull
+requests only, against the preview database) have secrets.
 
 ## Don't confuse this with GitHub Pages
 

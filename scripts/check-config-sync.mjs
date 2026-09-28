@@ -28,3 +28,21 @@ if (appId !== workerId) {
 }
 
 console.log(`app/wrangler.toml and worker/wrangler.toml agree on database_id (${appId})`);
+
+// Preview deploys (.github/workflows/preview.yml) exist so two real phones can
+// pair against a pull request without touching the couple's real data. A
+// preview block pointed at the production database would do the opposite,
+// silently — so it is the one mistake here that must fail loudly.
+const appToml = readFileSync(join(ROOT, 'app/wrangler.toml'), 'utf8');
+const previewAt = appToml.search(/^\[\[env\.preview\.d1_databases\]\]/m);
+if (previewAt >= 0) {
+  const previewId = appToml.slice(previewAt).match(/database_id\s*=\s*"([^"]+)"/)?.[1];
+  if (!previewId || previewId === appId) {
+    console.error(
+      `::error::app/wrangler.toml's [env.preview] D1 must be its own database, ` +
+        `not production's (${appId}). See "Preview deploys" in docs/DEPLOY.md.`
+    );
+    process.exit(1);
+  }
+  console.log(`preview deploys use their own database (${previewId})`);
+}

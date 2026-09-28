@@ -4,7 +4,7 @@ import { db, loadSettings } from '../../db/database';
 import { saveMembersFromServer } from '../../db/repository';
 import { fetchProfiles } from '../../pwa/api';
 import { isPaired } from '../../domain/identity/rekey';
-import { showNamingGate } from './namingGate';
+import { partnerOf, partnerPollMs, showNamingGate } from './namingGate';
 
 /**
  * Whether the naming screen should be showing right now, and what it needs to
@@ -26,34 +26,42 @@ export function useNamingGate(): NamingGateInfo {
 
   const ready = settings !== undefined && members !== undefined;
   const mine = members?.find((m) => m.id === settings?.memberId);
-  const theirs = members?.find((m) => m.id !== settings?.memberId);
-  const memberCount = members?.length ?? 0;
+  const theirs = partnerOf(members, settings);
   const token = settings?.workerSecret;
+  const pollMs = ready && token ? partnerPollMs(isPaired(settings), theirs) : null;
 
   /**
-   * This gate can only ever fire once the partner's own member row has
-   * arrived — and that row used to appear only once the Settings screen
-   * happened to mount, because `Partner`'s own `fetchProfiles` effect was the
-   * only thing that ever pulled it. Mounted here instead, this runs the
-   * moment a token exists, wherever in the app that turns out to be, which is
-   * what lets the gate appear without a detour through Settings first. Still
-   * safe to run twice — the same GET Settings also fires, newest-wins.
+   * A single fetch on mount is not enough: the phone that started would only
+   * learn its partner joined on a relaunch or a visit to Settings, and neither
+   * phone would ever see the other's name arrive. `partnerPollMs` decides how
+   * often to ask, and when to stop; it asks only while the app is on screen,
+   * and again the moment it comes back to the foreground. Safe alongside
+   * Settings' own fetch — `saveMembersFromServer` is newest-wins.
    */
   useEffect(() => {
-    if (!ready || !token || !isPaired(settings) || memberCount >= 2) return;
+    if (pollMs === null || !token) return;
     let live = true;
-    fetchProfiles(token)
-      .then((rows) => { if (live) void saveMembersFromServer(rows); })
-      .catch(() => { /* offline is the normal case; this retries next render */ });
-    return () => { live = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, token, memberCount]);
+    const ask = () => {
+      if (document.visibilityState !== 'visible') return;
+      fetchProfiles(token)
+        .then((rows) => { if (live) void saveMembersFromServer(rows); })
+        .catch(() => { /* offline is the normal case; the next tick asks again */ });
+    };
+    ask();
+    const timer = setInterval(ask, pollMs);
+    document.addEventListener('visibilitychange', ask);
+    return () => {
+      live = false;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', ask);
+    };
+  }, [pollMs, token]);
 
   return {
     ready,
     show: ready && showNamingGate({
       paired: isPaired(settings),
-      memberCount,
+      hasPartner: theirs !== undefined,
       myName: mine?.displayName,
       seen: settings?.namingGateSeen === true,
     }),

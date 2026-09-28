@@ -34,6 +34,9 @@ npm run study:build  # rebuild study/index.html
 
 # Visual walk (needs app/dist, so build first)
 npm run visual       # every route in two themes, axe on each, console errors
+
+# Two phones pairing, live (needs app/dist): real Pages Functions on a local D1
+npm run pair:live    # see "Testing pairing" in docs/DEVELOPING.md
 ```
 
 ### `npm run build` needs the .NET SDK, and so does anything downstream of it

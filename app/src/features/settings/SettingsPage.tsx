@@ -35,6 +35,7 @@ import {
   pairFailure,
 } from './pairing';
 import { receivePairingCode } from './receivePairingCode';
+import { partnerLinkMessage, partnerOf } from '../pairing/namingGate';
 import { saveProfile } from './profile';
 import { isPaired } from '../../domain/identity/rekey';
 import { reconcileTheme, readStoredTheme, writeStoredTheme } from './theme';
@@ -65,7 +66,9 @@ export function SettingsPage() {
 
   useEffect(() => {
     let live = true;
-    health().then((h) => { if (live) setBackend(h?.ok ? 'up' : 'down'); });
+    // `db`, not `ok`: `ok` also needs Workers AI, which pairing never touches,
+    // and a deploy without AI would otherwise disable both pairing buttons.
+    health().then((h) => { if (live) setBackend(h?.db ? 'up' : 'down'); });
     return () => { live = false; };
   }, []);
 
@@ -120,7 +123,12 @@ export function SettingsPage() {
         <p className="page-sub">Pairing, theme and your partner.</p>
       </header>
 
-      <Pairing paired={paired} settings={settings} backend={backend} />
+      <Pairing
+        paired={paired}
+        partner={partnerOf(members, settings)}
+        settings={settings}
+        backend={backend}
+      />
 
       {paired ? (
         <Partner members={members} settings={settings} />
@@ -286,12 +294,20 @@ export function SettingsPage() {
 /* ---- pairing -------------------------------------------------------------- */
 
 function Pairing({
-  paired, settings, backend,
+  paired, partner, settings, backend,
 }: {
   paired: boolean;
+  /** Paired *and* the other person's row has arrived — see `partnerOf`. */
+  partner: Member | undefined;
   settings: Settings | undefined;
   backend: 'checking' | 'up' | 'down';
 }) {
+  // A token alone is not a couple: the phone that started holds one before
+  // anybody has joined. "Waiting" keeps the join form (both may have tapped
+  // Start) and withholds a second Start while this code is live, because that
+  // would move this phone out from under whoever is typing it.
+  const linked = paired && partner !== undefined;
+  const waiting = paired && !linked;
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -310,8 +326,8 @@ function Pairing({
   }, [status]);
 
   useEffect(() => {
-    if (status === 'expired') void clearPendingInvite();
-  }, [status]);
+    if (status === 'expired' || (linked && invite)) void clearPendingInvite();
+  }, [status, linked, invite]);
 
   const start = async () => {
     setBusy(true);
@@ -344,10 +360,16 @@ function Pairing({
     <section className="set-block">
       <h2 className="section-title">The two of you</h2>
 
-      {paired ? (
+      {linked ? (
         <p className="section-sub">
-          This phone is paired. Moods, workouts, the calendar and the boss fight
-          all travel between the two of you.
+          {partnerLinkMessage(partner?.displayName)} Moods, workouts, the
+          calendar and the boss fight all travel between the two of you.
+        </p>
+      ) : waiting ? (
+        <p className="section-sub">
+          {status === 'live'
+            ? 'Waiting for your partner to type the code. This screen changes by itself the moment they do.'
+            : 'Nobody has joined this phone yet. Start a fresh code, or type theirs below.'}
         </p>
       ) : (
         <>
@@ -367,16 +389,18 @@ function Pairing({
         <p className="section-sub">That code has expired. Start another one.</p>
       ) : null}
 
-      <button
-        type="button"
-        className={paired ? 'quiet' : 'primary'}
-        disabled={busy || backend === 'down'}
-        onClick={() => void start()}
-      >
-        {paired ? 'Start a new pairing instead' : 'Start a pairing'}
-      </button>
+      {waiting && status === 'live' ? null : (
+        <button
+          type="button"
+          className={linked ? 'quiet' : 'primary'}
+          disabled={busy || backend === 'down'}
+          onClick={() => void start()}
+        >
+          {linked ? 'Start a new pairing instead' : waiting ? 'Start a fresh code' : 'Start a pairing'}
+        </button>
+      )}
 
-      {paired ? null : (
+      {linked ? null : (
         <form
           className="pair-join"
           onSubmit={(e) => { e.preventDefault(); void join(); }}
@@ -450,7 +474,7 @@ function Partner({
 }) {
   const token = settings?.workerSecret;
   const mine = members?.find((m) => m.id === settings?.memberId);
-  const theirs = members?.find((m) => m.id !== settings?.memberId);
+  const theirs = partnerOf(members, settings);
 
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
