@@ -5,6 +5,14 @@
 # functions can reach is reviewable in a diff. The Worker in ../worker keeps its
 # own config: it owns push and the every-minute boss cron, which Pages Functions
 # cannot do. Both bind the same D1 database.
+#
+# Secrets are per-project, not shared with the Worker despite the shared D1
+# binding above — Pages and Workers are separate Cloudflare services. The app
+# only ever calls this project's `/api/health` (app/functions/api/health.ts),
+# never the Worker's own `/health`, so VAPID_PUBLIC_KEY must be set here too —
+# the same public key set on the Worker, or a phone can "pair" fine but never
+# get a valid push key to subscribe with. See docs/DEPLOY.md's secrets section.
+#   npx wrangler pages secret put VAPID_PUBLIC_KEY --project-name heartbeat-app
 name = "heartbeat"
 pages_build_output_dir = "dist"
 compatibility_date = "2024-12-30"
