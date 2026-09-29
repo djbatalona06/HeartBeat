@@ -199,23 +199,7 @@ export function CameraCapture({ memberId, day, facing, photo }: CameraCapturePro
     <div className="proof" data-busy={busy}>
       <span className="proof-label">{label}</span>
 
-      {photo && shown ? (
-        <img className="proof-shot" src={shown} alt={`Workout proof: ${label.toLowerCase()}`} />
-      ) : photo ? (
-        // The row is here and the bytes are on their way. A placeholder rather
-        // than an <img> with no src, which paints a broken-image icon.
-        <div className="proof-slot" aria-busy="true">
-          <span className="proof-slot-text">Loading the photo…</span>
-        </div>
-      ) : (
-        // The empty slot opens the camera, because taking one now is the
-        // common case; choosing an existing one is the second button under it
-        // rather than a second full-size target competing with it.
-        <label className="proof-slot" htmlFor={cameraId}>
-          <span className="proof-plus" aria-hidden="true">+</span>
-          <span className="proof-slot-text">{busy ? 'Working…' : 'Take a photo'}</span>
-        </label>
-      )}
+      <ProofSlot photo={photo} shown={shown} label={label} cameraId={cameraId} busy={busy} />
 
       <input
         ref={camera}
@@ -238,39 +222,13 @@ export function CameraCapture({ memberId, day, facing, photo }: CameraCapturePro
         onChange={onPicked}
       />
 
-      <div className="proof-actions">
-        {photo ? (
-          <button
-            type="button"
-            className="proof-action"
-            onClick={() => camera.current?.click()}
-            disabled={busy}
-          >
-            {busy ? 'Working…' : 'Retake'}
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className="proof-action"
-          onClick={() => library.current?.click()}
-          disabled={busy}
-        >
-          {/* Longer when it is the only button on the row, because on its own
-              "Choose" does not say choose what. Beside Retake and Remove the
-              row supplies that. */}
-          {photo ? 'Choose' : 'Choose an existing one'}
-        </button>
-        {photo ? (
-          <button
-            type="button"
-            className="proof-action"
-            onClick={() => { void removeWorkoutPhoto(memberId, day, facing); }}
-            disabled={busy}
-          >
-            Remove
-          </button>
-        ) : null}
-      </div>
+      <ProofActions
+        hasPhoto={photo !== undefined}
+        busy={busy}
+        onRetake={() => camera.current?.click()}
+        onChoose={() => library.current?.click()}
+        onRemove={() => { void removeWorkoutPhoto(memberId, day, facing); }}
+      />
 
       {photo ? (
         <span className="proof-size">
@@ -281,5 +239,84 @@ export function CameraCapture({ memberId, day, facing, photo }: CameraCapturePro
 
       {error ? <span className="proof-error">{error}</span> : null}
     </div>
+  );
+}
+
+interface ProofSlotProps {
+  photo: CameraCaptureProps['photo'];
+  shown: string | undefined;
+  label: string;
+  cameraId: string;
+  busy: boolean;
+}
+
+/** The shot, the placeholder while its bytes arrive, or the empty slot that opens the camera. */
+function ProofSlot({ photo, shown, label, cameraId, busy }: ProofSlotProps) {
+  return (
+    <>
+        {photo && shown ? (
+          <img className="proof-shot" src={shown} alt={`Workout proof: ${label.toLowerCase()}`} />
+        ) : photo ? (
+          // The row is here and the bytes are on their way. A placeholder rather
+          // than an <img> with no src, which paints a broken-image icon.
+          <div className="proof-slot" aria-busy="true">
+            <span className="proof-slot-text">Loading the photo…</span>
+          </div>
+        ) : (
+          // The empty slot opens the camera, because taking one now is the
+          // common case; choosing an existing one is the second button under it
+          // rather than a second full-size target competing with it.
+          <label className="proof-slot" htmlFor={cameraId}>
+            <span className="proof-plus" aria-hidden="true">+</span>
+            <span className="proof-slot-text">{busy ? 'Working…' : 'Take a photo'}</span>
+          </label>
+        )}
+    </>
+  );
+}
+
+interface ProofActionsProps {
+  hasPhoto: boolean;
+  busy: boolean;
+  onRetake: () => void;
+  onChoose: () => void;
+  onRemove: () => void;
+}
+
+function ProofActions({ hasPhoto, busy, onRetake, onChoose, onRemove }: ProofActionsProps) {
+  return (
+      <div className="proof-actions">
+        {hasPhoto ? (
+          <button
+            type="button"
+            className="proof-action"
+            onClick={onRetake}
+            disabled={busy}
+          >
+            {busy ? 'Working…' : 'Retake'}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="proof-action"
+          onClick={onChoose}
+          disabled={busy}
+        >
+          {/* Longer when it is the only button on the row, because on its own
+              "Choose" does not say choose what. Beside Retake and Remove the
+              row supplies that. */}
+          {hasPhoto ? 'Choose' : 'Choose an existing one'}
+        </button>
+        {hasPhoto ? (
+          <button
+            type="button"
+            className="proof-action"
+            onClick={onRemove}
+            disabled={busy}
+          >
+            Remove
+          </button>
+        ) : null}
+      </div>
   );
 }

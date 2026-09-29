@@ -13,6 +13,7 @@ import { getMascot } from '../pet/mascots';
 import { useTheme } from '../../themes/ThemeProvider';
 import { petArt } from './art/pets';
 import { PrimaryAction } from '../../ui/PrimaryAction';
+import type { Avatar } from '../../domain/rpg/types';
 
 /**
  * Tree Town, with one other house in it.
@@ -28,7 +29,6 @@ import { PrimaryAction } from '../../ui/PrimaryAction';
  * writes, so there is no second number that can disagree with the first.
  */
 export function FriendsPage() {
-  const { theme } = useTheme();
   const settings = useLiveQuery(loadSettings, []);
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
   const { say } = useToast();
@@ -80,12 +80,9 @@ export function FriendsPage() {
   ).length;
   const vibesLeft = Math.max(0, GOOD_VIBES_PER_SENDER_PER_DAY - sentToday);
 
-  const mascot = getMascot(theme.id);
   const companion = partnerAvatar?.companionId
     ? (partnerPets ?? []).find((p) => p.id === partnerAvatar.companionId)
     : undefined;
-  const companionKind = companion ? petKindById(companion.kindId) : undefined;
-  const CompanionArt = companion ? petArt(companion.kindId) : undefined;
 
   async function sendVibes() {
     if (!partner || !coupleId || !memberId) return;
@@ -115,65 +112,103 @@ export function FriendsPage() {
         </section>
       ) : (
         <>
-          <section className="panel">
-            <h2 className="section-title">{partner.displayName || 'Them'}</h2>
-            <div className="friend-house">
-              {/* Their colourway, not yours — the dye lives on their avatar, so
-                  visiting shows the bird they actually dressed. */}
-              <div
-                className="friend-birb"
-                style={dyeStyle(partnerAvatar?.dye) as React.CSSProperties}
-                role="img"
-                aria-label={`${partner.displayName || 'Their'} birb`}
-              >
-                <mascot.Art mood="content" />
-              </div>
-              <dl className="friend-facts">
-                <div>
-                  <dt>Friendship</dt>
-                  <dd>{friendship} {friendship === 1 ? 'day' : 'days'}</dd>
-                </div>
-                <div>
-                  <dt>Level</dt>
-                  <dd>{partnerAvatar ? levelOf(partnerAvatar) : '—'}</dd>
-                </div>
-                <div>
-                  <dt>Coins</dt>
-                  <dd>{partnerAvatar ? sheetFor(partnerAvatar).coins : '—'}</dd>
-                </div>
-              </dl>
-            </div>
-            {companionKind && CompanionArt ? (
-              <p className="section-sub friend-companion">
-                <span className="friend-companion-art" aria-hidden="true"><CompanionArt /></span>
-                Walking with {companionKind.name}.
-              </p>
-            ) : null}
-          </section>
+          <PartnerHouse
+            partner={partner}
+            avatar={partnerAvatar}
+            friendship={friendship}
+            companionId={companion?.kindId}
+          />
 
-          <section className="panel">
-            <h2 className="section-title">Good vibes</h2>
-            <p className="section-sub">
-              {GOOD_VIBES_PER_SENDER_PER_DAY} a day, and each grants them energy
-              rather than costing you any. A note is optional — the energy
-              arrives either way.
-            </p>
-            <input
-              className="field"
-              value={note}
-              maxLength={140}
-              placeholder="Say something, or don't"
-              aria-label="A note to send with it"
-              onChange={(event) => setNote(event.target.value)}
-            />
-            <PrimaryAction
-              disabled={vibesLeft === 0}
-              onClick={sendVibes}>{vibesLeft === 0
-                ? `That is ${GOOD_VIBES_PER_SENDER_PER_DAY} for today`
-                : `Send good vibes (${vibesLeft} left)`}</PrimaryAction>
-          </section>
+          <GoodVibes vibesLeft={vibesLeft} note={note} onNote={setNote} onSend={sendVibes} />
         </>
       )}
     </div>
+  );
+}
+
+interface PartnerHouseProps {
+  partner: { displayName?: string };
+  avatar: Avatar | undefined;
+  friendship: number;
+  companionId: string | undefined;
+}
+
+/** The other house in town: their bird in their colours, and how long you have both been at it. */
+function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouseProps) {
+  const { theme } = useTheme();
+  const mascot = getMascot(theme.id);
+  const companionKind = companionId ? petKindById(companionId) : undefined;
+  const CompanionArt = companionId ? petArt(companionId) : undefined;
+  const partnerAvatar = avatar;
+
+  return (
+    <section className="panel">
+      <h2 className="section-title">{partner.displayName || 'Them'}</h2>
+      <div className="friend-house">
+        {/* Their colourway, not yours — the dye lives on their avatar, so
+            visiting shows the bird they actually dressed. */}
+        <div
+          className="friend-birb"
+          style={dyeStyle(partnerAvatar?.dye) as React.CSSProperties}
+          role="img"
+          aria-label={`${partner.displayName || 'Their'} birb`}
+        >
+          <mascot.Art mood="content" />
+        </div>
+        <dl className="friend-facts">
+          <div>
+            <dt>Friendship</dt>
+            <dd>{friendship} {friendship === 1 ? 'day' : 'days'}</dd>
+          </div>
+          <div>
+            <dt>Level</dt>
+            <dd>{partnerAvatar ? levelOf(partnerAvatar) : '—'}</dd>
+          </div>
+          <div>
+            <dt>Coins</dt>
+            <dd>{partnerAvatar ? sheetFor(partnerAvatar).coins : '—'}</dd>
+          </div>
+        </dl>
+      </div>
+      {companionKind && CompanionArt ? (
+        <p className="section-sub friend-companion">
+          <span className="friend-companion-art" aria-hidden="true"><CompanionArt /></span>
+          Walking with {companionKind.name}.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+interface GoodVibesProps {
+  vibesLeft: number;
+  note: string;
+  onNote: (note: string) => void;
+  onSend: () => void;
+}
+
+function GoodVibes({ vibesLeft, note, onNote, onSend }: GoodVibesProps) {
+  return (
+    <section className="panel">
+      <h2 className="section-title">Good vibes</h2>
+      <p className="section-sub">
+        {GOOD_VIBES_PER_SENDER_PER_DAY} a day, and each grants them energy
+        rather than costing you any. A note is optional — the energy
+        arrives either way.
+      </p>
+      <input
+        className="field"
+        value={note}
+        maxLength={140}
+        placeholder="Say something, or don't"
+        aria-label="A note to send with it"
+        onChange={(event) => onNote(event.target.value)}
+      />
+      <PrimaryAction
+        disabled={vibesLeft === 0}
+        onClick={onSend}>{vibesLeft === 0
+          ? `That is ${GOOD_VIBES_PER_SENDER_PER_DAY} for today`
+          : `Send good vibes (${vibesLeft} left)`}</PrimaryAction>
+    </section>
   );
 }

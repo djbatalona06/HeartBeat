@@ -42,7 +42,9 @@
   "reactDoctor": {
     "ignore": {
       "files": [
-        "tools/**"
+        "tools/**",
+        "dist/**",
+        "dist-standalone/**"
       ]
     }
   }

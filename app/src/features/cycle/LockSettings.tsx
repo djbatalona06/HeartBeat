@@ -48,32 +48,54 @@ export function LockSettings() {
       </div>
 
       {open ? (
-        <form onSubmit={(e) => { e.preventDefault(); void submit(); }} className="cycle-lock-form">
-          <label className="cycle-lock-label" htmlFor="cycle-set-pin">
-            {locked ? 'Current PIN' : `New PIN (${MIN_PIN_LENGTH}–${MAX_PIN_LENGTH} digits)`}
-          </label>
-          <input
-            id="cycle-set-pin"
-            className="field cycle-pin"
-            type="password"
-            inputMode="numeric"
-            autoComplete="off"
-            maxLength={MAX_PIN_LENGTH}
-            value={pin}
-            onChange={(e) => { setPinValue(e.target.value.replace(/\D/g, '')); setError(''); }}
-          />
-          <button type="submit" className="chip chip-on" disabled={busy || !isValidPin(pin)}>
-            {busy ? 'Working…' : locked ? 'Remove' : 'Lock'}
-          </button>
-          {error ? <p className="cycle-lock-error" role="alert">{error}</p> : null}
-          {!locked ? (
-            <p className="cycle-lock-hint">
-              Kept on this phone only — it is never synced, so the other phone keeps its own.
-              There is no way to recover it.
-            </p>
-          ) : null}
-        </form>
+        <LockForm
+          locked={locked}
+          pin={pin}
+          busy={busy}
+          error={error}
+          onPin={(next) => { setPinValue(next); setError(''); }}
+          onSubmit={() => void submit()}
+        />
       ) : null}
     </section>
+  );
+}
+
+interface LockFormProps {
+  locked: boolean;
+  pin: string;
+  busy: boolean;
+  error: string;
+  onPin: (digits: string) => void;
+  onSubmit: () => void;
+}
+
+function LockForm({ locked, pin, busy, error, onPin, onSubmit }: LockFormProps) {
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="cycle-lock-form">
+      <label className="cycle-lock-label" htmlFor="cycle-set-pin">
+        {locked ? 'Current PIN' : `New PIN (${MIN_PIN_LENGTH}–${MAX_PIN_LENGTH} digits)`}
+      </label>
+      <input
+        id="cycle-set-pin"
+        className="field cycle-pin"
+        type="password"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={MAX_PIN_LENGTH}
+        value={pin}
+        onChange={(e) => onPin(e.target.value.replace(/\D/g, ''))}
+      />
+      <button type="submit" className="chip chip-on" disabled={busy || !isValidPin(pin)}>
+        {busy ? 'Working…' : locked ? 'Remove' : 'Lock'}
+      </button>
+      {error ? <p className="cycle-lock-error" role="alert">{error}</p> : null}
+      {!locked ? (
+        <p className="cycle-lock-hint">
+          Kept on this phone only — it is never synced, so the other phone keeps its own.
+          There is no way to recover it.
+        </p>
+      ) : null}
+    </form>
   );
 }

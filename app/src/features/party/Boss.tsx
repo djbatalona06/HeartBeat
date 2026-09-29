@@ -97,6 +97,16 @@ export function Boss({ avatar, pets, owned, workerUrl, token, onSpendMp, onSpend
     );
   }
 
+  const readyUp = async () => {
+    setBusy(true);
+    try {
+      const next = await call('/boss/ready', {});
+      if (next) setBoss(next);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const companion = pets.find((p) => p.id === avatar.companionId);
   const companionView = companion ? petSheet(companion) : null;
 
@@ -123,20 +133,7 @@ export function Boss({ avatar, pets, owned, workerUrl, token, onSpendMp, onSpend
       const next = await call('/boss/attack', { damage: blow.damage });
       if (next) {
         setBoss(next);
-        if (next.state === 'won') {
-          // Both of you were in it, so the shared pet is what it pays. The
-          // award is keyed on the tier, so the other phone reporting the same
-          // victory is the same award rather than a second one; the flush is
-          // best-effort because the award is already queued in IndexedDB and
-          // the next foreground will carry it.
-          const gained = bossVictoryXp(next.tier);
-          await awardBossVictory(avatar.coupleId, next.tier);
-          void flushPetXp().catch(() => {});
-          onMessage(
-            `Down. +${gained} XP to the pet, and drops run `
-            + `${Math.round(victoryDropBonus(next.tier) * 100)}% richer now.`,
-          );
-        }
+        if (next.state === 'won') await celebrate(avatar.coupleId, next.tier, onMessage);
       }
     } finally {
       setBusy(false);
@@ -161,79 +158,109 @@ export function Boss({ avatar, pets, owned, workerUrl, token, onSpendMp, onSpend
           <p className="task-line">{boss.hp} / {boss.maxHp}</p>
 
           {boss.state === 'gathering' ? (
-            <>
-              <p className="section-sub">
-                {waitingOn(boss) ?? 'Both of you are in.'}
-              </p>
-              <button
-                type="button"
-                className="primary"
-                disabled={busy || boss.youAreReady}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    const next = await call('/boss/ready', {});
-                    if (next) setBoss(next);
-                  } finally { setBusy(false); }
-                }}
-              >
-                {boss.youAreReady ? 'You are ready' : 'Ready'}
-              </button>
-            </>
+            <GatheringPanel boss={boss} busy={busy} onReady={() => void readyUp()} />
           ) : null}
 
           {boss.state === 'fighting' ? (
-            <>
-              <PrimaryAction disabled={busy} onClick={() => attack()}>Hit it for {resolveBlow(sheet.stats).damage}</PrimaryAction>
-              <div className="chips">
-                {SKILLS.map((skill) => (
-                  <button
-                    key={skill.id}
-                    type="button"
-                    className={`chip ${castBlockedBecause(skill, level, sheet.mp) ? 'chip-locked' : ''}`}
-                    title={castBlockedBecause(skill, level, sheet.mp) ?? skill.blurb}
-                    disabled={busy}
-                    onClick={() => attack(skill.id)}
-                  >
-                    {skill.name} · {skill.mpCost}
-                  </button>
-                ))}
-              </div>
-              {companionView ? (
-                <p className="task-line">
-                  {companionView.skillReady
-                    ? `${companionView.kind.name} joins with ${companionView.kind.skill.name}.`
-                    : companionView.skillBlockedBecause}
-                </p>
-              ) : null}
-            </>
+            <FightingPanel
+              damage={resolveBlow(sheet.stats).damage}
+              busy={busy}
+              level={level}
+              mp={sheet.mp}
+              companionView={companionView}
+              onHit={() => attack()}
+              onCast={(skillId) => attack(skillId)}
+            />
           ) : null}
 
           {boss.state === 'won' || boss.state === 'lost' ? (
-            <>
-              <p className="section-sub">
-                {boss.state === 'won'
-                  ? 'Cleared. The next one is a quarter bigger.'
-                  : 'Not this time. The same tier is still there.'}
-              </p>
-              <button
-                type="button"
-                className="primary"
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try {
-                    const next = await call('/boss/ready', {});
-                    if (next) setBoss(next);
-                  } finally { setBusy(false); }
-                }}
-              >
-                Line up the next one
-              </button>
-            </>
+            <FinishedPanel boss={boss} busy={busy} onNext={() => void readyUp()} />
           ) : null}
         </>
       )}
     </section>
+  );
+}
+
+/** Both of you were in it, so the shared pet is what a win pays. */
+async function celebrate(coupleId: string, tier: number, onMessage: (text: string) => void) {
+  // The award is keyed on the tier, so the other phone reporting the same
+  // victory is the same award rather than a second one; the flush is
+  // best-effort because the award is already queued in IndexedDB and the next
+  // foreground will carry it.
+  const gained = bossVictoryXp(tier);
+  await awardBossVictory(coupleId, tier);
+  void flushPetXp().catch(() => {});
+  onMessage(
+    `Down. +${gained} XP to the pet, and drops run `
+    + `${Math.round(victoryDropBonus(tier) * 100)}% richer now.`,
+  );
+}
+
+function GatheringPanel({ boss, busy, onReady }: { boss: BossPayload; busy: boolean; onReady: () => void }) {
+  return (
+    <>
+      <p className="section-sub">{waitingOn(boss) ?? 'Both of you are in.'}</p>
+      <button type="button" className="primary" disabled={busy || boss.youAreReady} onClick={onReady}>
+        {boss.youAreReady ? 'You are ready' : 'Ready'}
+      </button>
+    </>
+  );
+}
+
+interface FightingPanelProps {
+  damage: number;
+  busy: boolean;
+  level: number;
+  mp: number;
+  companionView: ReturnType<typeof petSheet> | null;
+  onHit: () => void;
+  onCast: (skillId: string) => void;
+}
+
+function FightingPanel({ damage, busy, level, mp, companionView, onHit, onCast }: FightingPanelProps) {
+  return (
+    <>
+      <PrimaryAction disabled={busy} onClick={onHit}>Hit it for {damage}</PrimaryAction>
+      <div className="chips">
+        {SKILLS.map((skill) => {
+          const blocked = castBlockedBecause(skill, level, mp);
+          return (
+            <button
+              key={skill.id}
+              type="button"
+              className={`chip ${blocked ? 'chip-locked' : ''}`}
+              title={blocked ?? skill.blurb}
+              disabled={busy}
+              onClick={() => onCast(skill.id)}
+            >
+              {skill.name} · {skill.mpCost}
+            </button>
+          );
+        })}
+      </div>
+      {companionView ? (
+        <p className="task-line">
+          {companionView.skillReady
+            ? `${companionView.kind.name} joins with ${companionView.kind.skill.name}.`
+            : companionView.skillBlockedBecause}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+function FinishedPanel({ boss, busy, onNext }: { boss: BossPayload; busy: boolean; onNext: () => void }) {
+  return (
+    <>
+      <p className="section-sub">
+        {boss.state === 'won'
+          ? 'Cleared. The next one is a quarter bigger.'
+          : 'Not this time. The same tier is still there.'}
+      </p>
+      <button type="button" className="primary" disabled={busy} onClick={onNext}>
+        Line up the next one
+      </button>
+    </>
   );
 }

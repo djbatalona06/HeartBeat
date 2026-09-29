@@ -90,42 +90,12 @@ function CycleBody() {
   const myId = identity?.memberId ?? null;
   const tracksCycle = settings?.tracksCycle;
 
-  // Every row, not just this month's: the averages the forecast rests on need
-  // the whole history, and a month's worth would shorten it to nothing.
-  const allRows = useLiveQuery(async () => db.cycles.toArray(), []);
-  const all = useMemo(() => allRows ?? [], [allRows]);
-
-  // Whose log this page is showing. Mine if I track; otherwise whoever else has
-  // written rows, which after a sync is my partner.
-  const subjectId = useMemo(() => {
-    if (tracksCycle) return myId;
-    const theirs = all.find((row) => row.memberId !== myId);
-    return theirs?.memberId ?? null;
-  }, [tracksCycle, myId, all]);
-
-  const entries = useMemo(
-    () => all.filter((row) => row.memberId === subjectId).sort((a, b) => a.day.localeCompare(b.day)),
-    [all, subjectId],
-  );
-
-  const byDay = useMemo(() => {
-    const map = new Map<DayKey, CycleEntry>();
-    for (const e of entries) map.set(e.day, e);
-    return map;
-  }, [entries]);
-
-  const prediction = useMemo(
-    () => predict({ periodStarts: periodStartsFrom(entries), today }),
-    [entries, today],
-  );
+  const { subjectId, byDay, prediction } = useCycleLog(tracksCycle, myId, today);
 
   if (settings && tracksCycle === undefined) {
     return <TrackingQuestion />;
   }
 
-  const days = daysInMonth(month);
-  const lead = sundayIndex(days[0]);
-  const [year, monthNumber] = month.split('-').map(Number);
   const canLog = Boolean(tracksCycle && myId);
 
   return (
@@ -149,15 +119,100 @@ function CycleBody() {
         </div>
       )}
 
+      <CycleCalendar
+        month={month}
+        onMonth={setMonth}
+        byDay={byDay}
+        prediction={prediction}
+        today={today}
+        selected={selected}
+        onSelect={setSelected}
+        painting={painting && canLog}
+        myId={myId}
+      />
+
+      {canLog ? <PaintToggle painting={painting} onToggle={() => setPainting((on) => !on)} /> : null}
+
+      {canLog && myId ? (
+        <DaySheet key={selected} day={selected} memberId={myId} entry={byDay.get(selected)} />
+      ) : (
+        <ReadOnlyDay day={selected} entry={byDay.get(selected)} />
+      )}
+
+      <LockSettings />
+    </section>
+  );
+}
+
+/**
+ * Whose log this page is showing, and what follows from it.
+ *
+ * Every row, not just this month's: the averages the forecast rests on need the
+ * whole history, and a month's worth would shorten it to nothing. Mine if I
+ * track; otherwise whoever else has written rows, which after a sync is my
+ * partner.
+ */
+function useCycleLog(tracksCycle: boolean | undefined, myId: string | null, today: DayKey) {
+  const allRows = useLiveQuery(async () => db.cycles.toArray(), []);
+  const all = useMemo(() => allRows ?? [], [allRows]);
+
+  const subjectId = useMemo(() => {
+    if (tracksCycle) return myId;
+    const theirs = all.find((row) => row.memberId !== myId);
+    return theirs?.memberId ?? null;
+  }, [tracksCycle, myId, all]);
+
+  const entries = useMemo(
+    () => all.filter((row) => row.memberId === subjectId).sort((a, b) => a.day.localeCompare(b.day)),
+    [all, subjectId],
+  );
+
+  const byDay = useMemo(() => {
+    const map = new Map<DayKey, CycleEntry>();
+    for (const e of entries) map.set(e.day, e);
+    return map;
+  }, [entries]);
+
+  const prediction = useMemo(
+    () => predict({ periodStarts: periodStartsFrom(entries), today }),
+    [entries, today],
+  );
+
+  return { subjectId, byDay, prediction };
+}
+
+interface CycleCalendarProps {
+  month: string;
+  onMonth: (month: string) => void;
+  byDay: Map<DayKey, CycleEntry>;
+  prediction: Prediction;
+  today: DayKey;
+  selected: DayKey;
+  onSelect: (day: DayKey) => void;
+  /** Painting is on and this phone may log: a tap toggles bleeding instead of selecting. */
+  painting: boolean;
+  myId: string | null;
+}
+
+/** The month header, the grid of days, and the key to the colours. */
+function CycleCalendar({
+  month, onMonth, byDay, prediction, today, selected, onSelect, painting, myId,
+}: CycleCalendarProps) {
+  const days = daysInMonth(month);
+  const lead = sundayIndex(days[0]);
+  const [year, monthNumber] = month.split('-').map(Number);
+
+  return (
+    <>
       <div className="cal-head">
         <button
           type="button" className="cal-step"
-          onClick={() => setMonth(shiftMonth(month, -1))} aria-label="Previous month"
+          onClick={() => onMonth(shiftMonth(month, -1))} aria-label="Previous month"
         >‹</button>
         <h2 className="cal-month">{MONTHS[monthNumber - 1]} {year}</h2>
         <button
           type="button" className="cal-step"
-          onClick={() => setMonth(shiftMonth(month, 1))} aria-label="Next month"
+          onClick={() => onMonth(shiftMonth(month, 1))} aria-label="Next month"
         >›</button>
       </div>
 
@@ -185,11 +240,11 @@ function CycleBody() {
               aria-pressed={day === selected}
               aria-label={`${day}${marks.label ? `, ${marks.label}` : ''}`}
               onClick={() => {
-                if (painting && canLog && myId) {
+                if (painting && myId) {
                   void togglePeriodDay(myId, day, entry);
                   return;
                 }
-                setSelected(day);
+                onSelect(day);
               }}
             >
               <span className="cal-num">{Number(day.slice(8, 10))}</span>
@@ -200,31 +255,26 @@ function CycleBody() {
       </div>
 
       <Legend />
+    </>
+  );
+}
 
-      {canLog ? (
-        <div className="cycle-actions">
-          <button
-            type="button"
-            className={painting ? 'chip chip-on' : 'chip'}
-            aria-pressed={painting}
-            onClick={() => setPainting((on) => !on)}
-          >
-            {painting ? 'Done' : 'Edit period'}
-          </button>
-          {painting ? (
-            <p className="cycle-hint">Tap any day to add or remove bleeding.</p>
-          ) : null}
-        </div>
+/** Switches the calendar between selecting a day and painting bleeding onto it. */
+function PaintToggle({ painting, onToggle }: { painting: boolean; onToggle: () => void }) {
+  return (
+    <div className="cycle-actions">
+      <button
+        type="button"
+        className={painting ? 'chip chip-on' : 'chip'}
+        aria-pressed={painting}
+        onClick={onToggle}
+      >
+        {painting ? 'Done' : 'Edit period'}
+      </button>
+      {painting ? (
+        <p className="cycle-hint">Tap any day to add or remove bleeding.</p>
       ) : null}
-
-      {canLog && myId ? (
-        <DaySheet key={selected} day={selected} memberId={myId} entry={byDay.get(selected)} />
-      ) : (
-        <ReadOnlyDay day={selected} entry={byDay.get(selected)} />
-      )}
-
-      <LockSettings />
-    </section>
+    </div>
   );
 }
 
@@ -293,36 +343,43 @@ function Legend() {
 }
 
 function Summary({ prediction, today }: { prediction: Prediction; today: DayKey }) {
-  const p = prediction;
-
-  if (p.source === 'insufficient-data' || p.source === 'stale-history') {
-    return (
-      <section className="cycle-summary">
-        <p className="cycle-summary-lead">
-          {p.cycleDay ? `Day ${p.cycleDay}` : 'No forecast yet'}
-        </p>
-        <p className="cycle-summary-sub">
-          {p.source === 'stale-history'
-            ? 'The last period logged here was months ago, so there is nothing recent enough to forecast from.'
-            : 'Two period starts are enough to begin. Mark them on the calendar and a forecast appears.'}
-        </p>
-      </section>
-    );
+  if (prediction.source === 'insufficient-data' || prediction.source === 'stale-history') {
+    return <NoForecast p={prediction} />;
   }
+  return <Forecast p={prediction} today={today} />;
+}
 
+function NoForecast({ p }: { p: Prediction }) {
+  return (
+    <section className="cycle-summary">
+      <p className="cycle-summary-lead">
+        {p.cycleDay ? `Day ${p.cycleDay}` : 'No forecast yet'}
+      </p>
+      <p className="cycle-summary-sub">
+        {p.source === 'stale-history'
+          ? 'The last period logged here was months ago, so there is nothing recent enough to forecast from.'
+          : 'Two period starts are enough to begin. Mark them on the calendar and a forecast appears.'}
+      </p>
+    </section>
+  );
+}
+
+/** "3 days late", "Period expected today", "Period in 1 day". */
+function periodLine(late: number, until: number | null): string {
+  const days = (n: number) => `${n} day${n === 1 ? '' : 's'}`;
+  if (late > 0) return `${days(late)} late`;
+  if (until === 0) return 'Period expected today';
+  return `Period in ${days(until ?? 0)}`;
+}
+
+function Forecast({ p, today }: { p: Prediction; today: DayKey }) {
   const late = daysLate(p, today);
   const until = p.nextPeriodStart ? daysBetween(today, p.nextPeriodStart) : null;
   const phase = phaseFor(p, today);
 
   return (
     <section className="cycle-summary" data-phase={phase ?? undefined}>
-      <p className="cycle-summary-lead">
-        {late > 0
-          ? `${late} day${late > 1 ? 's' : ''} late`
-          : until === 0
-            ? 'Period expected today'
-            : `Period in ${until} day${until === 1 ? '' : 's'}`}
-      </p>
+      <p className="cycle-summary-lead">{periodLine(late, until)}</p>
       {phase ? <p className="cycle-summary-phase">{PHASE_LABEL[phase]} phase</p> : null}
       <p className="cycle-summary-sub">
         {p.cycleDay ? `Day ${p.cycleDay} · ` : ''}
