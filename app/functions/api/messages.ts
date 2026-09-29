@@ -1,4 +1,5 @@
 import { authenticate, json, type Env } from './_lib';
+import { track } from './_track';
 
 /**
  * The couple's message thread.
@@ -48,7 +49,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   });
 };
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const caller = await authenticate(request, env);
   if (!caller) return json({ error: 'unauthorized' }, 401);
 
@@ -65,5 +66,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     .bind(id, caller.coupleId, caller.memberId, body, createdAt)
     .run();
 
+  track({ env, waitUntil }, 'message_sent', caller);
   return json({ id, memberId: caller.memberId, body, createdAt, mine: true });
 };

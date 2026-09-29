@@ -1,4 +1,5 @@
 import { json } from './_lib';
+import { configured } from './_track';
 import { githubApp, type GitHubEnv } from './auth/_github';
 import { googleApp, type GoogleEnv } from './auth/_google';
 
@@ -41,5 +42,7 @@ export const onRequestGet: PagesFunction<GitHubEnv & GoogleEnv> = async ({ env }
     // without an OAuth app is fully functional and simply does not offer this.
     github: Boolean(githubApp(env)),
     google: Boolean(googleApp(env)),
+    // Anonymous server-side counts (see _track.ts). False means nothing is sent.
+    analytics: configured(env) !== null,
   });
 };

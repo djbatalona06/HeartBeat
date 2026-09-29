@@ -1,4 +1,5 @@
 import { authenticate, json, recordAuthEvent, type Env } from '../_lib';
+import { track } from '../_track';
 import { releaseMember } from '../_offboard';
 
 /**
@@ -9,7 +10,7 @@ import { releaseMember } from '../_offboard';
  * for the leaver — see _offboard.ts. The seat is freed, so /api/pair/invite can
  * fill it.
  */
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const caller = await authenticate(request, env);
   if (!caller) return json({ error: 'not paired' }, 401);
 
@@ -21,5 +22,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     { kind: 'revoke', coupleId: caller.coupleId, memberId: caller.memberId, detail: 'left' },
     now,
   );
+  track({ env, waitUntil }, 'pair_left', caller);
   return json({ ok: true });
 };

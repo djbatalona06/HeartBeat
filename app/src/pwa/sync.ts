@@ -243,6 +243,7 @@ async function applyEntry(entry: PulledEntry): Promise<boolean> {
 export async function applyPulled(entries: PulledEntry[]): Promise<number> {
   let applied = 0;
   for (const entry of entries) {
+    // react-doctor-disable-next-line async-await-in-loop -- sequential on purpose: entries land in order, uploads are few, and a phone on a bad connection should not open several requests at once
     if (await applyEntry(entry)) applied++;
   }
   return applied;
@@ -365,6 +366,7 @@ async function pushChunk(token: string, entries: WireEntry[]): Promise<ChunkResu
 
   const half = Math.ceil(entries.length / 2);
   const left = await pushChunk(token, entries.slice(0, half));
+  // react-doctor-disable-next-line server-sequential-independent-await -- the two halves of a bisect go one after the other: the server is already refusing something, and two at once double the burst
   const right = await pushChunk(token, entries.slice(half));
   return {
     written: left.written + right.written,
@@ -410,6 +412,7 @@ export async function uploadPendingPhotos(memberId: string, token: string): Prom
   let uploaded = 0;
   for (const photo of waiting) {
     try {
+      // react-doctor-disable-next-line async-await-in-loop -- sequential on purpose: entries land in order, uploads are few, and a phone on a bad connection should not open several requests at once
       const stored = await uploadMedia(blobFromDataUri(photo.dataUri as string), token);
       if (await markPhotoUploaded(photo.id, stored.hash, stored.key)) uploaded += 1;
     } catch {

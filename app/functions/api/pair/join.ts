@@ -1,4 +1,5 @@
 import { hashToken, json, newToken, recordAuthEvent, type Env } from '../_lib';
+import { track } from '../_track';
 
 /**
  * Redeem an invite. The second device calls this and gets its own token.
@@ -32,7 +33,7 @@ SELECT ?, i.couple_id, ?, ?, ?
 const JOIN_CONSUME_SQL =
   'UPDATE invites SET consumed_at = ? WHERE token = ? AND consumed_at IS NULL';
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const body = (await request.json().catch(() => ({}))) as { invite?: string };
   const code = (body.invite ?? '').trim().toUpperCase();
   if (!code) return json({ error: 'invite required' }, 400);
@@ -46,11 +47,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   if (!row) {
     await recordAuthEvent(env.DB, request, { kind: 'join_refused', detail: 'no-such-invite' }, now);
+    track({ env, waitUntil }, 'pair_failed', {}, { reason: 'no-such-invite' });
     return json({ error: 'no such invite' }, 404);
   }
   const refuse = (detail: string, message: string, status: number) =>
     recordAuthEvent(env.DB, request, { kind: 'join_refused', coupleId: row.couple_id, detail }, now)
-      .then(() => json({ error: message }, status));
+      .then(() => {
+        track({ env, waitUntil }, 'pair_failed', { coupleId: row.couple_id }, { reason: detail });
+        return json({ error: message }, status);
+      });
 
   if (row.consumed_at) return refuse('already-used', 'invite already used', 409);
   if (row.expires_at < now) return refuse('expired', 'invite expired', 410);
@@ -84,5 +89,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     { kind: 'pair_join', coupleId: row.couple_id, memberId },
     now,
   );
+  track({ env, waitUntil }, 'pair_completed', { memberId, coupleId: row.couple_id });
   return json({ coupleId: row.couple_id, memberId, token });
 };

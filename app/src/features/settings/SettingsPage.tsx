@@ -41,6 +41,7 @@ import { isPaired } from '../../domain/identity/rekey';
 import { reconcileTheme, readStoredTheme, writeStoredTheme } from './theme';
 import { PHOTO_BUDGET_BYTES, coverBox, formatKb, photoBytes, withinBudget } from './photo';
 import { SecondaryAction } from '../../ui/SecondaryAction';
+import { useBusyAction } from '../../ui/useBusyAction';
 import { PrimaryAction } from '../../ui/PrimaryAction';
 import { ListRow } from '../../ui/ListRow';
 
@@ -311,8 +312,8 @@ function Pairing({
   const linked = paired && partner !== undefined;
   const waiting = paired && !linked;
   const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const { busy, run } = useBusyAction(setNote);
   const [managing, setManaging] = useState(false);
   // Ticks only while an invite is live, so a paired phone is not re-rendering
   // once a second for a countdown nobody is looking at.
@@ -332,50 +333,29 @@ function Pairing({
     if (status === 'expired' || (linked && invite)) void clearPendingInvite();
   }, [status, linked, invite]);
 
-  const start = async () => {
-    setBusy(true);
+  const failure = (e: unknown) => pairFailure(e).message;
+
+  const start = () => run(async () => {
     setNote(null);
-    try {
-      const result = await pairStart();
-      await savePairing(result);
-      setNow(Date.now());
-    } catch (e) {
-      setNote(pairFailure(e).message);
-    } finally {
-      setBusy(false);
-    }
-  };
+    await savePairing(await pairStart());
+    setNow(Date.now());
+  }, failure);
 
   // The other phone ended this link. Nothing was deleted; the choice is here.
   const unlinked = Boolean(settings?.unlinkedAt);
 
-  const startOver = async () => {
-    setBusy(true);
+  const startOver = () => run(async () => {
     setNote(null);
-    try {
-      await leaveCouple();
-    } catch (e) {
-      setNote(pairFailure(e).message);
-    } finally {
-      setBusy(false);
-    }
-  };
+    await leaveCouple();
+  }, failure);
 
-  const inviteAgain = async () => {
-    setBusy(true);
+  const inviteAgain = () => run(async () => {
     setNote(null);
-    try {
-      await inviteToFreeSeat();
-      setNow(Date.now());
-    } catch (e) {
-      setNote(pairFailure(e).message);
-    } finally {
-      setBusy(false);
-    }
-  };
+    await inviteToFreeSeat();
+    setNow(Date.now());
+  }, failure);
 
-  const join = async () => {
-    setBusy(true);
+  const join = () => run(async () => {
     setNote(null);
     const result = await receivePairingCode(code);
     if (result.ok) {
@@ -384,44 +364,20 @@ function Pairing({
     } else {
       setNote(result.failure.message);
     }
-    setBusy(false);
-  };
+  }, failure);
 
   return (
     <section className="set-block">
       <h2 className="section-title">The two of you</h2>
 
-      {linked ? (
-        <p className="section-sub">
-          {partnerLinkMessage(partner?.displayName)} Moods, workouts, the
-          calendar and the boss fight all travel between the two of you.
-        </p>
-      ) : waiting ? (
-        <p className="section-sub">
-          {status === 'live'
-            ? 'Waiting for your partner to type the code. This screen changes by itself the moment they do.'
-            : former
-              ? `${former.displayName.trim() || 'Your partner'} left. Share a code to invite someone, or type one from another phone below.`
-              : 'Nobody has joined this phone yet. Start a fresh code, or type theirs below.'}
-        </p>
-      ) : unlinked ? (
-        <>
-          <p className="pair-lead">This link was ended.</p>
-          <p className="section-sub">
-            Everything you logged is still on this phone. Keep it and start over, then start a new
-            pairing or join a code.
-          </p>
-        </>
-      ) : (
-        <>
-          <p className="pair-lead">Nothing else works until two phones are joined.</p>
-          <p className="section-sub">
-            One of you starts a pairing and reads out the code; the other types it
-            in. No account, no password, no phone number — the code is the whole
-            of it, and it is good once.
-          </p>
-        </>
-      )}
+      <PairingIntro
+        linked={linked}
+        waiting={waiting}
+        unlinked={unlinked}
+        live={status === 'live'}
+        former={former}
+        partnerName={partner?.displayName}
+      />
 
       {status === 'live' && invite ? (
         <InviteCard code={invite} msLeft={(expiresAt ?? 0) - now} />
@@ -430,46 +386,22 @@ function Pairing({
         <p className="section-sub">That code has expired. Start another one.</p>
       ) : null}
 
-      {unlinked ? (
-        <PrimaryAction busy={busy} onClick={() => void startOver()}>
-          Keep my data and start over
-        </PrimaryAction>
-      ) : linked ? (
-        <ListRow label="Manage pairing" hint="Share, remove or leave." onClick={() => setManaging(true)} />
-      ) : waiting && status === 'live' ? null : waiting && former ? (
-        <PrimaryAction busy={busy} disabled={backend === 'down'} onClick={() => void inviteAgain()}>
-          Share a new code
-        </PrimaryAction>
-      ) : (
-        <PrimaryAction busy={busy} disabled={backend === 'down'} onClick={() => void start()}>
-          {waiting ? 'Start a fresh code' : 'Start a pairing'}
-        </PrimaryAction>
-      )}
+      <PairingAction
+        unlinked={unlinked}
+        linked={linked}
+        waiting={waiting}
+        live={status === 'live'}
+        hasFormer={former !== undefined}
+        busy={busy}
+        down={backend === 'down'}
+        onStartOver={() => void startOver()}
+        onInviteAgain={() => void inviteAgain()}
+        onStart={() => void start()}
+        onManage={() => setManaging(true)}
+      />
 
       {linked || unlinked ? null : (
-        <form
-          className="pair-join"
-          onSubmit={(e) => { e.preventDefault(); void join(); }}
-        >
-          <input
-            className="field"
-            value={code}
-            onChange={(e) => setCode(normalizeInvite(e.target.value))}
-            placeholder="Or type their code"
-            aria-label="Invite code"
-            inputMode="text"
-            autoCapitalize="characters"
-            autoCorrect="off"
-            spellCheck={false}
-          />
-          <button
-            type="submit"
-            className="quiet"
-            disabled={busy || !isCompleteInvite(code) || backend === 'down'}
-          >
-            Join with this code
-          </button>
-        </form>
+        <JoinForm code={code} onCode={setCode} busy={busy} down={backend === 'down'} onJoin={() => void join()} />
       )}
 
       {note ? <p className="pair-note">{note}</p> : null}
@@ -488,6 +420,132 @@ function Pairing({
     </section>
   );
 }
+
+interface PairingIntroProps {
+  linked: boolean;
+  waiting: boolean;
+  unlinked: boolean;
+  live: boolean;
+  former: Member | undefined;
+  partnerName: string | undefined;
+}
+
+/** Says where the pairing stands, in the words for that state. */
+function PairingIntro({ linked, waiting, unlinked, live, former, partnerName }: PairingIntroProps) {
+  return (
+    linked ? (
+      <p className="section-sub">
+        {partnerLinkMessage(partnerName)} Moods, workouts, the
+        calendar and the boss fight all travel between the two of you.
+      </p>
+    ) : waiting ? (
+      <p className="section-sub">
+        {live
+          ? 'Waiting for your partner to type the code. This screen changes by itself the moment they do.'
+          : former
+            ? `${former.displayName.trim() || 'Your partner'} left. Share a code to invite someone, or type one from another phone below.`
+            : 'Nobody has joined this phone yet. Start a fresh code, or type theirs below.'}
+      </p>
+    ) : unlinked ? (
+      <>
+        <p className="pair-lead">This link was ended.</p>
+        <p className="section-sub">
+          Everything you logged is still on this phone. Keep it and start over, then start a new
+          pairing or join a code.
+        </p>
+      </>
+    ) : (
+      <>
+        <p className="pair-lead">Nothing else works until two phones are joined.</p>
+        <p className="section-sub">
+          One of you starts a pairing and reads out the code; the other types it
+          in. No account, no password, no phone number — the code is the whole
+          of it, and it is good once.
+        </p>
+      </>
+    )
+  );
+}
+
+interface PairingActionProps {
+  unlinked: boolean;
+  linked: boolean;
+  waiting: boolean;
+  live: boolean;
+  hasFormer: boolean;
+  busy: boolean;
+  down: boolean;
+  onStartOver: () => void;
+  onInviteAgain: () => void;
+  onStart: () => void;
+  onManage: () => void;
+}
+
+/** The one thing to do next, which depends on the state. */
+function PairingAction(props: PairingActionProps) {
+  const { unlinked, linked, waiting, live, hasFormer, busy, down } = props;
+  const { onStartOver, onInviteAgain, onStart, onManage } = props;
+  if (unlinked) {
+    return (
+      <PrimaryAction busy={busy} onClick={onStartOver}>
+        Keep my data and start over
+      </PrimaryAction>
+    );
+  }
+  if (linked) {
+    return <ListRow label="Manage pairing" hint="Share, remove or leave." onClick={onManage} />;
+  }
+  if (waiting && live) return null;
+  if (waiting && hasFormer) {
+    return (
+      <PrimaryAction busy={busy} disabled={down} onClick={onInviteAgain}>
+        Share a new code
+      </PrimaryAction>
+    );
+  }
+  return (
+    <PrimaryAction busy={busy} disabled={down} onClick={onStart}>
+      {waiting ? 'Start a fresh code' : 'Start a pairing'}
+    </PrimaryAction>
+  );
+}
+
+interface JoinFormProps {
+  code: string;
+  onCode: (code: string) => void;
+  busy: boolean;
+  down: boolean;
+  onJoin: () => void;
+}
+
+function JoinForm({ code, onCode, busy, down, onJoin }: JoinFormProps) {
+  return (
+    <form
+      className="pair-join"
+      onSubmit={(e) => { e.preventDefault(); onJoin(); }}
+    >
+      <input
+        className="field"
+        value={code}
+        onChange={(e) => onCode(normalizeInvite(e.target.value))}
+        placeholder="Or type their code"
+        aria-label="Invite code"
+        inputMode="text"
+        autoCapitalize="characters"
+        autoCorrect="off"
+        spellCheck={false}
+      />
+      <button
+        type="submit"
+        className="quiet"
+        disabled={busy || !isCompleteInvite(code) || down}
+      >
+        Join with this code
+      </button>
+    </form>
+  );
+}
+
 
 /* ---- the partner ---------------------------------------------------------- */
 
@@ -592,6 +650,7 @@ function Partner({
       <input
         ref={file}
         className="who-input"
+        aria-label="Choose a profile photo"
         type="file"
         accept="image/*"
         onChange={(e) => {
@@ -680,14 +739,10 @@ const GENDER_CHOICES: ReadonlyArray<{ value: Gender; label: string }> = [
  */
 function GenderBlock({ settings }: { settings: Settings | undefined }) {
   const chosen = settings?.gender;
-  const [note, setNote] = useState('');
-
-  // Seeded once the stored value arrives, and only when the field is empty, so
-  // typing is never overwritten by the live query re-firing underneath it.
-  useEffect(() => {
-    if (settings?.genderNote && !note) setNote(settings.genderNote);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings?.genderNote]);
+  // What has been typed, or null until anything has: until then the field
+  // shows the stored value, so the live query re-firing never overwrites typing.
+  const [typed, setTyped] = useState<string | null>(null);
+  const note = typed ?? settings?.genderNote ?? '';
 
   return (
     <section className="set-block">
@@ -717,7 +772,7 @@ function GenderBlock({ settings }: { settings: Settings | undefined }) {
             maxLength={MAX_GENDER_NOTE}
             placeholder="In your own words, if you like"
             aria-label="How you describe yourself"
-            onChange={(e) => setNote(e.target.value)}
+            onChange={(e) => setTyped(e.target.value)}
             onBlur={() => void setGender('other', note)}
           />
           <p className="section-sub">This one stays on this phone.</p>

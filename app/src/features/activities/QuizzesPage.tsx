@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from 'react-router-dom';
 import { loadSettings } from '../../db/database';
@@ -18,16 +18,14 @@ import { PrimaryAction } from '../../ui/PrimaryAction';
  */
 export function QuizzesPage() {
   const settings = useLiveQuery(loadSettings, []);
-  const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
+  const identity = useRef<{ memberId: string; coupleId: string } | null>(null);
 
   useEffect(() => {
     let live = true;
-    ensureIdentity().then((next) => { if (live) setIdentity(next); }).catch(() => {});
+    ensureIdentity().then((next) => { if (live) identity.current = next; }).catch(() => {});
     return () => { live = false; };
   }, []);
 
-  const memberId = settings?.memberId ?? identity?.memberId;
-  const coupleId = settings?.coupleId ?? identity?.coupleId;
   const day = todayKey(settings?.timeZone ?? 'America/Los_Angeles');
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -48,6 +46,8 @@ export function QuizzesPage() {
   }
 
   async function save() {
+    const memberId = settings?.memberId ?? identity.current?.memberId;
+    const coupleId = settings?.coupleId ?? identity.current?.coupleId;
     if (!quiz || !memberId || !coupleId || !draft?.trim()) return;
     const id = await addReflection({
       memberId, coupleId, day, body: draft, promptId: `quiz-${quiz.id}`, prompt: quiz.name,

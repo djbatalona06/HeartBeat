@@ -89,7 +89,6 @@ function NamingInvitation({
           onChange={(e) => setName(e.target.value)}
           placeholder="What should they call you?"
           aria-label="Your name"
-          autoFocus
         />
         <PrimaryAction type="submit" busy={busy} disabled={!name.trim()}>
           Save and continue

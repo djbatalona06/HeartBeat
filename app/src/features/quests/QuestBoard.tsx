@@ -165,8 +165,11 @@ function Picker({ coupleId, day }: { coupleId: string; day: string }) {
                 disabled={busy}
                 onClick={async () => {
                   setBusy(true);
-                  await startQuest(coupleId, shape.templateId, difficulty, day);
-                  setBusy(false);
+                  try {
+                    await startQuest(coupleId, shape.templateId, difficulty, day);
+                  } finally {
+                    setBusy(false);
+                  }
                 }}
               >
                 <QuestMark measure={template.measure} />

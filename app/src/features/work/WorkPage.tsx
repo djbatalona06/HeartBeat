@@ -32,7 +32,7 @@ const MONTHS = [
 const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 /** 540 → "9:00 am". Minutes past midnight are what WorkEvent stores. */
-export function clockOf(minutes: MinuteOfDay): string {
+function clockOf(minutes: MinuteOfDay): string {
   const h24 = Math.floor(minutes / 60) % 24;
   const mm = String(minutes % 60).padStart(2, '0');
   const suffix = h24 < 12 ? 'am' : 'pm';
@@ -69,7 +69,7 @@ export function WorkPage() {
 
   const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
   const [selected, setSelected] = useState<DayKey>(today);
-  const [month, setMonth] = useState<string>(monthOf(today));
+  const [month, setMonth] = useState<string>(() => monthOf(today));
 
   useEffect(() => {
     let live = true;
@@ -203,6 +203,9 @@ export function WorkPage() {
       </div>
 
       <DaySheet
+        // Moving to another day remounts the sheet, so an edit never lands on
+        // a day you are no longer looking at.
+        key={selected}
         day={selected}
         today={today}
         events={selectedEvents}
@@ -239,15 +242,6 @@ function DaySheet({
   const [adding, setAdding] = useState(false);
   const [heard, setHeard] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ title: string; time: string }>({ title: '', time: '' });
-
-  // Moving to another day closes whatever was open, so an edit never lands on
-  // a day you are no longer looking at.
-  useEffect(() => {
-    setEditing(null);
-    setAdding(false);
-    setHeard(null);
-    setDraft({ title: '', time: '' });
-  }, [day]);
 
   const label =
     day === today ? 'Today'
@@ -298,6 +292,7 @@ function DaySheet({
         onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
         placeholder="What is it?"
         aria-label="Event name"
+        // react-doctor-disable-next-line no-autofocus -- opened by the person's own tap, so moving focus into the form is what they asked for
         autoFocus
       />
       <label className="cal-time">

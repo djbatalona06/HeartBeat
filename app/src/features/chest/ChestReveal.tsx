@@ -3,6 +3,7 @@ import { chestById, showcaseOrder } from '../../domain/rpg/chests';
 import { useTheme } from '../../themes/ThemeProvider';
 import type { ChestOutcome } from '../../db/repository/chests';
 import { PrimaryAction } from '../../ui/PrimaryAction';
+import { useFocusTrap } from '../../ui/useFocusTrap';
 import { ChestArt } from './ChestArt';
 import { ChestAnimator } from './animator';
 import { floorLine, prizeKindLine, prizeLine } from './receipt';
@@ -52,6 +53,8 @@ export function ChestReveal({ outcome, onDismiss }: ChestRevealProps) {
   const { calm } = useTheme();
   const chest = chestById(outcome.chestId);
 
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(dialogRef, true);
   const chestRef = useRef<HTMLDivElement | null>(null);
   const burstRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
@@ -92,7 +95,9 @@ export function ChestReveal({ outcome, onDismiss }: ChestRevealProps) {
   return (
     <div
       className="chest-reveal"
+      ref={dialogRef}
       data-running={running || undefined}
+      // react-doctor-disable-next-line prefer-html-dialog -- focus is trapped by useFocusTrap; a native <dialog> would restyle the overlay
       role="dialog"
       aria-modal="true"
       aria-label={`${chest?.name ?? 'Chest'} opened`}
@@ -112,6 +117,7 @@ export function ChestReveal({ outcome, onDismiss }: ChestRevealProps) {
         <ul className="chest-reveal-list">
           {shown.map((prize, i) => (
             <li
+              // react-doctor-disable-next-line no-array-index-as-key -- the same prize can drop twice in one chest, and the list is fixed for the life of the reveal
               key={`${prize.kind}:${prize.itemId}:${i}`}
               className="chest-reveal-prize"
               data-rarity={prize.tier}

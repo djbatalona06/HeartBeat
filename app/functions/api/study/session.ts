@@ -1,4 +1,5 @@
 import { hashToken, type Env } from '../_lib';
+import { track } from '../_track';
 
 /**
  * A finished study session, arriving from Jenny's study app.
@@ -97,7 +98,7 @@ function dayKeyIn(at: number, timeZone: string): string {
   }
 }
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const origin = request.headers.get('origin');
 
   const link = await linkFor(request, env);
@@ -136,6 +137,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     .first<{ seen: number }>();
   if (already) {
     await touch(env, link, serverNow);
+    track({ env, waitUntil }, 'study_session_duplicate', link, { kind });
     return reply({ ok: true, xp: 0, duplicate: true, day }, 200, origin);
   }
 
@@ -164,6 +166,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   // -write and does it in one transaction with the marking; crediting from two
   // places is how a shared bar ends up counting an award twice. The gain lands
   // on the pet the next time either phone syncs, which is within the minute.
+  track({ env, waitUntil }, 'study_session_credited', link, { kind, xp: gain, capped: gain < worth });
   return reply({ ok: true, xp: gain, day, cappedAt: STUDY_DAILY_CAP }, 200, origin);
 };
 

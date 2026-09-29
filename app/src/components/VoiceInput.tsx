@@ -26,6 +26,7 @@ interface Props {
 }
 
 const BAR_COUNT = 13;
+const SILENT_BARS: number[] = new Array<number>(BAR_COUNT).fill(0);
 
 export function VoiceInput({ onTranscript, hint, label = 'Speak' }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
@@ -34,7 +35,7 @@ export function VoiceInput({ onTranscript, hint, label = 'Speak' }: Props) {
   const [copied, setCopied] = useState(false);
 
   const recorder = useRef<Recorder | null>(null);
-  const bars = useRef<number[]>(new Array(BAR_COUNT).fill(0));
+  const bars = useRef<number[]>(SILENT_BARS);
   const canvas = useRef<HTMLCanvasElement>(null);
   const startedAt = useRef(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -196,11 +197,14 @@ export function VoiceInput({ onTranscript, hint, label = 'Speak' }: Props) {
           <button
             type="button"
             className="voice-diag"
-            onClick={() => {
-              navigator.clipboard?.writeText(failure.diagnostics ?? '').then(
-                () => setCopied(true),
-                () => setCopied(false),
-              );
+            onClick={async () => {
+              if (!navigator.clipboard) return;
+              try {
+                await navigator.clipboard.writeText(failure.diagnostics ?? '');
+                setCopied(true);
+              } catch {
+                setCopied(false);
+              }
             }}
           >
             {copied ? 'Copied' : 'Copy the technical detail'}

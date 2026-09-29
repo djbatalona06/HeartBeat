@@ -6,6 +6,7 @@ import {
 import { enemyById } from '../../domain/rpg/enemies';
 import { castBlockedBecause, unlockedSkills } from '../../domain/rpg/skills';
 import { hash } from '../../domain/hash';
+import { useFocusTrap } from '../../ui/useFocusTrap';
 import type { PartyRead, VictoryReceipt } from '../../db/repository';
 import { settleVictory, spendMp } from '../../db/repository';
 import type { DayKey, MemberId } from '../../domain/types';
@@ -80,6 +81,9 @@ export function EncounterOverlay({
 
   const shown = state;
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, Boolean(enemy && shown));
+
   useEffect(() => {
     if (!shown || shown.outcome === 'fighting' || settled.current) return;
     settled.current = true;
@@ -106,7 +110,8 @@ export function EncounterOverlay({
   const over = shown.outcome !== 'fighting';
 
   return (
-    <div className="encounter" role="dialog" aria-modal="true" aria-label={enemy.name}>
+    // react-doctor-disable-next-line prefer-html-dialog -- focus is trapped by useFocusTrap; a native <dialog> would restyle the overlay
+    <div className="encounter" ref={dialogRef} role="dialog" aria-modal="true" aria-label={enemy.name}>
       <div className="encounter-card">
         <header className="encounter-head">
           <h2>{enemy.name}</h2>
@@ -125,7 +130,8 @@ export function EncounterOverlay({
 
         <ul className="encounter-log">
           {shown.log.slice(-5).map((line, i) => (
-            <li key={`${line.round}-${i}`} className={`is-${line.who}`}>{line.text}</li>
+            // react-doctor-disable-next-line no-array-index-as-key -- an append-only log with no ids; the position in the whole log, not in the visible window, is the identity
+            <li key={`${line.round}-${shown.log.length - 5 + i}`} className={`is-${line.who}`}>{line.text}</li>
           ))}
         </ul>
 

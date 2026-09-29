@@ -234,8 +234,7 @@ export async function putMyProfile(patch: {
   photoDataUri?: string | null;
 }): Promise<IncomingMember> {
   const { memberId, coupleId } = await ensureIdentity();
-  const settings = await loadSettings();
-  const existing = await db.members.get(memberId);
+  const [settings, existing] = await Promise.all([loadSettings(), db.members.get(memberId)]);
   const photo = patch.photoDataUri === undefined ? existing?.photoDataUri : patch.photoDataUri;
   const row = {
     id: memberId,
@@ -258,10 +257,9 @@ export async function putMyProfile(patch: {
  * while it was offline is not undone by an older copy coming back.
  */
 export async function saveMembersFromServer(rows: IncomingMember[]): Promise<number> {
-  let applied = 0;
-  for (const row of rows) {
+  const results = await Promise.all(rows.map(async (row) => {
     const existing = await db.members.get(row.id);
-    if (existing && existing.updatedAt >= row.updatedAt) continue;
+    if (existing && existing.updatedAt >= row.updatedAt) return false;
     await db.members.put({
       id: row.id,
       coupleId: row.coupleId,
@@ -277,7 +275,7 @@ export async function saveMembersFromServer(rows: IncomingMember[]): Promise<num
       revokedAt: row.revokedAt,
       updatedAt: row.updatedAt,
     });
-    applied += 1;
-  }
-  return applied;
+    return true;
+  }));
+  return results.filter(Boolean).length;
 }

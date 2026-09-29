@@ -85,10 +85,12 @@ export async function rekeyIdentity(from: Identity, to: Identity): Promise<numbe
       // holds a data URI per row, and pulling every one into memory to decide
       // nothing is how a re-pair after a year of proofs runs a phone out of it.
       const rows = needsWholeTable(plan)
+        // react-doctor-disable-next-line async-await-in-loop -- table by table inside one Dexie transaction, so the re-key plan stays deterministic; nothing here waits on a network
         ? await table.toArray()
         : await table.filter((row) => carriesIdentity(row, plan, from)).toArray();
       for (const action of planRekey(plan, rows, from, to)) {
         if (action.verb === 'put') {
+          // react-doctor-disable-next-line async-await-in-loop -- table by table inside one Dexie transaction, so the re-key plan stays deterministic; nothing here waits on a network
           await table.put(action.row);
         } else if (action.verb === 'move') {
           // The key is the id, so the row cannot be updated where it lies.

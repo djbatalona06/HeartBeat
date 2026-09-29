@@ -1,4 +1,5 @@
 import { authenticate, json, type Env } from './_lib';
+import { track } from './_track';
 
 /**
  * Speech to text, on Cloudflare's own models.
@@ -39,13 +40,14 @@ function fail(stage: Stage, error: string, status: number): Response {
   return json({ stage, error }, status);
 }
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   // Dictation costs money to serve, so it is gated the same way everything
   // else is rather than left open on a public URL.
   const caller = await authenticate(request, env);
   if (!caller) {
     return fail('auth', 'This device is not paired yet. Open Settings and pair it first.', 401);
   }
+  track({ env, waitUntil }, 'transcribe_used', caller);
 
   const audio = await request.arrayBuffer();
   if (audio.byteLength === 0) {

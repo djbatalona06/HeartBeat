@@ -42,8 +42,10 @@ export async function buyGear(
   if (!item) return { ok: false, reason: 'No such item.' };
 
   return db.transaction('rw', db.avatars, db.inventory, async () => {
-    const avatar = await getOrCreateAvatar(memberId, coupleId);
-    const owned = await db.inventory.where('[memberId+itemId]').equals([memberId, itemId]).first();
+    const [avatar, owned] = await Promise.all([
+      getOrCreateAvatar(memberId, coupleId),
+      db.inventory.where('[memberId+itemId]').equals([memberId, itemId]).first(),
+    ]);
 
     if (owned) {
       const refineCheck = canRefine(owned.refine);

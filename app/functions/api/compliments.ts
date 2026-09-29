@@ -1,4 +1,5 @@
 import { authenticate, json, type Env } from './_lib';
+import { track } from './_track';
 
 /**
  * Sending one, and reading what has arrived.
@@ -22,7 +23,7 @@ const MIN_BODY = 2;
 /** A week. Further out than that and someone has mistyped a date. */
 const MAX_AHEAD_MS = 7 * 24 * 60 * 60 * 1000;
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const caller = await authenticate(request, env);
   if (!caller) return json({ error: 'not paired' }, 401);
 
@@ -79,6 +80,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     ).bind(caller.memberId, day),
   ]);
 
+  track({ env, waitUntil }, 'compliment_sent', caller, {
+    generated: Boolean(parsed.generated),
+    scheduled: deliverAt > now,
+  });
   return json({ ok: true, id, deliverAt });
 };
 

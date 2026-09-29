@@ -26,34 +26,26 @@ import { msUntilNextHour, phaseAt, type Phase } from '../../domain/scene/schedul
 export function useHour(): { hour: number; phase: Phase } {
   const [hour, setHour] = useState(() => new Date().getHours());
 
+  const [wake, setWake] = useState(0);
+
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
+    const now = new Date();
+    // `setHour` with the same number is a no-op in React, so the wake-ups
+    // that land inside the hour they were scheduled for cost one comparison
+    // and no render.
+    setHour(now.getHours());
+    const timer = setTimeout(() => setWake((count) => count + 1), msUntilNextHour(now));
+    return () => clearTimeout(timer);
+  }, [wake]);
 
-    const sync = () => {
-      const now = new Date();
-      // `setHour` with the same number is a no-op in React, so the wake-ups
-      // that land inside the hour they were scheduled for cost one comparison
-      // and no render.
-      setHour(now.getHours());
-      timer = setTimeout(sync, msUntilNextHour(now));
-    };
-
-    sync();
-
-    // Only on the way back in. Re-arming on the way out would schedule work for
-    // a tab that is about to stop being allowed to do any.
+  // Only on the way back in. Re-arming on the way out would schedule work for
+  // a tab that is about to stop being allowed to do any.
+  useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') {
-        clearTimeout(timer);
-        sync();
-      }
+      if (document.visibilityState === 'visible') setWake((count) => count + 1);
     };
     document.addEventListener('visibilitychange', onVisible);
-
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
   return { hour, phase: phaseAt(hour) };

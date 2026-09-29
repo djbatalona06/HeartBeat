@@ -127,6 +127,7 @@ export async function settleTogether(coupleId: string, today: DayKey): Promise<v
   // Every rung, not just the one they landed on: a phone that was offline
   // across two thresholds should collect both.
   for (const tier of tiersReached(view.points)) {
+    // react-doctor-disable-next-line async-await-in-loop -- each award is a read-modify-write of the shared pet row; parallel awards would lose updates
     await awardPetXp(coupleId, `tier-${tier.n}`, tier.xp);
   }
 }

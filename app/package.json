@@ -38,5 +38,14 @@
     "vite-plugin-pwa": "^0.21.1",
     "vitest": "^5.0.1",
     "workbox-precaching": "^7.3.0"
+  },
+  "reactDoctor": {
+    "ignore": {
+      "files": [
+        "tools/**",
+        "dist/**",
+        "dist-standalone/**"
+      ]
+    }
   }
 }

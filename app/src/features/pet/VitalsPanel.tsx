@@ -1,4 +1,5 @@
-import { RADIANCE_FLOOR, RADIANCE_FULL, SHIELD_EVERY, type Attribute, type Vitals } from '../../domain/rpg/vitals';
+import { SHIELD_EVERY, type Attribute, type Vitals } from '../../domain/rpg/vitals';
+import { glowOf } from './glow';
 
 /**
  * What the two of you have made of the pet: three attributes, the shared
@@ -15,11 +16,6 @@ import { RADIANCE_FLOOR, RADIANCE_FULL, SHIELD_EVERY, type Attribute, type Vital
  * itself by the same radiance — one live query on the page, two things drawn
  * from it, instead of two queries that could disagree for a frame.
  */
-
-/** The glow, as 0..1, for whatever is being dimmed by it. */
-export function glowOf(vitals: Vitals): number {
-  return (vitals.radiance - RADIANCE_FLOOR) / (RADIANCE_FULL - RADIANCE_FLOOR);
-}
 
 const BARS: { key: Attribute; name: string; hint: string }[] = [
   { key: 'vitality', name: 'Vitality', hint: 'Workouts' },
@@ -53,6 +49,7 @@ export function VitalsPanel({ vitals }: { vitals: Vitals | undefined }) {
               </div>
               <div
                 className="vitals-bar-track"
+                // react-doctor-disable-next-line prefer-tag-over-role -- a <meter> cannot host the themed fill element, so the div carries the same role
                 role="meter"
                 aria-label={`${bar.name}, from ${bar.hint.toLowerCase()}`}
                 aria-valuenow={value}

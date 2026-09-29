@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
+import { useFocusTrap } from './useFocusTrap';
 
 /**
  * A scrim, a panel, and the four behaviours every one of them needs.
@@ -40,67 +41,31 @@ export interface SheetProps {
   panelClassName: string;
 }
 
-/** Everything focusable, in DOM order. */
-const FOCUSABLE = [
-  'a[href]', 'button:not([disabled])', 'input:not([disabled])',
-  'select:not([disabled])', 'textarea:not([disabled])', '[tabindex]:not([tabindex="-1"])',
-].join(',');
-
 export function Sheet({
   open, onClose, children, label, scrimClassName, panelClassName,
 }: SheetProps) {
   const panel = useRef<HTMLDivElement>(null);
-  /** Who had focus before this opened, so it can be given back. */
-  const opener = useRef<HTMLElement | null>(null);
-
-  const close = useCallback(() => {
-    onClose();
-    // Restore on *every* path, not just Escape. Closing by scrim used to leave
-    // a keyboard user at the top of the document with no idea where they were.
-    opener.current?.focus();
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    opener.current = document.activeElement as HTMLElement | null;
-    // The first focusable thing inside, so the panel is where the keyboard is.
-    panel.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
-
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') { close(); return; }
-      if (event.key !== 'Tab') return;
-
-      const items = panel.current?.querySelectorAll<HTMLElement>(FOCUSABLE);
-      if (!items || items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-
-      // The trap. Without these two lines Tab walks out of the panel and into
-      // the page underneath, which is covered by a scrim and cannot be seen.
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, close]);
+  const restoreFocus = useFocusTrap(panel, open, { onEscape: onClose });
 
   if (!open) return null;
+
+  // Restored on every close path, not just Escape: closing by scrim used to
+  // leave a keyboard user at the top of the document with no idea where they were.
+  const closeByScrim = () => {
+    onClose();
+    restoreFocus();
+  };
 
   return (
     <>
       {/* Not a button, and not focusable: it is inside the trap, so a Tab that
           reached it would be a Tab that escaped the panel. Screen readers get
           the dialog; this is the mouse's way out. */}
-      <div className={scrimClassName} onClick={close} aria-hidden="true" />
+      <div className={scrimClassName} onClick={closeByScrim} aria-hidden="true" />
       <div
         className={panelClassName}
         ref={panel}
+        // react-doctor-disable-next-line prefer-html-dialog -- this is the focus trap: the hook gives what <dialog> gives without replacing the callers' panel and scrim classes
         role="dialog"
         aria-modal="true"
         aria-label={label}

@@ -1,4 +1,5 @@
 import { authenticate, hashToken, json, newToken, recordAuthEvent, type Env } from '../_lib';
+import { track } from '../_track';
 
 /**
  * Minting, listing and revoking the study app's link.
@@ -45,7 +46,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   });
 };
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const caller = await authenticate(request, env);
   if (!caller) return json({ error: 'not paired' }, 401);
 
@@ -71,10 +72,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   ]);
 
   // Returned exactly once. Nothing stores the plaintext, here or anywhere.
+  track({ env, waitUntil }, 'study_linked', caller);
   return json({ token, timeZone: zone, createdAt: now });
 };
 
-export const onRequestDelete: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestDelete: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const caller = await authenticate(request, env);
   if (!caller) return json({ error: 'not paired' }, 401);
 
@@ -92,5 +94,6 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env }) => {
     now,
   );
 
+  track({ env, waitUntil }, 'study_unlinked', caller);
   return json({ ok: true, revoked: meta.changes });
 };

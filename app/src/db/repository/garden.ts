@@ -46,8 +46,10 @@ export async function buyFlora(
   if (!flora) return { ok: false, reason: 'Nobody sells that.' };
 
   return db.transaction('rw', db.avatars, db.inventory, async () => {
-    const avatar = await getOrCreateAvatar(memberId, coupleId);
-    const owned = await db.inventory.where('[memberId+itemId]').equals([memberId, floraId]).first();
+    const [avatar, owned] = await Promise.all([
+      getOrCreateAvatar(memberId, coupleId),
+      db.inventory.where('[memberId+itemId]').equals([memberId, floraId]).first(),
+    ]);
     if (owned) return { ok: false, reason: 'Already yours — go and plant it.' };
 
     const affordCheck = canAfford(avatar.coins, flora.price);

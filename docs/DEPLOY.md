@@ -467,3 +467,47 @@ here needs a manual step.
 ### What recovery brings back
 
 Exactly what §8 describes — the mechanism is shared, and only the proof differs.
+
+## 10. Product counts (optional)
+
+Anonymous, server-side, and off by default. It answers "what do people actually
+use, and where does it fall over" without putting a script in the app. Nothing
+leaves a phone; the Pages Functions report on requests they were already serving
+(`app/functions/api/_track.ts`).
+
+**What is sent:** an event name, a count or a short enum (`kind`, `written`,
+`capped`, the screen a crash happened on), a salted hash of the member id, and a
+salted hash of the couple id as a PostHog group. Person profiles are switched off.
+
+**What is never sent:** entries, mood, cycle, exercise, messages, names, photos,
+timezone, tokens, invite codes, crash messages or stacks. `scrub()` drops any
+property whose name looks like one of those, and `worker/src/track.test.ts`
+fails if that stops being true.
+
+Set these on the **Pages project** (not as repo secrets), in Production:
+
+```bash
+cd app
+npx wrangler pages secret put POSTHOG_KEY  --project-name heartbeat-app   # the project token
+npx wrangler pages secret put POSTHOG_SALT --project-name heartbeat-app   # 32+ random characters
+# Optional: another region, and a tag that keeps previews out of production charts.
+npx wrangler pages secret put POSTHOG_HOST --project-name heartbeat-app   # e.g. https://eu.i.posthog.com
+npx wrangler pages secret put POSTHOG_ENV  --project-name heartbeat-app   # e.g. preview
+```
+
+Generate the salt with `openssl rand -hex 32`. **Keep it.** Changing it changes
+every hashed id, so every person looks new. Without the salt nothing is sent,
+because an unsalted hash of an id is reversible by anyone holding the id list.
+
+Check it: `GET /api/health` should say `"analytics": true`.
+
+Events: `pair_started`, `pair_completed`, `pair_failed` (with a reason),
+`pair_left`, `entries_synced`, `holdings_synced`, `message_sent`,
+`compliment_sent`, `photo_uploaded`, `push_subscribed`, `ask_used`,
+`transcribe_used`, `study_linked`, `study_unlinked`,
+`study_session_credited`, `study_session_duplicate`, `client_error`.
+
+Volume: `entries_synced` and `holdings_synced` fire once per sync that wrote
+something, which is the bulk of it. Watch PostHog's monthly event count as the
+number of people grows, and sample those two before it reaches the free
+allowance.

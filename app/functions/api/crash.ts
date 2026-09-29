@@ -1,4 +1,5 @@
 import { authenticate, json, type Env } from './_lib';
+import { track } from './_track';
 
 /**
  * Where the app's error boundary sends a crash.
@@ -31,7 +32,7 @@ function clamp(value: unknown, max: number): string {
   return typeof value === 'string' ? value.slice(0, max) : '';
 }
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const caller = await authenticate(request, env);
   if (!caller) return json({ error: 'not paired' }, 401);
 
@@ -71,5 +72,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     )
     .run();
 
+  // The screen and the scope, never the message or the stack: those can quote
+  // what was on it.
+  track({ env, waitUntil }, 'client_error', caller, {
+    scope: clamp(body.scope, MAX_SCOPE) || 'unknown',
+    route: clamp(body.route, MAX_ROUTE).split('?')[0].slice(0, 60),
+  });
   return json({ ok: true, stored: true });
 };

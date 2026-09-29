@@ -132,23 +132,18 @@ export type ShopSection = 'companions' | 'colours' | 'house' | 'raid' | 'shop';
  * says so plainly when there is no Worker configured rather than showing a bar
  * that is quietly a lie.
  */
-export function ShopPage({ only = ['shop'], title = 'Shop' }: {
-  only?: readonly ShopSection[];
-  title?: string;
-}) {
+type ShopIdentity = { memberId: string; coupleId: string };
+
+/**
+ * Everything the sections read, gathered once. The sheet has to exist before
+ * the first completion, or a fresh install shows a page with no character on it
+ * and no way to tell that is temporary.
+ */
+function useShopData() {
   const settings = useLiveQuery(loadSettings, []);
   const day = todayKey(settings?.timeZone ?? 'America/Los_Angeles');
-  const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
-  const { say } = useToast();
-  /** One chest at a time. Two taps racing would spend twice and show once. */
-  const [opening, setOpening] = useState(false);
-  // What the last chest handed over, while it is still being looked at. The
-  // reveal is the receipt; the toast below is only the fallback for a page
-  // that never mounted one.
-  const [revealed, setRevealed] = useState<Extract<ChestOutcome, { ok: true }> | null>(null);
+  const [identity, setIdentity] = useState<ShopIdentity | null>(null);
 
-  // The sheet has to exist before the first completion, or a fresh install
-  // shows a page with no character on it and no way to tell that is temporary.
   useEffect(() => {
     let live = true;
     ensureIdentity()
@@ -182,6 +177,34 @@ export function ShopPage({ only = ['shop'], title = 'Shop' }: {
     [identity?.coupleId],
   );
 
+  return { settings, day, identity, avatar, pets: pets ?? [], owned: owned ?? [], pet };
+}
+
+/** What every section needs, once there is a character to show. */
+interface ShopContext {
+  avatar: Avatar;
+  identity: ShopIdentity;
+  pets: PetInstance[];
+  owned: InventoryItem[];
+  pet: ReturnType<typeof useShopData>['pet'];
+  settings: ReturnType<typeof useShopData>['settings'];
+  day: string;
+  say: ReturnType<typeof useToast>['say'];
+}
+
+export function ShopPage({ only = ['shop'], title = 'Shop' }: {
+  only?: readonly ShopSection[];
+  title?: string;
+}) {
+  const { say } = useToast();
+  const data = useShopData();
+  // What the last chest handed over, while it is still being looked at. The
+  // reveal is the receipt; the toast below is only the fallback for a page
+  // that never mounted one.
+  const [revealed, setRevealed] = useState<Extract<ChestOutcome, { ok: true }> | null>(null);
+
+  const { avatar, identity } = data;
+  const ctx: ShopContext | null = avatar && identity ? { ...data, avatar, identity, say } : null;
 
   return (
     <div className="page">
@@ -192,195 +215,15 @@ export function ShopPage({ only = ['shop'], title = 'Shop' }: {
         </p>
       </header>
 
-      {avatar && identity ? (
+      {ctx ? (
         <>
-          {only.includes('companions') ? (
-          <Companions
-            avatar={avatar}
-            pets={pets ?? []}
-            owned={owned ?? []}
-            onChoose={(petId) => setCompanion(identity.memberId, identity.coupleId, petId)}
-            onSeeLore={(petId) => markLoreSeen(petId)}
-            onHatch={async () => {
-              const level = levelOf(avatar);
-              const bonus = gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned ?? []));
-              const luck = sheetFor(avatar, bonus).stats.luck;
-              const result = await buyEgg(
-                identity.coupleId,
-                identity.memberId,
-                { rarity: Math.random(), species: Math.random() },
-                luck,
-              );
-              if (!result.ok) { say(result.reason ?? null, 'error'); return; }
-              const name = petKindById(result.pet!.kindId)!.name;
-              say(result.merged ? `Another ${name}. Two of the same found each other.` : `${name} hatched.`);
-            }}
-            /* Stays here now that Adventures has moved to /raid, because it
-               is not the same action: this sends the companion out for a
-               stretch of hours with no destination, while Adventures' `onGo`
-               travels to a named place. The first is about the animal and
-               belongs on its tab; only the second is a raid concern. */
-            onAdventure={async () => {
-              const result = await startAdventure(identity.memberId, identity.coupleId);
-              say(result.ok ? `Gone for ${result.hours} hours.` : result.reason ?? null);
-            }}
-          />
-          ) : null}
-
-          {only.includes('colours') ? (
-          <Colours
-            avatar={avatar}
-            owned={owned ?? []}
-            onBuy={async (dyeId) => {
-              const result = await buyDye(identity.memberId, identity.coupleId, dyeId);
-              say(result.ok ? 'Bought. Tap it again to put it on.' : result.reason ?? null, result.ok ? 'success' : 'error');
-            }}
-            onWear={async (dyeId) => {
-              const result = await wearDye(identity.memberId, identity.coupleId, dyeId);
-              if (!result.ok) say(result.reason ?? null, 'error');
-            }}
-          />
-          ) : null}
-
-          {/*
-            -- the raid ------------------------------------------------------
-            One section, three panels, in the order the question is asked: what
-            you bring, the fight it is for, and the smaller outings that are
-            not it.
-
-            These three used to be spread across `/birb` — the sheet under
-            `worn`, the boss and the adventures each their own flag — which put
-            the seven raid stats on the tab about dressing a bird and gave the
-            one screen that fetches a Worker no home of its own. The sheet's
-            old comment argued it belonged "at the wardrobe, not mid-fight",
-            and that is still true: it is *also* rendered by the Bag, which is
-            the wardrobe. One implementation, two callers, the same argument
-            `ChestAlcove`'s header makes about published odds.
-          */}
-          {only.includes('raid') ? (
-          <>
-            <RaidSheet
-              avatar={avatar}
-              owned={owned ?? []}
-              petXp={pet?.xp ?? 0}
-              house={(pet?.house ?? {}) as House}
-              garden={pet?.plots as Garden | undefined}
-              companion={(pets ?? []).find((p) => p.id === avatar.companionId)}
-            />
-            {/* Directly under the sheet, because it is the rest of the same
-                sentence: the sheet says what every number is and where it came
-                from, and this says what one different piece would make of it. */}
-            <GearDiff
-              avatar={avatar}
-              owned={owned ?? []}
-              petXp={pet?.xp ?? 0}
-              house={(pet?.house ?? {}) as House}
-              companion={(pets ?? []).find((p) => p.id === avatar.companionId)}
-            />
-            <Boss
-              avatar={avatar}
-              pets={pets ?? []}
-              owned={owned ?? []}
-              workerUrl={settings?.workerUrl}
-              token={settings?.workerSecret}
-              onSpendMp={(amount) => spendMp(identity.memberId, identity.coupleId, amount)}
-              onSpendPetMp={spendPetMp}
-              onMessage={(text) => say(text)}
-            />
-            <Adventures
-              avatar={avatar}
-              owned={owned ?? []}
-              onGo={async (placeId) => {
-                // The roll is drawn here and handed in, so the repository and
-                // the domain both stay deterministic given their inputs.
-                const result = await startAdventure(
-                  identity.memberId, identity.coupleId, placeId, Math.random(),
-                );
-                if (!result.ok) say(result.reason ?? null, 'error');
-                else say(
-                  `${result.place}: came back with ${result.found}.`
-                  + (result.bounty ? ` +${result.bounty} coins for getting there first.` : ''),
-                );
-              }}
-            />
-          </>
-          ) : null}
-
+          {only.includes('companions') ? <CompanionsSection ctx={ctx} /> : null}
+          {only.includes('colours') ? <ColoursSection ctx={ctx} /> : null}
+          {only.includes('raid') ? <RaidSection ctx={ctx} /> : null}
           {only.includes('house') ? (
-          <Birbhouse house={(pet?.house ?? {}) as House} avatar={avatar} />
+            <Birbhouse house={(ctx.pet?.house ?? {}) as House} avatar={ctx.avatar} />
           ) : null}
-
-          {/* The shop is the chests; everything you can simply buy is the
-              drawer under them. Four purchase panels stacked one after another
-              were the whole page, which put a screen about spending money in
-              front of somebody every time they came looking for a chest. */}
-          {only.includes('shop') ? (
-          <ChestAlcove
-            coins={avatar.coins}
-            luck={luckOf(avatar, owned ?? [])}
-            pity={avatar.chestPity ?? {}}
-            busy={opening}
-            onOpen={async (chestId) => {
-              if (opening) return;
-              setOpening(true);
-              try {
-                const result = await openChestFor(
-                  identity.memberId, identity.coupleId, chestId,
-                  // One roll set per item, drawn here and handed in, so the
-                  // domain and the repository both stay deterministic given
-                  // their inputs -- the same arrangement `buyEgg` has.
-                  Array.from({ length: PRIZES_PER_CHEST }, () => ({
-                    tier: Math.random(),
-                    kind: Math.random(),
-                    stat: Math.random(),
-                    pick: Math.random(),
-                  })),
-                );
-                if (!result.ok) { say(result.reason, 'error'); return; }
-                setRevealed(result);
-              } finally {
-                setOpening(false);
-              }
-            }}
-          />
-          ) : null}
-
-          {only.includes('shop') ? (
-          <Purchases>
-            <Surprise
-              avatar={avatar}
-              owned={owned ?? []}
-              day={day}
-              onBuy={async () => {
-                const result = await buyOffer(identity.memberId, identity.coupleId, day);
-                say(
-                  result.ok ? 'Bought, at today\u2019s price.' : result.reason ?? null,
-                  result.ok ? 'success' : 'error',
-                );
-              }}
-            />
-            <Shop
-              avatar={avatar}
-              owned={owned ?? []}
-              onBuy={async (itemId) => {
-                const result = await buyGear(identity.memberId, identity.coupleId, itemId);
-                if (!result.ok) say(result.reason ?? null, 'error');
-                else if (result.refined) say(`Refined to +${result.refined}.`);
-              }}
-            />
-            <Decor
-              avatar={avatar}
-              owned={owned ?? []}
-              onBuy={async (itemId) => {
-                const result = await buyFurniture(identity.memberId, identity.coupleId, itemId);
-                // No "place it" any more: buying furnished the room, in the
-                // same transaction that took the coins.
-                say(result.ok ? 'Bought, and it has moved in.' : result.reason ?? null, result.ok ? 'success' : 'error');
-              }}
-            />
-          </Purchases>
-          ) : null}
-
+          {only.includes('shop') ? <ShopSectionView ctx={ctx} onRevealed={setRevealed} /> : null}
         </>
       ) : null}
 
@@ -396,6 +239,206 @@ export function ShopPage({ only = ['shop'], title = 'Shop' }: {
     </div>
   );
 }
+
+function CompanionsSection({ ctx }: { ctx: ShopContext }) {
+  const { avatar, identity, pets, owned, say } = ctx;
+  return (
+    <Companions
+      avatar={avatar}
+      pets={pets}
+      owned={owned}
+      onChoose={(petId) => setCompanion(identity.memberId, identity.coupleId, petId)}
+      onSeeLore={(petId) => markLoreSeen(petId)}
+      onHatch={async () => {
+        const level = levelOf(avatar);
+        const bonus = gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned));
+        const luck = sheetFor(avatar, bonus).stats.luck;
+        const result = await buyEgg(
+          identity.coupleId,
+          identity.memberId,
+          { rarity: Math.random(), species: Math.random() },
+          luck,
+        );
+        if (!result.ok) { say(result.reason ?? null, 'error'); return; }
+        const name = petKindById(result.pet!.kindId)!.name;
+        say(result.merged ? `Another ${name}. Two of the same found each other.` : `${name} hatched.`);
+      }}
+      /* Stays here now that Adventures has moved to /raid, because it
+         is not the same action: this sends the companion out for a
+         stretch of hours with no destination, while Adventures' `onGo`
+         travels to a named place. The first is about the animal and
+         belongs on its tab; only the second is a raid concern. */
+      onAdventure={async () => {
+        const result = await startAdventure(identity.memberId, identity.coupleId);
+        say(result.ok ? `Gone for ${result.hours} hours.` : result.reason ?? null);
+      }}
+    />
+  );
+}
+
+function ColoursSection({ ctx }: { ctx: ShopContext }) {
+  const { avatar, identity, owned, say } = ctx;
+  return (
+    <Colours
+      avatar={avatar}
+      owned={owned}
+      onBuy={async (dyeId) => {
+        const result = await buyDye(identity.memberId, identity.coupleId, dyeId);
+        say(result.ok ? 'Bought. Tap it again to put it on.' : result.reason ?? null, result.ok ? 'success' : 'error');
+      }}
+      onWear={async (dyeId) => {
+        const result = await wearDye(identity.memberId, identity.coupleId, dyeId);
+        if (!result.ok) say(result.reason ?? null, 'error');
+      }}
+    />
+  );
+}
+
+/**
+ * -- the raid ------------------------------------------------------------
+ * One section, three panels, in the order the question is asked: what you
+ * bring, the fight it is for, and the smaller outings that are not it.
+ *
+ * These three used to be spread across `/birb` — the sheet under `worn`, the
+ * boss and the adventures each their own flag — which put the seven raid stats
+ * on the tab about dressing a bird and gave the one screen that fetches a
+ * Worker no home of its own. The sheet's old comment argued it belonged "at
+ * the wardrobe, not mid-fight", and that is still true: it is *also* rendered
+ * by the Bag, which is the wardrobe. One implementation, two callers, the same
+ * argument `ChestAlcove`'s header makes about published odds.
+ */
+function RaidSection({ ctx }: { ctx: ShopContext }) {
+  const { avatar, identity, pets, owned, pet, settings, say } = ctx;
+  const petXp = pet?.xp ?? 0;
+  const house = (pet?.house ?? {}) as House;
+  const companion = pets.find((p) => p.id === avatar.companionId);
+  return (
+    <>
+      <RaidSheet
+        avatar={avatar}
+        owned={owned}
+        petXp={petXp}
+        house={house}
+        garden={pet?.plots as Garden | undefined}
+        companion={companion}
+      />
+      {/* Directly under the sheet, because it is the rest of the same
+          sentence: the sheet says what every number is and where it came
+          from, and this says what one different piece would make of it. */}
+      <GearDiff avatar={avatar} owned={owned} petXp={petXp} house={house} companion={companion} />
+      <Boss
+        avatar={avatar}
+        pets={pets}
+        owned={owned}
+        workerUrl={settings?.workerUrl}
+        token={settings?.workerSecret}
+        onSpendMp={(amount) => spendMp(identity.memberId, identity.coupleId, amount)}
+        onSpendPetMp={spendPetMp}
+        onMessage={(text) => say(text)}
+      />
+      <Adventures
+        avatar={avatar}
+        owned={owned}
+        onGo={async (placeId) => {
+          // The roll is drawn here and handed in, so the repository and the
+          // domain both stay deterministic given their inputs.
+          const result = await startAdventure(
+            identity.memberId, identity.coupleId, placeId, Math.random(),
+          );
+          if (!result.ok) say(result.reason ?? null, 'error');
+          else say(
+            `${result.place}: came back with ${result.found}.`
+            + (result.bounty ? ` +${result.bounty} coins for getting there first.` : ''),
+          );
+        }}
+      />
+    </>
+  );
+}
+
+/**
+ * The shop is the chests; everything you can simply buy is the drawer under
+ * them. Four purchase panels stacked one after another were the whole page,
+ * which put a screen about spending money in front of somebody every time they
+ * came looking for a chest.
+ */
+function ShopSectionView({ ctx, onRevealed }: {
+  ctx: ShopContext;
+  onRevealed: (outcome: Extract<ChestOutcome, { ok: true }>) => void;
+}) {
+  const { avatar, identity, owned, day, say } = ctx;
+  /** One chest at a time. Two taps racing would spend twice and show once. */
+  const [opening, setOpening] = useState(false);
+
+  const openChest = async (chestId: string) => {
+    if (opening) return;
+    setOpening(true);
+    try {
+      const result = await openChestFor(
+        identity.memberId, identity.coupleId, chestId,
+        // One roll set per item, drawn here and handed in, so the domain and
+        // the repository both stay deterministic given their inputs -- the
+        // same arrangement `buyEgg` has.
+        Array.from({ length: PRIZES_PER_CHEST }, () => ({
+          tier: Math.random(),
+          kind: Math.random(),
+          stat: Math.random(),
+          pick: Math.random(),
+        })),
+      );
+      if (!result.ok) { say(result.reason, 'error'); return; }
+      onRevealed(result);
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  return (
+    <>
+      <ChestAlcove
+        coins={avatar.coins}
+        luck={luckOf(avatar, owned)}
+        pity={avatar.chestPity ?? {}}
+        busy={opening}
+        onOpen={openChest}
+      />
+      <Purchases>
+        <Surprise
+          avatar={avatar}
+          owned={owned}
+          day={day}
+          onBuy={async () => {
+            const result = await buyOffer(identity.memberId, identity.coupleId, day);
+            say(
+              result.ok ? 'Bought, at today\u2019s price.' : result.reason ?? null,
+              result.ok ? 'success' : 'error',
+            );
+          }}
+        />
+        <Shop
+          avatar={avatar}
+          owned={owned}
+          onBuy={async (itemId) => {
+            const result = await buyGear(identity.memberId, identity.coupleId, itemId);
+            if (!result.ok) say(result.reason ?? null, 'error');
+            else if (result.refined) say(`Refined to +${result.refined}.`);
+          }}
+        />
+        <Decor
+          avatar={avatar}
+          owned={owned}
+          onBuy={async (itemId) => {
+            const result = await buyFurniture(identity.memberId, identity.coupleId, itemId);
+            // No "place it" any more: buying furnished the room, in the same
+            // transaction that took the coins.
+            say(result.ok ? 'Bought, and it has moved in.' : result.reason ?? null, result.ok ? 'success' : 'error');
+          }}
+        />
+      </Purchases>
+    </>
+  );
+}
+
 
 function Companions({ avatar, pets, owned, onChoose, onSeeLore, onHatch, onAdventure }: {
   avatar: Avatar;

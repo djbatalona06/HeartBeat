@@ -116,12 +116,12 @@ export async function seedStarterPlan(
     const settings = await db.settings.get('settings');
     if (settings?.starterPlanSeededAt) return false;
 
-    for (const starter of starterPlanFor(day)) {
+    const seeded = starterPlanFor(day).map((starter) => {
       // Seeded filed rather than loose: the starter plan draws from the same
       // catalogue Goals offers, so carrying the area and the id across means
       // the areas screen has something in it on day one and the ideas screen
       // knows not to offer back what was already planted.
-      const task = newTask(
+      return newTask(
         {
           id: id(),
           coupleId,
@@ -135,8 +135,8 @@ export async function seedStarterPlan(
         now(),
         day,
       );
-      await db.tasks.put(task);
-    }
+    });
+    await db.tasks.bulkPut(seeded);
 
     await db.settings.put({ ...(settings ?? DEFAULT_SETTINGS), id: 'settings', starterPlanSeededAt: now() });
     return true;
@@ -247,11 +247,12 @@ export async function settleTasks(memberId: MemberId, today: DayKey): Promise<nu
     SCHEDULED_TYPES.map((type) => db.tasks.where('[memberId+type]').equals([memberId, type]).toArray()),
   )).flat();
   let missed = 0;
+  const settled: typeof tasks = [];
   for (const task of tasks) {
     const result = settleMissed(task, throughDay);
     if (result.missed === 0 && result.lastSettledOn === task.lastSettledOn) continue;
     missed += result.missed;
-    await db.tasks.put({
+    settled.push({
       ...task,
       value: result.value,
       streak: result.streak,
@@ -259,6 +260,7 @@ export async function settleTasks(memberId: MemberId, today: DayKey): Promise<nu
       updatedAt: now(),
     });
   }
+  await db.tasks.bulkPut(settled);
   return missed;
 }
 
@@ -588,8 +590,10 @@ export async function startAdventure(
   const place = placeById(locationId);
   if (locationId && !place) return { ok: false, reason: 'Nowhere by that name.' };
 
-  const avatar = await getOrCreateAvatar(memberId, coupleId);
-  const owned = await db.inventory.where('memberId').equals(memberId).toArray();
+  const [avatar, owned] = await Promise.all([
+    getOrCreateAvatar(memberId, coupleId),
+    db.inventory.where('memberId').equals(memberId).toArray(),
+  ]);
   const sheet = sheetFor(
     avatar,
     gearBonusWithRefinement(avatar.gear, levelOf(avatar), refineByItemId(owned)),

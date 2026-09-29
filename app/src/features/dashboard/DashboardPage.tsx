@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
+import type { Settings } from '../../domain/types';
 import { ensureIdentity, completeTask, coupleVitals, seedStarterPlan } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { levelProgress } from '../../domain/xp';
@@ -12,7 +13,8 @@ import { useTheme } from '../../themes/ThemeProvider';
 import { applyMood } from '../../themes/tokens';
 import { getMascot } from '../pet/mascots';
 import { QuestBoard } from '../quests/QuestBoard';
-import { VitalsPanel, glowOf } from '../pet/VitalsPanel';
+import { VitalsPanel } from '../pet/VitalsPanel';
+import { glowOf } from '../pet/glow';
 import { moodFor, moodWords } from '../../domain/pet/mood';
 import { useHour } from '../home/useHour';
 import { TogetherPanel } from '../pet/TogetherPanel';
@@ -43,25 +45,11 @@ import { LogStrip } from './LogStrip';
  * them, because logging a hard day and seeing it land belong together.
  */
 export function DashboardPage() {
-  const { theme, calm } = useTheme();
+  const { calm } = useTheme();
   const settings = useLiveQuery(loadSettings, []);
   const day = todayKey(settings?.timeZone ?? 'America/Los_Angeles');
 
-  // Settings only carries an identity once the app has written one somewhere
-  // else first. A fresh install that lands here before ever opening Tasks
-  // still needs one, for the same reason Tasks and Mood each mint their own:
-  // see db/repository/identity.ts.
-  const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
-  useEffect(() => {
-    let live = true;
-    ensureIdentity()
-      .then(async (next) => {
-        await seedStarterPlan(next.memberId, next.coupleId, day);
-        if (live) setIdentity(next);
-      })
-      .catch(() => {});
-    return () => { live = false; };
-  }, [day]);
+  const identity = useSeededIdentity(day);
 
   const memberId = settings?.memberId ?? identity?.memberId;
   const coupleId = settings?.coupleId ?? identity?.coupleId;
@@ -73,11 +61,110 @@ export function DashboardPage() {
   // see `isPaired`.
   const paired = isPaired(settings);
 
-  // Dailies and goals together, because to the person looking at it there is
-  // one list of what today still wants — a goal you set on purpose is not a
-  // second, lesser checklist to go and find on another screen. Two point
-  // lookups on the existing compound index rather than a scan; `openDailies`
-  // filters both by `isDue`.
+  const { open, loaded: dailiesLoaded } = useOpenDailies(memberId, day);
+
+  const avatar = useLiveQuery(
+    () => (memberId ? db.avatars.get(memberId) : undefined),
+    [memberId],
+  );
+
+  // What the two of you have done, as opposed to what the pet has been given.
+  // One query for both the panel below and the glow on the mascot above it, so
+  // the two cannot disagree for a frame. Touches only the three entry tables —
+  // no `loadSettings`, which would re-fire this on its own sync rewrite.
+  const vitals = useLiveQuery(() => coupleVitals(day), [day]);
+  const equippedIds = avatar ? GEAR_SLOTS.map((slot) => avatar.gear[slot]).filter(Boolean) as string[] : [];
+
+  const { mascot, petMood, progress, greeting, greetPose, mascotRef, fillRef } = useHomePet({
+    settings, coupleId, day, vitals,
+  });
+
+  async function onComplete(task: Task) {
+    await completeTask(task.id, day);
+  }
+
+  return (
+    <Screen title="HeartBeat" sub={<>{paired ? 'Paired' : 'Just you so far'} · {day}</>}>
+      <PetStage
+        mascot={mascot}
+        petMood={petMood}
+        calm={calm}
+        greetPose={greetPose}
+        greetingLine={greeting.line}
+        dye={avatar?.dye}
+        radiance={vitals ? glowOf(vitals) : 1}
+        progress={progress}
+        mascotRef={mascotRef}
+        fillRef={fillRef}
+      />
+
+      {/* Logging is what feeds everything below it, so it comes straight
+          after the pet and before what logging has added up to. */}
+      <LogStrip day={day} />
+
+      {/* Directly under the pet, because it is the rest of the same sentence:
+          the bar above is what the two of you have been *given* — quests, boss
+          victories, tasks — and this is what you have *done*. */}
+      <VitalsPanel vitals={vitals} />
+
+      {/* Only with two of you. It reads both halves of the couple against each
+          other, and on a lone phone that is a comparison with nobody. */}
+      {paired && settings?.coupleId
+        ? <TogetherPanel coupleId={settings.coupleId} day={day} />
+        : null}
+
+      {/* The one thing a lone phone is actually missing, said once and near the
+          top rather than as four empty panels further down. `Tile` has been in
+          the tree since the dashboard was a grid and had no call sites left
+          after the ring came out; this is what it was for. */}
+      {!paired ? <PairInvite /> : null}
+
+      <TodaySection
+        open={open}
+        loaded={dailiesLoaded}
+        equippedIds={equippedIds}
+        onComplete={onComplete}
+      />
+
+      <HomeFooter
+        coupleId={coupleId}
+        memberId={memberId}
+        day={day}
+        settings={settings}
+      />
+    </Screen>
+  );
+}
+
+/**
+ * Settings only carries an identity once the app has written one somewhere
+ * else first. A fresh install that lands here before ever opening Tasks still
+ * needs one, for the same reason Tasks and Mood each mint their own: see
+ * db/repository/identity.ts.
+ */
+function useSeededIdentity(day: string) {
+  const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
+  useEffect(() => {
+    let live = true;
+    ensureIdentity()
+      .then(async (next) => {
+        await seedStarterPlan(next.memberId, next.coupleId, day);
+        if (live) setIdentity(next);
+      })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [day]);
+  return identity;
+}
+
+/**
+ * Dailies and goals together, because to the person looking at it there is one
+ * list of what today still wants — a goal you set on purpose is not a second,
+ * lesser checklist to go and find on another screen. Two point lookups on the
+ * existing compound index rather than a scan; `openDailies` filters both by
+ * `isDue`.
+ */
+function useOpenDailies(memberId: string | undefined, day: string) {
   const dailies = useLiveQuery(
     async (): Promise<Task[]> => (memberId
       ? (await Promise.all(
@@ -87,7 +174,24 @@ export function DashboardPage() {
       : []),
     [memberId],
   );
-  const open = dailies ? openDailies(dailies, day) : [];
+  return { open: dailies ? openDailies(dailies, day) : [], loaded: dailies !== undefined };
+}
+
+type Vitals = Awaited<ReturnType<typeof coupleVitals>>;
+
+interface HomePetArgs {
+  settings: Settings | undefined;
+  coupleId: string | undefined;
+  day: string;
+  vitals: Vitals | undefined;
+}
+
+/**
+ * Everything derived about the pet for Home: its level, mood, greeting, and the
+ * level-up moment that the greeting pose has to wait for.
+ */
+function useHomePet({ settings, coupleId, day, vitals }: HomePetArgs) {
+  const { theme, calm } = useTheme();
 
   // Tagged with the couple it was read for. A live query keeps its last answer
   // while a new one is on its way, so without the tag the "no pet" read taken
@@ -101,17 +205,6 @@ export function DashboardPage() {
     [settings?.coupleId],
   );
   const pet = petRead?.pet;
-  const avatar = useLiveQuery(
-    () => (memberId ? db.avatars.get(memberId) : undefined),
-    [memberId],
-  );
-
-  // What the two of you have done, as opposed to what the pet has been given.
-  // One query for both the panel below and the glow on the mascot above it, so
-  // the two cannot disagree for a frame. Touches only the three entry tables —
-  // no `loadSettings`, which would re-fire this on its own sync rewrite.
-  const vitals = useLiveQuery(() => coupleVitals(day), [day]);
-  const equippedIds = avatar ? GEAR_SLOTS.map((slot) => avatar.gear[slot]).filter(Boolean) as string[] : [];
 
   // `Pet.level` is carried forward from whoever last wrote the row and is never
   // recomputed, so the level shown is always derived from the XP instead. XP
@@ -156,146 +249,192 @@ export function DashboardPage() {
   // there is no mood set, which resolves to the pack's own accent.
   useEffect(() => { applyMood(petMood); }, [petMood]);
 
-  async function onComplete(task: Task) {
-    await completeTask(task.id, day);
-  }
+  return {
+    mascot,
+    petMood,
+    progress,
+    greeting,
+    greetPose: firstVisit && !calm && !holdGreeting ? greeting.pose : undefined,
+    mascotRef,
+    fillRef,
+  };
+}
 
+interface PetCardProps {
+  mascot: ReturnType<typeof getMascot>;
+  progress: ReturnType<typeof levelProgress>;
+  fillRef: React.RefObject<HTMLDivElement>;
+}
+
+/** The pet's name, level and XP bar. */
+function PetCard({ mascot, progress, fillRef }: PetCardProps) {
   return (
-    <Screen title="HeartBeat" sub={<>{paired ? 'Paired' : 'Just you so far'} · {day}</>}>
-      {/* The dye is three CSS custom properties on the wrapper, which is the
-          whole of how a colourway reaches the drawing — every mascot paints in
-          those and nothing else, so none of the five files knows dyes exist. */}
-      <div
-        ref={mascotRef}
-        className="home-mascot-standalone"
-        data-mood={petMood}
-        data-calm={calm ? 'true' : 'false'}
-        data-greet={firstVisit && !calm && !holdGreeting ? greeting.pose : undefined}
-        style={{
-          ...dyeStyle(avatar?.dye),
-          // The radiance, as 0..1. The pet never turns sad — it only loses its
-          // glow, and it comes back the moment either of you logs anything.
-          '--pet-radiance': vitals ? glowOf(vitals) : 1,
-        } as React.CSSProperties}
-        role="img"
-        // The one place the mood is language rather than a drawing, and so
-        // the only place anyone has ever met the word. `moodWords` keeps it a
-        // description of the animal: "dozing", never a report on the couple.
-        aria-label={`${mascot.name} the ${mascot.species}, level ${progress.level}, ${moodWords(petMood)}`}
-      >
-        <mascot.Art mood={petMood} />
+    <section className="home-pet">
+      <div className="home-pet-head">
+        <span className="home-pet-name">{mascot.name}</span>
+        <span className="home-pet-level">
+          Lv {progress.level} · {progress.into}/{progress.needed} XP
+        </span>
       </div>
+      <div className="home-pet-bar">
+        <div ref={fillRef} className="home-pet-fill" style={{ width: `${progress.fraction * 100}%` }} />
+      </div>
+      <p className="home-pet-blurb">{mascot.blurb}</p>
+    </section>
+  );
+}
 
-      <PetGreeting line={greeting.line} />
-
-      <section className="home-pet">
-        <div className="home-pet-head">
-          <span className="home-pet-name">{mascot.name}</span>
-          <span className="home-pet-level">
-            Lv {progress.level} · {progress.into}/{progress.needed} XP
-          </span>
-        </div>
-        <div className="home-pet-bar">
-          <div ref={fillRef} className="home-pet-fill" style={{ width: `${progress.fraction * 100}%` }} />
-        </div>
-        <p className="home-pet-blurb">{mascot.blurb}</p>
-      </section>
-
-      {/* Logging is what feeds everything below it, so it comes straight
-          after the pet and before what logging has added up to. */}
-      <LogStrip day={day} />
-
-      {/* Directly under the pet, because it is the rest of the same sentence:
-          the bar above is what the two of you have been *given* — quests, boss
-          victories, tasks — and this is what you have *done*. */}
-      <VitalsPanel vitals={vitals} />
-
-      {/* Only with two of you. It reads both halves of the couple against each
-          other, and on a lone phone that is a comparison with nobody. */}
-      {paired && settings?.coupleId
-        ? <TogetherPanel coupleId={settings.coupleId} day={day} />
-        : null}
-
-      {/* The one thing a lone phone is actually missing, said once and near the
-          top rather than as four empty panels further down. `Tile` has been in
-          the tree since the dashboard was a grid and had no call sites left
-          after the ring came out; this is what it was for. */}
-      {!paired ? (
-        <section className="home-invite">
-          <EmptyState glyph="♥">
-            Everything here works on its own. Pairing adds the other half — their
-            day beside yours, the quest you take on together, and a birb you
-            both feed.
-          </EmptyState>
-          <div className="home-invite-tiles">
-            <Tile
-              to="/settings"
-              title="Pair up"
-              icon="friends"
-              value="Start"
-              hint="One code, once. Nothing you have logged is lost."
-            />
-          </div>
-        </section>
-      ) : null}
-
-      <section className="home-today">
-        <h2 className="section-title">Today</h2>
-        {open.length ? (
-          <ul className="home-today-list">
-            {open.map((task) => (
-              <li className="home-today-row" key={task.id}>
-                <button
-                  type="button"
-                  className="home-today-tick"
-                  onClick={() => onComplete(task)}
-                  aria-label={`Complete ${task.title}`}
-                >
-                  +
-                </button>
-                <span className="home-today-title">{task.title}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="section-sub">
-            {dailies === undefined ? '' : 'Nothing waiting on the list today.'}
-          </p>
-        )}
-
-        {equippedIds.length ? (
-          <ul className="home-equipped" aria-label="Equipped">
-            {equippedIds.map((itemId) => {
-              const item = gearById(itemId);
-              const Art = gearArt(itemId);
-              if (!item || !Art) return null;
-              return (
-                <li key={itemId} className="home-equipped-item" title={item.name}>
-                  <Art />
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
-      </section>
-
-      {coupleId ? (
-        <QuestBoard coupleId={coupleId} day={day} timeZone={settings?.timeZone ?? 'America/Los_Angeles'} />
-      ) : null}
-
-      {/* Last, because it is the only backward-looking thing on the page. The
-          screen reads pet, then what the two of you have done, then what today
-          still wants, then the quest — and only then what has been happening. */}
-      {coupleId && memberId ? (
-        <FeedPanel
-          coupleId={coupleId}
-          memberId={memberId}
-          day={day}
-          tracksCycle={settings?.tracksCycle === true}
-          shareCycleNudge={settings?.shareCycleNudge === true}
-          token={settings?.workerSecret}
+/** What a lone phone is missing, said once and near the top. */
+function PairInvite() {
+  return (
+    <section className="home-invite">
+      <EmptyState glyph="♥">
+        Everything here works on its own. Pairing adds the other half — their
+        day beside yours, the quest you take on together, and a birb you
+        both feed.
+      </EmptyState>
+      <div className="home-invite-tiles">
+        <Tile
+          to="/settings"
+          title="Pair up"
+          icon="friends"
+          value="Start"
+          hint="One code, once. Nothing you have logged is lost."
         />
+      </div>
+    </section>
+  );
+}
+
+interface TodaySectionProps {
+  open: Task[];
+  loaded: boolean;
+  equippedIds: string[];
+  onComplete: (task: Task) => void | Promise<void>;
+}
+
+/** What today still wants, and what the bird is wearing while it waits. */
+function TodaySection({ open, loaded, equippedIds, onComplete }: TodaySectionProps) {
+  return (
+    <section className="home-today">
+      <h2 className="section-title">Today</h2>
+      {open.length ? (
+        <ul className="home-today-list">
+          {open.map((task) => (
+            <li className="home-today-row" key={task.id}>
+              <button
+                type="button"
+                className="home-today-tick"
+                onClick={() => onComplete(task)}
+                aria-label={`Complete ${task.title}`}
+              >
+                +
+              </button>
+              <span className="home-today-title">{task.title}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="section-sub">
+          {!loaded ? '' : 'Nothing waiting on the list today.'}
+        </p>
+      )}
+
+      {equippedIds.length ? (
+        <ul className="home-equipped" aria-label="Equipped">
+          {equippedIds.map((itemId) => {
+            const item = gearById(itemId);
+            const Art = gearArt(itemId);
+            if (!item || !Art) return null;
+            return (
+              <li key={itemId} className="home-equipped-item" title={item.name}>
+                <Art />
+              </li>
+            );
+          })}
+        </ul>
       ) : null}
-    </Screen>
+    </section>
+  );
+}
+
+interface PetStageProps {
+  mascot: ReturnType<typeof getMascot>;
+  petMood: ReturnType<typeof moodFor>;
+  calm: boolean;
+  greetPose: string | undefined;
+  greetingLine: string;
+  dye: string | undefined;
+  radiance: number;
+  progress: ReturnType<typeof levelProgress>;
+  mascotRef: React.RefObject<HTMLDivElement>;
+  fillRef: React.RefObject<HTMLDivElement>;
+}
+
+/** The mascot in its colours, what it says, and how far along it is. */
+function PetStage(props: PetStageProps) {
+  const { mascot, petMood, calm, greetPose, greetingLine, dye, radiance, progress, mascotRef, fillRef } = props;
+  return (
+    <>
+    {/* The dye is three CSS custom properties on the wrapper, which is the
+        whole of how a colourway reaches the drawing — every mascot paints in
+        those and nothing else, so none of the five files knows dyes exist. */}
+    <div
+      ref={mascotRef}
+      className="home-mascot-standalone"
+      data-mood={petMood}
+      data-calm={calm ? 'true' : 'false'}
+      data-greet={greetPose}
+      style={{
+        ...dyeStyle(dye),
+        // The radiance, as 0..1. The pet never turns sad — it only loses its
+        // glow, and it comes back the moment either of you logs anything.
+        '--pet-radiance': radiance,
+      } as React.CSSProperties}
+      role="img"
+      // The one place the mood is language rather than a drawing, and so
+      // the only place anyone has ever met the word. `moodWords` keeps it a
+      // description of the animal: "dozing", never a report on the couple.
+      aria-label={`${mascot.name} the ${mascot.species}, level ${progress.level}, ${moodWords(petMood)}`}
+    >
+      <mascot.Art mood={petMood} />
+    </div>
+
+    <PetGreeting line={greetingLine} />
+
+    <PetCard mascot={mascot} progress={progress} fillRef={fillRef} />
+    </>
+  );
+}
+
+interface HomeFooterProps {
+  coupleId: string | undefined;
+  memberId: string | undefined;
+  day: string;
+  settings: Settings | undefined;
+}
+
+/** The quest board, then the only backward-looking thing on the page. */
+function HomeFooter({ coupleId, memberId, day, settings }: HomeFooterProps) {
+  return (
+    <>
+    {coupleId ? (
+      <QuestBoard coupleId={coupleId} day={day} timeZone={settings?.timeZone ?? 'America/Los_Angeles'} />
+    ) : null}
+
+    {/* Last, because it is the only backward-looking thing on the page. The
+        screen reads pet, then what the two of you have done, then what today
+        still wants, then the quest — and only then what has been happening. */}
+    {coupleId && memberId ? (
+      <FeedPanel
+        coupleId={coupleId}
+        memberId={memberId}
+        day={day}
+        tracksCycle={settings?.tracksCycle === true}
+        shareCycleNudge={settings?.shareCycleNudge === true}
+        token={settings?.workerSecret}
+      />
+    ) : null}
+    </>
   );
 }

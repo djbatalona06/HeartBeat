@@ -1,4 +1,5 @@
 import { authenticate, json, type Env } from './_lib';
+import { track } from './_track';
 
 /**
  * The RPG layer, synced to the couple.
@@ -143,7 +144,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   });
 };
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const caller = await authenticate(request, env);
   if (!caller) return json({ error: 'unauthorized' }, 401);
 
@@ -189,5 +190,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     );
   }
 
+  if (rows.length) {
+    track({ env, waitUntil }, 'holdings_synced', caller, {
+      written: rows.length,
+      kinds: [...new Set(rows.map((r) => r.kind))].join(','),
+    });
+  }
   return json({ ok: true, written: rows.length, rejected, shared: PARTNER_WRITABLE });
 };

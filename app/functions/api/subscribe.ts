@@ -1,4 +1,5 @@
 import { authenticate, json, type Env } from './_lib';
+import { track } from './_track';
 
 /**
  * Where a phone says "deliver to me here".
@@ -30,7 +31,7 @@ function looksLikeKey(value: unknown, max: number): value is string {
     && /^[A-Za-z0-9_-]+=*$/.test(value);
 }
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const caller = await authenticate(request, env);
   if (!caller) return json({ error: 'unauthorized' }, 401);
 
@@ -51,6 +52,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
        auth = excluded.auth, updated_at = excluded.updated_at`,
   ).bind(body.endpoint, caller.memberId, body.p256dh, body.auth, at, at).run();
 
+  track({ env, waitUntil }, 'push_subscribed', caller);
   return json({ ok: true });
 };
 

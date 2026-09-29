@@ -76,6 +76,7 @@ export function BattleLog({ battle, monster }: BattleLogProps) {
         {battle.player.effects.length > 0 && (
           <ul className="garden-effects">
             {battle.player.effects.map((effect, index) => (
+              // react-doctor-disable-next-line no-array-index-as-key -- the same effect can be applied twice, and the list is never reordered
               <li key={`${effect.kind}-${index}`}>
                 {effect.kind} · {effect.turnsLeft} {effect.turnsLeft === 1 ? 'turn' : 'turns'}
               </li>
@@ -87,6 +88,7 @@ export function BattleLog({ battle, monster }: BattleLogProps) {
       <ol className="garden-log">
         {battle.log.map((line, index) => (
           <li
+            // react-doctor-disable-next-line no-array-index-as-key -- an append-only log with no ids; lines are never reordered or removed
             key={`${line.round}-${index}`}
             className={line.who === 'Player' ? 'is-you' : 'is-them'}
             ref={index === battle.log.length - 1 ? tail : undefined}

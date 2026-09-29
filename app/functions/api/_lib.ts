@@ -29,6 +29,15 @@ export interface Env {
    * leaves the Worker.
    */
   VAPID_PUBLIC_KEY?: string;
+  /**
+   * Server-side product counts (see `_track.ts`). All optional: without the key
+   * and the salt nothing is sent, and `/api/health` says so.
+   */
+  POSTHOG_KEY?: string;
+  POSTHOG_SALT?: string;
+  POSTHOG_HOST?: string;
+  /** Tags events so a preview deploy does not read as production. */
+  POSTHOG_ENV?: string;
 }
 
 export interface Caller {

@@ -59,9 +59,10 @@ export function WagerPanel({ coupleId, memberId, day, today }: WagerPanelProps) 
    * still until something wrote to it — which, since settling is the only
    * thing that does, is never. The same trap `QuestBoard` names.
    */
+  const memberKey = memberIds.join(',');
   const reading = useLiveQuery(
-    async () => (coupleId ? readWager(coupleId, day, memberIds) : undefined),
-    [coupleId, day, memberIds.join(',')],
+    async () => (coupleId ? readWager(coupleId, day, memberKey.split(',').filter(Boolean)) : undefined),
+    [coupleId, day, memberKey],
   );
 
   /**
@@ -70,10 +71,12 @@ export function WagerPanel({ coupleId, memberId, day, today }: WagerPanelProps) 
    * than the day on screen: a finished week is closed by looking at any week,
    * which is what stops last week's sitting open forever.
    */
+  const loaded = reading !== undefined;
+  const stepVerb = reading?.step?.verb;
   useEffect(() => {
-    if (!coupleId || !reading || memberIds.length === 0) return;
-    void settleWagers(coupleId, today, memberIds);
-  }, [coupleId, today, memberIds.join(','), reading?.step?.verb]);
+    if (!coupleId || !loaded || memberKey === '') return;
+    void settleWagers(coupleId, today, memberKey.split(','));
+  }, [coupleId, today, memberKey, loaded, stepVerb]);
 
   if (!coupleId) return null;
   // Still loading. An empty panel for a frame is better than "no wager yet"

@@ -47,7 +47,9 @@ export function ChatPanel({ badges }: { badges: Badges }) {
   // Opening the thread *is* reading it. Stamped on open rather than on close,
   // because a message that arrives while you are looking at it has been seen,
   // and a watermark set on close would badge it the moment you shut the sheet.
+  // react-doctor-disable-next-line no-event-handler -- the trigger is a message arriving while the sheet is open, which no handler of ours sees
   useEffect(() => {
+    // react-doctor-disable-next-line no-prop-callback-in-effect -- stamps a durable watermark; it does not mirror local state into the parent
     if (open) void markSeen('messages');
   }, [open, messages.length, markSeen]);
 

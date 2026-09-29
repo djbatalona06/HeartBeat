@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fuzzyScore, rank } from './CommandMenu';
+import { fuzzyScore, rank } from './commandRank';
 
 /**
  * The matcher behind the command menu. Tested rather than eyeballed because

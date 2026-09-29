@@ -49,8 +49,10 @@ export async function buyDye(
   if (dye.id === DEFAULT_DYE_ID) return { ok: false, reason: 'That one is already yours.' };
 
   return db.transaction('rw', db.avatars, db.inventory, async () => {
-    const avatar = await getOrCreateAvatar(memberId, coupleId);
-    const owned = await db.inventory.where('[memberId+itemId]').equals([memberId, dyeId]).first();
+    const [avatar, owned] = await Promise.all([
+      getOrCreateAvatar(memberId, coupleId),
+      db.inventory.where('[memberId+itemId]').equals([memberId, dyeId]).first(),
+    ]);
     if (owned) return { ok: false, reason: 'Already yours — go and put it on.' };
 
     const affordCheck = canAfford(avatar.coins, dye.price);
@@ -96,8 +98,10 @@ export async function buyFurniture(
   if (!item) return { ok: false, reason: 'No such piece.' };
 
   return db.transaction('rw', db.avatars, db.inventory, db.pet, async () => {
-    const avatar = await getOrCreateAvatar(memberId, coupleId);
-    const owned = await db.inventory.where('[memberId+itemId]').equals([memberId, itemId]).first();
+    const [avatar, owned] = await Promise.all([
+      getOrCreateAvatar(memberId, coupleId),
+      db.inventory.where('[memberId+itemId]').equals([memberId, itemId]).first(),
+    ]);
     if (owned) return { ok: false, reason: 'Already yours.' };
 
     const affordCheck = canAfford(avatar.coins, item.price);
@@ -155,8 +159,10 @@ export async function refurnishHouse(
   coupleId: CoupleId,
 ): Promise<PurchaseResult> {
   return db.transaction('rw', db.pet, db.inventory, async () => {
-    const pet = await db.pet.get(coupleId);
-    const owned = await db.inventory.where('memberId').equals(memberId).toArray();
+    const [pet, owned] = await Promise.all([
+      db.pet.get(coupleId),
+      db.inventory.where('memberId').equals(memberId).toArray(),
+    ]);
     const house = refurnish(pet?.house, owned.map((row) => row.itemId));
 
     // Upserted with the same defaults `awardPetXp` uses, because the pet row is
@@ -234,9 +240,10 @@ export async function buyOffer(
   if (!offer) return { ok: false, reason: 'Nothing on the shelf today.' };
 
   return db.transaction('rw', db.avatars, db.inventory, async () => {
-    const avatar = await getOrCreateAvatar(memberId, coupleId);
-    const owned = await db.inventory
-      .where('[memberId+itemId]').equals([memberId, offer.id]).first();
+    const [avatar, owned] = await Promise.all([
+      getOrCreateAvatar(memberId, coupleId),
+      db.inventory.where('[memberId+itemId]').equals([memberId, offer.id]).first(),
+    ]);
     if (owned) return { ok: false, reason: 'Already yours — the discount is no use.' };
 
     const affordCheck = canAfford(avatar.coins, offer.price);

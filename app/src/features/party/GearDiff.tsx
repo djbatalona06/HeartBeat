@@ -121,42 +121,55 @@ export function GearDiff({ avatar, owned, petXp, house, companion }: GearDiffPro
       ) : null}
 
       {diff ? (
-        <>
-          <p className="gear-diff-head">
-            <span className="gear-diff-from">
-              {wornId ? gearById(wornId)?.name ?? 'Something' : 'Nothing'}
-            </span>
-            {' → '}
-            <span className="gear-diff-to">{picked?.name ?? 'nothing'}</span>
-          </p>
-
-          <ul className="gear-diff-rows">
-            {RAID_STATS.map((key) => (
-              <li
-                key={key}
-                className="gear-diff-row"
-                // Unchanged stats are dimmed rather than hidden: a swap that
-                // moves two of seven numbers should look like that, and a
-                // list whose length changes per pick is harder to read than
-                // one that does not.
-                data-change={changeOf(diff.delta[key])}
-              >
-                <span className="gear-diff-stat">{RAID_STAT_NAMES[key]}</span>
-                <span className="gear-diff-was">{diff.worn.sheet.total[key]}</span>
-                <span className="gear-diff-now">{diff.swapped.sheet.total[key]}</span>
-                <span className="gear-diff-delta">{signed(diff.delta[key])}</span>
-              </li>
-            ))}
-          </ul>
-
-          <p className="gear-diff-net" data-change={changeOf(diff.netSum)}>
-            {netLine(diff.netSum)}
-          </p>
-        </>
+        <SwapResult diff={diff} wornId={wornId} picked={picked} />
       ) : options.length > 0 ? (
         <p className="section-sub">Pick one to see what it would change.</p>
       ) : null}
     </section>
+  );
+}
+
+type Swap = NonNullable<ReturnType<typeof previewSwap>>;
+
+/** The head, the seven rows and the verdict for one previewed swap. */
+function SwapResult({ diff, wornId, picked }: {
+  diff: Swap;
+  wornId: string | undefined;
+  picked: ReturnType<typeof gearById> | null;
+}) {
+  return (
+    <>
+      <p className="gear-diff-head">
+        <span className="gear-diff-from">
+          {wornId ? gearById(wornId)?.name ?? 'Something' : 'Nothing'}
+        </span>
+        {' → '}
+        <span className="gear-diff-to">{picked?.name ?? 'nothing'}</span>
+      </p>
+
+      <ul className="gear-diff-rows">
+        {RAID_STATS.map((key) => (
+          <li
+            key={key}
+            className="gear-diff-row"
+            // Unchanged stats are dimmed rather than hidden: a swap that
+            // moves two of seven numbers should look like that, and a
+            // list whose length changes per pick is harder to read than
+            // one that does not.
+            data-change={changeOf(diff.delta[key])}
+          >
+            <span className="gear-diff-stat">{RAID_STAT_NAMES[key]}</span>
+            <span className="gear-diff-was">{diff.worn.sheet.total[key]}</span>
+            <span className="gear-diff-now">{diff.swapped.sheet.total[key]}</span>
+            <span className="gear-diff-delta">{signed(diff.delta[key])}</span>
+          </li>
+        ))}
+      </ul>
+
+      <p className="gear-diff-net" data-change={changeOf(diff.netSum)}>
+        {netLine(diff.netSum)}
+      </p>
+    </>
   );
 }
 

@@ -1,4 +1,5 @@
 import { authenticate, json, type Env } from './_lib';
+import { track } from './_track';
 
 /**
  * A question about the couple's own record, answered from it.
@@ -19,7 +20,7 @@ const MODEL = '@cf/meta/llama-3.1-8b-instruct';
 const MAX_QUESTION = 200;
 const WINDOW_DAYS = 60;
 
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const caller = await authenticate(request, env);
   if (!caller) return json({ error: 'not paired' }, 401);
   if (!env.AI) return json({ error: 'asking is not available on this deploy' }, 503);
@@ -28,39 +29,38 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const question =
     typeof body.question === 'string' ? body.question.trim().slice(0, MAX_QUESTION) : '';
   if (!question) return json({ error: 'ask something' }, 400);
+  track({ env, waitUntil }, 'ask_used', caller);
 
   const since = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
 
   // Counts and dates only. Deliberately never `payload`: the day log holds what
   // people wrote, and this feature does not need it to answer what it answers.
-  const { results: byKind } = await env.DB.prepare(
-    `SELECT kind, COUNT(*) AS n, MAX(day) AS last_day
-       FROM entries WHERE couple_id = ? AND day >= ?
-      GROUP BY kind`,
-  )
-    .bind(caller.coupleId, since)
-    .all<{ kind: string; n: number; last_day: string }>();
-
+  //
   // Quests and achievements are deliberately absent: they live only in Dexie
   // on each phone and were never synced to D1, so there is nothing here to read.
   // Better to answer from less than to query a table that does not exist.
-  const pet = await env.DB.prepare('SELECT level, xp FROM pets WHERE couple_id = ?')
-    .bind(caller.coupleId)
-    .first<{ level: number; xp: number }>();
-
-  const boss = await env.DB.prepare(
-    'SELECT tier, hp, max_hp, state FROM boss_fights WHERE couple_id = ?',
-  )
-    .bind(caller.coupleId)
-    .first<{ tier: number; hp: number; max_hp: number; state: string }>();
-
-  const study = await env.DB.prepare(
-    `SELECT COUNT(*) AS days, COALESCE(SUM(sessions), 0) AS sessions
-       FROM study_days WHERE member_id IN (SELECT id FROM members WHERE couple_id = ?)
-        AND day >= ?`,
-  )
-    .bind(caller.coupleId, since)
-    .first<{ days: number; sessions: number }>();
+  const [{ results: byKind }, pet, boss, study] = await Promise.all([
+    env.DB.prepare(
+      `SELECT kind, COUNT(*) AS n, MAX(day) AS last_day
+         FROM entries WHERE couple_id = ? AND day >= ?
+        GROUP BY kind`,
+    )
+      .bind(caller.coupleId, since)
+      .all<{ kind: string; n: number; last_day: string }>(),
+    env.DB.prepare('SELECT level, xp FROM pets WHERE couple_id = ?')
+      .bind(caller.coupleId)
+      .first<{ level: number; xp: number }>(),
+    env.DB.prepare('SELECT tier, hp, max_hp, state FROM boss_fights WHERE couple_id = ?')
+      .bind(caller.coupleId)
+      .first<{ tier: number; hp: number; max_hp: number; state: string }>(),
+    env.DB.prepare(
+      `SELECT COUNT(*) AS days, COALESCE(SUM(sessions), 0) AS sessions
+         FROM study_days WHERE member_id IN (SELECT id FROM members WHERE couple_id = ?)
+          AND day >= ?`,
+    )
+      .bind(caller.coupleId, since)
+      .first<{ days: number; sessions: number }>(),
+  ]);
 
   const facts = [
     `Today is ${new Date().toISOString().slice(0, 10)}.`,
