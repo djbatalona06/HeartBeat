@@ -39,3 +39,21 @@ database_id = "dcfde6ff-f415-427a-bfc4-c08bd6911699"
 [[r2_buckets]]
 binding = "MEDIA"
 bucket_name = "heartbeat"
+
+# Preview deploys (any Pages branch that is not production) get their own
+# database and bucket, so a PR can be walked on two real phones without
+# touching the couple's data. Pages environments do not inherit bindings, so
+# every one is repeated. See "Preview deploys" in docs/DEPLOY.md.
+[env.preview]
+
+[env.preview.ai]
+binding = "AI"
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "heartbeat-preview"
+database_id = "76201d07-4bff-40de-8b5e-aa0517333c2b"
+
+[[env.preview.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "heartbeat-preview"
