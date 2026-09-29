@@ -1,4 +1,5 @@
-import { authenticate, json, type Env } from './_lib';
+import { authenticate, json, recordAuthEvent, type Env } from './_lib';
+import { releaseMember } from './_offboard';
 
 /**
  * The paired devices, and turning one off.
@@ -50,30 +51,22 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const target = (body.memberId ?? '').trim();
   if (!target) return json({ error: 'memberId required' }, 400);
 
+  // Leaving is its own route: it also says so in the audit log, and it is the
+  // one a phone calls about itself. This one is a person removing the other.
+  if (target === caller.memberId) return json({ error: 'use /api/pair/leave' }, 400);
+
   const now = Date.now();
   // Scoped to the caller's own couple, so a token cannot be used to revoke a
   // stranger's device even if a member id from another couple is guessed.
-  const { meta } = await env.DB.prepare(
-    'UPDATE members SET revoked_at = ?, updated_at = ? WHERE id = ? AND couple_id = ? AND revoked_at IS NULL',
-  )
-    .bind(now, now, target, caller.coupleId)
-    .run();
+  const released = await releaseMember(env.DB, caller.coupleId, target, now);
+  if (!released) return json({ error: 'no such device, or already revoked' }, 404);
 
-  if (meta.changes !== 1) return json({ error: 'no such device, or already revoked' }, 404);
-
-  await env.DB.prepare(
-    `INSERT INTO auth_events (id, couple_id, member_id, kind, detail, country, ua_hash, at)
-     VALUES (?, ?, ?, 'revoke', ?, ?, '', ?)`,
-  )
-    .bind(
-      crypto.randomUUID(),
-      caller.coupleId,
-      target,
-      target === caller.memberId ? 'revoked itself' : 'revoked by partner',
-      request.headers.get('cf-ipcountry') ?? '',
-      now,
-    )
-    .run();
+  await recordAuthEvent(
+    env.DB,
+    request,
+    { kind: 'revoke', coupleId: caller.coupleId, memberId: target, detail: 'revoked by partner' },
+    now,
+  );
 
   return json({ ok: true, revokedAt: now });
 };
