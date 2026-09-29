@@ -128,3 +128,14 @@ export function pairFailure(error: unknown): PairFailure {
     message: reason || 'The server answered, but not with anything we could use. Try again.',
   };
 }
+
+/**
+ * What goes into the share sheet with a code.
+ *
+ * Says where to type it, because whoever receives it may never have opened the
+ * app, and says it works once — a code in a chat thread is a key that should
+ * not be mistaken for a permanent one.
+ */
+export function inviteShareText(code: string, origin: string): string {
+  return `Join me on HeartBeat: open ${origin}, go to Settings and type ${code}. It works once, for the next few minutes.`;
+}

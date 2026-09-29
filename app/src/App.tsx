@@ -78,7 +78,7 @@ export function App() {
 
   // Whether there are two of you, and the re-key that carries this phone's rows
   // over the moment there are. See features/pairing/usePairing.ts.
-  const { ready, paired } = usePairing();
+  const { ready, paired, unlinked } = usePairing();
 
   // Whether the screen naming your specific partner should be showing right
   // now. See features/pairing/useNamingGate.ts for what makes a pairing real
@@ -121,7 +121,7 @@ export function App() {
                     standing: a deep link arriving unpaired waits here and opens for
                     real once the second phone joins, rather than being redirected
                     away and forgotten. */}
-                <PairGate ready={ready} paired={paired} open={OPEN_WHILE_UNPAIRED}>
+                <PairGate ready={ready} paired={paired} unlinked={unlinked} open={OPEN_WHILE_UNPAIRED}>
                   {/* Inside PairGate on purpose: this asks the next question —
                       not whether there are two of you, but who specifically the
                       other one is, the moment there actually is one. See
