@@ -15,6 +15,7 @@ import { PairGate } from './features/pairing/PairGate';
 import { usePairing } from './features/pairing/usePairing';
 import { NamingGate } from './features/pairing/NamingGate';
 import { useNamingGate } from './features/pairing/useNamingGate';
+import { useAppBadge } from './features/notifications/useAppBadge';
 import { FirstRunGate } from './features/onboarding/FirstRunGate';
 import { RouteNotFound } from './features/errors/NotHere';
 import { BottomNav } from './ui/layout/BottomNav';
@@ -90,6 +91,7 @@ export function App() {
   // domain/notifications/derive.ts, and the test there that walks the source to
   // make sure nothing starts.
   const badges = useBadges();
+  useAppBadge(badges.byRoute);
   // One wager read for the whole app, beside the one badge read. See
   // `useNotices` for why they are separate hooks.
   const notices = useNotices(badges);

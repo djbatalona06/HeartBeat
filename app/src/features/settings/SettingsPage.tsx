@@ -8,10 +8,8 @@ import { variantOf } from '../../themes/tokens';
 import { supportsHaptics } from '../../pwa/haptics';
 import { THEMES } from '../../themes';
 import { fetchProfiles, health, pairStart } from '../../pwa/api';
-import { NotificationsBlock } from './NotificationsBlock';
-import { StudyLinkBlock } from './StudyLinkBlock';
+import { ConnectionsBlock } from './ConnectionsBlock';
 import { ComplimentBlock } from './ComplimentBlock';
-import { RecoveryBlock } from './RecoveryBlock';
 import { WhatsOnBlock } from './WhatsOnBlock';
 import {
   MAX_GENDER_NOTE,
@@ -124,7 +122,7 @@ export function SettingsPage() {
     <div className="page">
       <header className="page-head">
         <h1 className="page-title">Settings</h1>
-        <p className="page-sub">Pairing, theme and your partner.</p>
+        <p className="page-sub">Pairing, theme, your partner and connections.</p>
       </header>
 
       <Pairing
@@ -143,8 +141,6 @@ export function SettingsPage() {
           paired: an unpaired one is exactly where "get back in" belongs, and
           it is the reason Settings stays open while unpaired at all. Renders
           nothing when the deploy has no OAuth app. */}
-      <RecoveryBlock token={settings?.workerSecret} paired={paired} />
-
       <section className="set-block">
         <h2 className="section-title">Theme</h2>
         <p className="section-sub">
@@ -284,8 +280,7 @@ export function SettingsPage() {
         </label>
       </section>
 
-      <NotificationsBlock />
-      <StudyLinkBlock token={settings?.workerSecret} />
+      <ConnectionsBlock settings={settings} paired={paired} />
       {paired ? <ComplimentBlock /> : null}
 
       {/* Last on the page, the way a footnote is last: everything above is a

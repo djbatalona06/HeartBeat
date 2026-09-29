@@ -570,6 +570,8 @@ export interface Settings {
    * never what either phone is called. See `features/pairing/namingGate.ts`.
    */
   namingGateSeen?: boolean;
+  /** Opt-in: show the waiting count on the app icon. Off unless turned on. */
+  appBadge?: boolean;
   /**
    * Set when the server said this phone's link was ended by the other one. The
    * data stays; `isPaired` turns false so the phone offers to start over rather

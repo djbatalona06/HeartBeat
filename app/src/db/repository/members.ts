@@ -102,6 +102,11 @@ export async function setHaptics(haptics: boolean): Promise<void> {
   await saveSettings({ haptics });
 }
 
+/** Off unless turned on: a number on the icon follows you out of the app. */
+export async function setAppBadge(appBadge: boolean): Promise<void> {
+  await saveSettings({ appBadge });
+}
+
 /** Off unless turned on, and Calm still wins over it, like `setHaptics`. */
 export async function setSound(sound: boolean): Promise<void> {
   await saveSettings({ sound });

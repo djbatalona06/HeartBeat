@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  BADGE_KEYS, BADGE_ROUTES, byRoute, deriveBadges,
+  BADGE_KEYS, BADGE_ROUTES, badgeTotal, byRoute, deriveBadges,
   type BadgeInput, type BadgeKey,
 } from './derive';
 import type { Quest } from '../types';
@@ -197,6 +197,13 @@ describe('byRoute', () => {
 
   it('never emits a zero, which would render an empty circle', () => {
     expect(Object.values(byRoute(deriveBadges(input())))).toEqual([]);
+  });
+});
+
+describe('badgeTotal', () => {
+  it('adds every route and ignores nonsense', () => {
+    expect(badgeTotal({ '/chat': 2, '/quests': 1, '/x': -4 })).toBe(3);
+    expect(badgeTotal({})).toBe(0);
   });
 });
 

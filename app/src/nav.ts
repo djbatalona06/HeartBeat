@@ -131,7 +131,7 @@ export const MENU_GROUPS: MenuGroup[] = [
     tabs: [
       { to: '/raid', label: 'Raid', icon: 'sword', hint: 'The sheet, the boss, and where to go' },
       { to: '/eve-garden', label: "Eve's Garden", icon: 'sword', hint: 'The islands, and what stands on them' },
-      { to: '/settings', label: 'You', icon: 'person', hint: 'Pairing, theme, notifications' },
+      { to: '/settings', label: 'You', icon: 'person', hint: 'Pairing, theme, connections' },
     ],
   },
 ];

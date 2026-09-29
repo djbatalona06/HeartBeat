@@ -7962,3 +7962,7 @@ a, button, input, select, textarea, summary, label, [role='button'] {
 
 .invite-actions { display: flex; justify-content: center; gap: var(--space-2); }
 .invite-actions .quiet { width: auto; padding-inline: var(--space-5); }
+
+/* The Connections group: one heading, then the blocks it gathers, spaced the
+   way the page spaces its own children. */
+.connections { display: grid; gap: var(--stack); }
