@@ -45,11 +45,21 @@ export function partnerOf(
   me: { coupleId?: string; memberId?: string } | undefined,
 ): Member | undefined {
   if (!me?.coupleId || !me.memberId) return undefined;
-  return members?.find((m) => m.coupleId === me.coupleId && m.id !== me.memberId);
+  // A member who has left or been removed keeps their row, but is not a partner.
+  return members?.find((m) => m.coupleId === me.coupleId && m.id !== me.memberId && !m.revokedAt);
+}
+
+/** The person who was here and is not any more — for "Sam left", not "linked". */
+export function formerPartnerOf(
+  members: readonly Member[] | undefined,
+  me: { coupleId?: string; memberId?: string } | undefined,
+): Member | undefined {
+  if (!me?.coupleId || !me.memberId) return undefined;
+  return members?.find((m) => m.coupleId === me.coupleId && m.id !== me.memberId && m.revokedAt);
 }
 
 /**
- * How often to ask the server about the other person, or `null` to stop.
+ * How often to ask the server about the other person, or `null` when unpaired.
  *
  * Nothing else ever reads the members table after pairing — sync, holdings
  * and the pet all skip it — so this is the only way a phone learns two things:
@@ -59,18 +69,23 @@ export function partnerOf(
  *     it asks briskly;
  *   - that its partner picked a name. The screen promises it "will show up
  *     here the moment they do", but they may skip naming for good, so this
- *     asks gently and stops for good once a name lands.
+ *     asks gently until a name lands;
+ *   - that they are still there, or that this phone is still wanted, which it
+ *     asks about once a minute for as long as the pairing lasts.
  *
  * Only ever run while the app is on screen (see `useNamingGate`).
  */
 export function partnerPollMs(paired: boolean, partner: Member | undefined): number | null {
   if (!paired) return null;
   if (!partner) return PARTNER_POLL_MS;
-  return hasName(partner.displayName) ? null : PARTNER_NAME_POLL_MS;
+  // Never null once linked: a partner who leaves, or a removal of this phone,
+  // is only ever learned by asking, so the ask slows down but does not stop.
+  return hasName(partner.displayName) ? PARTNER_WATCH_POLL_MS : PARTNER_NAME_POLL_MS;
 }
 
 export const PARTNER_POLL_MS = 5000;
 export const PARTNER_NAME_POLL_MS = 30000;
+export const PARTNER_WATCH_POLL_MS = 60000;
 
 function hasName(name: string | undefined): boolean {
   return Boolean(name && name.trim().length > 0);

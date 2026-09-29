@@ -10,8 +10,10 @@
  * solely through a rendered form. Pulling it out gives the receiving side one
  * entry point a test can call directly — see receivePairingCode.test.ts.
  */
-import { pairJoin, type PairJoined } from '../../pwa/api';
+import { pairJoin, pairLeave, type PairJoined } from '../../pwa/api';
+import { loadSettings } from '../../db/database';
 import { savePairing } from '../../db/repository';
+import { isPaired } from '../../domain/identity/rekey';
 import { normalizeInvite, pairFailure, type PairFailure } from './pairing';
 
 export type ReceivePairingResult =
@@ -30,8 +32,15 @@ export type ReceivePairingResult =
 export async function receivePairingCode(raw: string): Promise<ReceivePairingResult> {
   const code = normalizeInvite(raw);
   try {
+    // Captured first: joining replaces the token, and the couple this phone
+    // started (a couple of one, when both tapped Start) would otherwise be
+    // left on the server with a member nobody holds a token for.
+    const before = await loadSettings();
     const joined = await pairJoin(code);
     await savePairing(joined);
+    if (isPaired(before) && before.workerSecret) {
+      void pairLeave(before.workerSecret).catch(() => { /* best effort: it is empty either way */ });
+    }
     return { ok: true, joined };
   } catch (e) {
     return { ok: false, failure: pairFailure(e) };

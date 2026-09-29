@@ -104,6 +104,34 @@ export async function pairJoin(invite: string): Promise<PairJoined> {
   return (await res.json()) as PairJoined;
 }
 
+/** Leave the couple. Nothing of the couple's is deleted; the seat is freed. */
+export async function pairLeave(token: string): Promise<void> {
+  const res = await fetch('/api/pair/leave', { method: 'POST', headers: authHeaders(token) });
+  if (!res.ok) throw await errorFrom(res);
+}
+
+/** A fresh code for a free seat in the couple this phone is already in. */
+export async function pairInvite(token: string): Promise<{ invite: string; expiresAt: number }> {
+  const res = await fetch('/api/pair/invite', { method: 'POST', headers: authHeaders(token) });
+  if (!res.ok) throw await errorFrom(res);
+  return (await res.json()) as { invite: string; expiresAt: number };
+}
+
+/** Take the other person out of the couple. They are told the next time they ask. */
+export async function revokeMember(token: string, memberId: string): Promise<void> {
+  const res = await fetch('/api/devices', {
+    method: 'POST',
+    headers: { ...authHeaders(token), 'content-type': 'application/json' },
+    body: JSON.stringify({ memberId }),
+  });
+  if (!res.ok) throw await errorFrom(res);
+}
+
+/** The server no longer honours this phone's token: it was removed or left. */
+export function isUnlinked(e: unknown): boolean {
+  return e instanceof TranscribeError && e.status === 401;
+}
+
 export interface Health {
   ok: boolean;
   db: boolean;
@@ -144,6 +172,8 @@ export interface WireMember {
   /** Served once answered; absent on a row where nobody has said. */
   gender?: Gender;
   photoDataUri?: string;
+  /** Present once they have left or been removed. */
+  revokedAt?: number;
   updatedAt: number;
   mine: boolean;
 }

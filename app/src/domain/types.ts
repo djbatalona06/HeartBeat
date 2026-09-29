@@ -53,6 +53,11 @@ export interface Member {
    */
   gender?: Gender;
   photoDataUri?: string;
+  /**
+   * Set once they have left the couple or been removed from it. The row stays
+   * (it is still their name in your history) but it is no longer a partner.
+   */
+  revokedAt?: number;
   updatedAt: number;
 }
 
@@ -565,6 +570,12 @@ export interface Settings {
    * never what either phone is called. See `features/pairing/namingGate.ts`.
    */
   namingGateSeen?: boolean;
+  /**
+   * Set when the server said this phone's link was ended by the other one. The
+   * data stays; `isPaired` turns false so the phone offers to start over rather
+   * than pretending to be linked. Cleared by the reset that follows.
+   */
+  unlinkedAt?: number;
   /**
    * Set the moment the starter plan is seeded, so it is planted exactly once
    * per install rather than re-appearing after every one of its eight tasks

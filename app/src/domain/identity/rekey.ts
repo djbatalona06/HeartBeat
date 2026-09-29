@@ -167,9 +167,11 @@ export function isUsableIdentity(id: Partial<Identity> | undefined | null): id i
  * call site — which is how the two spellings came to disagree.
  */
 export function isPaired(
-  settings: { coupleId?: string; workerSecret?: string } | undefined | null,
+  settings: { coupleId?: string; workerSecret?: string; unlinkedAt?: number } | undefined | null,
 ): boolean {
-  return Boolean(settings?.coupleId && settings.workerSecret);
+  // A phone whose link was ended still holds its token, but the server no longer
+  // honours it, so it is not paired however much it looks it.
+  return Boolean(settings?.coupleId && settings.workerSecret && !settings.unlinkedAt);
 }
 
 /** True when a re-key moves the primary key rather than only fields on the row. */

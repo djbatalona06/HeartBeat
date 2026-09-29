@@ -36,6 +36,8 @@ export interface IncomingMember {
    */
   gender?: Gender;
   photoDataUri?: string;
+  /** Served once they have left or been removed. */
+  revokedAt?: number;
   updatedAt: number;
 }
 
@@ -267,6 +269,7 @@ export async function saveMembersFromServer(rows: IncomingMember[]): Promise<num
       // that has not been pushed yet.
       gender: row.gender ?? existing?.gender,
       photoDataUri: row.photoDataUri,
+      revokedAt: row.revokedAt,
       updatedAt: row.updatedAt,
     });
     applied += 1;
