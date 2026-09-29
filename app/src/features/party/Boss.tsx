@@ -201,9 +201,9 @@ function GatheringPanel({ boss, busy, onReady }: { boss: BossPayload; busy: bool
   return (
     <>
       <p className="section-sub">{waitingOn(boss) ?? 'Both of you are in.'}</p>
-      <button type="button" className="primary" disabled={busy || boss.youAreReady} onClick={onReady}>
+      <PrimaryAction disabled={busy || boss.youAreReady} onClick={onReady}>
         {boss.youAreReady ? 'You are ready' : 'Ready'}
-      </button>
+      </PrimaryAction>
     </>
   );
 }
@@ -258,9 +258,9 @@ function FinishedPanel({ boss, busy, onNext }: { boss: BossPayload; busy: boolea
           ? 'Cleared. The next one is a quarter bigger.'
           : 'Not this time. The same tier is still there.'}
       </p>
-      <button type="button" className="primary" disabled={busy} onClick={onNext}>
+      <PrimaryAction disabled={busy} onClick={onNext}>
         Line up the next one
-      </button>
+      </PrimaryAction>
     </>
   );
 }

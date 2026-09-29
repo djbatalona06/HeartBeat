@@ -218,7 +218,12 @@ function ReminderControls({ on, busy, checking, hour, kinds, onToggle, onHour, o
     <>
       <div className="notify-row">
         <span className="notify-state">{on ? 'On' : 'Off'}</span>
-        <button className="notify-switch" type="button" disabled={busy || checking} onClick={onToggle}>
+        <button
+          className="notify-switch"
+          type="button"
+          disabled={busy || checking}
+          onClick={onToggle}
+        >
           {busy ? 'One moment…' : on ? 'Turn off' : 'Turn on'}
         </button>
       </div>
