@@ -1,4 +1,5 @@
 import { authenticate, json, type Env } from './_lib';
+import { track } from './_track';
 
 /**
  * Photographs, in and out of R2.
@@ -66,7 +67,7 @@ async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
 }
 
 /** Store one photograph. The client sends raw bytes; the key comes back. */
-export const onRequestPut: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPut: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const caller = await authenticate(request, env);
   if (!caller) return json({ error: 'not paired' }, 401);
   if (!env.MEDIA) return json({ error: 'photo storage is not configured here' }, 503);
@@ -87,6 +88,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env }) => {
     httpMetadata: { contentType: contentTypeFor(ext) },
   });
 
+  track({ env, waitUntil }, 'photo_uploaded', caller);
   return json({ key, hash, bytes: bytes.byteLength });
 };
 

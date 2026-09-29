@@ -83,16 +83,26 @@ roughly 180 KB, a profile photo to 64 KB — and both are readable only by the t
 devices paired to your couple, exactly like every other entry. If you would
 rather a photograph stayed on your phone, do not take it in the app.
 
-There are no accounts, no analytics, and no email addresses.
+There are no accounts and no email addresses, and the app itself runs no
+analytics: no tracking script, no cookie, no client identifier.
 
-There is **one optional third party**, and only if the person deploying it turns
-it on: sign-in with GitHub or Google, as a way back in if you lose your phone.
+There are **two optional third parties**, and only if the person deploying it
+turns them on. The first is sign-in with GitHub or Google, as a way back in if
+you lose your phone.
 It is off unless a client ID and secret are configured, and when it is off the
 app never contacts either company. Even switched on it is not a login — the
 pairing code is still the only way into a couple, and signing in with an account
 nobody connected gets you told so and nothing else. Google is asked for `openid`
 alone and GitHub for no scope at all, so what is stored is an opaque account id
 and never an address, a name or a photograph.
+
+The second is anonymous product counts, sent by the server rather than by your
+phone: which features get used, and which screen a crash happened on. It is a
+count or a short label, hashed with a secret salt so it cannot be traced back to
+an account. It is never an entry, a message, a name, a photograph, a timezone or
+a token, and a test fails if a property that looks like one is added. It is off
+unless a key and a salt are configured, and `/api/health` reports which. See §10
+of `docs/DEPLOY.md`.
 
 Invite links expire after fifteen minutes and work exactly once. A couple is two
 people; a third join is refused.

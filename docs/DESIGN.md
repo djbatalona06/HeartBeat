@@ -801,8 +801,9 @@ it — none of that comes up and persistence is ordinary.
 ### Why there is no Supabase
 
 The plan this grew from called for Supabase auth and realtime for a battle mode.
-This repository's position is no accounts, no email addresses, no analytics and
-no third parties, and it already has a backend. A second one, for a
+This repository's position is no accounts, no email addresses, no analytics in
+the app, and no third parties beyond the two optional, off-by-default ones (account
+recovery, and anonymous server-side product counts), and it already has a backend. A second one, for a
 single-player feature, would contradict the product to save nothing.
 
 ## Reminders

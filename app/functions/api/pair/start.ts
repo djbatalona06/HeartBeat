@@ -7,6 +7,7 @@ import {
   recordAuthEvent,
   type Env,
 } from '../_lib';
+import { track } from '../_track';
 
 /**
  * Open a couple and mint the first device's token.
@@ -15,7 +16,7 @@ import {
  * push and the boss cron and has to be deployed separately, and chat is useless
  * until two devices are paired. Both write the same rows to the same database.
  */
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const now = Date.now();
   const coupleId = crypto.randomUUID();
   const memberId = crypto.randomUUID();
@@ -34,6 +35,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   ]);
 
   await recordAuthEvent(env.DB, request, { kind: 'pair_start', coupleId, memberId }, now);
+  track({ env, waitUntil }, 'pair_started', { memberId, coupleId });
 
   return json({ coupleId, memberId, token, invite, expiresAt: now + INVITE_TTL_MS });
 };

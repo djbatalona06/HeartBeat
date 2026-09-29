@@ -88,8 +88,8 @@ else
   }
 fi
 
-# The app ships no analytics and calls no third party, which is a ground rule
-# rather than an oversight. The dotnet CLI reports usage by default; this keeps
+# The app ships no client-side analytics and calls no third party from the
+# browser, which is a ground rule rather than an oversight. The dotnet CLI reports usage by default; this keeps
 # the toolchain to the same standard as the thing it builds.
 # Guarded because `set -u` would abort here when the hook is run by hand
 # rather than by the session, which is exactly how it gets tested.
