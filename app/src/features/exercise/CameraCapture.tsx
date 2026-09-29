@@ -232,6 +232,7 @@ export function CameraCapture({ memberId, day, facing, photo }: CameraCapturePro
         ref={library}
         id={libraryId}
         className="proof-input"
+        aria-label="Choose a photo from your library"
         type="file"
         accept="image/*"
         onChange={onPicked}

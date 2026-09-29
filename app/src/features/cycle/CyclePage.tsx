@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings, saveSettings } from '../../db/database';
 import { ensureIdentity, putCycle } from '../../db/repository';
@@ -77,7 +77,7 @@ function CycleBody() {
   const today = todayKey(timeZone);
 
   const [identity, setIdentity] = useState<{ memberId: string } | null>(null);
-  const [month, setMonth] = useState<string>(monthOf(today));
+  const [month, setMonth] = useState<string>(() => monthOf(today));
   const [selected, setSelected] = useState<DayKey>(today);
   const [painting, setPainting] = useState(false);
 
@@ -92,7 +92,8 @@ function CycleBody() {
 
   // Every row, not just this month's: the averages the forecast rests on need
   // the whole history, and a month's worth would shorten it to nothing.
-  const all = useLiveQuery(async () => db.cycles.toArray(), []) ?? [];
+  const allRows = useLiveQuery(async () => db.cycles.toArray(), []);
+  const all = useMemo(() => allRows ?? [], [allRows]);
 
   // Whose log this page is showing. Mine if I track; otherwise whoever else has
   // written rows, which after a sync is my partner.
@@ -401,6 +402,8 @@ function ReadOnlyDay({ day, entry }: { day: DayKey; entry?: CycleEntry }) {
 }
 
 function DaySheet({ day, memberId, entry }: { day: DayKey; memberId: string; entry?: CycleEntry }) {
+  const noteLabelId = useId();
+  // react-doctor-disable-next-line no-derived-useState -- edit buffers seeded from the saved entry; the caller remounts this sheet per day with `key`, so a stale copy cannot outlive its day
   const [flow, setFlow] = useState(entry?.flow);
   const [symptoms, setSymptoms] = useState<string[]>(entry?.symptoms ?? []);
   const [moods, setMoods] = useState<string[]>(entry?.moods ?? []);
@@ -409,6 +412,7 @@ function DaySheet({ day, memberId, entry }: { day: DayKey; memberId: string; ent
 
   const toggle = (list: string[], value: string) =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+  const symptomSet = new Set(symptoms);
 
   const save = async (over: Partial<CycleEntry> = {}) => {
     await putCycle(memberId, day, {
@@ -451,8 +455,8 @@ function DaySheet({ day, memberId, entry }: { day: DayKey; memberId: string; ent
               <button
                 key={item}
                 type="button"
-                className={symptoms.includes(item) ? 'chip chip-on' : 'chip'}
-                aria-pressed={symptoms.includes(item)}
+                className={symptomSet.has(item) ? 'chip chip-on' : 'chip'}
+                aria-pressed={symptomSet.has(item)}
                 onClick={() => setSymptoms((s) => toggle(s, item))}
               >
                 {item}
@@ -477,9 +481,10 @@ function DaySheet({ day, memberId, entry }: { day: DayKey; memberId: string; ent
         ))}
       </div>
 
-      <h4 className="cycle-group">Note</h4>
+      <h4 className="cycle-group" id={noteLabelId}>Note</h4>
       <textarea
         className="field cycle-note"
+        aria-labelledby={noteLabelId}
         rows={3}
         value={notes}
         placeholder="Anything worth remembering."

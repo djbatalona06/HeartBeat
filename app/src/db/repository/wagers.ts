@@ -208,6 +208,7 @@ export async function settleWagers(
     const out: WagerSettlement[] = [];
 
     for (const { wager, counts } of measured) {
+      // react-doctor-disable-next-line async-await-in-loop -- each wager is settled against a fresh read inside the transaction, in order
       const fresh = await db.wagers.get(wager.id);
       // Settled by whoever got here first, or gone.
       if (!fresh || fresh.settledAt !== undefined) continue;

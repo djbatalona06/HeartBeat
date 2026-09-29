@@ -132,8 +132,10 @@ export async function openChestFor(
     const pity = paid.chestPity?.[chest.id] ?? 0;
     const opening = openChest(chest, rolls, luck, pity);
 
-    const owned = await db.inventory.where('memberId').equals(memberId).toArray();
-    const myPets = await db.pets.where('memberId').equals(memberId).toArray();
+    const [owned, myPets] = await Promise.all([
+      db.inventory.where('memberId').equals(memberId).toArray(),
+      db.pets.where('memberId').equals(memberId).toArray(),
+    ]);
     // Mutable, and written to inside the loop -- see the note above.
     const heldItems = new Map(owned.map((row) => [row.itemId, row]));
     const heldPets = new Map(myPets.map((pet) => [pet.kindId, pet]));
@@ -175,6 +177,7 @@ export async function openChestFor(
             bond: existing.bond + DUPLICATE_PET_BOND,
             updatedAt: now(),
           };
+          // react-doctor-disable-next-line async-await-in-loop -- the owned sets are updated inside the loop so one chest cannot hand over the same new item twice; order is the point
           await db.pets.put(deeper);
           heldPets.set(itemId, deeper);
           prizes.push({ ...base, duplicate: true, bonded: DUPLICATE_PET_BOND });

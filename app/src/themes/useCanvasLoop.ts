@@ -33,7 +33,9 @@ const EPOCH = performance.now();
 export function useCanvasLoop(loop: CanvasLoop): React.RefObject<HTMLCanvasElement> {
   const ref = useRef<HTMLCanvasElement>(null);
   const saved = useRef(loop);
-  saved.current = loop;
+  useEffect(() => {
+    saved.current = loop;
+  });
 
   useEffect(() => {
     const canvas = ref.current;

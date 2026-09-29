@@ -377,14 +377,17 @@ function Pairing({
   const join = async () => {
     setBusy(true);
     setNote(null);
-    const result = await receivePairingCode(code);
-    if (result.ok) {
-      setCode('');
-      setNote('Paired. You are both looking at the same thing now.');
-    } else {
-      setNote(result.failure.message);
+    try {
+      const result = await receivePairingCode(code);
+      if (result.ok) {
+        setCode('');
+        setNote('Paired. You are both looking at the same thing now.');
+      } else {
+        setNote(result.failure.message);
+      }
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   return (
@@ -592,6 +595,7 @@ function Partner({
       <input
         ref={file}
         className="who-input"
+        aria-label="Choose a profile photo"
         type="file"
         accept="image/*"
         onChange={(e) => {
@@ -680,14 +684,10 @@ const GENDER_CHOICES: ReadonlyArray<{ value: Gender; label: string }> = [
  */
 function GenderBlock({ settings }: { settings: Settings | undefined }) {
   const chosen = settings?.gender;
-  const [note, setNote] = useState('');
-
-  // Seeded once the stored value arrives, and only when the field is empty, so
-  // typing is never overwritten by the live query re-firing underneath it.
-  useEffect(() => {
-    if (settings?.genderNote && !note) setNote(settings.genderNote);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings?.genderNote]);
+  // What has been typed, or null until anything has: until then the field
+  // shows the stored value, so the live query re-firing never overwrites typing.
+  const [typed, setTyped] = useState<string | null>(null);
+  const note = typed ?? settings?.genderNote ?? '';
 
   return (
     <section className="set-block">
@@ -717,7 +717,7 @@ function GenderBlock({ settings }: { settings: Settings | undefined }) {
             maxLength={MAX_GENDER_NOTE}
             placeholder="In your own words, if you like"
             aria-label="How you describe yourself"
-            onChange={(e) => setNote(e.target.value)}
+            onChange={(e) => setTyped(e.target.value)}
             onBlur={() => void setGender('other', note)}
           />
           <p className="section-sub">This one stays on this phone.</p>

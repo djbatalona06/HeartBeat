@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DeadlinePicker } from '../../components/DeadlinePicker';
 import {
   listCompliments,
@@ -47,7 +47,7 @@ export function ComplimentComposer({
 }: ComplimentComposerProps) {
   const [draft, setDraft] = useState('');
   const [candidates, setCandidates] = useState<string[]>([]);
-  const [fromModel, setFromModel] = useState(false);
+  const fromModel = useRef(false);
   const [when, setWhen] = useState<number | null>(null);
   const [scheduling, setScheduling] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -104,7 +104,7 @@ export function ComplimentComposer({
     setDraft(line);
     // Recorded so the count of how often the model is used is honest. Any edit
     // clears it: a line someone rewrote is theirs, not the model's.
-    setFromModel(true);
+    fromModel.current = true;
     setCandidates([]);
   }
 
@@ -114,11 +114,11 @@ export function ComplimentComposer({
     setNote(null);
     try {
       await sendCompliment(
-        { body: draft.trim(), deliverAt: when ?? undefined, generated: fromModel, day: today },
+        { body: draft.trim(), deliverAt: when ?? undefined, generated: fromModel.current, day: today },
         token,
       );
       setDraft('');
-      setFromModel(false);
+      fromModel.current = false;
       setWhen(null);
       setScheduling(false);
       setNote(when ? 'Saved — it will land at the time you picked.' : 'Sent.');
@@ -159,7 +159,7 @@ export function ComplimentComposer({
         onChange={(e) => {
           setDraft(e.target.value);
           // Edited into their own words, so it stops counting as generated.
-          setFromModel(false);
+          fromModel.current = false;
         }}
       />
       <p className="sweet-count" aria-live="polite">

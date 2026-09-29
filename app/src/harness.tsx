@@ -33,10 +33,12 @@ function Harness() {
 
   useEffect(() => {
     let live = true;
-    import('./features/rpg/overworld/game').then(({ startOverworld }) => {
-      if (!live || !host.current) return;
-      handle.current = startOverworld(host.current, ZONES[0], { onEncounter: setMet });
-    });
+    import('./features/rpg/overworld/game')
+      .then(({ startOverworld }) => {
+        if (!live || !host.current) return;
+        handle.current = startOverworld(host.current, ZONES[0], { onEncounter: setMet });
+      })
+      .catch((error) => console.error('overworld failed to load', error));
     return () => { live = false; handle.current?.destroy(); handle.current = null; };
     // Re-mounts on a theme change: the palette is baked once at scene boot
     // (see bake.ts), so seeing a switched theme means starting a fresh scene.

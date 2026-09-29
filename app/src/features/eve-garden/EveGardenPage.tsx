@@ -266,7 +266,7 @@ export function EveGardenPage() {
    */
   const resonance = Math.min(1, Math.max(0, 1 - (momentum?.daysSinceLog ?? 0) / 7));
 
-  const garden = (pet?.plots ?? {}) as Garden;
+  const garden = useMemo(() => (pet?.plots ?? {}) as Garden, [pet?.plots]);
   /** Luck, derived the one way the whole app derives it — including refinement,
    *  because odds printed without it are odds nobody actually has. */
   const luck = avatar
@@ -385,7 +385,9 @@ export function EveGardenPage() {
   // changes would tear the garden down mid-walk. The scene reads it through a
   // ref that the effect below keeps current.
   const engageRef = useRef(onEngage);
-  engageRef.current = onEngage;
+  useEffect(() => {
+    engageRef.current = onEngage;
+  });
 
   const sprite = monster?.spriteKey;
 
@@ -459,9 +461,10 @@ export function EveGardenPage() {
   /* ---- a round ---- */
 
   /** How a hit should look: strong when today's logging is on its weakness, as C# priced it. */
-  function edgeOf(foe: MonsterDto | null) {
-    return chargeOnWeakness(charges, foe?.weakness) ? 'strong' as const : 'plain' as const;
-  }
+  const edgeOf = useCallback(
+    (foe: MonsterDto | null) => (chargeOnWeakness(charges, foe?.weakness) ? 'strong' as const : 'plain' as const),
+    [charges],
+  );
 
   const finish = useCallback(async (ended: BattleDto, foe: MonsterDto) => {
     setBattle(ended);
@@ -519,7 +522,7 @@ export function EveGardenPage() {
         : '',
     });
     void after;
-  }, [coupleId, petXp, progress, companion]);
+  }, [coupleId, petXp, companion]);
 
   const playRound = useCallback(async (opening: BattleDto, actionId: string) => {
     const game = client.current;
@@ -584,7 +587,7 @@ export function EveGardenPage() {
     } finally {
       setBusy('idle');
     }
-  }, [monster, progress, finish, kit, charges, moveNames]);
+  }, [monster, progress, finish, kit, charges, moveNames, edgeOf]);
 
   /** One tap of the move bar. A move is a move: nothing is logged by it. */
   const onAct = useCallback(async (action: ActionDto) => {
@@ -603,14 +606,17 @@ export function EveGardenPage() {
    * the client only exists after the gate's pick.
    */
   const paid = useRef(new Set<string>());
+  // react-doctor-disable-next-line no-set-state-after-await-in-effect -- both setters below are gated on `live`, which the cleanup clears; the payment itself must still finish, so the work is not cancelled
   useEffect(() => {
     const game = client.current;
-    if (!game || !coupleId) return;
+    if (!game || !coupleId) return undefined;
+    const awarded = new Set(pet?.awardedXpIds ?? []);
     const owed = payingActivities(charges)
       .map((activity) => ({ activity, awardId: gardenAwardId(day, activity) }))
-      .filter(({ awardId }) => !paid.current.has(awardId) && !(pet?.awardedXpIds ?? []).includes(awardId));
-    if (owed.length === 0) return;
+      .filter(({ awardId }) => !paid.current.has(awardId) && !awarded.has(awardId));
+    if (owed.length === 0) return undefined;
 
+    let live = true;
     (async () => {
       let xp = petXp;
       for (const { activity, awardId } of owed) {
@@ -619,10 +625,12 @@ export function EveGardenPage() {
         if (award.xp > 0) {
           await awardPetXp(coupleId, awardId, award.xp);
           xp += award.xp;
+          if (!live) continue;
           setPulse((n) => n + 1);
         }
       }
-    })().catch((error) => { if (!isClosed(error)) setNote('A charge did not pay out. It will try again.'); });
+    })().catch((error) => { if (live && !isClosed(error)) setNote('A charge did not pay out. It will try again.'); });
+    return () => { live = false; };
   // `petXp` and `pet` are read, not watched: an award moving them must not
   // re-run this, and the `paid` set is what stops a second payment anyway.
   // eslint-disable-next-line react-hooks/exhaustive-deps

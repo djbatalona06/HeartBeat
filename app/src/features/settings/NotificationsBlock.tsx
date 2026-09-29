@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { loadSettings, saveSettings } from '../../db/database';
 import { clearNudges, health, subscribePush, unsubscribePush } from '../../pwa/api';
 import { PushError, enablePush, notificationPermission } from '../../pwa/push';
@@ -53,8 +53,8 @@ const KIND_COPY: Record<NudgeKind, { name: string; what: string }> = {
 export function NotificationsBlock() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [backend, setBackend] = useState<Backend>('checking');
-  const [vapid, setVapid] = useState<string | null>(null);
-  const [permission, setPermission] = useState(notificationPermission());
+  const vapid = useRef<string | null>(null);
+  const [permission, setPermission] = useState(notificationPermission);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
@@ -65,7 +65,7 @@ export function NotificationsBlock() {
       if (!live) return;
       if (!h) return setBackend('down');
       if (!h.vapidPublicKey) return setBackend('no-push');
-      setVapid(h.vapidPublicKey);
+      vapid.current = h.vapidPublicKey;
       setBackend('ready');
       void saveSettings({ vapidPublicKey: h.vapidPublicKey });
     });
@@ -102,12 +102,12 @@ export function NotificationsBlock() {
     : null;
 
   async function turnOn() {
-    if (!token || !memberId || !vapid) return;
+    if (!token || !memberId || !vapid.current) return;
     setBusy(true);
     setNote(null);
     try {
       // The tap is here, and nowhere else.
-      const sub = await enablePush(vapid);
+      const sub = await enablePush(vapid.current);
       await subscribePush(token, sub);
       await saveSettings({ notifyOn: true, notifyHour: hour, pushEndpoint: sub.endpoint });
       const count = await schedule();

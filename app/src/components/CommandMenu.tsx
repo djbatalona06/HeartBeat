@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { loadSettings } from '../db/database';
 import { askAbout } from '../pwa/api';
+import { useFocusTrap } from '../ui/useFocusTrap';
+import { rank, type Command } from './commandRank';
 import { ALIASES, ALL_DESTINATIONS } from '../nav';
 
 /**
@@ -23,13 +25,6 @@ import { ALIASES, ALL_DESTINATIONS } from '../nav';
  * where a persistent control already lives on every screen.
  */
 
-interface Command {
-  id: string;
-  label: string;
-  hint: string;
-  to: string;
-}
-
 /**
  * Every place the app can go, plus the names that are not places.
  *
@@ -46,33 +41,6 @@ const COMMANDS: Command[] = [...ALL_DESTINATIONS, ...ALIASES].map((tab) => ({
   to: tab.to,
 }));
 
-/** Sub-sequence matching, so "wk" finds Work and "st" finds Settings. */
-export function fuzzyScore(query: string, target: string): number | null {
-  if (!query) return 0;
-  const q = query.toLowerCase();
-  const t = target.toLowerCase();
-  let score = 0;
-  let at = 0;
-  for (const ch of q) {
-    const found = t.indexOf(ch, at);
-    if (found === -1) return null;
-    // A run of adjacent characters beats the same letters scattered about.
-    score += found === at ? 2 : 1;
-    at = found + 1;
-  }
-  // A shorter target matching the same query is the better match.
-  return score - t.length * 0.01;
-}
-
-export function rank(query: string, commands: Command[]): Command[] {
-  if (!query.trim()) return commands;
-  return commands
-    .map((c) => ({ c, s: Math.max(fuzzyScore(query, c.label) ?? -Infinity, (fuzzyScore(query, c.hint) ?? -Infinity) - 1) }))
-    .filter((x) => x.s > -Infinity)
-    .sort((a, b) => b.s - a.s)
-    .map((x) => x.c);
-}
-
 export function CommandMenu() {
   // `loadSettings` as the whole callback, never called from inside a larger
   // one: doing that re-fires the query up to 20x per foreground cycle, which
@@ -83,6 +51,7 @@ export function CommandMenu() {
   const [answer, setAnswer] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   const matches = useMemo(() => rank(query, COMMANDS), [query]);
@@ -108,6 +77,8 @@ export function CommandMenu() {
   useEffect(() => {
     if (open) input.current?.focus();
   }, [open]);
+
+  useFocusTrap(dialogRef, open, { focusFirst: false });
 
   function go(to: string) {
     close();
@@ -141,7 +112,8 @@ export function CommandMenu() {
   }
 
   return (
-    <div className="cmd-scrim" role="dialog" aria-modal="true" aria-label="Search and ask" onClick={close}>
+    // react-doctor-disable-next-line prefer-html-dialog -- focus is trapped by useFocusTrap; a native <dialog> would restyle the scrim
+    <div className="cmd-scrim" ref={dialogRef} role="dialog" aria-modal="true" aria-label="Search and ask" onClick={close}>
       <div className="cmd" onClick={(e) => e.stopPropagation()}>
         <input
           ref={input}

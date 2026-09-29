@@ -36,6 +36,7 @@ export async function resetToSolo(partnerId?: string): Promise<void> {
     await db.transaction('rw', plans.map((plan) => plan.table), async () => {
       for (const plan of plans) {
         const table = db.table<RekeyRow, unknown>(plan.table);
+        // react-doctor-disable-next-line async-await-in-loop -- table by table inside one Dexie transaction; nothing here waits on a network
         const keys = partnerKeys(plan, await table.toArray(), partnerId);
         if (keys.length > 0) await table.bulkDelete(keys);
       }

@@ -72,6 +72,7 @@ export function Boss({ avatar, pets, owned, workerUrl, token, onSpendMp, onSpend
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
+    if (!response.ok) return null;
     const payload = (await response.json().catch(() => ({}))) as { boss?: BossPayload };
     return payload.boss ?? null;
   }, [workerUrl, token]);

@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+import { useFocusTrap } from '../../ui/useFocusTrap';
 import { ISLAND_COUNT, isIslandComplete, isIslandUnlocked, standingIsland, type WorldProgress } from '../../domain/rpg/world';
 import { bossOf, faceOf } from '../../domain/rpg/islands';
 import type { IslandDto } from './engine/types';
@@ -19,8 +21,11 @@ export interface WorldMapProps {
 }
 
 export function WorldMap({ islands, progress, dark, onTravel, onClose }: WorldMapProps) {
+  const backdrop = useRef<HTMLDivElement>(null);
+  useFocusTrap(backdrop, true, { onEscape: onClose });
   return (
-    <div className="garden-map-backdrop" role="dialog" aria-modal="true" aria-label="The world">
+    // react-doctor-disable-next-line prefer-html-dialog -- focus is trapped by useFocusTrap; a native <dialog> would restyle the full-screen backdrop
+    <div className="garden-map-backdrop" ref={backdrop} role="dialog" aria-modal="true" aria-label="The world">
       <div className="garden-map">
         <header className="garden-map-head">
           <h2>Eve&rsquo;s Garden</h2>

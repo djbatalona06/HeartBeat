@@ -63,8 +63,7 @@ function authHeaders(token: string): HeadersInit {
  * changes, and the row still counts itself as written.
  */
 async function collectPending(memberId: string, since: number): Promise<WireHolding[]> {
-  const out: WireHolding[] = [];
-  for (const kind of HOLDING_KINDS) {
+  const perKind = await Promise.all(HOLDING_KINDS.map(async (kind) => {
     const rows = kind === 'quest'
       ? await db.quests.toArray()
       : kind === 'world'
@@ -81,9 +80,9 @@ async function collectPending(memberId: string, since: number): Promise<WireHold
           ? await db.avatars.where('memberId').equals(memberId).toArray()
           : await storeFor(kind).where('memberId').equals(memberId).toArray();
     const mine = mineToPush(kind, rows as HoldingRow[], memberId);
-    out.push(...pendingSince(kind, mine, since));
-  }
-  return out;
+    return pendingSince(kind, mine, since);
+  }));
+  return perKind.flat();
 }
 
 function chunk<T>(rows: readonly T[], size: number): T[][] {
@@ -151,6 +150,7 @@ export async function applyPulled(rows: readonly PulledHolding[]): Promise<numbe
   for (const row of rows) {
     const store = storeFor(row.kind);
     if (!store) continue;
+    // react-doctor-disable-next-line async-await-in-loop -- rows and chunks are applied in order so the last writer within a batch wins, and a push burst is bounded
     const local = (await store.get(row.id as never)) as HoldingRow | undefined;
     if (!shouldApply(row, local)) continue;
     await store.put(row.payload as never);
@@ -183,6 +183,7 @@ export async function syncHoldings(): Promise<HoldingsSyncResult | null> {
 
   let refused = 0;
   for (const part of chunk(pending, PUSH_CHUNK)) {
+    // react-doctor-disable-next-line async-await-in-loop -- rows and chunks are applied in order so the last writer within a batch wins, and a push burst is bounded
     refused += (await push(token, part)).refused.length;
   }
 

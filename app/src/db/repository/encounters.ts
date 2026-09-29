@@ -73,8 +73,10 @@ export async function partyFor(
   coupleId: string,
   day: DayKey,
 ): Promise<PartyRead> {
-  const avatar = await getOrCreateAvatar(memberId, coupleId);
-  const owned = await db.inventory.where('memberId').equals(memberId).toArray();
+  const [avatar, owned] = await Promise.all([
+    getOrCreateAvatar(memberId, coupleId),
+    db.inventory.where('memberId').equals(memberId).toArray(),
+  ]);
   const sheet = sheetFor(
     avatar,
     gearBonusWithRefinement(avatar.gear, levelOf(avatar), refineByItemId(owned)),

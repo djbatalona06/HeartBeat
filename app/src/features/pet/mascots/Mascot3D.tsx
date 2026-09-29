@@ -28,7 +28,6 @@ export function withDepth(themeId: string, Flat: ComponentType<Props>): Componen
     const canvas = useRef<HTMLCanvasElement>(null);
     const handle = useRef<MascotHandle | null>(null);
     const moodNow = useRef(mood);
-    moodNow.current = mood;
     const [ready, setReady] = useState(false);
 
     useEffect(() => {
@@ -40,8 +39,9 @@ export function withDepth(themeId: string, Flat: ComponentType<Props>): Componen
             if (!gone) setReady(ok);
           });
         })
-        // Offline with the chunk never cached: the drawing is the pet.
-        .catch(() => undefined);
+        .catch(() => {
+          // Offline with the chunk never cached: the drawing is the pet.
+        });
       return () => {
         gone = true;
         handle.current?.dispose();
@@ -50,6 +50,7 @@ export function withDepth(themeId: string, Flat: ComponentType<Props>): Componen
     }, []);
 
     useEffect(() => {
+      moodNow.current = mood;
       handle.current?.setMood(mood);
     }, [mood]);
 

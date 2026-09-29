@@ -70,13 +70,14 @@ export function ActionBar({
   const unlocked = new Set(actions.map((a) => a.id));
   const locked = allActions.filter((a) => !unlocked.has(a.id)).slice(0, 2);
   const onWeakness = chargeOnWeakness(charges, monster?.weakness);
+  const lit = new Set(charges);
 
   return (
     <div className="garden-actions">
       <ul className="garden-action-list">
         {actions.map((action) => {
           const fed = FEEDS[action.style];
-          const charged = fed !== undefined && charges.includes(fed);
+          const charged = fed !== undefined && lit.has(fed);
           const lift = moveLift({
             charges, stats, style: action.style,
             weakness: monster?.weakness, strength: monster?.strength,

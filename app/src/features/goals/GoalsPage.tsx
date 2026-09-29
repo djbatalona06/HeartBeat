@@ -149,6 +149,7 @@ function AddGoal({ onAdd }: {
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Something small you meant to keep doing"
         aria-label="Goal name"
+        // react-doctor-disable-next-line no-autofocus -- opened by the person's own tap, so moving focus into the form is what they asked for
         autoFocus
       />
 

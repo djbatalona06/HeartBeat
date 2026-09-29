@@ -107,7 +107,8 @@ export function chargesFor({ rows }: ChargeInput): Charge[] {
 
 /** The charges that come from one log, and so pay XP. Bond and Balance are earned. */
 export function payingActivities(charges: readonly Charge[]): Activity[] {
-  return LOGGABLE.filter(({ charge }) => charges.includes(charge)).map(({ activity }) => activity);
+  const lit = new Set(charges);
+  return LOGGABLE.filter(({ charge }) => lit.has(charge)).map(({ activity }) => activity);
 }
 
 /** True when a charge hits what the monster is weak to. The hint the move bar shows. */

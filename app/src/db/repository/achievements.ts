@@ -159,6 +159,7 @@ export async function claimAchievements(coupleId: string): Promise<ClaimResult> 
     // the same award, which is the shape `awardBossVictory` already uses and
     // the reason `pet_xp_awards` is keyed the way it is. It also makes a
     // re-claim on this phone a no-op, since `awardPetXp` knows the id already.
+    // react-doctor-disable-next-line async-await-in-loop -- each award is a read-modify-write of the shared pet row inside one transaction; parallel awards would lose updates
     for (const def of fresh) await awardPetXp(coupleId, `ach-${def.code}`, payoutFor([def]));
 
     const xp = payoutFor(fresh);

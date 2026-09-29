@@ -246,6 +246,7 @@ function Bar({ label, value, max, tint }: {
   return (
     <div className="bar-row">
       <span className="bar-label">{label}</span>
+      {/* react-doctor-disable-next-line prefer-tag-over-role -- a <meter> cannot host the themed fill element, so the div carries the same role */}
       <div className="bar" role="meter" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max} aria-label={label}>
         <div className={`bar-fill bar-fill-${tint}`} style={{ width: `${pct}%` }} />
       </div>
@@ -420,6 +421,7 @@ function AddTask({ onAdd }: {
         onChange={(e) => setTitle(e.target.value)}
         placeholder="What is it?"
         aria-label="Task name"
+        // react-doctor-disable-next-line no-autofocus -- opened by the person's own tap, so moving focus into the form is what they asked for
         autoFocus
       />
 

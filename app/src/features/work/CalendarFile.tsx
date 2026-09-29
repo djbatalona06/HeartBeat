@@ -187,6 +187,7 @@ export function CalendarFile({ memberId, timeZone }: { memberId: string | null; 
               </p>
               <ul className="cal-problems">
                 {shown.map((problem, i) => (
+                  // react-doctor-disable-next-line no-array-index-as-key -- one file can report several problems on a line, and the list is fixed once the preview is built
                   <li key={`${problem.line}-${i}`} className="cal-problem">
                     <span className="cal-problem-line">Line {problem.line}</span>
                     <span className="cal-problem-why">{problem.reason}</span>

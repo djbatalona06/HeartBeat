@@ -269,6 +269,7 @@ function SessionHead({ deck, index, total, onQuit }: {
       </div>
       <div
         className="bar"
+        // react-doctor-disable-next-line prefer-tag-over-role -- a <meter> cannot host the themed fill element, so the div carries the same role
         role="meter"
         aria-valuenow={index}
         aria-valuemin={0}

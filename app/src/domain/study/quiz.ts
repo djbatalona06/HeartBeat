@@ -107,6 +107,7 @@ export function choicesFor(card: Card, deck: Deck, count: number = CHOICES): str
   const unique = [...new Set(pool)];
   const wanted = Math.max(0, count - 1);
   const picked: string[] = [];
+  const taken = new Set<string>();
   const seed = hash(card.id);
 
   // Walk the pool from a per-card offset with a stride, taking the first
@@ -114,7 +115,10 @@ export function choicesFor(card: Card, deck: Deck, count: number = CHOICES): str
   // terminates whatever the pool size is.
   for (let step = 0; step < unique.length && picked.length < wanted; step += 1) {
     const candidate = unique[(seed + step * 7) % unique.length];
-    if (!picked.includes(candidate)) picked.push(candidate);
+    if (!taken.has(candidate)) {
+      taken.add(candidate);
+      picked.push(candidate);
+    }
   }
 
   const options = [...picked, card.answer];

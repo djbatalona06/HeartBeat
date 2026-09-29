@@ -29,6 +29,7 @@ export interface CrashReport {
 
 export function rememberReportToken(token: string): void {
   try {
+    // react-doctor-disable-next-line auth-token-in-web-storage -- a per-device bearer token in an app with no cookies or server sessions by design; the crash reporter must read it before IndexedDB is open
     localStorage.setItem(TOKEN_MIRROR_KEY, token);
   } catch {
     // Private mode or blocked site data. Crashes then go unreported, which is

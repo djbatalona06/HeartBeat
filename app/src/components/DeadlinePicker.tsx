@@ -48,11 +48,23 @@ export function DeadlinePicker({ timeZone, value, onChange, now = Date.now() }: 
   const cells = useMemo(() => monthGrid(month), [month]);
   const slots = useMemo(() => slotsFor(day, now, timeZone), [day, now, timeZone]);
 
-  const monthLabel = new Intl.DateTimeFormat(undefined, {
-    timeZone,
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(`${month}T12:00:00Z`));
+  const monthFormat = useMemo(
+    () => new Intl.DateTimeFormat(undefined, { timeZone, month: 'long', year: 'numeric' }),
+    [timeZone],
+  );
+  const chosenFormat = useMemo(
+    () =>
+      new Intl.DateTimeFormat(undefined, {
+        timeZone,
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        hour: 'numeric',
+        minute: '2-digit',
+      }),
+    [timeZone],
+  );
+  const monthLabel = monthFormat.format(new Date(`${month}T12:00:00Z`));
 
   function pickPreset(at: number | null) {
     if (at === null) return;
@@ -165,14 +177,7 @@ export function DeadlinePicker({ timeZone, value, onChange, now = Date.now() }: 
 
       {value ? (
         <p className="deadline-chosen">
-          {new Intl.DateTimeFormat(undefined, {
-            timeZone,
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
-            hour: 'numeric',
-            minute: '2-digit',
-          }).format(new Date(value))}
+          {chosenFormat.format(new Date(value))}
           <button type="button" className="deadline-link" onClick={() => onChange(null)}>
             Clear
           </button>
