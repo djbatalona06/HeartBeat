@@ -49,7 +49,7 @@ describe('resetToSolo', () => {
   it('clears the pairing state, including a removed phone’s unlinkedAt', async () => {
     await seedCouple();
     await saveSettings({ pendingInvite: 'ABC123', pendingInviteExpiresAt: 9, namingGateSeen: true });
-    await markUnlinked();
+    await markUnlinked('secret');
     await resetToSolo(THEM);
     const settings = await loadSettings();
     expect(settings.pendingInvite).toBeUndefined();
@@ -65,9 +65,17 @@ describe('resetToSolo', () => {
 });
 
 describe('markUnlinked', () => {
+  it('ignores a refusal of a token this phone no longer holds', async () => {
+    await seedCouple();
+    await resetToSolo(THEM);
+    // A poll that was in flight when the person left, coming back refused.
+    await markUnlinked('secret');
+    expect((await loadSettings()).unlinkedAt).toBeUndefined();
+  });
+
   it('keeps all data and only stops claiming to be paired', async () => {
     await seedCouple();
-    await markUnlinked();
+    await markUnlinked('secret');
     const settings = await loadSettings();
     expect(settings.unlinkedAt).toBeGreaterThan(0);
     expect(settings.workerSecret).toBe('secret');

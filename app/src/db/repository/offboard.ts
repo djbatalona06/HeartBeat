@@ -64,7 +64,11 @@ export async function resetToSolo(partnerId?: string): Promise<void> {
  * Nothing is deleted and nothing is sent: the phone keeps its data and simply
  * stops claiming to be paired, until the person chooses what to do next.
  */
-export async function markUnlinked(): Promise<void> {
-  const { unlinkedAt } = await loadSettings();
-  if (!unlinkedAt) await saveSettings({ unlinkedAt: now() });
+export async function markUnlinked(refusedToken: string): Promise<void> {
+  const { unlinkedAt, workerSecret } = await loadSettings();
+  // Only if the token the server refused is still this phone's. A poll that was
+  // in flight when the person chose to leave comes back refused too, after the
+  // reset has already made this a fresh phone of one — and stamping "your link
+  // was ended" onto that would tell someone who just left that they were removed.
+  if (workerSecret === refusedToken && !unlinkedAt) await saveSettings({ unlinkedAt: now() });
 }

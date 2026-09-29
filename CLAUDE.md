@@ -304,6 +304,19 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   `AMULET_UNLOCK_LEVEL` in `gear.ts` is a slot gate, separate from the per-item
   `canEquip`. It is enforced on the Bag's grid only: `equipItem` does not check
   it and an amulet already on is never stripped.
+- **Leaving partitions before it re-keys, and `isPaired` includes `unlinkedAt`.**
+  `resetToSolo` (`db/repository/offboard.ts`) drops the partner's rows via
+  `domain/identity/offboard.ts` *before* `rekeyIdentity` runs: the re-key carries
+  every row wearing the old couple id to the new one, so a partner's `members`
+  row would otherwise ride into the next couple and the phone would wake up
+  "linked" to someone who left. Only the first member field of a table names its
+  owner, so a Good Vibe *to* you from them is kept. A phone whose token the
+  server refuses (401) gets `Settings.unlinkedAt`; `isPaired` then reads false
+  while all its data stays. `partnerPollMs` never returns null while paired —
+  leaving is only ever learned by asking. Server side, `releaseMember`
+  (`functions/api/_offboard.ts`) is the one place a member is turned off, and
+  it clears push, nudges and OAuth/study links, because a revoked row that keeps
+  those still acts for the person who left.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)

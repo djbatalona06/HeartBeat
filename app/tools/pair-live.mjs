@@ -292,6 +292,93 @@ await scenario('a phone waiting for its partner is not offered a way to split', 
   }
 });
 
+/** Two phones linked, both past the naming screen, both left on Settings. */
+async function linked(open) {
+  const a = await open('A');
+  const b = await open('B');
+  const code = await startPairing(a);
+  await joinWith(b, code);
+  for (const page of [b, a]) {
+    await namingGate(page).waitFor({ timeout: DISCOVERY_MS });
+    await page.getByRole('button', { name: 'Skip for now' }).click();
+    await namingGate(page).waitFor({ state: 'detached', timeout: 10000 });
+  }
+  return { a, b };
+}
+
+/** What coming back to the app does: ask again at once, rather than wait for the next tick. */
+const comeToForeground = (page) =>
+  page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+
+async function manage(page, choice, confirm) {
+  await page.getByRole('button', { name: /Manage pairing/ }).click({ timeout: 10000 });
+  await page.getByRole('button', { name: choice }).click({ timeout: 10000 });
+  await page.getByRole('button', { name: confirm, exact: true }).click({ timeout: 10000 });
+}
+
+await scenario('leaving lets go of the partner, and a new pairing starts clean', async (open) => {
+  const { a } = await linked(open);
+  await manage(a, /^Leave and start over/, 'Leave');
+  await a.getByRole('button', { name: /^Start a pairing/ }).waitFor({ timeout: 10000 }).catch(() => {
+    throw new Error('A left but is not back to "Start a pairing"');
+  });
+
+  const c = await open('C');
+  const code = await startPairing(a);
+  // A row left over from the couple A just left would pass for a partner and
+  // raise the naming screen before anybody has joined. Give it time to.
+  await a.waitForTimeout(3000);
+  if (await namingGate(a).isVisible()) {
+    throw new Error('A is "paired" with someone before anyone has joined: the ex-partner rode into the new couple');
+  }
+  await joinWith(c, code);
+  await namingGate(c).waitFor({ timeout: 10000 });
+  await namingGate(a).waitFor({ timeout: DISCOVERY_MS }).catch(() => {
+    throw new Error('A never found out the new person joined');
+  });
+});
+
+await scenario('a removed phone is told, and keeps its data', async (open) => {
+  const { a, b } = await linked(open);
+  await manage(a, /^Remove /, /^Remove /);
+  // A's phone says so once the server has agreed. Only then is there anything
+  // for B to be told when it comes back to the app.
+  await a.getByText(/left\. Share a code/).waitFor({ timeout: 10000 });
+  await comeToForeground(b);
+  await b.getByText('This link was ended.').waitFor({ timeout: DISCOVERY_MS }).catch(() => {
+    throw new Error(`B was removed but never learned of it (waited ${DISCOVERY_MS / 1000}s after coming back)`);
+  });
+  await b.goto(`${base}/#/`, { waitUntil: 'load' });
+  await b.getByRole('heading', { name: 'This link was ended' }).waitFor({ timeout: 10000 }).catch(() => {
+    throw new Error('B was removed but the rest of the app still treats it as paired');
+  });
+  await b.getByRole('link', { name: 'Start over' }).click();
+  await b.getByRole('button', { name: 'Keep my data and start over' }).click({ timeout: 10000 });
+  await b.getByRole('button', { name: /^Start a pairing/ }).waitFor({ timeout: 10000 });
+});
+
+await scenario('a freed seat can be refilled with a new code', async (open) => {
+  const { a } = await linked(open);
+  await manage(a, /^Remove /, /^Remove /);
+  await a.getByText(/left\. Share a code/).waitFor({ timeout: 10000 }).catch(() => {
+    throw new Error('A removed its partner but never said the seat is free');
+  });
+  await a.getByRole('button', { name: 'Share a new code' }).click();
+  const code = (await a.locator('.invite-code').textContent({ timeout: 10000 }))?.trim();
+  if (!code) throw new Error('A asked for a new code and none appeared');
+
+  const c = await open('C');
+  await joinWith(c, code);
+  await namingGate(c).waitFor({ timeout: 10000 }).catch(() => {
+    throw new Error('C could not join the freed seat');
+  });
+  // A has already been through the naming screen once, so it does not come
+  // back; the Settings block is where A learns somebody new is here.
+  await a.getByText(/You’re linked/).first().waitFor({ timeout: DISCOVERY_MS }).catch(() => {
+    throw new Error('A never found out the new person joined');
+  });
+});
+
 // ---- done -------------------------------------------------------------------
 
 await browser.close();

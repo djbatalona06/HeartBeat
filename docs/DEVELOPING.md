@@ -55,7 +55,7 @@ checks, one automatic and one by hand.
 Functions under `wrangler pages dev` against a local D1 migrated from
 `worker/migrations/`, and drives two browser contexts — two phones, with
 nothing shared but the server. No Cloudflare account needed; CI runs it on
-every pull request. It checks four things, and fails with a screenshot of each
+every pull request. It checks seven things, and fails with a screenshot of each
 phone in `.shots/pair-live/`:
 
 1. One phone starts, the other types the code, and **both** find out — the one
@@ -64,11 +64,15 @@ phone in `.shots/pair-live/`:
 3. Both tapped Start first, and they can still link.
 4. A phone waiting for its partner is not offered "Start a new pairing
    instead", which would split the couple under whoever is typing the code.
+5. Leaving lets go of the partner, and a new pairing starts clean — no
+   ex-partner row rides into the next couple and makes the phone look paired.
+6. A phone that was removed is told, keeps its data, and can start over.
+7. A seat freed by leaving or removal can be refilled with a new code.
 
 **Two real phones:** every pull request also gets a preview URL (see the job
 summary of the **Preview** workflow, and "Preview deploys" in
 [`DEPLOY.md`](DEPLOY.md)) on its own database. Open it on both phones and walk
-the same four checks. The phone that started should change by itself within a
+the same seven checks. The phone that started should change by itself within a
 few seconds of the other joining; a name should arrive within half a minute.
 
 ## The gift

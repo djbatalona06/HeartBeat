@@ -48,7 +48,7 @@ export function useNamingGate(): NamingGateInfo {
         .catch((e) => {
           // The server refusing this phone's token means the other one ended the
           // link. Offline is the normal case and is not that: the next tick asks.
-          if (isUnlinked(e)) void markUnlinked();
+          if (isUnlinked(e)) void markUnlinked(token);
         });
     };
     ask();
