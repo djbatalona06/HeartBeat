@@ -92,7 +92,7 @@ jobs:
 
       - name: Upload visual frames
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: visual-frames
           path: .shots/visual
@@ -108,7 +108,7 @@ jobs:
 
       - name: Upload pairing screenshots
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pair-live-shots
           path: .shots/pair-live
