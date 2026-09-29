@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
-import { saveMembersFromServer } from '../../db/repository';
-import { fetchProfiles } from '../../pwa/api';
+import { markUnlinked, saveMembersFromServer } from '../../db/repository';
+import { fetchProfiles, isUnlinked } from '../../pwa/api';
 import { isPaired } from '../../domain/identity/rekey';
 import { partnerOf, partnerPollMs, showNamingGate } from './namingGate';
 
@@ -45,7 +45,11 @@ export function useNamingGate(): NamingGateInfo {
       if (document.visibilityState !== 'visible') return;
       fetchProfiles(token)
         .then((rows) => { if (live) void saveMembersFromServer(rows); })
-        .catch(() => { /* offline is the normal case; the next tick asks again */ });
+        .catch((e) => {
+          // The server refusing this phone's token means the other one ended the
+          // link. Offline is the normal case and is not that: the next tick asks.
+          if (isUnlinked(e)) void markUnlinked(token);
+        });
     };
     ask();
     const timer = setInterval(ask, pollMs);

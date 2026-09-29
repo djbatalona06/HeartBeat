@@ -7,6 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  inviteShareText,
   INVITE_LENGTH,
   INVITE_TTL_MS,
   formatCountdown,
@@ -123,5 +124,14 @@ describe('pairFailure', () => {
 
   it('survives being handed something that is not an error at all', () => {
     expect(pairFailure(null).title).toBe('The server did not answer');
+  });
+});
+
+describe('inviteShareText', () => {
+  it('carries the code, where to type it, and that it is single-use', () => {
+    const text = inviteShareText('K3M9PQ', 'https://example.test');
+    expect(text).toContain('K3M9PQ');
+    expect(text).toContain('https://example.test');
+    expect(text).toMatch(/once/);
   });
 });

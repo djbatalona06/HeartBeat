@@ -26,6 +26,7 @@ export * from './identity';
 export * from './inventory';
 export * from './lifeEventSettle';
 export * from './members';
+export * from './offboard';
 export * from './petXp';
 export * from './photos';
 export * from './quests';

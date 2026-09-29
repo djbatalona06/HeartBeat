@@ -70,6 +70,8 @@ export interface Pairing {
   ready: boolean;
   /** Both halves of the couple exist and this phone holds a token. */
   paired: boolean;
+  /** The other phone ended the link; the data is still here. */
+  unlinked: boolean;
 }
 
 export function usePairing(): Pairing {
@@ -92,5 +94,6 @@ export function usePairing(): Pairing {
     ready: settings !== undefined,
     // One definition, shared with every other screen that asks — see isPaired.
     paired: isPaired(settings),
+    unlinked: Boolean(settings?.unlinkedAt),
   };
 }

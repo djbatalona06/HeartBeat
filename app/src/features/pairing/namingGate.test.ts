@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Member } from '../../domain/types';
 import {
-  PARTNER_NAME_POLL_MS, PARTNER_POLL_MS, partnerLinkMessage, partnerOf, partnerPollMs, showNamingGate,
+  PARTNER_NAME_POLL_MS, PARTNER_POLL_MS, PARTNER_WATCH_POLL_MS, formerPartnerOf, partnerLinkMessage,
+  partnerOf, partnerPollMs, showNamingGate,
 } from './namingGate';
 
 const base = { paired: true, hasPartner: true, myName: undefined, seen: false };
@@ -70,8 +71,25 @@ describe('partnerPollMs', () => {
     expect(PARTNER_NAME_POLL_MS).toBeGreaterThan(PARTNER_POLL_MS);
   });
 
-  it('stops for good once the partner has a name', () => {
-    expect(partnerPollMs(true, partner('Bee'))).toBeNull();
+  it('never stops while paired: leaving is only ever learned by asking', () => {
+    expect(partnerPollMs(true, partner('Bee'))).toBe(PARTNER_WATCH_POLL_MS);
+    expect(PARTNER_WATCH_POLL_MS).toBeGreaterThan(PARTNER_NAME_POLL_MS);
+  });
+});
+
+describe('a partner who has left', () => {
+  const gone = (id: string, coupleId: string): Member =>
+    ({ id, coupleId, displayName: 'Bee', tracksCycle: false, updatedAt: 0, revokedAt: 5 }) as Member;
+  const me = { coupleId: 'c1', memberId: 'a' };
+
+  it('is not a partner, but is remembered as the one who left', () => {
+    const rows = [gone('b', 'c1')];
+    expect(partnerOf(rows, me)).toBeUndefined();
+    expect(formerPartnerOf(rows, me)?.displayName).toBe('Bee');
+  });
+
+  it('never names someone from another couple as the one who left', () => {
+    expect(formerPartnerOf([gone('b', 'c2')], me)).toBeUndefined();
   });
 });
 

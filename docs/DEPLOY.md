@@ -183,11 +183,14 @@ before it reaches `main`. It deploys against a **separate D1 database and R2
 bucket** — never the couple's real data — and until those exist it deploys
 nothing and says why in the job summary.
 
-Once, from any machine logged in to the Cloudflare account:
+This has been done for the HeartBeat account: the `heartbeat-preview` D1
+database and R2 bucket exist and `app/wrangler.toml` carries the block below. To
+recreate it elsewhere, from any machine logged in to the Cloudflare account:
 
 ```bash
 cd worker
 npx wrangler d1 create heartbeat-preview
+npx wrangler r2 bucket create heartbeat-preview
 ```
 
 Paste the `database_id` it prints into this block at the **end** of

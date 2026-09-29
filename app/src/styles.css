@@ -7870,3 +7870,99 @@ div.gear-slot:active { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .garden-resident { animation: none; }
 }
+
+/* ==== Foundations: how it feels under a thumb, and what the system asks of it ====
+   Written from Apple's fluid-interface talks and read against the five packs.
+   Nothing here paints a colour: every value is a token that already clears AA
+   in all ten palettes, so this block cannot undo a contrast proof. */
+
+/* The browser's grey flash on tap is a second, unthemed press state. The
+   press states below are ours, and they are instant on pointer-down. */
+html { -webkit-tap-highlight-color: transparent; }
+
+/* No 300ms wait to see whether a tap is a double-tap: nothing here zooms on
+   double-tap, so the wait was latency with no purpose. */
+a, button, input, select, textarea, summary, label, [role='button'] {
+  touch-action: manipulation;
+}
+
+/* Feedback on the press, not on release. `.primary` already sinks; the rest of
+   the buttons a thumb lands on now answer as well. Calm folds in reduced
+   motion, so the whole block waits for it. */
+:root:not([data-calm='true']) .quiet,
+:root:not([data-calm='true']) .listrow,
+:root:not([data-calm='true']) .chip {
+  transition: transform 100ms ease-out;
+}
+:root:not([data-calm='true']) .quiet:active,
+:root:not([data-calm='true']) .listrow:active,
+:root:not([data-calm='true']) .chip:active {
+  transform: scale(0.98);
+}
+
+/* Materials. A translucent layer is a courtesy to the content under it; when
+   someone has asked for less transparency, or more contrast, the courtesy
+   becomes a solid surface with no blur. Where a scrim only dims, it keeps
+   dimming and loses the blur. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .home-today, .tabbar, .menu-button, .status-hud, .chat {
+    backdrop-filter: none;
+    background: var(--color-surface);
+  }
+  .menu-scrim, .cmd-scrim { backdrop-filter: none; }
+}
+
+/* More contrast: borders that were decoration become edges. Muted text on the
+   surface is proven at 3:1 or better in every palette, which is the bar for a
+   non-text boundary too. */
+@media (prefers-contrast: more) {
+  .set-block, .invite, .listrow, .quiet, .field, .pair-sheet, .tabbar {
+    border-color: var(--color-text-muted);
+  }
+}
+
+/* ---- Manage pairing, and the invite's actions ------------------------------ */
+
+/* A sheet, docked at the bottom where the thumb already is. It arrives on a
+   critically damped curve -- no overshoot, because nothing was flicked to make
+   it -- and stays out of the tab bar's way by covering it, as a modal should. */
+.pair-sheet {
+  position: fixed;
+  z-index: var(--z-sheet);
+  left: max(env(safe-area-inset-left), var(--space-2));
+  right: max(env(safe-area-inset-right), var(--space-2));
+  bottom: calc(env(safe-area-inset-bottom) + var(--space-2));
+  max-width: var(--shell-max);
+  margin-inline: auto;
+  max-height: calc(100dvh - env(safe-area-inset-top) - var(--space-7));
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+  transform-origin: bottom center;
+  animation: pair-sheet-in var(--motion-medium) cubic-bezier(0.32, 0.72, 0, 1);
+}
+@keyframes pair-sheet-in {
+  from { opacity: 0; transform: translateY(var(--space-4)); }
+  to { opacity: 1; transform: translateY(0); }
+}
+:root[data-calm='true'] .pair-sheet { animation: none; }
+
+.pair-sheet-grip {
+  display: block;
+  width: 36px;
+  height: 4px;
+  margin: 0 auto var(--space-3);
+  border-radius: 2px;
+  background: var(--color-border);
+}
+.pair-sheet-rows { display: grid; gap: var(--space-2); margin: var(--space-3) 0; }
+
+.invite-actions { display: flex; justify-content: center; gap: var(--space-2); }
+.invite-actions .quiet { width: auto; padding-inline: var(--space-5); }
+
+/* The Connections group: one heading, then the blocks it gathers, spaced the
+   way the page spaces its own children. */
+.connections { display: grid; gap: var(--stack); }

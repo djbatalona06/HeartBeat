@@ -55,10 +55,11 @@ interface Row {
   photo_data_uri: string | null;
   photo_key: string | null;
   updated_at: number;
+  revoked_at: number | null;
 }
 
 const SELECT_MEMBERS =
-  `SELECT id, couple_id, display_name, gender, photo_data_uri, photo_key, updated_at FROM members
+  `SELECT id, couple_id, display_name, gender, photo_data_uri, photo_key, updated_at, revoked_at FROM members
     WHERE couple_id = ? ORDER BY created_at ASC`;
 
 function toMember(row: Row, callerId: string) {
@@ -75,6 +76,9 @@ function toMember(row: Row, callerId: string) {
     photoKey: row.photo_key ?? undefined,
     photoDataUri: row.photo_data_uri ?? undefined,
     updatedAt: row.updated_at,
+    // Present once they have left or been removed, so the other phone can say
+    // the seat is empty rather than keep showing someone who is not there.
+    revokedAt: row.revoked_at ?? undefined,
     // Whose card this is, resolved server-side for the same reason the message
     // thread does it: the client should not have to compare ids it may not
     // have loaded yet.

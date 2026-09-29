@@ -169,6 +169,16 @@ export function byRoute(badges: Record<BadgeKey, Badge>): Record<string, number>
   return out;
 }
 
+/**
+ * The number for the app icon: everything waiting, across every tab.
+ *
+ * Derived from `byRoute` rather than recounted, so the icon can never say a
+ * number the tab bar does not.
+ */
+export function badgeTotal(routes: Record<string, number>): number {
+  return Object.values(routes).reduce((sum, n) => sum + Math.max(0, n), 0);
+}
+
 /*
  * A headline used to live here: `HEADLINE_KEYS`, `Headline`, `headlineText`
  * and `headline()`, which returned the first of quests and cheers and dropped

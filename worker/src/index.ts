@@ -138,7 +138,7 @@ async function nudgePartner(
   body: string,
 ): Promise<void> {
   const partner = await env.DB.prepare(
-    'SELECT id FROM members WHERE couple_id = ? AND id != ? LIMIT 1',
+    'SELECT id FROM members WHERE couple_id = ? AND id != ? AND revoked_at IS NULL LIMIT 1',
   ).bind(caller.coupleId, caller.memberId).first<{ id: string }>();
   if (!partner) return;
 

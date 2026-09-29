@@ -5,6 +5,7 @@ import { parseCalendarCsv, toCalendarCsv, type CsvPreview } from '../../domain/c
 import { todayKey } from '../../domain/day';
 import { SecondaryAction } from '../../ui/SecondaryAction';
 import { PrimaryAction } from '../../ui/PrimaryAction';
+import { saveCalendarIcs } from './saveCalendar';
 
 /**
  * The calendar's file end: a CSV in, a CSV out.
@@ -121,6 +122,21 @@ export function CalendarFile({ memberId, timeZone }: { memberId: string | null; 
     }
   };
 
+  const saveIcs = async () => {
+    setBusy(true);
+    try {
+      setNote(
+        (await saveCalendarIcs(timeZone))
+          ? 'Saved. Open the .ics file to add it to Apple or Google Calendar.'
+          : 'There is nothing on the calendar to save yet.',
+      );
+    } catch {
+      setNote('This phone would not save a file. Copying the CSV should still work.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // iOS in particular can refuse a download outright from an installed app, so
   // there is always a way out that does not involve the file system.
   const copyOut = async () => {
@@ -205,6 +221,9 @@ export function CalendarFile({ memberId, timeZone }: { memberId: string | null; 
             <SecondaryAction disabled={busy} onClick={() => void saveFile()}>Save a copy</SecondaryAction>
             <SecondaryAction disabled={busy} onClick={() => void copyOut()}>Copy it instead</SecondaryAction>
           </div>
+          <SecondaryAction disabled={busy} onClick={() => void saveIcs()}>
+            Save for Apple or Google Calendar
+          </SecondaryAction>
         </div>
       )}
 

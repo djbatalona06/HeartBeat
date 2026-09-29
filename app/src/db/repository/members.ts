@@ -36,6 +36,8 @@ export interface IncomingMember {
    */
   gender?: Gender;
   photoDataUri?: string;
+  /** Served once they have left or been removed. */
+  revokedAt?: number;
   updatedAt: number;
 }
 
@@ -98,6 +100,11 @@ export async function setCalmMode(calmMode: boolean): Promise<void> {
  *  animations and not the buzzing. Calm still wins over it. */
 export async function setHaptics(haptics: boolean): Promise<void> {
   await saveSettings({ haptics });
+}
+
+/** Off unless turned on: a number on the icon follows you out of the app. */
+export async function setAppBadge(appBadge: boolean): Promise<void> {
+  await saveSettings({ appBadge });
 }
 
 /** Off unless turned on, and Calm still wins over it, like `setHaptics`. */
@@ -267,6 +274,7 @@ export async function saveMembersFromServer(rows: IncomingMember[]): Promise<num
       // that has not been pushed yet.
       gender: row.gender ?? existing?.gender,
       photoDataUri: row.photoDataUri,
+      revokedAt: row.revokedAt,
       updatedAt: row.updatedAt,
     });
     applied += 1;

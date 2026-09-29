@@ -19,23 +19,45 @@ export interface PairGateProps {
   /** False until settings have been read. Nothing renders on a guess. */
   ready: boolean;
   paired: boolean;
+  /** The link was ended from the other phone. Says so, and that nothing was lost. */
+  unlinked?: boolean;
   /** Routes that stay open while unpaired, and their children. */
   open: readonly string[];
   children: ReactNode;
 }
 
-export function PairGate({ ready, paired, open, children }: PairGateProps) {
+export function PairGate({ ready, paired, unlinked, open, children }: PairGateProps) {
   const { pathname } = useLocation();
 
   // A frame of the gate on a phone that paired months ago is a flash of the
   // wrong app on every cold start, so it waits for the answer.
   if (!ready) return null;
   if (paired || isOpen(pathname, open)) return <>{children}</>;
-  return <PairInvitation />;
+  return unlinked ? <LinkEnded /> : <PairInvitation />;
 }
 
 function isOpen(pathname: string, open: readonly string[]): boolean {
   return open.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
+/**
+ * The other phone ended the link. Told plainly and without blame, with the one
+ * thing that matters first: nothing on this phone was touched.
+ */
+function LinkEnded() {
+  return (
+    <div className="gate">
+      <h1 className="gate-title">This link was ended</h1>
+      <p className="gate-body">
+        The other phone left or removed this one. Everything you logged is still
+        here &mdash; nothing was deleted. You can keep it all and start again with
+        a new code, or join someone else&rsquo;s.
+      </p>
+      <Link className="primary gate-action" to="/settings">
+        Start over
+      </Link>
+    </div>
+  );
 }
 
 function PairInvitation() {

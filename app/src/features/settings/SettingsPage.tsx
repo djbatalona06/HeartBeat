@@ -8,10 +8,8 @@ import { variantOf } from '../../themes/tokens';
 import { supportsHaptics } from '../../pwa/haptics';
 import { THEMES } from '../../themes';
 import { fetchProfiles, health, pairStart } from '../../pwa/api';
-import { NotificationsBlock } from './NotificationsBlock';
-import { StudyLinkBlock } from './StudyLinkBlock';
+import { ConnectionsBlock } from './ConnectionsBlock';
 import { ComplimentBlock } from './ComplimentBlock';
-import { RecoveryBlock } from './RecoveryBlock';
 import { WhatsOnBlock } from './WhatsOnBlock';
 import {
   MAX_GENDER_NOTE,
@@ -28,19 +26,23 @@ import {
   setTracksCycle,
 } from '../../db/repository';
 import {
-  formatCountdown,
   inviteStatus,
   isCompleteInvite,
   normalizeInvite,
   pairFailure,
 } from './pairing';
 import { receivePairingCode } from './receivePairingCode';
-import { partnerLinkMessage, partnerOf } from '../pairing/namingGate';
+import { formerPartnerOf, partnerLinkMessage, partnerOf } from '../pairing/namingGate';
+import { inviteToFreeSeat, leaveCouple } from '../pairing/offboard';
+import { InviteCard } from './InviteCard';
+import { ManagePairingSheet } from './ManagePairingSheet';
 import { saveProfile } from './profile';
 import { isPaired } from '../../domain/identity/rekey';
 import { reconcileTheme, readStoredTheme, writeStoredTheme } from './theme';
 import { PHOTO_BUDGET_BYTES, coverBox, formatKb, photoBytes, withinBudget } from './photo';
 import { SecondaryAction } from '../../ui/SecondaryAction';
+import { PrimaryAction } from '../../ui/PrimaryAction';
+import { ListRow } from '../../ui/ListRow';
 
 /**
  * Pairing, the theme picker, and the two of you.
@@ -120,12 +122,13 @@ export function SettingsPage() {
     <div className="page">
       <header className="page-head">
         <h1 className="page-title">Settings</h1>
-        <p className="page-sub">Pairing, theme and your partner.</p>
+        <p className="page-sub">Pairing, theme, your partner and connections.</p>
       </header>
 
       <Pairing
         paired={paired}
         partner={partnerOf(members, settings)}
+        former={formerPartnerOf(members, settings)}
         settings={settings}
         backend={backend}
       />
@@ -138,8 +141,6 @@ export function SettingsPage() {
           paired: an unpaired one is exactly where "get back in" belongs, and
           it is the reason Settings stays open while unpaired at all. Renders
           nothing when the deploy has no OAuth app. */}
-      <RecoveryBlock token={settings?.workerSecret} paired={paired} />
-
       <section className="set-block">
         <h2 className="section-title">Theme</h2>
         <p className="section-sub">
@@ -279,8 +280,7 @@ export function SettingsPage() {
         </label>
       </section>
 
-      <NotificationsBlock />
-      <StudyLinkBlock token={settings?.workerSecret} />
+      <ConnectionsBlock settings={settings} paired={paired} />
       {paired ? <ComplimentBlock /> : null}
 
       {/* Last on the page, the way a footnote is last: everything above is a
@@ -294,11 +294,13 @@ export function SettingsPage() {
 /* ---- pairing -------------------------------------------------------------- */
 
 function Pairing({
-  paired, partner, settings, backend,
+  paired, partner, former, settings, backend,
 }: {
   paired: boolean;
   /** Paired *and* the other person's row has arrived — see `partnerOf`. */
   partner: Member | undefined;
+  /** Whoever was here and left or was removed — the seat is free. */
+  former: Member | undefined;
   settings: Settings | undefined;
   backend: 'checking' | 'up' | 'down';
 }) {
@@ -311,6 +313,7 @@ function Pairing({
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [managing, setManaging] = useState(false);
   // Ticks only while an invite is live, so a paired phone is not re-rendering
   // once a second for a countdown nobody is looking at.
   const [now, setNow] = useState(() => Date.now());
@@ -335,6 +338,34 @@ function Pairing({
     try {
       const result = await pairStart();
       await savePairing(result);
+      setNow(Date.now());
+    } catch (e) {
+      setNote(pairFailure(e).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // The other phone ended this link. Nothing was deleted; the choice is here.
+  const unlinked = Boolean(settings?.unlinkedAt);
+
+  const startOver = async () => {
+    setBusy(true);
+    setNote(null);
+    try {
+      await leaveCouple();
+    } catch (e) {
+      setNote(pairFailure(e).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const inviteAgain = async () => {
+    setBusy(true);
+    setNote(null);
+    try {
+      await inviteToFreeSeat();
       setNow(Date.now());
     } catch (e) {
       setNote(pairFailure(e).message);
@@ -369,8 +400,18 @@ function Pairing({
         <p className="section-sub">
           {status === 'live'
             ? 'Waiting for your partner to type the code. This screen changes by itself the moment they do.'
-            : 'Nobody has joined this phone yet. Start a fresh code, or type theirs below.'}
+            : former
+              ? `${former.displayName.trim() || 'Your partner'} left. Share a code to invite someone, or type one from another phone below.`
+              : 'Nobody has joined this phone yet. Start a fresh code, or type theirs below.'}
         </p>
+      ) : unlinked ? (
+        <>
+          <p className="pair-lead">This link was ended.</p>
+          <p className="section-sub">
+            Everything you logged is still on this phone. Keep it and start over, then start a new
+            pairing or join a code.
+          </p>
+        </>
       ) : (
         <>
           <p className="pair-lead">Nothing else works until two phones are joined.</p>
@@ -389,18 +430,23 @@ function Pairing({
         <p className="section-sub">That code has expired. Start another one.</p>
       ) : null}
 
-      {waiting && status === 'live' ? null : (
-        <button
-          type="button"
-          className={linked ? 'quiet' : 'primary'}
-          disabled={busy || backend === 'down'}
-          onClick={() => void start()}
-        >
-          {linked ? 'Start a new pairing instead' : waiting ? 'Start a fresh code' : 'Start a pairing'}
-        </button>
+      {unlinked ? (
+        <PrimaryAction busy={busy} onClick={() => void startOver()}>
+          Keep my data and start over
+        </PrimaryAction>
+      ) : linked ? (
+        <ListRow label="Manage pairing" hint="Share, remove or leave." onClick={() => setManaging(true)} />
+      ) : waiting && status === 'live' ? null : waiting && former ? (
+        <PrimaryAction busy={busy} disabled={backend === 'down'} onClick={() => void inviteAgain()}>
+          Share a new code
+        </PrimaryAction>
+      ) : (
+        <PrimaryAction busy={busy} disabled={backend === 'down'} onClick={() => void start()}>
+          {waiting ? 'Start a fresh code' : 'Start a pairing'}
+        </PrimaryAction>
       )}
 
-      {linked ? null : (
+      {linked || unlinked ? null : (
         <form
           className="pair-join"
           onSubmit={(e) => { e.preventDefault(); void join(); }}
@@ -433,34 +479,13 @@ function Pairing({
           already on this phone still works.
         </p>
       ) : null}
-    </section>
-  );
-}
 
-/**
- * The invite code, big enough to read aloud across a room.
- *
- * Single-use and short-lived on purpose: a pairing link that works forever is a
- * permanent key to the couple's data sitting in a chat thread.
- */
-function InviteCard({ code, msLeft }: { code: string; msLeft: number }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <div className="invite">
-      <span className="invite-code">{code}</span>
-      <button
-        type="button"
-        className="quiet"
-        onClick={() => {
-          navigator.clipboard?.writeText(code).then(() => setCopied(true), () => setCopied(false));
-        }}
-      >
-        {copied ? 'Copied' : 'Copy'}
-      </button>
-      <p className="invite-left">
-        Good for <strong>{formatCountdown(msLeft)}</strong> more, and only once.
-      </p>
-    </div>
+      <ManagePairingSheet
+        open={managing}
+        onClose={() => setManaging(false)}
+        partnerName={partner?.displayName.trim() || 'your partner'}
+      />
+    </section>
   );
 }
 
