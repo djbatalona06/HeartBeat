@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DRAWN_MOVES, EFFECT_CONTRAST, FALLBACK_SHAPE, effectColours, KNOWN_VFX, MEND_VFX, MOVE_VFX, moveVfxFor, shapeFor,
 } from './vfx';
+import { SIGNATURES, signatureFor } from './signatures';
 import { THEMES } from '../../../themes/index';
 import { contrast, darkVariantOf } from '../../../themes/tokens';
 import { COMPANION_KITS, MOVE_KEYS, skillsOf } from '../../../domain/rpg/companionSkills';
@@ -105,5 +106,15 @@ describe('move pictures stay visible on every ground', () => {
   it('outlines a colour it cannot measure', () => {
     const palette = { accent: 'rgba(0,0,0,0.5)', success: '#000000', danger: '#000000', text: '#ffffff', base: '#000000' };
     expect(effectColours('accent', palette).edge).toBe('#ffffff');
+  });
+});
+
+describe('signature pieces', () => {
+  it('gives every companion its own piece, on its signature and nothing else', () => {
+    const signatures = COMPANION_KITS.map((kit) => kit.signature.vfx);
+    expect(Object.keys(SIGNATURES).sort()).toEqual([...signatures].sort());
+    const kinds = Object.values(SIGNATURES).map((piece) => piece.kind);
+    expect(new Set(kinds).size).toBe(kinds.length);
+    for (const kit of COMPANION_KITS) expect(signatureFor(kit.support.vfx), kit.themeId).toBeUndefined();
   });
 });

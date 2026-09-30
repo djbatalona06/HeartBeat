@@ -10,6 +10,7 @@ import { strikePlan, type FightTiming } from '../../../domain/scene/strikePlan';
 import {
   effectColours, moveVfxFor, shapeFor, type EffectPalette, type EffectToken, type VfxShape,
 } from './vfx';
+import { signatureFor, type SignaturePiece } from './signatures';
 import type { Blow, Cast, SceneHooks, StepResult } from './events';
 
 /**
@@ -370,8 +371,75 @@ export class BattleGardenScene extends Phaser.Scene {
     if (!this.pet || this.still) return Promise.resolve();
     const { from, to } = this.ends(this.pet, this.foe);
     const shape = shapeFor(vfx);
+    const piece = signatureFor(vfx);
     // A skill's burst is the companion's own bloom, so it lands on the pet.
-    return this.playShape(shape, from, shape === 'burst' ? from : to, { fill: this.accent, count: 1, pace: 1 });
+    const motion = this.playShape(shape, from, shape === 'burst' ? from : to, { fill: this.accent, count: 1, pace: 1 });
+    if (!piece) return motion;
+    return motion.then(() => this.drawSignature(piece, piece.at === 'foe' ? to : from));
+  }
+
+  /**
+   * A companion's own piece (`scene/signatures.ts`), drawn from primitives in
+   * the accent — with its edge where the accent cannot stand on the ground.
+   * Every piece does the same thing over time: swells a little and fades, so
+   * the drawing is the difference and the motion stays quiet.
+   */
+  private drawSignature(piece: SignaturePiece, at: Point): Promise<void> {
+    if (this.still) return Promise.resolve();
+    const { fill, edge } = this.colours('accent');
+    const z = this.zoom;
+    const r = this.size * 0.45;
+    const outline = <T extends Phaser.GameObjects.Shape>(part: T): T =>
+      (edge === undefined ? part : part.setStrokeStyle(z * 0.5, edge, 1));
+    const ring = (part: Phaser.GameObjects.Shape, width: number) =>
+      part.setStrokeStyle(width, edge ?? fill, 1).setFillStyle(fill, edge === undefined ? 0 : 0.35);
+
+    const parts: Phaser.GameObjects.Shape[] = [];
+    switch (piece.kind) {
+      case 'star':
+        parts.push(outline(this.add.star(at.x, at.y, piece.points, r * 0.45, r, fill, 0.95)));
+        break;
+      case 'spiral':
+        for (let i = 0; i < piece.arcs; i += 1) {
+          const start = i * (360 / piece.arcs);
+          parts.push(ring(this.add.arc(at.x, at.y, r * (0.6 + i * 0.3), start, start + 200, false), z));
+        }
+        break;
+      case 'cells': {
+        const corners = Array.from({ length: piece.sides }, (_, i) => {
+          const a = (Math.PI * 2 * i) / piece.sides;
+          return [Math.cos(a) * r, Math.sin(a) * r];
+        }).flat();
+        parts.push(ring(this.add.polygon(at.x, at.y, corners), z * 1.5));
+        parts.push(ring(this.add.polygon(at.x, at.y, corners.map((c) => c * 0.45)), z));
+        break;
+      }
+      case 'crescent':
+        parts.push(ring(this.add.arc(at.x, at.y, r, 40, 320, false), z * 2));
+        for (let i = 0; i < piece.stars; i += 1) {
+          parts.push(outline(this.add.star(at.x + r * (1.1 + i * 0.35), at.y - r * (0.9 - i * 0.5), 4, z * 0.6, z * 1.6, fill)));
+        }
+        break;
+      case 'fan':
+        for (let i = 0; i < piece.flames; i += 1) {
+          const flame = outline(this.add.triangle(at.x, at.y - r * 0.4, 0, z * 5, z * 1.5, 0, z * 3, z * 5, fill, 0.9));
+          flame.setOrigin(0.5, 1).setAngle(-60 + (120 * i) / Math.max(1, piece.flames - 1));
+          parts.push(flame);
+        }
+        break;
+    }
+    for (const part of parts) part.setDepth(14);
+
+    return new Promise((resolve) => {
+      this.tweens.add({
+        targets: parts,
+        scale: 1.3,
+        alpha: 0,
+        duration: this.timing.skill,
+        ease: 'Sine.easeOut',
+        onComplete: () => { for (const part of parts) part.destroy(); resolve(); },
+      });
+    });
   }
 
   /** The middles of two sprites; a missing target stands three tiles ahead. */
