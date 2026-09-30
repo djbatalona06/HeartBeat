@@ -6,6 +6,7 @@ import {
 } from '../../../domain/rpg/arena';
 import { lightingAt } from '../../../domain/rpg/diorama';
 import { bakeAll } from '../../rpg/overworld/bake';
+import { strikePlan, type FightTiming } from '../../../domain/scene/strikePlan';
 import { shapeFor } from './vfx';
 import type { Blow, SceneHooks, StepResult } from './events';
 
@@ -42,11 +43,6 @@ import type { Blow, SceneHooks, StepResult } from './events';
  */
 
 const STEP_MS = 140;
-const STRIKE_MS = 400;
-const HURT_MS = 300;
-const DEFEAT_MS = 800;
-/** How long a companion's skill holds the screen before the swing behind it. */
-const SKILL_MS = 520;
 
 /** How far a struck sprite is knocked, in pixels before scaling. */
 const KNOCKBACK = 5;
@@ -65,6 +61,13 @@ export class BattleGardenScene extends Phaser.Scene {
   private petSprite: string;
   private hour: number;
   private dark: boolean;
+  /** Every fight beat's length; all zero under calm (`domain/scene/strikePlan.ts`). */
+  private timing: FightTiming;
+  /**
+   * The pack's accent, read once in `preload` beside the sprite palette. White
+   * was the stand-in, and it made every companion's move look like nobody's.
+   */
+  private accent = 0xffffff;
 
   private pet!: Phaser.GameObjects.Image;
   private foe!: Phaser.GameObjects.Image;
@@ -87,6 +90,7 @@ export class BattleGardenScene extends Phaser.Scene {
     petSprite: string,
     hour: number,
     dark: boolean,
+    calm: boolean,
     hooks: SceneHooks,
   ) {
     super(BattleGardenScene.KEY);
@@ -95,7 +99,17 @@ export class BattleGardenScene extends Phaser.Scene {
     this.petSprite = petSprite;
     this.hour = hour;
     this.dark = dark;
+    this.timing = strikePlan({ calm });
     this.hooks = hooks;
+  }
+
+  /** Calm changed mid-fight. Takes effect from the next beat; nothing restarts. */
+  setCalm(calm: boolean): void {
+    this.timing = strikePlan({ calm });
+  }
+
+  private get still(): boolean {
+    return this.timing.strike === 0;
   }
 
   private get size(): number {
@@ -105,7 +119,10 @@ export class BattleGardenScene extends Phaser.Scene {
   preload(): void {
     // Nothing is fetched. Every texture is drawn from the character grids in
     // `domain/rpg/sprites.ts`, in the palette the app is currently wearing.
-    const baked = bakeAll(this.game.canvas.parentElement ?? document.body, this.zoom);
+    const host = this.game.canvas.parentElement ?? document.body;
+    const baked = bakeAll(host, this.zoom);
+    const accent = getComputedStyle(host).getPropertyValue('--color-accent').trim();
+    if (accent) this.accent = Phaser.Display.Color.ValueToColor(accent).color;
     for (const [key, canvas] of baked) {
       if (this.textures.exists(key)) this.textures.remove(key);
       this.textures.addCanvas(key, canvas);
@@ -263,6 +280,9 @@ export class BattleGardenScene extends Phaser.Scene {
     const attacker = blow === 'player-hits' ? this.pet : this.foe;
     const victim = blow === 'player-hits' ? this.foe : this.pet;
     if (!attacker || !victim) return Promise.resolve();
+    // Calm: no lunge, no knockback, no flash. The log and the bars already say
+    // what happened, and nothing waits on this.
+    if (this.still) return Promise.resolve();
 
     const towards = blow === 'player-hits' ? 1 : -1;
     const home = { x: attacker.x, y: attacker.y };
@@ -274,7 +294,7 @@ export class BattleGardenScene extends Phaser.Scene {
       this.tweens.add({
         targets: attacker,
         x: home.x + towards * this.zoom * 4,
-        duration: STRIKE_MS / 2,
+        duration: this.timing.strike / 2,
         yoyo: true,
         ease: 'Back.easeOut',
         onComplete: () => {
@@ -282,7 +302,7 @@ export class BattleGardenScene extends Phaser.Scene {
           this.tweens.add({
             targets: victim,
             x: victimHome + towards * KNOCKBACK * this.zoom,
-            duration: HURT_MS / 2,
+            duration: this.timing.hurt / 2,
             yoyo: true,
             ease: 'Quad.easeOut',
             onComplete: () => {
@@ -293,7 +313,7 @@ export class BattleGardenScene extends Phaser.Scene {
           // The hurt flash. Red would fight every theme pack, so a struck
           // sprite goes bright and comes back rather than changing hue.
           victim.setTintFill(0xffffff);
-          this.time.delayedCall(HURT_MS / 3, () => this.applyLighting());
+          this.time.delayedCall(this.timing.hurt / 3, () => this.applyLighting());
         },
       });
     });
@@ -308,14 +328,14 @@ export class BattleGardenScene extends Phaser.Scene {
    * skills can each have their own flourish without ten files to maintain.
    */
   skill(vfx: string): Promise<void> {
-    if (!this.pet) return Promise.resolve();
+    if (!this.pet || this.still) return Promise.resolve();
     const shape = shapeFor(vfx);
     const size = this.size;
     const at = { x: this.pet.x + size / 2, y: this.pet.y + size / 2 };
     const foeAt = this.foe
       ? { x: this.foe.x + size / 2, y: this.foe.y + size / 2 }
       : { x: at.x + size * 3, y: at.y };
-    const accent = 0xffffff;
+    const { accent } = this;
 
     return new Promise((resolve) => {
       const done = () => resolve();
@@ -331,7 +351,7 @@ export class BattleGardenScene extends Phaser.Scene {
             targets: bolt,
             x: foeAt.x,
             y: foeAt.y,
-            duration: SKILL_MS * 0.6,
+            duration: this.timing.skill * 0.6,
             ease: 'Quad.easeIn',
             onComplete: () => {
               bolt.destroy();
@@ -351,7 +371,7 @@ export class BattleGardenScene extends Phaser.Scene {
             targets: ring,
             scale: 2.4,
             alpha: 0,
-            duration: SKILL_MS,
+            duration: this.timing.skill,
             ease: 'Quad.easeOut',
             onComplete: () => { ring.destroy(); done(); },
           });
@@ -371,7 +391,7 @@ export class BattleGardenScene extends Phaser.Scene {
             targets: guard,
             alpha: 0,
             scaleY: 1.25,
-            duration: SKILL_MS,
+            duration: this.timing.skill,
             ease: 'Sine.easeOut',
             onComplete: () => { guard.destroy(); done(); },
           });
@@ -393,13 +413,13 @@ export class BattleGardenScene extends Phaser.Scene {
               targets: dot,
               y: dot.y - size * (0.8 + i * 0.08),
               alpha: 0,
-              duration: SKILL_MS + i * 40,
+              duration: this.timing.skill + i * 40,
               ease: 'Sine.easeOut',
               onComplete: () => dot.destroy(),
             });
             return dot;
           });
-          this.time.delayedCall(SKILL_MS + 7 * 40, () => { void motes; done(); });
+          this.time.delayedCall(this.timing.skill + 7 * 40, () => { void motes; done(); });
           return;
         }
 
@@ -418,7 +438,7 @@ export class BattleGardenScene extends Phaser.Scene {
       targets: bloom,
       scale: 2.2,
       alpha: 0,
-      duration: SKILL_MS * 0.5,
+      duration: this.timing.skill * 0.5,
       ease: 'Quad.easeOut',
       onComplete: () => { bloom.destroy(); done(); },
     });
@@ -438,7 +458,7 @@ export class BattleGardenScene extends Phaser.Scene {
 
     for (let i = 0; i < count; i += 1) {
       const spark = this.add.rectangle(
-        from.x + size / 2, from.y + size / 2, this.zoom, this.zoom, 0xffffff, 0.9,
+        from.x + size / 2, from.y + size / 2, this.zoom, this.zoom, this.accent, 0.9,
       ).setDepth(12);
       this.physics.add.existing(spark);
       this.sparks.add(spark);
@@ -450,7 +470,7 @@ export class BattleGardenScene extends Phaser.Scene {
       this.tweens.add({
         targets: spark,
         alpha: 0,
-        duration: STRIKE_MS,
+        duration: this.timing.strike,
         onComplete: () => spark.destroy(),
       });
     }
@@ -461,6 +481,10 @@ export class BattleGardenScene extends Phaser.Scene {
     this.beaten = true;
     this.engaged = false;
     if (!this.foe) return Promise.resolve();
+    if (this.still) {
+      for (const target of [this.foe, this.foeShadow]) target?.setAlpha(0);
+      return Promise.resolve();
+    }
 
     return new Promise((resolve) => {
       this.tweens.add({
@@ -468,7 +492,7 @@ export class BattleGardenScene extends Phaser.Scene {
         alpha: 0,
         scaleX: 1.4,
         scaleY: 1.4,
-        duration: DEFEAT_MS,
+        duration: this.timing.defeat,
         ease: 'Quad.easeIn',
         onComplete: () => resolve(),
       });
@@ -481,6 +505,11 @@ export class BattleGardenScene extends Phaser.Scene {
     if (!this.pet) return;
     const size = this.size;
     this.tile = { ...this.arena.spawn };
+    if (this.still) {
+      this.pet.setPosition(this.tile.x * size, this.tile.y * size);
+      this.applyLighting();
+      return;
+    }
     this.tweens.add({
       targets: this.pet,
       x: this.tile.x * size,

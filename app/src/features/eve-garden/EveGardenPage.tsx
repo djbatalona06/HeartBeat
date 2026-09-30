@@ -9,6 +9,7 @@ import {
 import { todayKey } from '../../domain/day';
 import { levelForXp } from '../../domain/xp';
 import { milestonesAt } from '../../domain/rpg/milestones';
+import { strikePlan } from '../../domain/scene/strikePlan';
 import { spriteKeyForTheme } from '../../domain/rpg/sprites';
 import { RADIANCE_FULL } from '../../domain/rpg/vitals';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
@@ -99,9 +100,6 @@ import { Icon } from '../../components/icons';
  */
 
 const FALLBACK_ZONE = 'America/Los_Angeles';
-
-/** How long the page waits between the two halves of a round. */
-const TURN_GAP_MS = 220;
 
 /**
  * An XP total comfortably past the last level, for asking what the top of the
@@ -389,6 +387,15 @@ export function EveGardenPage() {
     engageRef.current = onEngage;
   });
 
+  // Calm reaches the scene the same way, and for the same reason: turning it on
+  // mid-fight must not tear the garden down, so it stays out of the start
+  // effect's deps and is handed over live instead.
+  const calmRef = useRef(calm);
+  useEffect(() => {
+    calmRef.current = calm;
+    scene.current?.setCalm(calm);
+  }, [calm]);
+
   const sprite = monster?.spriteKey;
 
   /**
@@ -425,6 +432,7 @@ export function EveGardenPage() {
             petSprite,
             hour: new Date().getHours(),
             dark,
+            calm: calmRef.current,
           },
           { onEngage: () => engageRef.current() },
         );
@@ -574,7 +582,9 @@ export function EveGardenPage() {
       }
       if (mine.turn !== 'Monster') return;
 
-      await new Promise((resolve) => setTimeout(resolve, TURN_GAP_MS));
+      // The gap that lets two swings read as two. Calm has no swings to separate.
+      const gap = strikePlan({ calm: calmRef.current }).turnGap;
+      if (gap > 0) await new Promise((resolve) => setTimeout(resolve, gap));
 
       const theirs = await game.monsterMove(mine);
       if (!theirs) return;
