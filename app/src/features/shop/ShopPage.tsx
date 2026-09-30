@@ -51,6 +51,7 @@ import { BorderGlow } from '../../components/BorderGlow';
 import { gearArt } from '../party/art/gear';
 import { petArt } from '../party/art/pets';
 import { ChestAlcove } from '../party/ChestAlcove';
+import { GardenPlots } from './GardenPlots';
 import { Purchases } from '../party/Purchases';
 import { RaidSheet } from '../party/RaidSheet';
 import { Boss } from '../party/Boss';
@@ -121,7 +122,7 @@ const RARITY_INTENSITY: Record<Rarity, number> = {
  * redirects here for the links that still carry it. Wearing gear lives on the
  * Bag's slot grid now, and the achievement shelf on Tasks.
  */
-export type ShopSection = 'companions' | 'colours' | 'house' | 'raid' | 'shop';
+export type ShopSection = 'companions' | 'colours' | 'house' | 'plots' | 'raid' | 'shop';
 
 /**
  * The shop: what coins are for. Birb and Raid are this page asked for other
@@ -222,6 +223,16 @@ export function ShopPage({ only = ['shop'], title = 'Shop' }: {
           {only.includes('raid') ? <RaidSection ctx={ctx} /> : null}
           {only.includes('house') ? (
             <Birbhouse house={(ctx.pet?.house ?? {}) as House} avatar={ctx.avatar} />
+          ) : null}
+          {only.includes('plots') ? (
+            <GardenPlots
+              memberId={ctx.identity.memberId}
+              coupleId={ctx.identity.coupleId}
+              garden={(ctx.pet?.plots ?? {}) as Garden}
+              petXp={ctx.pet?.xp ?? 0}
+              coins={ctx.avatar.coins}
+              say={ctx.say}
+            />
           ) : null}
           {only.includes('shop') ? <ShopSectionView ctx={ctx} onRevealed={setRevealed} /> : null}
         </>
