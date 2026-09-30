@@ -172,6 +172,17 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   stops the bob, carries pet and shadow on one counter, and restarts the bob
   from the new row. Depth follows the row (`domain/scene/walk.ts`), inside the
   9–10 band so effects at 11+ stay on top.
+- **Unlocks read lifetime totals only, and are never stored.** `domain/rpg/unlocks.ts`
+  (Shared Aura at Rooted, Ascendant at pet level 21, Evergreen Frame at
+  Evergreen) derives every goal from together points and the pet's level each
+  time it is asked; `unlocks.test.ts` holds progress clamped and monotonic.
+  Ascendant is **level alone** on purpose: the shared pet's Elder stage
+  (`vitals.ts`) reads the *current* streak and can step back down, and an
+  unlock that could be lost is the one thing this module may not have. Two
+  stage ladders exist and they are different things: `stage.ts` (Egg →
+  Guardian) is each member's avatar, `vitals.ts` (Egg → Elder) is the shared
+  pet. Ascendant's raid source fills burden, reveal and fortify — the stats the
+  pet's own source leaves open — through `loadoutSheet`, so the fight sees it.
 - **A skill kit is character, not palette.** `companionSkills.test.ts` fails if
   a rights holder's name appears anywhere in that file, the same guard
   `pets.test.ts` and `mascots/roster.test.ts` already carry. Kits belong to the

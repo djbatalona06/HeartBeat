@@ -35,7 +35,7 @@ companions should fight with attack / defence / magic effects that look like
    assets, zero precache cost). Sprites only if primitives cannot carry a piece.
 2. **Nursing-deck `why` rationales** (`plan.md` Phase 3): author 126 rationales in
    the study repo (recommended), or make `why` optional for imported cards?
-3. **Wellness "today" ring:** is a new Home surface worth it, or does
+3. ~~**Wellness "today" ring:**~~ — **decided: not built** (see Phase D below). Was: is a new Home surface worth it, or does
    `ChargeMeter` (garden) plus a Home pointer to it already say enough?
 4. **Level-up spec reversal:** `docs/superpowers/specs/2026-09-24-levelup-moment-design.md`
    decided "Home only, no on-screen text beyond `Lv N`". The reveal line reverses
@@ -80,6 +80,14 @@ Raid Gate cards are rank + stat bubbles (`statBubbles`), and the fight page lost
 wellness cards, the drawer and the places row — plots moved to `/birb`, chests stay
 on the Shop. Phase C itself reached `main` with this change: #118 merged into #117's
 branch after #117 had already merged.
+
+**Phase D (goals) is built.** `unlocks.ts` names three goals — Shared Aura (1,200
+together points), Ascendant (shared pet level 21), Evergreen Frame (2,600) — and a
+goals card on Home shows the nearest two with exact numbers, paired or not.
+Chronicle Archive was dropped: study sessions cannot be counted across both phones
+(learn-mode rows are device-local, study-app awards live only in D1). Ascendant is
+level-only because Elder can regress with the streak. **The "today ring" is decided:
+not built** — the garden's `ChargeMeter` and Home's `VitalsPanel` already show today.
 
 ## What is verified vs not
 
