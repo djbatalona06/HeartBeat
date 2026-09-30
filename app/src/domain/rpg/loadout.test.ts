@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  COMPANION_RANK_LIFT, PET_LEVEL_STAT_STEP, companionSource, dyeSource, furnitureSources,
+  ASCENDANT_RAID_ORDER, COMPANION_RANK_LIFT, PET_LEVEL_STAT_STEP, PET_RAID_ORDER, ascendantSource,
+  companionSource, dyeSource, furnitureSources,
   FIGHT_CAPS, FIGHT_HALF_AT, gearLift, gearSources, holdingsLoadout, loadoutSheet, petSource,
 } from './loadout';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { RAID_STATS, type RaidStatKey } from './raidStats';
+import { RAID_STATS, raidSheet, type RaidStatKey } from './raidStats';
 import { GEAR } from './gear';
 import { FURNITURE } from './furniture';
 import { DYES } from './dyes';
@@ -246,5 +247,29 @@ describe('gearLift', () => {
     const zero = Object.fromEntries(RAID_STATS.map((k) => [k, 0])) as Record<RaidStatKey, number>;
     expect(gearLift(zero, 'Physical')).toBe(0);
     expect(gearLift({ ...zero, burden: FIGHT_HALF_AT }, 'Physical')).toBe(Math.round(50 * FIGHT_CAPS.Physical.cap));
+  });
+});
+
+describe('an Ascendant pet', () => {
+  it('adds its own source only once it is Ascendant', () => {
+    const before = loadoutSheet({ petLevel: 20, memberLevel: 10 });
+    const after = loadoutSheet({ petLevel: 21, memberLevel: 10 });
+    expect(before.sources.some((s) => s.id === 'ascendant')).toBe(false);
+    expect(after.sources.some((s) => s.id === 'ascendant')).toBe(true);
+  });
+
+  it('only ever adds, and adds to the stats the pet leaves open', () => {
+    const at = { petLevel: 25, memberLevel: 10 };
+    const before = raidSheet(loadoutSheet(at).sources.filter((s) => s.id !== 'ascendant'));
+    const after = loadoutSheet(at);
+    for (const key of RAID_STATS) expect(after.total[key], key).toBeGreaterThanOrEqual(before.total[key]);
+    for (const key of ASCENDANT_RAID_ORDER) {
+      expect(PET_RAID_ORDER, key).not.toContain(key);
+      expect(after.total[key], key).toBeGreaterThan(before.total[key]);
+    }
+  });
+
+  it('is worth less than the pet itself', () => {
+    expect(ascendantSource(30).statLevel).toBeLessThan(petSource(30).statLevel);
   });
 });

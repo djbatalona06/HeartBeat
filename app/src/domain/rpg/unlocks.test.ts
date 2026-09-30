@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ASCENDANT_LEVEL, AURA_POINTS, FRAME_POINTS, UNLOCKS, isUnlocked, nextGoals, type UnlockState,
+  ASCENDANT_LEVEL, AURA_POINTS, FRAME_POINTS, UNLOCKS, isAscendant, isUnlocked, nextGoals, type UnlockState,
 } from './unlocks';
 import { TOGETHER_TIERS } from './together';
 
-const fresh: UnlockState = { togetherPoints: 0, petLevel: 1, elder: false };
+const fresh: UnlockState = { togetherPoints: 0, petLevel: 1 };
 
 describe('unlocks', () => {
   it('reads its thresholds off the together ladder', () => {
@@ -23,9 +23,9 @@ describe('unlocks', () => {
   it('keeps progress between 0 and 1, and full exactly when reached', () => {
     const states: UnlockState[] = [
       fresh,
-      { togetherPoints: -50, petLevel: -3, elder: false },
-      { togetherPoints: Number.NaN, petLevel: 99, elder: true },
-      { togetherPoints: 99999, petLevel: 50, elder: true },
+      { togetherPoints: -50, petLevel: -3 },
+      { togetherPoints: Number.NaN, petLevel: Number.NaN },
+      { togetherPoints: 99999, petLevel: 50 },
     ];
     for (const state of states) {
       for (const unlock of UNLOCKS) {
@@ -41,26 +41,26 @@ describe('unlocks', () => {
     for (const unlock of UNLOCKS) {
       let last = -1;
       for (let points = 0; points <= 3000; points += 50) {
-        const now = unlock.check({ togetherPoints: points, petLevel: 10, elder: false }).progress;
+        const now = unlock.check({ togetherPoints: points, petLevel: 10 }).progress;
         expect(now, `${unlock.id} at ${points} points`).toBeGreaterThanOrEqual(last);
         last = now;
       }
       last = -1;
       for (let level = 1; level <= 50; level += 1) {
-        const now = unlock.check({ togetherPoints: 500, petLevel: level, elder: false }).progress;
+        const now = unlock.check({ togetherPoints: 500, petLevel: level }).progress;
         expect(now, `${unlock.id} at level ${level}`).toBeGreaterThanOrEqual(last);
         last = now;
       }
-      const without = unlock.check({ togetherPoints: 500, petLevel: 30, elder: false }).progress;
-      const withElder = unlock.check({ togetherPoints: 500, petLevel: 30, elder: true }).progress;
-      expect(withElder, unlock.id).toBeGreaterThanOrEqual(without);
     }
   });
 
-  it('asks Ascendant for Elder as well as the level', () => {
-    expect(isUnlocked('ascendant', { togetherPoints: 0, petLevel: 30, elder: false })).toBe(false);
-    expect(isUnlocked('ascendant', { togetherPoints: 0, petLevel: 20, elder: true })).toBe(false);
-    expect(isUnlocked('ascendant', { togetherPoints: 0, petLevel: 21, elder: true })).toBe(true);
+  // Level alone: Elder reads the current streak and can step back down, and an
+  // unlock that could be lost is the one thing this module may not have.
+  it('opens Ascendant on the pet level alone', () => {
+    expect(isUnlocked('ascendant', { togetherPoints: 0, petLevel: 20 })).toBe(false);
+    expect(isUnlocked('ascendant', { togetherPoints: 0, petLevel: 21 })).toBe(true);
+    expect(isAscendant(21)).toBe(true);
+    expect(isAscendant(20)).toBe(false);
   });
 
   it('opens the aura at Rooted and the frame at Evergreen', () => {
@@ -70,6 +70,6 @@ describe('unlocks', () => {
   });
 
   it('shows nothing ahead once everything is reached', () => {
-    expect(nextGoals({ togetherPoints: 5000, petLevel: 40, elder: true })).toEqual([]);
+    expect(nextGoals({ togetherPoints: 5000, petLevel: 40 })).toEqual([]);
   });
 });

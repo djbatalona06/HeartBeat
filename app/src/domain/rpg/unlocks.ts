@@ -24,8 +24,6 @@ export interface UnlockState {
   togetherPoints: number;
   /** The shared pet's level, from `domain/xp.ts`. */
   petLevel: number;
-  /** The shared pet has reached Elder (`vitals.ts`). */
-  elder: boolean;
 }
 
 export interface UnlockCheck {
@@ -59,14 +57,18 @@ const tierAt = (name: string): number => {
 /** Rooted and Evergreen, read off the ladder so the two cannot drift apart. */
 export const AURA_POINTS = tierAt('Rooted');
 export const FRAME_POINTS = tierAt('Evergreen');
-/** The pet level Ascendant asks for, on top of Elder. */
-export const ASCENDANT_LEVEL = 21;
 /**
- * How far Ascendant's bar can go on level alone. The last stretch is Elder, so
- * a pet at level 21 that is not yet an Elder reads 90%, not a full bar that
- * refuses to open.
+ * The pet level Ascendant opens at. Level alone, and on purpose: the shared
+ * pet's Elder stage (`vitals.ts`) reads the *current* streak and can step back
+ * down when one breaks, so an Ascendant that also asked for Elder could be
+ * lost — the one thing no unlock here may do. The pet's level never falls.
  */
-const LEVEL_SHARE = 0.9;
+export const ASCENDANT_LEVEL = 21;
+
+/** Whether the shared pet at this level is Ascendant. `loadout.ts` asks this. */
+export function isAscendant(petLevel: number): boolean {
+  return Number.isFinite(petLevel) && petLevel >= ASCENDANT_LEVEL;
+}
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, Number.isFinite(n) ? n : 0));
 
@@ -90,13 +92,12 @@ export const UNLOCKS: readonly Unlock[] = [
   {
     id: 'ascendant',
     name: 'Ascendant',
-    blurb: 'Your pet grows past Elder and fights harder beside you.',
+    blurb: 'Your pet comes into its own, and fights harder beside you.',
     unit: 'pet levels',
     kind: 'mechanic',
-    check: ({ petLevel, elder }) => {
-      const have = Math.max(0, Math.floor(petLevel));
-      const levels = clamp01(have / ASCENDANT_LEVEL);
-      const progress = elder ? levels : Math.min(levels, 1) * LEVEL_SHARE;
+    check: ({ petLevel }) => {
+      const have = Number.isFinite(petLevel) ? Math.max(0, Math.floor(petLevel)) : 0;
+      const progress = clamp01(have / ASCENDANT_LEVEL);
       return { eligible: progress >= 1, progress, have, need: ASCENDANT_LEVEL };
     },
   },

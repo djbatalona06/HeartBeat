@@ -13,6 +13,7 @@ import {
   FURNITURE_RAID_ORDER, GEAR_RAID_ORDER, SPECIES_RAID_ORDER, RAID_STATS, raidSheet,
   sourceStatLevel, tierForPrice, type RaidSheet, type RaidStatKey, type StatSource,
 } from './raidStats';
+import { isAscendant } from './unlocks';
 
 /**
  * Everything a couple owns, turned into raid stats.
@@ -185,6 +186,30 @@ export function petSource(petLevel: number, name = 'Your pet'): StatSource {
 }
 
 /**
+ * The three stats the shared pet's own source never touches — the ones that
+ * drive a physical, a magic and a defensive hit. Ascendant is "fights harder
+ * beside you", so it fills exactly the gap the pet leaves.
+ */
+export const ASCENDANT_RAID_ORDER: readonly RaidStatKey[] = ['burden', 'reveal', 'fortify'];
+
+/**
+ * An Ascendant pet, as a source: half the pet's own stat level again, spread
+ * over the stats it did not already cover. It goes through the same passive
+ * falloff and the same C# saturation as everything else, so it helps without
+ * skipping an island.
+ */
+export function ascendantSource(petLevel: number): StatSource {
+  const statLevel = Math.max(1, Math.round((petLevel * PET_LEVEL_STAT_STEP) / 2));
+  return {
+    id: 'ascendant',
+    label: 'Ascendant',
+    tier: tierForStatLevel(statLevel),
+    statLevel,
+    order: ASCENDANT_RAID_ORDER,
+  };
+}
+
+/**
  * The rung a raw stat level lands on.
  *
  * The inverse of `TIER_STAT_LEVELS`, walked upward so the highest rung whose
@@ -276,6 +301,7 @@ export function loadoutSheet(loadout: Loadout): RaidSheet {
   const companion = companionSource(loadout.companion);
   if (companion) sources.push(companion);
   if (loadout.mascot) sources.push(loadout.mascot);
+  if (isAscendant(loadout.petLevel)) sources.push(ascendantSource(loadout.petLevel));
   return raidSheet(sources);
 }
 
