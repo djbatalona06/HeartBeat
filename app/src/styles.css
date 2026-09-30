@@ -788,6 +788,25 @@ body {
   background: var(--color-accent);
 }
 
+/* ---- long goals (GoalsCard.tsx) --------------------------------------------
+   The panel is `.together`'s, because it is the same kind of fact read over a
+   longer span. Each goal is a name, an exact number and a bar; the number is
+   text, so the bar is never the only way to read it. */
+.goals-list { display: grid; gap: var(--space-3); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+.goal-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.goal-name { font-weight: 600; font-size: var(--text-sm); }
+.goal-number { font-size: var(--text-xs); color: var(--color-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.goal-bar {
+  height: 8px;
+  margin: var(--space-1) 0;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+.goal-fill { display: block; height: 100%; background: var(--color-accent); border-radius: inherit; }
+.goal-blurb { margin: 0; font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-body); }
+.goals-reached { margin-top: var(--space-3); }
+
 /* Today is outlined whether or not it is filled, so the row says where you are
    in the week without needing a caption to. */
 .together-day[data-last='true'] {
