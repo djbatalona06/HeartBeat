@@ -8,7 +8,7 @@ import { lightingAt } from '../../../domain/rpg/diorama';
 import { bakeAll } from '../../rpg/overworld/bake';
 import { strikePlan, type FightTiming } from '../../../domain/scene/strikePlan';
 import { shapeFor } from './vfx';
-import type { Blow, SceneHooks, StepResult } from './events';
+import type { Blow, Cast, SceneHooks, StepResult } from './events';
 
 /**
  * One stage of Eve's Garden, drawn.
@@ -276,7 +276,8 @@ export class BattleGardenScene extends Phaser.Scene {
    * Resolves when it is done, so the page can pace the two halves of a round
    * apart instead of playing them on top of each other.
    */
-  strike(blow: Blow, effectiveness: 'weak' | 'plain' | 'strong'): Promise<void> {
+  strike(blow: Blow, effectiveness: 'weak' | 'plain' | 'strong', cast?: Cast): Promise<void> {
+    void cast;
     const attacker = blow === 'player-hits' ? this.pet : this.foe;
     const victim = blow === 'player-hits' ? this.foe : this.pet;
     if (!attacker || !victim) return Promise.resolve();

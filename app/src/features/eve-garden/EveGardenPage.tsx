@@ -573,7 +573,11 @@ export function EveGardenPage() {
         }
         for (const key of Object.keys(cooldowns.current)) cooldowns.current[key] += 1;
 
-        await scene.current?.strike('player-hits', action?.type === 'Attack' ? edgeOf(foe) : 'plain');
+        await scene.current?.strike(
+          'player-hits',
+          action?.type === 'Attack' ? edgeOf(foe) : 'plain',
+          move ? { move, kit: kit.themeId } : undefined,
+        );
       }
 
       if (mine.outcome !== 'Fighting') {
