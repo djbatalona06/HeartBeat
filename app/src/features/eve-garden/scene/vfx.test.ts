@@ -1,6 +1,13 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { FALLBACK_SHAPE, KNOWN_VFX, shapeFor } from './vfx';
-import { COMPANION_KITS, skillsOf } from '../../../domain/rpg/companionSkills';
+import {
+  DRAWN_MOVES, EFFECT_CONTRAST, FALLBACK_SHAPE, effectColours, KNOWN_VFX, MEND_VFX, MOVE_VFX, moveVfxFor, shapeFor,
+} from './vfx';
+import { SIGNATURES, signatureFor } from './signatures';
+import { THEMES } from '../../../themes/index';
+import { contrast, darkVariantOf } from '../../../themes/tokens';
+import { COMPANION_KITS, MOVE_KEYS, skillsOf } from '../../../domain/rpg/companionSkills';
 
 /**
  * The join between the kits and the drawings. Two lists in two directories
@@ -41,4 +48,92 @@ describe('skill pictures', () => {
         .not.toBe(shapeFor(kit.support.vfx));
     }
   });
+});
+
+describe('move pictures', () => {
+  it('draws every kit × move, and nothing for a kit or move that does not exist', () => {
+    const kits = COMPANION_KITS.map((k) => k.themeId);
+    expect(Object.keys(MOVE_VFX).sort()).toEqual([...kits].sort());
+    for (const kit of kits) {
+      expect(Object.keys(MOVE_VFX[kit]).sort(), kit).toEqual([...DRAWN_MOVES].sort());
+    }
+    for (const move of DRAWN_MOVES) expect(MOVE_KEYS).toContain(move);
+  });
+
+  it('never gives two companions the same shape and colour for one move', () => {
+    for (const move of DRAWN_MOVES) {
+      const pairs = Object.values(MOVE_VFX).map((kit) => `${kit[move].shape}/${kit[move].token}`);
+      expect(new Set(pairs).size, move).toBe(pairs.length);
+    }
+  });
+
+  it('gives each kit three different motions, so a guard never reads as a hit', () => {
+    for (const [kit, moves] of Object.entries(MOVE_VFX)) {
+      expect(new Set(DRAWN_MOVES.map((m) => moves[m].shape)).size, kit).toBe(3);
+    }
+  });
+
+  it('keeps mend a rising heal for everyone, and a missing kit on the plain spark', () => {
+    expect(moveVfxFor('pony', 'mend')).toEqual(MEND_VFX);
+    expect(MEND_VFX.shape).toBe('motes');
+    expect(moveVfxFor('a-kit-from-the-future', 'physical')).toBeUndefined();
+  });
+});
+
+/**
+ * Every effect, in every pack, in both palettes — the `mood.test.ts` walk.
+ *
+ * Any companion can be taken into any pack, so a kit's token is proven against
+ * all ten grounds, not just its own theme's. What is proven is what is drawn:
+ * the fill if it stands on the ground, otherwise the edge around it.
+ */
+describe('move pictures stay visible on every ground', () => {
+  for (const theme of THEMES) {
+    for (const [mode, variant] of [['dark', darkVariantOf(theme)], ['light', theme.light]] as const) {
+      it(`${theme.name} (${mode})`, () => {
+        const { accent, success, danger, text, base } = variant.colors;
+        const palette = { accent, success, danger, text, base };
+        for (const kit of Object.keys(MOVE_VFX)) {
+          for (const move of [...DRAWN_MOVES, 'mend']) {
+            const look = moveVfxFor(kit, move)!;
+            const { fill, edge } = effectColours(look.token, palette);
+            expect(contrast(edge ?? fill, base), `${kit} ${move} ${look.token}`)
+              .toBeGreaterThanOrEqual(EFFECT_CONTRAST);
+          }
+        }
+      });
+    }
+  }
+
+  it('outlines a colour it cannot measure', () => {
+    const palette = { accent: 'rgba(0,0,0,0.5)', success: '#000000', danger: '#000000', text: '#ffffff', base: '#000000' };
+    expect(effectColours('accent', palette).edge).toBe('#ffffff');
+  });
+});
+
+describe('signature pieces', () => {
+  it('gives every companion its own piece, on its signature and nothing else', () => {
+    const signatures = COMPANION_KITS.map((kit) => kit.signature.vfx);
+    expect(Object.keys(SIGNATURES).sort()).toEqual([...signatures].sort());
+    const kinds = Object.values(SIGNATURES).map((piece) => piece.kind);
+    expect(new Set(kinds).size).toBe(kinds.length);
+    for (const kit of COMPANION_KITS) expect(signatureFor(kit.support.vfx), kit.themeId).toBeUndefined();
+  });
+});
+
+/**
+ * The same guard `companionSkills.test.ts` keeps on the kits, on the files that
+ * draw them. Copied rather than imported: the list cannot live in shipping
+ * code, since the point is that shipping code never contains it. Keep the two
+ * in step.
+ */
+describe('nobody else\'s characters, in the drawings either', () => {
+  const BORROWED =
+    /hello kitty|sanrio|spongebob|squarepants|naruto|uzumaki|shadow clone|rasengan|airbender|aang|appa|avatar state|my little pony|twilight sparkle|rainbow dash|hasbro|pikachu|mickey/i;
+
+  for (const file of ['vfx.ts', 'signatures.ts', 'BattleGardenScene.ts']) {
+    it(`${file} names nobody else's character`, () => {
+      expect(readFileSync(resolve(__dirname, file), 'utf8')).not.toMatch(BORROWED);
+    });
+  }
 });

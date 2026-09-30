@@ -79,7 +79,7 @@ export function startGarden(
   };
 
   return {
-    strike: (blow: Blow, effectiveness) => live()?.strike(blow, effectiveness) ?? Promise.resolve(),
+    strike: (blow: Blow, effectiveness, cast) => live()?.strike(blow, effectiveness, cast) ?? Promise.resolve(),
     skill: (vfx: string) => live()?.skill(vfx) ?? Promise.resolve(),
     defeat: () => live()?.defeat() ?? Promise.resolve(),
     withdraw: () => live()?.withdraw(),

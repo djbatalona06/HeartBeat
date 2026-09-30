@@ -62,6 +62,19 @@ in a fresh session. The Step 0 audit changed these assumptions:
 - `npm run visual` walks home, mood, tasks, shop and settings. **The garden and the
   fight are not in the axe walk** — Phase F should add them.
 
+**Phase C is built** (stacked on the A+B branch). What landed, and what the build found:
+
+- `strike(blow, effectiveness, cast?)` carries `{ move, kit }`; `MOVE_VFX` in
+  `features/eve-garden/scene/vfx.ts` holds the 15 looks as shape · token · count · pace.
+- **Tokens were measured, not assumed:** every pack's `accent` is 1.71–2.53:1 on its
+  light ground and shinobi's `danger` is 1.93:1 in dark. So `effectColours` adds a
+  `text` edge to any fill under 3:1, and `vfx.test.ts` proves 15 looks + mend × 5 packs
+  × 2 palettes.
+- The weakness edge is appended to the player's log line inside the live region, so
+  calm keeps it. `edgeOf` never returns `weak`, so there is no weak wording.
+- One signature piece per companion in `scene/signatures.ts`, drawn from primitives.
+- The originality guard now also reads the three drawing files as text.
+
 ## What is verified vs not
 
 **Verified this session:** `npm run typecheck` clean; `npm run test --workspace app`

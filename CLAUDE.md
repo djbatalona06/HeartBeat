@@ -173,7 +173,10 @@ Full deploy walkthrough: `docs/DEPLOY.md`
 - **Two lists hold the skill VFX together**: `companionSkills.ts` names a `vfx`
   per skill, `scene/vfx.ts` maps it to one of five motions, and
   `scene/vfx.test.ts` fails in both directions — an unmapped skill and a mapped
-  shape nobody casts.
+  shape nobody casts. The moves have a third list: `MOVE_VFX` gives each kit its own
+  physical / defensive / magic look, and the same test fails if a kit is
+  missing, two companions share a shape and token for one move, or a colour
+  would be drawn under 3:1 without the `text` edge `effectColours` adds.
 - **A chest holds `PRIZES_PER_CHEST` items and the counter steps once per
   chest.** A chest counts as a miss only when all three items missed, so the
   published 6/9/12 windows are reached far more rarely than the one-item

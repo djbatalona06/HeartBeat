@@ -176,6 +176,12 @@ export function EveGardenPage() {
   const [progress, setProgress] = useState<ProgressDto | null>(null);
   const [allActions, setAllActions] = useState<ActionDto[]>([]);
   const [monster, setMonster] = useState<MonsterDto | null>(null);
+  /**
+   * Log lines (by index; the log is append-only) whose hit landed on the
+   * monster's weakness. C# names the move and the damage; whether a charge was
+   * on the weakness is decided here by `edgeOf`, so the log learns it here.
+   */
+  const [weakHits, setWeakHits] = useState<readonly number[]>([]);
   const [battle, setBattle] = useState<BattleDto | null>(null);
   const [busy, setBusy] = useState<Busy>('idle');
   const [mapOpen, setMapOpen] = useState(false);
@@ -371,7 +377,10 @@ export function EveGardenPage() {
     const game = client.current;
     if (!game || !progress || !monster) return;
     game.beginBattle(island, stage, theme, progress.level, Date.now(), charges, sheet.total)
-      .then((next) => setBattle(next ? { ...next, moveNames } : next))
+      .then((next) => {
+        setWeakHits([]);
+        setBattle(next ? { ...next, moveNames } : next);
+      })
       // Was silent, which made walking into a monster and having nothing happen
       // indistinguishable from having missed the tile.
       .catch((error) => setFault(faultFrom('round', error)));
@@ -573,7 +582,16 @@ export function EveGardenPage() {
         }
         for (const key of Object.keys(cooldowns.current)) cooldowns.current[key] += 1;
 
-        await scene.current?.strike('player-hits', action?.type === 'Attack' ? edgeOf(foe) : 'plain');
+        const edge = action?.type === 'Attack' ? edgeOf(foe) : 'plain';
+        if (edge === 'strong') {
+          const line = mine.log.map((entry) => entry.who).lastIndexOf('Player');
+          if (line >= 0) setWeakHits((seen) => [...seen, line]);
+        }
+        await scene.current?.strike(
+          'player-hits',
+          edge,
+          move ? { move, kit: kit.themeId } : undefined,
+        );
       }
 
       if (mine.outcome !== 'Fighting') {
@@ -843,7 +861,7 @@ export function EveGardenPage() {
           dark={dark}
         />
 
-        <BattleLog battle={battle} monster={monster} />
+        <BattleLog battle={battle} monster={monster} weakHits={weakHits} />
       </div>
 
       {/* The controller: the move pad on the left, today's charges on the right,
