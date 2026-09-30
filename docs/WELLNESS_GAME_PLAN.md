@@ -1,5 +1,13 @@
 # Wellness-game upgrade — audit and draft plan
 
+> **Superseded.** Corrected and merged into [`planning/`](./planning/00_HANDOFF.md)
+> (see [`planning/MERGED_PLAN.md`](./planning/MERGED_PLAN.md)). Kept as the first-pass record.
+> **Known errors in this file, corrected in `planning/`:** F4 and Phase 3 (the level-up
+> moment is already built and the partner already sees it, no holdings kind needed);
+> the "356 aria- attributes" figure counts lines (~340 occurrences); "no lint script"
+> omits `check:config` and `ui:check`; the BattleLog text and a font-size setting are
+> unverified; `TogetherPanel` already renders next tier and points-to-go.
+
 Written against `gng/happy-gates-2x9n6b`. Facts below were read from the tree
 on the day this was written; where something was **not** read, it says so.
 
@@ -86,7 +94,7 @@ character and the *picture* is not.
 The dashboard level-up and the chest honour it (`levelUpPlan` returns zeros
 under calm), so this is a gap in the newest surface, not a policy.
 
-**F4 — Level-up is a hop and a glow.** `levelUpAnimator.ts`: one or two hops, a
+**F4 — Level-up is a hop and a glow. (Corrected: it is built and specced; see `planning/`.)** `levelUpAnimator.ts`: one or two hops, a
 glow, a bar sweep, on the Home mascot only. The *content* is already good —
 `milestones.ts` gives every level 2–50 something that opens a plot, a skill, a
 tether or a stat, and explicitly refuses "well done" messages. What is missing is
@@ -105,7 +113,7 @@ ties logging to fight damage, the holdings sync for partner visibility.
 | `npm run typecheck` (app, functions, worker) | Clean |
 | `npm run test --workspace app` | 142 files, 2,677 tests, pass |
 | Vite warning | `decks.test.ts` uses ``import(`./${name}.ts`)`` in its own directory; harmless but noisy. Move the decks under a sub-path or make the pattern specific. |
-| Lint | Not run — no lint script at the root `package.json` that I read. |
+| Lint | No `lint` script at the root, but `check:config` and `ui:check` exist; neither was run. |
 | Worker tests, `game:test` (.NET) | Not run for this document. |
 
 The code reviewed reads consistently with `CLAUDE.md` (comment density, layering
@@ -122,7 +130,7 @@ rules). No syntax problems found; the review finding is design, not syntax (§2)
 | Game economy & levels | **Green** | Milestones, XP bands, charges, tests all in place. |
 | Per-move, per-character attack effects | **Red** | F1, F2 — the requested feature is not built. |
 | Level-up as an event | **Amber** | Content Green, presentation thin (F4). |
-| Accessibility — DOM screens | **Green/Amber** | axe gate on every route in two themes, fails on serious/critical; 356 `aria-` attributes; `aria-live` battle log; labelled pad. |
+| Accessibility — DOM screens | **Green/Amber** | axe gate on every route in two themes, fails on serious/critical; ~340 `aria-` attributes (356 lines contain one); `aria-live` battle log; labelled pad. |
 | Accessibility — the fight canvas | **Red** | No calm path (F3); the canvas conveys hits, weakness and skill effects visually only. The `aria-live` battle log covers the text, but only if it names the *move and effect*, which I did not verify. |
 | Accessibility — known limits | **Amber** | axe catches about a third of WCAG issues; nothing in CI covers keyboard-only play of the garden, 200% zoom, or a screen-reader pass. |
 | Baselines for visual regression | **Amber** | Not committed yet (`docs/design-system.md`); comparison is seed-only. |
@@ -162,10 +170,8 @@ tests; the scene only draws (the repo's existing boundary).
   that already exists), and show the next milestone.
 - Big moments (plot / skill / prestige, per `MilestoneKind`) get the long
   version; ordinary levels get the short one — mirrors `LEVEL_UP_TIMING`.
-- Partner sees it: use the existing holdings channel with a **visible-not-writable**
-  kind (per `PARTNER_VISIBLE_KINDS`, which already holds "cheers"). A new kind
-  costs four edits plus a migration (`CLAUDE.md`), so prefer extending an
-  existing kind first; decide after reading `holdings.ts`.
+- Partner sees it: **already true** — the level derives from the shared pet against a
+  local `hb.petLevelSeen`, so no holdings kind is needed (corrected).
 - Calm: a still card with the same content; no motion, same information.
 
 ### Phase 4 — Wellness-first framing
