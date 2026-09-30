@@ -256,7 +256,7 @@ function FinishedPanel({ boss, busy, onNext }: { boss: BossPayload; busy: boolea
       <p className="section-sub">
         {boss.state === 'won'
           ? 'Cleared. The next one is a quarter bigger.'
-          : 'Not this time. The same tier is still there.'}
+          : 'Not this time. It will be here when the two of you are ready.'}
       </p>
       <PrimaryAction disabled={busy} onClick={onNext}>
         Line up the next one
