@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
 import type { Settings } from '../../domain/types';
-import { ensureIdentity, completeTask, coupleVitals, seedStarterPlan } from '../../db/repository';
+import { ensureIdentity, completeTask, coupleTogether, coupleVitals, seedStarterPlan } from '../../db/repository';
+import { isUnlocked } from '../../domain/rpg/unlocks';
+import { GoalsCard } from '../pet/GoalsCard';
 import { todayKey } from '../../domain/day';
 import { levelProgress } from '../../domain/xp';
 import { openDailies } from '../../domain/rpg/task';
@@ -79,6 +81,15 @@ export function DashboardPage() {
     settings, coupleId, day, vitals,
   });
 
+  // Lifetime points, for the goals and for what they have already opened. On a
+  // lone phone too: the goals are the same goals, and a fresh install should
+  // see "0 of 1,200", not nothing. Read-only — `TogetherPanel` does the paying.
+  const together = useLiveQuery(
+    () => (coupleId ? coupleTogether(coupleId, day) : undefined),
+    [coupleId, day],
+  );
+  const unlockState = { togetherPoints: together?.points ?? 0, petLevel: progress.level };
+
   async function onComplete(task: Task) {
     await completeTask(task.id, day);
   }
@@ -86,6 +97,8 @@ export function DashboardPage() {
   return (
     <Screen title="HeartBeat" sub={<>{paired ? 'Paired' : 'Just you so far'} · {day}</>}>
       <PetStage
+        aura={isUnlocked('shared-aura', unlockState)}
+        framed={isUnlocked('evergreen-frame', unlockState)}
         mascot={mascot}
         petMood={petMood}
         calm={calm}
@@ -112,6 +125,8 @@ export function DashboardPage() {
       {paired && settings?.coupleId
         ? <TogetherPanel coupleId={settings.coupleId} day={day} />
         : null}
+
+      <GoalsCard state={unlockState} />
 
       {/* The one thing a lone phone is actually missing, said once and near the
           top rather than as four empty panels further down. `Tile` has been in
@@ -261,15 +276,16 @@ function useHomePet({ settings, coupleId, day, vitals }: HomePetArgs) {
 }
 
 interface PetCardProps {
+  framed: boolean;
   mascot: ReturnType<typeof getMascot>;
   progress: ReturnType<typeof levelProgress>;
   fillRef: React.RefObject<HTMLDivElement>;
 }
 
 /** The pet's name, level and XP bar. */
-function PetCard({ mascot, progress, fillRef }: PetCardProps) {
+function PetCard({ mascot, progress, fillRef, framed }: PetCardProps) {
   return (
-    <section className="home-pet">
+    <section className="home-pet" data-frame={framed || undefined}>
       <div className="home-pet-head">
         <span className="home-pet-name">{mascot.name}</span>
         <span className="home-pet-level">
@@ -359,6 +375,10 @@ function TodaySection({ open, loaded, equippedIds, onComplete }: TodaySectionPro
 }
 
 interface PetStageProps {
+  /** Shared Aura is open: the pet's light gets a ring (`unlocks.ts`). */
+  aura: boolean;
+  /** Evergreen Frame is open: the pet's card gets its frame. */
+  framed: boolean;
   mascot: ReturnType<typeof getMascot>;
   petMood: ReturnType<typeof moodFor>;
   calm: boolean;
@@ -373,7 +393,9 @@ interface PetStageProps {
 
 /** The mascot in its colours, what it says, and how far along it is. */
 function PetStage(props: PetStageProps) {
-  const { mascot, petMood, calm, greetPose, greetingLine, dye, radiance, progress, mascotRef, fillRef } = props;
+  const {
+    aura, framed, mascot, petMood, calm, greetPose, greetingLine, dye, radiance, progress, mascotRef, fillRef,
+  } = props;
   return (
     <>
     {/* The dye is three CSS custom properties on the wrapper, which is the
@@ -382,6 +404,7 @@ function PetStage(props: PetStageProps) {
     <div
       ref={mascotRef}
       className="home-mascot-standalone"
+      data-aura={aura || undefined}
       data-mood={petMood}
       data-calm={calm ? 'true' : 'false'}
       data-greet={greetPose}
@@ -402,7 +425,7 @@ function PetStage(props: PetStageProps) {
 
     <PetGreeting line={greetingLine} />
 
-    <PetCard mascot={mascot} progress={progress} fillRef={fillRef} />
+    <PetCard mascot={mascot} progress={progress} fillRef={fillRef} framed={framed} />
     </>
   );
 }

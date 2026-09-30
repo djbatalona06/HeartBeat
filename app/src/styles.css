@@ -314,6 +314,16 @@ body {
   transition: background var(--motion-slow) var(--ease-soft);
 }
 
+/* Shared Aura (unlocks.ts): a season of the two of you, as a ring around the
+   pet's light. Drawn on the light that is already there rather than a new
+   layer, and still: an aura that pulsed would be the one thing on Home moving
+   for no reason, and calm would have to switch it off. */
+.home-mascot-standalone[data-aura]::before {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-accent) 45%, transparent),
+    0 0 1.5rem 0.4rem color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
 /* ---- the ground under the pet ---------------------------------------------
    The mascots are flat SVGs drawn in theme variables, and that is what lets
    them follow a palette when it changes — so the way to give them depth is not
@@ -607,6 +617,15 @@ body {
   box-shadow: var(--shadow);
 }
 
+/* Evergreen Frame (unlocks.ts): most of a year together, as a second border
+   held just outside the first. An outline rather than a thicker border, so the
+   card's contents do not shift the day it opens. Accent leaned toward the
+   border colour, so it reads as a frame and not as a focus ring. */
+.home-pet[data-frame] {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 65%, var(--color-border));
+  outline-offset: 3px;
+}
+
 .home-pet-head {
   display: flex;
   align-items: baseline;
@@ -787,6 +806,25 @@ body {
 .together-day[data-duo='true'] {
   background: var(--color-accent);
 }
+
+/* ---- long goals (GoalsCard.tsx) --------------------------------------------
+   The panel is `.together`'s, because it is the same kind of fact read over a
+   longer span. Each goal is a name, an exact number and a bar; the number is
+   text, so the bar is never the only way to read it. */
+.goals-list { display: grid; gap: var(--space-3); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+.goal-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.goal-name { font-weight: 600; font-size: var(--text-sm); }
+.goal-number { font-size: var(--text-xs); color: var(--color-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.goal-bar {
+  height: 8px;
+  margin: var(--space-1) 0;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+.goal-fill { display: block; height: 100%; background: var(--color-accent); border-radius: inherit; }
+.goal-blurb { margin: 0; font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-body); }
+.goals-reached { margin-top: var(--space-3); }
 
 /* Today is outlined whether or not it is filled, so the row says where you are
    in the week without needing a caption to. */
