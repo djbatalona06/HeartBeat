@@ -53,6 +53,11 @@ export interface SceneHandle {
   withdraw(): void;
   /** Walk one tile — the on-screen pad's way in, beside the keys and the tap. */
   step(dx: number, dy: number): StepResult;
+  /**
+   * Calm mode changed. Under calm every strike, skill and fade resolves at
+   * once with nothing drawn: the log and the bars carry the turn.
+   */
+  setCalm(calm: boolean): void;
   /** Re-light the scene for a new hour or a changed diorama variant. */
   relight(hour: number, dark: boolean): void;
   /**
