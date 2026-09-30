@@ -85,11 +85,10 @@ Numbering note: these letters replace the "Phase 1/2/3" numbering in `plan.md` a
 - Done when: every milestone kind plays the big moment; the line names what opened;
   calm shows the text without motion; manual check with `hb.petLevelSeen` set low.
 
-### Phase F — Accessibility sweep, study kinds, nursing decks
+### Phase F — Accessibility sweep and nursing decks
 - **Accessibility:** keyboard-only garden and Raid Gate; VoiceOver (iOS is the install
   target); 200% zoom and 320 px on every route; a font-size setting if absent; add
   the garden to the axe walk if missing; contrast for every new palette.
-- **Study kinds:** add `recall` / `battle` to `STUDY_XP` only when a client sends them.
 - **Nursing decks** (`plan.md` Phase 3): settle the `why` decision first; build-time
   adapter, content-derived stable card ids, test id stability across re-import;
   check bundle size before/after. GLB viewer stays deferred (31 MB, never precached).

@@ -34,11 +34,6 @@ display list. Nothing this round needs to cross devices that doesn't already.
 
 - **Quests/achievements don't survive device loss** — a new D1 table plus API, same
   shape as `holdings.ts`. Own PR.
-- **Study kinds** — `app/functions/api/study/session.ts:32` `STUDY_XP` accepts only
-  `deck / quiz / weekly / match / anatomy`; unknown kinds get HTTP 400. Adding
-  `recall` / `battle` is one map entry plus a test, **not** a schema change, and the
-  daily cap (`STUDY_DAILY_CAP = 120`) and deterministic award id `study-<sessionId>`
-  already make resends and rematch-farming safe.
 - **Data export** of a couple's record — read-only, keyed by `coupleId`.
 
 ## Privacy

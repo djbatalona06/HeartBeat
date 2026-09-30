@@ -31,7 +31,6 @@ Your original ask was six things in one breath. Splitting them shows which are
 | "RAG evaluation" | **Ambiguous — see below.** I read it as Red/Amber/Green status. | Check |
 | "Syntax review" | Typecheck + tests + lint pass. Done; see §3. | Check |
 | "Draft plan to upgrade and explain the previous text" | This file. | Doc |
-| "Also include this doc" (the Lantern Build Pack link) | Read in full (18,359 characters); folded in as §8. | Input |
 
 **Two habits worth keeping for future briefs:** (1) name the *acceptance test*
 ("a level-up on phone A is seen on phone B within one poll"), because "mean
@@ -218,76 +217,5 @@ tests; the scene only draws (the repo's existing boundary).
 - Try writing `strikePlan` yourself before I do: it is ~20 lines, pure, and
   the existing `levelUpAnimator.test.ts` shows the shape of the test.
 
+
 ---
-
-## 8 · The Lantern Build Pack, folded in
-
-**What it is.** A six-document pack (PRD, TRD, App Flow, UI/UX, Schema,
-Implementation Plan) for **Lantern**, a *separate* retro-terminal study app. It
-specifies three upgrades built in a fixed order: **A** typed recall, **B** merged
-Learn mode, **C** typing battles against a CPU bot. I read all of it.
-
-**What it is not.** It is not a Heartbeat spec. Lantern's repo is not in this
-session's scope (only `djbatalona06/heartbeat` is), so none of A/B/C can be built
-from here. The pack touches Heartbeat in exactly one place, which is where the
-two plans meet.
-
-### 8.1 The one integration point — and it is a real gap today
-
-Pack Doc 00 assumes "HeartBeat XP is triggered by a 'session finished' event
-that new features should also fire", and C5 wants battle results to feed
-Heartbeat XP. In this repo that event is `POST /api/study/session`, and it only
-accepts five kinds (`app/functions/api/study/session.ts:32`):
-
-```ts
-STUDY_XP = { deck: 20, quiz: 25, weekly: 35, match: 10, anatomy: 15 }
-```
-
-An unknown kind is rejected (`session.ts:119`, HTTP 400). So when Lantern ships
-Piece A or C and sends `recall` or `battle`, **every session is refused** until
-Heartbeat accepts the kind. Nothing in the pack says this; Step 0 of the pack's
-own audit should find it from the Lantern side.
-
-**Heartbeat-side work, small and independent (do not wait for Lantern):**
-1. Decide kinds and prices, e.g. `recall: 15`, `battle: 20`. Keep them under the
-   existing `STUDY_DAILY_CAP = 120` logic — a battle you can rematch endlessly
-   must not become an XP faucet; the cap already handles it, and the award id
-   `study-<sessionId>` already makes resends safe.
-2. Add the kinds plus a test beside the existing session tests.
-3. Do **not** change the token model. The pack says "the HeartBeat token stays
-   exactly where it is stored now", which agrees with `CURRENT_STATE.md` §4.
-4. Privacy agrees too: Lantern stores nothing off-device and Heartbeat stores
-   no email — the two promises are compatible.
-
-### 8.2 What the pack teaches that applies to *this* plan
-
-| Pack idea | Applied to the wellness-game plan |
-|---|---|
-| Build one piece at a time, each with a "Done when" | Phases 1–6 above each get one (below). |
-| Order: spec → plan → build → test → you review | Same, one session per phase. |
-| Tests before code for pure logic (checker, engine, bot) | `strikePlan`, `MOVE_VFX` and the ceremony builder are pure; write their tests first. |
-| Step 0 = read-only audit before feature code | §2 of this file is that audit; it also corrected two assumptions (colour, calm). |
-| Accessibility is required, not optional: icon + word for every state, AA contrast, keyboard-only, reduced motion, live-region announcements, user font size | Adopt these as Heartbeat's Phase 5 checklist verbatim. The pack's "Bot is at 60 percent" live-region pattern is the model for announcing *move and effect* in the battle log (F1, Phase 2). |
-| A user font-size setting | Not checked in Heartbeat; add to the Phase 5 audit. |
-| One small commit per step, checkpoint after each | Adopt. |
-| Learning checkpoints: you do the first item yourself | See §8.3. |
-
-### 8.3 Done-when, and your learning checkpoints
-
-| Phase | Done when | You do this yourself first |
-|---|---|---|
-| 1 Calm + accent | Under calm the fight plays no tweens; accent comes from the theme; `strikePlan` tests pass | Write `strikePlan`'s test cases (mirror `levelUpAnimator.test.ts`) |
-| 2 Per-move effects | 15 kit×move entries, two-way test green, battle log names move and effect | Sketch one companion's three effects as shape + colour + particle count |
-| 3 Level-up moment | Every `MilestoneKind` renders a card; partner sees it; calm shows the same info still | Decide what the card says for level 7 and level 40 |
-| 4 Wellness framing | Fights still winnable with zero charges; copy names the person first | Rewrite three strings from pet-first to you-first |
-| 5 Accessibility | Garden playable by keyboard and VoiceOver; AA contrast on new palettes; 200% zoom clean | Do one keyboard-only run of the garden before I do |
-| 6 Ship | build, visual, lighthouse green; `study:build` last | — |
-
-### 8.4 Two process conflicts worth settling
-
-- **Branch names.** The pack uses `feat/…` branches; this session is pinned to
-  `gng/happy-gates-2x9n6b`. Heartbeat work stays on the pinned branch. Lantern
-  work, when it happens, is a different repo and session.
-- **PR text.** Your standing rule (and the pack's Doc 06) is no Claude name and
-  no session IDs in commits or PRs. The session tooling suggests adding both;
-  your rule wins, and I will leave them out.

@@ -41,9 +41,7 @@ companions should fight with attack / defence / magic effects that look like
 4. **Level-up spec reversal:** `docs/superpowers/specs/2026-09-24-levelup-moment-design.md`
    decided "Home only, no on-screen text beyond `Lv N`". The reveal line reverses
    that; confirm and update the spec's decisions table when building Phase E.
-5. **Study-session kinds:** accept `recall` / `battle` in `/api/study/session` now,
-   or wait until the Lantern app exists to send them? (Section 06, Phase F.)
-6. **Worker and .NET tests** were not re-run while planning. Run them first.
+5. **Worker and .NET tests** were not re-run while planning. Run them first.
 
 ## What is verified vs not
 

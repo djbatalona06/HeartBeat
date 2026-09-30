@@ -20,7 +20,7 @@ of each stay current, which were wrong, and how their phase numbers map.
 | **C** per-move effects | — | Phase 2 | Not built |
 | **D** goals + wellness framing | Phase 2 | Phase 4 | **Partly shipped**: `TogetherPanel` shows next tier + points-to-go; `unlocks.ts` and the locked-goals card are not built |
 | **E** level-up reveal | — | Phase 3 | Level-up moment **built** (`1fd325a`); reveal line + all-kinds-big not built |
-| **F** a11y sweep, study kinds, nursing decks | Phase 3 / 3b | Phase 5 / §8 | Not built; decks blocked on the `why` decision |
+| **F** a11y sweep, nursing decks | Phase 3 / 3b | Phase 5 / §8 | Not built; decks blocked on the `why` decision |
 
 ## 2 · What stays, changes, goes
 
@@ -39,7 +39,6 @@ of each stay current, which were wrong, and how their phase numbers map.
 | "No lint script" (wellness §3) | **Corrected**: no `lint`, but `check:config` and `ui:check` exist; neither was run |
 | BattleLog announces move + effect | **Unverified**: it is `aria-live="polite"`; log-line text unread |
 | User font-size setting | **Not found** (searched settings/types); unverified |
-| Lantern pack (external study app) | **Stays as context** only. Lantern's repo is out of scope; the one Heartbeat-side gap is that `/api/study/session` rejects unknown kinds (HTTP 400) |
 
 ## 3 · RAG (Red / Amber / Green)
 

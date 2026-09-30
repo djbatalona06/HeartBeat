@@ -44,9 +44,7 @@ companions should fight with attack / defence / magic effects that look like
 4. **Level-up spec reversal:** `docs/superpowers/specs/2026-09-24-levelup-moment-design.md`
    decided "Home only, no on-screen text beyond `Lv N`". The reveal line reverses
    that; confirm and update the spec's decisions table when building Phase E.
-5. **Study-session kinds:** accept `recall` / `battle` in `/api/study/session` now,
-   or wait until the Lantern app exists to send them? (Section 06, Phase F.)
-6. **Worker and .NET tests** were not re-run while planning. Run them first.
+5. **Worker and .NET tests** were not re-run while planning. Run them first.
 
 ## What is verified vs not
 
@@ -416,11 +414,6 @@ display list. Nothing this round needs to cross devices that doesn't already.
 
 - **Quests/achievements don't survive device loss** — a new D1 table plus API, same
   shape as `holdings.ts`. Own PR.
-- **Study kinds** — `app/functions/api/study/session.ts:32` `STUDY_XP` accepts only
-  `deck / quiz / weekly / match / anatomy`; unknown kinds get HTTP 400. Adding
-  `recall` / `battle` is one map entry plus a test, **not** a schema change, and the
-  daily cap (`STUDY_DAILY_CAP = 120`) and deterministic award id `study-<sessionId>`
-  already make resends and rematch-farming safe.
 - **Data export** of a couple's record — read-only, keyed by `coupleId`.
 
 ## Privacy
@@ -518,11 +511,10 @@ Numbering note: these letters replace the "Phase 1/2/3" numbering in `plan.md` a
 - Done when: every milestone kind plays the big moment; the line names what opened;
   calm shows the text without motion; manual check with `hb.petLevelSeen` set low.
 
-### Phase F — Accessibility sweep, study kinds, nursing decks
+### Phase F — Accessibility sweep and nursing decks
 - **Accessibility:** keyboard-only garden and Raid Gate; VoiceOver (iOS is the install
   target); 200% zoom and 320 px on every route; a font-size setting if absent; add
   the garden to the axe walk if missing; contrast for every new palette.
-- **Study kinds:** add `recall` / `battle` to `STUDY_XP` only when a client sends them.
 - **Nursing decks** (`plan.md` Phase 3): settle the `why` decision first; build-time
   adapter, content-derived stable card ids, test id stability across re-import;
   check bundle size before/after. GLB viewer stays deferred (31 MB, never precached).
@@ -582,7 +574,7 @@ of each stay current, which were wrong, and how their phase numbers map.
 | **C** per-move effects | — | Phase 2 | Not built |
 | **D** goals + wellness framing | Phase 2 | Phase 4 | **Partly shipped**: `TogetherPanel` shows next tier + points-to-go; `unlocks.ts` and the locked-goals card are not built |
 | **E** level-up reveal | — | Phase 3 | Level-up moment **built** (`1fd325a`); reveal line + all-kinds-big not built |
-| **F** a11y sweep, study kinds, nursing decks | Phase 3 / 3b | Phase 5 / §8 | Not built; decks blocked on the `why` decision |
+| **F** a11y sweep, nursing decks | Phase 3 / 3b | Phase 5 / §8 | Not built; decks blocked on the `why` decision |
 
 ## 2 · What stays, changes, goes
 
@@ -601,7 +593,6 @@ of each stay current, which were wrong, and how their phase numbers map.
 | "No lint script" (wellness §3) | **Corrected**: no `lint`, but `check:config` and `ui:check` exist; neither was run |
 | BattleLog announces move + effect | **Unverified**: it is `aria-live="polite"`; log-line text unread |
 | User font-size setting | **Not found** (searched settings/types); unverified |
-| Lantern pack (external study app) | **Stays as context** only. Lantern's repo is out of scope; the one Heartbeat-side gap is that `/api/study/session` rejects unknown kinds (HTTP 400) |
 
 ## 3 · RAG (Red / Amber / Green)
 
