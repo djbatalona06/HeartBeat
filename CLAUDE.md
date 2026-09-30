@@ -166,6 +166,12 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   exists after the gate's pick, and a ref changing re-runs nothing, so an
   effect without it runs once behind the gate, finds no client, and never asks
   again. That left the garden on "Waking the garden…" for every fresh visit.
+- **Nothing else may tween `pet.y` while the pet walks.** The idle bob is a
+  `repeat: -1` tween on `y`; a second tween on the same property is what made
+  up/down steps drift back to the old row. `walkTo` in `BattleGardenScene`
+  stops the bob, carries pet and shadow on one counter, and restarts the bob
+  from the new row. Depth follows the row (`domain/scene/walk.ts`), inside the
+  9–10 band so effects at 11+ stay on top.
 - **A skill kit is character, not palette.** `companionSkills.test.ts` fails if
   a rights holder's name appears anywhere in that file, the same guard
   `pets.test.ts` and `mascots/roster.test.ts` already carry. Kits belong to the
@@ -205,7 +211,8 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   because the plot ladder is derived from pet XP and pet XP is reconciled
   against the server, so a device can briefly hold a garden ahead of the level
   it can prove. `plantFlora` derives the level **inside** the transaction for
-  the same reason; never take it as an argument.
+  the same reason; never take it as an argument. Planting happens on `/birb`
+  (`shop/GardenPlots.tsx`); the garden only *draws* what is planted.
 - **The birbhouse furnishes itself, and only upwards.** There is no placing:
   `buyFurniture` calls `refurnishHouse` in the same transaction, which takes
   the **better of the stored piece and this member's best owned piece, per
@@ -255,7 +262,8 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   Milestones hang off the second. `EveGardenPage`'s victory banner reads the
   pet's, because the first would announce a plot opening on the wrong level.
 - **`ChestAlcove`, `ChestArt` and `ChestReveal` each have one implementation,
-  rendered twice.** The Shop tab and `GardenDrawer` both open chests. Do not
+  rendered once**, on the Shop tab — the garden's copy left with its drawer.
+  If a second place ever opens chests again, render these; do not
   fork any of them — two sets of published odds is two chances to publish a
   number that is not the number, two chest drawings is two chances for the
   cheap one to look like the dear one, and two reveals is two chances to
@@ -299,7 +307,7 @@ Full deploy walkthrough: `docs/DEPLOY.md`
     once and stops.
 - **Shop, Birb and Raid are one page; the Bag is another.** `shop/ShopPage.tsx`
   renders whichever `ShopSection`s its route asks for — `/shop` the chests and
-  purchases, `/birb` companions, colours and the room, `/raid` the sheet and the
+  purchases, `/birb` companions, colours, the room and the garden plots, `/raid` the sheet and the
   boss. `/party` (all of them at once) is now a redirect. Gear is **worn only on
   the Bag** (`assets/AssetsPage.tsx`), on a 2×2 slot grid with the amulet beside
   it; finished to-dos, streaks and the achievement shelf live under Tasks.

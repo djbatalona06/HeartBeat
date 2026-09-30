@@ -75,6 +75,12 @@ in a fresh session. The Step 0 audit changed these assumptions:
 - One signature piece per companion in `scene/signatures.ts`, drawn from primitives.
 - The originality guard now also reads the three drawing files as text.
 
+**After Phase C (garden tidy):** vertical walking fixed (two tweens on `pet.y`), the
+Raid Gate cards are rank + stat bubbles (`statBubbles`), and the fight page lost the
+wellness cards, the drawer and the places row — plots moved to `/birb`, chests stay
+on the Shop. Phase C itself reached `main` with this change: #118 merged into #117's
+branch after #117 had already merged.
+
 ## What is verified vs not
 
 **Verified this session:** `npm run typecheck` clean; `npm run test --workspace app`
