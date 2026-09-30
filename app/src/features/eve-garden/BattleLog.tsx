@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { BattleDto, MonsterDto } from './engine/types';
+import { WEAKNESS_MULTIPLIER } from '../../domain/rpg/charges';
 
 /**
  * What just happened, and what you are fighting.
@@ -13,6 +14,12 @@ import type { BattleDto, MonsterDto } from './engine/types';
 export interface BattleLogProps {
   battle: BattleDto | null;
   monster: MonsterDto | null;
+  /**
+   * Indices of player lines whose hit was on the weakness. The picture shows
+   * it with extra sparks; this is the same fact in words, inside the live
+   * region, so it is heard, and still there under calm when nothing is drawn.
+   */
+  weakHits?: readonly number[];
 }
 
 function Bar({ label, value, max, tone }: { label: string; value: number; max: number; tone: string }) {
@@ -28,7 +35,7 @@ function Bar({ label, value, max, tone }: { label: string; value: number; max: n
   );
 }
 
-export function BattleLog({ battle, monster }: BattleLogProps) {
+export function BattleLog({ battle, monster, weakHits = [] }: BattleLogProps) {
   const tail = useRef<HTMLLIElement | null>(null);
 
   // Keep the newest line in view. `block: 'nearest'` so a fight in a panel does
@@ -94,6 +101,7 @@ export function BattleLog({ battle, monster }: BattleLogProps) {
             ref={index === battle.log.length - 1 ? tail : undefined}
           >
             {line.text}
+            {weakHits.includes(index) && ` On its weakness · ×${WEAKNESS_MULTIPLIER}.`}
           </li>
         ))}
       </ol>

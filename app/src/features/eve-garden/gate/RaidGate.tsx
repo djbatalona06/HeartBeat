@@ -38,8 +38,6 @@ export interface RaidGateProps {
   dark: boolean;
   /** How full the tether is, 0-1. */
   resonance: number;
-  /** The shared pet's level, which is the same behind every companion. */
-  petLevel: number;
   /** Where the couple are in the world, for the trail and the boss. */
   world: WorldProgress;
   onEnter(themeId: string): void;
@@ -48,7 +46,7 @@ export interface RaidGateProps {
 }
 
 export function RaidGate({
-  cards, verdict, hour, dark, resonance, petLevel, world, onEnter, onCancel,
+  cards, verdict, hour, dark, resonance, world, onEnter, onCancel,
 }: RaidGateProps) {
   const island = standingIsland(world);
   const [chosen, setChosen] = useState<string | undefined>(verdict.preselected);
@@ -111,9 +109,6 @@ export function RaidGate({
             {verdict.reason === 'asked' ? 'Change companion' : "Eve's Garden"}
           </h1>
           <p className="gate-greeting">{greeting}</p>
-          <p className="gate-level">
-            Your pet is level {petLevel}. That much comes with you whoever you pick.
-          </p>
           {refused && <p className="gate-refused" role="alert">{refused}</p>}
         </div>
 

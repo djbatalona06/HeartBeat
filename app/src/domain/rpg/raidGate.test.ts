@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   AFFINITY_RANKS, MASCOT_ELEMENTS, MASCOT_RAID_ORDER, MAX_AFFINITY_RANK,
-  affinityRank, canEnter, gateCards, gateDecision, gateGreeting, mostFavoured, movePreview,
-  skillPreview, tierForRank, toNextRank, withAffinity,
+  affinityRank, canEnter, gateCards, gateDecision, gateGreeting, mostFavoured,
+  statBubbles, tierForRank, toNextRank, withAffinity,
 } from './raidGate';
 import { COMPANION_KITS } from './companionSkills';
 import { MASCOT_ROSTER } from '../../features/pet/mascots/roster';
@@ -79,11 +79,6 @@ describe('the cards', () => {
     for (const card of cards) expect(MASCOT_ELEMENTS[card.themeId]).toBe(card.element);
   });
 
-  it('names the three moves each companion fights with', () => {
-    const pony = gateCards().find((c) => c.themeId === 'pony')!;
-    expect(movePreview(pony)).toBe('Hoofbeat · Bell Ward · Wishfire');
-  });
-
   it('reads affinity, and defaults everybody to a fresh rank one', () => {
     const cards = gateCards({ affinity: { pony: AFFINITY_RANKS[2] } });
     const pony = cards.find((c) => c.themeId === 'pony')!;
@@ -118,11 +113,6 @@ describe('the cards', () => {
     const avatar = gateCards().find((c) => c.themeId === 'avatar')!;
     expect(pony.resonance).toBeCloseTo(8, 6);
     expect(avatar.resonance).toBe(0);
-  });
-
-  it('previews the kit in one line', () => {
-    const pony = gateCards().find((c) => c.themeId === 'pony')!;
-    expect(skillPreview(pony)).toBe('Star Missile · Horn Glow');
   });
 
   it('marks one out of reach when it is told to, with the reason given', () => {
@@ -241,5 +231,34 @@ describe('mostFavoured', () => {
   it('is whoever has fought the most rounds', () => {
     const cards = gateCards({ affinity: { pony: 40, kitty: 400, shinobi: 5 } });
     expect(mostFavoured(cards)!.themeId).toBe('kitty');
+  });
+});
+
+describe('the gate\'s bubbles', () => {
+  it('shows one bubble per stat a companion leans on, in that order', () => {
+    for (const card of gateCards()) {
+      expect(statBubbles(card).map((b) => b.stat), card.themeId).toEqual(card.leans);
+    }
+  });
+
+  // A fresh companion can have nothing yet in its third lean — too few points
+  // to deal three ways. An empty bubble is the true picture of "not upgraded
+  // yet", so the rule is only that the stat it leans on hardest is never empty.
+  it('never overfills, and never leaves the first lean empty', () => {
+    for (const card of gateCards()) {
+      const bubbles = statBubbles(card);
+      expect(bubbles[0].value, card.themeId).toBeGreaterThan(0);
+      for (const bubble of bubbles) {
+        expect(bubble.fill, `${card.themeId} ${bubble.stat}`).toBeGreaterThanOrEqual(0);
+        expect(bubble.fill).toBeLessThan(1);
+      }
+    }
+  });
+
+  it('fills further as a companion climbs its ranks', () => {
+    const fresh = gateCards().find((c) => c.themeId === 'pony')!;
+    const seasoned = gateCards({ affinity: { pony: 9999 } }).find((c) => c.themeId === 'pony')!;
+    const sum = (card: typeof fresh) => statBubbles(card).reduce((n, b) => n + b.fill, 0);
+    expect(sum(seasoned)).toBeGreaterThan(sum(fresh));
   });
 });

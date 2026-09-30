@@ -6255,49 +6255,6 @@ div.gear-slot:active { transform: none; }
   .garden-dpad button { border-color: ButtonText; }
 }
 
-/* The dashboard, as cards rather than a panel. */
-.garden-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  gap: var(--space-2);
-}
-.garden-card {
-  padding: var(--space-2) var(--space-3);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
-}
-.garden-card.is-dark { border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border)); }
-.garden-card h3 {
-  margin: 0 0 var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  font-weight: 600;
-}
-.garden-card p {
-  margin: 0;
-  font-size: var(--text-sm);
-  line-height: var(--line-body);
-}
-.garden-card-big {
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  line-height: var(--line-tight);
-}
-.garden-card-bar {
-  height: 6px;
-  margin-bottom: var(--space-1);
-  border-radius: 3px;
-  background: var(--color-surface-muted);
-  overflow: hidden;
-}
-.garden-card-bar span {
-  display: block;
-  height: 100%;
-  background: var(--color-accent);
-  transition: width var(--motion-medium) var(--motion-easing);
-}
-
 /* The fight panel: who you are against, and what just happened. */
 .garden-battle {
   display: grid;
@@ -6523,7 +6480,6 @@ div.gear-slot:active { transform: none; }
 .garden-flee:disabled { opacity: 0.5; cursor: default; }
 
 .garden-actions-hint,
-.garden-hint,
 .garden-note { margin-top: var(--space-2); }
 
 /* A fault the garden survives — a picture that would not load, a move that did
@@ -6934,25 +6890,36 @@ div.gear-slot:active { transform: none; }
 }
 .gate-pedestal[data-selected] .gate-card { border-color: var(--color-accent); }
 
-.gate-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-1); }
+.gate-card-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); }
 .gate-name { font-weight: 600; font-size: var(--text-sm); }
-.gate-rank { font-size: var(--text-xs); color: var(--color-text-muted); white-space: nowrap; }
-.gate-rank[data-tier='legendary'], .gate-rank[data-tier='mythic'] { color: var(--color-accent); }
 
-.gate-species { font-size: var(--text-xs); color: var(--color-text-muted); text-transform: capitalize; }
-
-.gate-leans { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
-.gate-lean {
-  padding: 1px var(--space-1);
-  border-radius: var(--radius);
-  background: var(--color-surface-muted);
-  font-size: var(--text-xs);
-  line-height: 1.4;
+/* A companion's upgrades, as rings. The fill is a custom property set per
+   bubble (0-1), drawn as a conic gradient in the pack's accent over the muted
+   surface; the number sits in the middle, so the ring is never the only way to
+   read it. See GatePedestal.tsx. */
+.gate-bubbles { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-1); }
+.gate-bubble {
+  --fill: 0;
+  display: inline-grid;
+  justify-items: center;
+  gap: 2px;
 }
+.gate-bubble-value {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  background:
+    radial-gradient(closest-side, var(--color-surface) 72%, transparent 74%),
+    conic-gradient(var(--color-accent) calc(var(--fill) * 1turn), var(--color-surface-muted) 0);
+}
+.gate-bubble-label { font-size: var(--text-xs); color: var(--color-text-muted); }
+.gate-bubble-rank .gate-bubble-value { width: 1.75rem; }
 
-.gate-moves { margin-top: 2px; font-size: var(--text-xs); font-weight: 600; }
-.gate-skill { font-size: var(--text-xs); color: var(--color-accent); font-weight: 600; }
-.gate-foot, .gate-affinity {
+.gate-affinity {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   line-height: var(--line-body);
@@ -6971,7 +6938,7 @@ div.gear-slot:active { transform: none; }
   line-height: var(--line-tight);
 }
 .gate-greeting { font-size: var(--text-sm); line-height: var(--line-body); }
-.gate-level, .gate-refused { font-size: var(--text-xs); color: var(--color-text-muted); }
+.gate-refused { font-size: var(--text-xs); }
 .gate-refused { color: var(--color-danger); }
 
 .gate-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
@@ -7687,67 +7654,6 @@ div.gear-slot:active { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .raid-stat-fill { transition: none; }
 }
-
-/* ---- the garden's other places --------------------------------------------- */
-
-/* Links rather than hotspots painted on the backdrop: a tappable region of a
-   background image has no focus ring, is invisible to a screen reader, and
-   moves whenever the art does. See the header of GardenPlaces.tsx. */
-.garden-places {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
-  gap: var(--space-2);
-}
-
-.garden-place {
-  display: grid;
-  gap: 2px;
-  min-height: var(--tap);
-  padding: var(--space-2) var(--space-3);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-.garden-place-name { font-weight: 600; font-size: var(--text-sm); }
-.garden-place-hint { font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-body); }
-
-/* ---- the garden's workbenches ---------------------------------------------
-   The plots and the alcove, in the garden rather than on another tab. Both are
-   errands, and an errand that is always open is clutter — so they live behind
-   a two-tab strip that starts closed. */
-
-.garden-drawer { display: grid; gap: var(--space-3); }
-
-.garden-benches {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2);
-}
-
-.garden-bench {
-  display: grid;
-  gap: 2px;
-  min-height: var(--tap);
-  padding: var(--space-2) var(--space-3);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.garden-bench[aria-selected='true'] {
-  border-color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
-}
-.garden-bench-name { font-weight: 600; font-size: var(--text-sm); }
-.garden-bench-hint { font-size: var(--text-xs); color: var(--color-text-muted); }
 
 /* ---- the plots ------------------------------------------------------------- */
 

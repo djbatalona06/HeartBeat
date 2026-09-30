@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import type { StepResult } from './scene/events';
 import { DIRECTIONS, HOLD_REPEAT_MS, type Direction } from './dpad';
 import { Icon } from '../../components/icons';
@@ -19,6 +19,7 @@ export interface DirectionPadProps {
 
 export function DirectionPad({ onStep, onResult }: DirectionPadProps) {
   const timer = useRef<number | undefined>(undefined);
+  const hint = useId();
 
   const stop = () => {
     window.clearInterval(timer.current);
@@ -35,7 +36,13 @@ export function DirectionPad({ onStep, onResult }: DirectionPadProps) {
   };
 
   return (
-    <div className="garden-dpad" role="group" aria-label="Walk">
+    <div className="garden-dpad" role="group" aria-label="Walk" aria-describedby={hint}>
+      {/* Was a paragraph under the garden; the page below the fight is gone,
+          and the pad is where the question "how do I move?" gets asked. */}
+      <p id={hint} className="visually-hidden">
+        Arrow keys, WASD or these buttons walk, or tap a tile beside you. Walk
+        into the monster to start a fight; walking away from one costs nothing.
+      </p>
       {DIRECTIONS.map((d) => (
         <button
           key={d.key}

@@ -12,9 +12,9 @@ import { LANE_NAMES } from '../../domain/support/lanes';
  *
  * ## Why it is not `WellnessMessageCard`
  *
- * `features/eve-garden/WellnessCards.tsx` already exists and is a different
- * thing. A second name one word away from it is a file somebody opens by
- * mistake.
+ * The garden had a `WellnessCards.tsx` when this was named, a different
+ * thing, and a second name one word away from it is a file somebody opens by
+ * mistake. That one is gone now; the name stays.
  *
  * ## Where it may sit, and which lane it may draw from
  *

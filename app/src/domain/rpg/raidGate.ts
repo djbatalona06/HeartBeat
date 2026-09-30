@@ -1,7 +1,8 @@
 import type { Element } from '../../features/eve-garden/engine/types';
 import { MASCOT_ROSTER, FALLBACK_MASCOT_ID } from '../../features/pet/mascots/roster';
 import { COMPANION_KITS, kitFor, type CompanionKit } from './companionSkills';
-import { RAID_STATS, sourceStatLevel, type RaidStatKey, type StatSource } from './raidStats';
+import { RAID_STATS, raidSheet, sourceStatLevel, type RaidStatKey, type StatSource } from './raidStats';
+import { FIGHT_HALF_AT } from './loadout';
 import { TIERS, tierRank, type Tier } from './tiers';
 
 /**
@@ -166,6 +167,29 @@ export function gateCards(input: GateInput = {}): GateCard[] {
   });
 }
 
+/* -- the gate's bubbles ------------------------------------------------------ */
+
+export interface StatBubble {
+  stat: RaidStatKey;
+  /** The points this companion brings to the stat, at its current rank. */
+  value: number;
+  /**
+   * How far along the fight's saturating curve those points are, 0-1. The same
+   * `t / (t + FIGHT_HALF_AT)` that `Loadout.cs` puts every stat through, so a
+   * half-full bubble is a stat already doing half of what it ever can.
+   */
+  fill: number;
+}
+
+/** The stats a card leans on, as bubbles: what it brings, and how far along. */
+export function statBubbles(card: Pick<GateCard, 'source' | 'leans'>): StatBubble[] {
+  const total = raidSheet([card.source]).total;
+  return card.leans.map((stat) => {
+    const value = Math.max(0, total[stat] ?? 0);
+    return { stat, value, fill: value / (value + FIGHT_HALF_AT) };
+  });
+}
+
 /* -- when the gate opens ----------------------------------------------------- */
 
 export type GateReason = 'first-visit' | 'returned' | 'asked' | 'gone';
@@ -258,17 +282,6 @@ export function canEnter(
     return { ok: false, reason: card.unavailableBecause ?? `${card.name} cannot come today.` };
   }
   return { ok: true, card };
-}
-
-/** What a card's skill kit reads as, in one line, for the preview on the card. */
-export function skillPreview(card: GateCard): string {
-  return `${card.kit.signature.name} · ${card.kit.passive.name}`;
-}
-
-/** The three moves a card fights with, by name, for the line under its skill. */
-export function movePreview(card: GateCard): string {
-  const { physical, defensive, magic } = card.kit.moves;
-  return `${physical.name} · ${defensive.name} · ${magic.name}`;
 }
 
 /**

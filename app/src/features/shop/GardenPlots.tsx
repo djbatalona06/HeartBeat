@@ -1,93 +1,31 @@
 import { useState } from 'react';
-import { FLORA, emptyPlots, floraById, plotsAt, type Garden } from '../../domain/rpg/plots';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { FLORA, floraById, floraTier, plotsAt, type Garden } from '../../domain/rpg/plots';
 import { nextMilestone } from '../../domain/rpg/milestones';
 import { TIER_NAMES } from '../../domain/rpg/tiers';
-import { floraTier } from '../../domain/rpg/plots';
-import { ChestAlcove } from '../party/ChestAlcove';
+import { levelForXp } from '../../domain/xp';
+import { buyFlora, ownedFlora as ownedFloraOf, plantFlora } from '../../db/repository';
+import type { useToast } from '../../ui/Toast';
 
 /**
- * The garden's two workbenches, in the garden.
+ * The garden's plots, on the Birb page.
  *
- * The plan asked for the chest alcove to be "integrated into the garden
- * architecture, not a separate screen", and the first pass linked to `/shop`,
- * which is exactly the thing it asked not to be. So the alcove is here, and it
- * is the *same component* the Shop tab renders — not a copy. Two chest grids
- * with two sets of odds would be two chances to publish a number that is not
- * the number, which is the one thing the odds are not allowed to be.
- *
- * Planting lives beside it for the same reason: the plots are drawn ten pixels
- * above this drawer, and being sent to another tab to fill one in is how a
- * garden stops feeling like somewhere you are standing.
- *
- * Both are collapsed behind a two-tab strip. The garden is the fight and the
- * scene; these are errands, and an errand that is always open is clutter.
+ * They used to sit in a drawer under the fight, beside a second copy of the
+ * chest alcove. The fight page is for the fight, so both left it: the alcove
+ * was already on the Shop, and the plots came here, next to the room and the
+ * colours — the other things you arrange for the pet. What is planted is still
+ * *drawn* in the garden (`GardenFlora`), so the ground you fill here is the
+ * ground you walk on there.
  */
 
-export interface GardenDrawerProps {
+export interface GardenPlotsProps {
+  memberId: string;
+  coupleId: string;
   garden: Garden;
-  petLevel: number;
+  /** The shared pet's XP; the plots it has reached follow from its level. */
+  petXp: number;
   coins: number;
-  luck: number;
-  chestPity: Readonly<Record<string, number>>;
-  /** Flora ids this member owns and could put in the ground. */
-  ownedFlora: readonly string[];
-  busy: boolean;
-  onPlant(plotId: string, floraId: string | undefined): void;
-  onBuyFlora(floraId: string): void;
-  onOpenChest(chestId: string): void;
-}
-
-type Bench = 'plots' | 'alcove' | null;
-
-export function GardenDrawer(props: GardenDrawerProps) {
-  const [open, setOpen] = useState<Bench>(null);
-  const bare = emptyPlots(props.garden, props.petLevel).length;
-
-  return (
-    <section className="garden-drawer">
-      <div className="garden-benches" role="tablist" aria-label="Things to do in the garden">
-        <button
-          type="button"
-          role="tab"
-          className="garden-bench"
-          aria-selected={open === 'plots'}
-          onClick={() => setOpen(open === 'plots' ? null : 'plots')}
-        >
-          <span className="garden-bench-name">The plots</span>
-          <span className="garden-bench-hint">
-            {plotsAt(props.petLevel).length === 0
-              ? 'The first opens at level 2'
-              : bare === 0
-                ? 'All planted'
-                : `${bare} still bare`}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          className="garden-bench"
-          aria-selected={open === 'alcove'}
-          onClick={() => setOpen(open === 'alcove' ? null : 'alcove')}
-        >
-          <span className="garden-bench-name">The alcove</span>
-          <span className="garden-bench-hint">Three chests, {props.coins} coins</span>
-        </button>
-      </div>
-
-      {open === 'plots' && <Plots {...props} />}
-
-      {open === 'alcove' && (
-        <ChestAlcove
-          coins={props.coins}
-          luck={props.luck}
-          pity={props.chestPity}
-          busy={props.busy}
-          onOpen={props.onOpenChest}
-        />
-      )}
-    </section>
-  );
+  say: ReturnType<typeof useToast>['say'];
 }
 
 /**
@@ -97,7 +35,17 @@ export function GardenDrawer(props: GardenDrawerProps) {
  * instead — "the first opens at level 2" is a reason to come back, where six
  * greyed rows is a list of things you cannot have.
  */
-function Plots({ garden, petLevel, coins, ownedFlora, onPlant, onBuyFlora }: GardenDrawerProps) {
+export function GardenPlots({ memberId, coupleId, garden, petXp, coins, say }: GardenPlotsProps) {
+  const petLevel = levelForXp(petXp);
+  const ownedFlora = useLiveQuery(() => ownedFloraOf(memberId), [memberId]) ?? [];
+  const onPlant = async (plotId: string, floraId: string | undefined) => {
+    const result = await plantFlora(memberId, coupleId, plotId, floraId);
+    if (!result.ok) say(result.reason ?? null, 'error');
+  };
+  const onBuyFlora = async (floraId: string) => {
+    const result = await buyFlora(memberId, coupleId, floraId);
+    if (!result.ok) say(result.reason ?? null, 'error');
+  };
   const [chosen, setChosen] = useState<string | null>(null);
   const reached = plotsAt(petLevel);
   const owned = new Set(ownedFlora);
@@ -140,7 +88,7 @@ function Plots({ garden, petLevel, coins, ownedFlora, onPlant, onBuyFlora }: Gar
                         <button
                           type="button"
                           className="plot-choice"
-                          onClick={() => { onPlant(plot.id, undefined); setChosen(null); }}
+                          onClick={() => { void onPlant(plot.id, undefined); setChosen(null); }}
                         >
                           <span className="plot-choice-name">Dig it up</span>
                           <span className="plot-choice-note">Back in the bag, not lost</span>
@@ -160,8 +108,8 @@ function Plots({ garden, petLevel, coins, ownedFlora, onPlant, onBuyFlora }: Gar
                             disabled={here || (!have && !afford)}
                             title={flora.blurb}
                             onClick={() => {
-                              if (have) onPlant(plot.id, flora.id);
-                              else onBuyFlora(flora.id);
+                              if (have) void onPlant(plot.id, flora.id);
+                              else void onBuyFlora(flora.id);
                               setChosen(null);
                             }}
                           >

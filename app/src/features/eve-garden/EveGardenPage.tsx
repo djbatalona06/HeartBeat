@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../db/database';
 import {
-  awardPetXp, buyFlora, chooseRaidCompanion, clearStageFor, coupleVitals, ensureIdentity,
-  gardenMomentum, loadWorldProgress, openChestFor, openRaidGate, ownedFlora, plantFlora,
+  awardPetXp, chooseRaidCompanion, clearStageFor, coupleVitals, ensureIdentity,
+  gardenMomentum, loadWorldProgress, openRaidGate,
   recordRaidRounds, todaysCharges, travelToIsland,
 } from '../../db/repository';
 import { todayKey } from '../../domain/day';
@@ -12,9 +12,6 @@ import { milestonesAt } from '../../domain/rpg/milestones';
 import { strikePlan } from '../../domain/scene/strikePlan';
 import { spriteKeyForTheme } from '../../domain/rpg/sprites';
 import { RADIANCE_FULL } from '../../domain/rpg/vitals';
-import { levelOf, sheetFor } from '../../domain/rpg/avatar';
-import { gearBonusWithRefinement } from '../../domain/rpg/shop';
-import { refineByItemId } from '../../domain/rpg/inventory';
 import type { Garden } from '../../domain/rpg/plots';
 import type { House } from '../../domain/rpg/furniture';
 import { holdingsLoadout, loadoutSheet } from '../../domain/rpg/loadout';
@@ -40,17 +37,10 @@ import {
 } from './fault';
 import { NotHere } from '../errors/NotHere';
 import { GardenBackdrop } from './GardenBackdrop';
-import { GardenPlaces } from './GardenPlaces';
-import { GardenDrawer } from './GardenDrawer';
-import { PRIZES_PER_CHEST } from '../../domain/rpg/chests';
-import type { ChestOutcome } from '../../db/repository/chests';
-import { ChestReveal } from '../chest/ChestReveal';
-import { openingLine } from '../chest/receipt';
 import { GardenHabitat } from './GardenHabitat';
 import { RaidGate } from './gate/RaidGate';
 import { Compass } from './Compass';
 import { WorldMap } from './WorldMap';
-import { WellnessCards } from './WellnessCards';
 import { BattleLog } from './BattleLog';
 import { ActionBar } from './ActionBar';
 import { ChargeMeter } from './ChargeMeter';
@@ -145,19 +135,13 @@ export function EveGardenPage() {
     () => (coupleId ? loadWorldProgress(coupleId) : undefined),
     [coupleId],
   );
-  // The wallet, the bag and what is already in the ground. Read here rather
-  // than inside the drawer so the drawer stays a component that is handed
-  // things — the same arrangement every other panel on this page has.
+  // The wallet and the bag, for the raid sheet the fight is priced with.
   const avatar = useLiveQuery(
     () => (memberId ? db.avatars.get(memberId) : undefined),
     [memberId],
   );
   const bag = useLiveQuery(
     () => (memberId ? db.inventory.where('memberId').equals(memberId).toArray() : []),
-    [memberId],
-  );
-  const planted = useLiveQuery(
-    () => (memberId ? ownedFlora(memberId) : []),
     [memberId],
   );
   const residents = useLiveQuery(
@@ -176,6 +160,12 @@ export function EveGardenPage() {
   const [progress, setProgress] = useState<ProgressDto | null>(null);
   const [allActions, setAllActions] = useState<ActionDto[]>([]);
   const [monster, setMonster] = useState<MonsterDto | null>(null);
+  /**
+   * Log lines (by index; the log is append-only) whose hit landed on the
+   * monster's weakness. C# names the move and the damage; whether a charge was
+   * on the weakness is decided here by `edgeOf`, so the log learns it here.
+   */
+  const [weakHits, setWeakHits] = useState<readonly number[]>([]);
   const [battle, setBattle] = useState<BattleDto | null>(null);
   const [busy, setBusy] = useState<Busy>('idle');
   const [mapOpen, setMapOpen] = useState(false);
@@ -183,15 +173,10 @@ export function EveGardenPage() {
     { monster: MonsterDto; xp: number; leveledUp: boolean; level: number; rewardText: string } | null
   >(null);
   const [note, setNote] = useState<string | null>(null);
-  // The chest the drawer just opened, while it is still being looked at. The
-  // same reveal the Shop tab renders -- a second one would be a second chance
-  // to describe a duplicate as nothing.
-  const [revealed, setRevealed] = useState<Extract<ChestOutcome, { ok: true }> | null>(null);
 
   /**
    * What is broken, if anything — and separate from `note`, which is the
-   * drawer's own feedback ("Rose planted.", "Not enough coins.") and is as
-   * often good news as bad.
+   * page's own feedback and is as often good news as bad.
    *
    * See `fault.ts` for why this replaced three `.catch(() => {})`. The short
    * version: one of them swallowed the failure that left the canvas unmounted,
@@ -248,9 +233,6 @@ export function EveGardenPage() {
 
   const petXp = pet?.xp ?? 0;
   const petLevel = levelForXp(petXp);
-  /** Both ids resolved. The drawer writes, so it must not render before it
-   *  knows who is writing — a planted rose keyed to `undefined` is a lost one. */
-  const identityReady = Boolean(memberId && coupleId);
   const kit = useMemo(() => kitFor(companion ?? undefined), [companion]);
   const petSprite = spriteKeyForTheme(companion ?? undefined);
 
@@ -265,14 +247,6 @@ export function EveGardenPage() {
   const resonance = Math.min(1, Math.max(0, 1 - (momentum?.daysSinceLog ?? 0) / 7));
 
   const garden = useMemo(() => (pet?.plots ?? {}) as Garden, [pet?.plots]);
-  /** Luck, derived the one way the whole app derives it — including refinement,
-   *  because odds printed without it are odds nobody actually has. */
-  const luck = avatar
-    ? sheetFor(
-      avatar,
-      gearBonusWithRefinement(avatar.gear, levelOf(avatar), refineByItemId(bag ?? [])),
-    ).stats.luck
-    : 0;
 
   /**
    * The raid sheet the fight uses: gear, room, dye, companion, garden and the
@@ -371,7 +345,10 @@ export function EveGardenPage() {
     const game = client.current;
     if (!game || !progress || !monster) return;
     game.beginBattle(island, stage, theme, progress.level, Date.now(), charges, sheet.total)
-      .then((next) => setBattle(next ? { ...next, moveNames } : next))
+      .then((next) => {
+        setWeakHits([]);
+        setBattle(next ? { ...next, moveNames } : next);
+      })
       // Was silent, which made walking into a monster and having nothing happen
       // indistinguishable from having missed the tile.
       .catch((error) => setFault(faultFrom('round', error)));
@@ -573,7 +550,16 @@ export function EveGardenPage() {
         }
         for (const key of Object.keys(cooldowns.current)) cooldowns.current[key] += 1;
 
-        await scene.current?.strike('player-hits', action?.type === 'Attack' ? edgeOf(foe) : 'plain');
+        const edge = action?.type === 'Attack' ? edgeOf(foe) : 'plain';
+        if (edge === 'strong') {
+          const line = mine.log.map((entry) => entry.who).lastIndexOf('Player');
+          if (line >= 0) setWeakHits((seen) => [...seen, line]);
+        }
+        await scene.current?.strike(
+          'player-hits',
+          edge,
+          move ? { move, kit: kit.themeId } : undefined,
+        );
       }
 
       if (mine.outcome !== 'Fighting') {
@@ -725,7 +711,6 @@ export function EveGardenPage() {
         hour={new Date().getHours()}
         dark={dark}
         resonance={resonance}
-        petLevel={petLevel}
         world={world}
         onEnter={onEnter}
       />
@@ -836,14 +821,8 @@ export function EveGardenPage() {
           </p>
         )}
 
-        <WellnessCards
-          progress={progress}
-          vitals={vitals}
-          daysSinceLog={momentum?.daysSinceLog ?? 0}
-          dark={dark}
-        />
 
-        <BattleLog battle={battle} monster={monster} />
+        <BattleLog battle={battle} monster={monster} weakHits={weakHits} />
       </div>
 
       {/* The controller: the move pad on the left, today's charges on the right,
@@ -865,50 +844,6 @@ export function EveGardenPage() {
         />
         <ChargeMeter charges={charges} weakness={monster?.weakness} />
       </div>
-
-      {/* The alcove and the plots, in the garden. The plan asked for the chest
-          alcove to be part of the garden's architecture rather than a separate
-          screen, and this is the same ChestAlcove the Shop tab renders — not a
-          copy, because two sets of published odds is two chances to publish a
-          number that is not the number. */}
-      {identityReady && (
-        <GardenDrawer
-          garden={garden}
-          petLevel={petLevel}
-          coins={avatar?.coins ?? 0}
-          luck={luck}
-          chestPity={avatar?.chestPity ?? {}}
-          ownedFlora={planted ?? []}
-          busy={busy !== 'idle'}
-          onPlant={async (plotId, floraId) => {
-            const result = await plantFlora(memberId!, coupleId!, plotId, floraId);
-            if (!result.ok) setNote(result.reason ?? null);
-          }}
-          onBuyFlora={async (floraId) => {
-            const result = await buyFlora(memberId!, coupleId!, floraId);
-            setNote(result.ok ? null : result.reason ?? null);
-          }}
-          onOpenChest={async (chestId) => {
-            // One roll set per item in the chest. See `openChestFor`.
-            const result = await openChestFor(
-              memberId!, coupleId!, chestId,
-              Array.from({ length: PRIZES_PER_CHEST }, () => ({
-                tier: Math.random(), kind: Math.random(),
-                stat: Math.random(), pick: Math.random(),
-              })),
-            );
-            if (!result.ok) { setNote(result.reason); return; }
-            setRevealed(result);
-          }}
-        />
-      )}
-
-      <GardenPlaces companion={kit.mascot} onChangeCompanion={() => openGate(true)} />
-
-      <p className="section-sub garden-hint">
-        Arrow keys, WASD or the pad to walk, or tap a tile beside you. Walk into
-        something to start a fight — walking away from one costs nothing.
-      </p>
 
       {mapOpen && (
         <WorldMap
@@ -933,14 +868,6 @@ export function EveGardenPage() {
         />
       )}
 
-      {/* After the victory banner, because a chest is opened from the drawer
-          and never in the middle of a fight, so the two cannot both be up. */}
-      {revealed ? (
-        <ChestReveal
-          outcome={revealed}
-          onDismiss={() => { setNote(openingLine(revealed)); setRevealed(null); }}
-        />
-      ) : null}
     </section>
   );
 }

@@ -7,8 +7,12 @@ import {
 import { lightingAt } from '../../../domain/rpg/diorama';
 import { bakeAll } from '../../rpg/overworld/bake';
 import { strikePlan, type FightTiming } from '../../../domain/scene/strikePlan';
-import { shapeFor } from './vfx';
-import type { Blow, SceneHooks, StepResult } from './events';
+import { depthForRow, hopFor, liftAt } from '../../../domain/scene/walk';
+import {
+  effectColours, moveVfxFor, shapeFor, type EffectPalette, type EffectToken, type VfxShape,
+} from './vfx';
+import { signatureFor, type SignaturePiece } from './signatures';
+import type { Blow, Cast, SceneHooks, StepResult } from './events';
 
 /**
  * One stage of Eve's Garden, drawn.
@@ -44,6 +48,16 @@ import type { Blow, SceneHooks, StepResult } from './events';
 
 const STEP_MS = 140;
 
+type Point = { x: number; y: number };
+
+/** How one effect is drawn: resolved colours, and how many and how fast. */
+interface Look {
+  fill: number;
+  edge?: number;
+  count: number;
+  pace: number;
+}
+
 /** How far a struck sprite is knocked, in pixels before scaling. */
 const KNOCKBACK = 5;
 
@@ -68,12 +82,24 @@ export class BattleGardenScene extends Phaser.Scene {
    * was the stand-in, and it made every companion's move look like nobody's.
    */
   private accent = 0xffffff;
+  /**
+   * The pack's colours as hex, for the per-move effects. Read beside the
+   * accent; `effectColours` decides which ones need an edge to be seen. Empty
+   * until then, and an empty one draws in the accent.
+   */
+  private palette: EffectPalette = { accent: '', success: '', danger: '', text: '', base: '' };
 
   private pet!: Phaser.GameObjects.Image;
   private foe!: Phaser.GameObjects.Image;
   private petShadow!: Phaser.GameObjects.Ellipse;
   private foeShadow!: Phaser.GameObjects.Ellipse;
   private sparks!: Phaser.Physics.Arcade.Group;
+  /**
+   * The pet's idle bob. Kept so a step can stop it: it tweens `y`, and so does
+   * walking, and two tweens on one property is what made up/down steps drift
+   * back towards the row the bob started on.
+   */
+  private petBob?: Phaser.Tweens.Tween;
 
   private tile = { x: 0, y: 0 };
   private moving = false;
@@ -112,6 +138,13 @@ export class BattleGardenScene extends Phaser.Scene {
     return this.timing.strike === 0;
   }
 
+  /** A token as Phaser numbers: the fill, and the edge it needs if any. */
+  private colours(token: EffectToken): { fill: number; edge?: number } {
+    const { fill, edge } = effectColours(token, this.palette);
+    const toInt = (css: string) => (css ? Phaser.Display.Color.ValueToColor(css).color : this.accent);
+    return { fill: toInt(fill), edge: edge === undefined ? undefined : toInt(edge) };
+  }
+
   private get size(): number {
     return SPRITE_SIZE * this.zoom;
   }
@@ -123,6 +156,11 @@ export class BattleGardenScene extends Phaser.Scene {
     const baked = bakeAll(host, this.zoom);
     const accent = getComputedStyle(host).getPropertyValue('--color-accent').trim();
     if (accent) this.accent = Phaser.Display.Color.ValueToColor(accent).color;
+    const style = getComputedStyle(host);
+    for (const token of Object.keys(this.palette) as (keyof EffectPalette)[]) {
+      const value = style.getPropertyValue(`--color-${token}`).trim();
+      if (value) this.palette[token] = value;
+    }
     for (const [key, canvas] of baked) {
       if (this.textures.exists(key)) this.textures.remove(key);
       this.textures.addCanvas(key, canvas);
@@ -148,17 +186,17 @@ export class BattleGardenScene extends Phaser.Scene {
     this.foe = this.add
       .image(this.arena.monster.x * size, this.arena.monster.y * size, this.monsterSprite)
       .setOrigin(0, 0)
-      .setDepth(9);
+      .setDepth(depthForRow(this.arena.monster.y, ARENA_HEIGHT));
 
     this.tile = { ...this.arena.spawn };
     this.pet = this.add
       .image(this.tile.x * size, this.tile.y * size, this.petSprite)
       .setOrigin(0, 0)
-      .setDepth(10);
+      .setDepth(depthForRow(this.tile.y, ARENA_HEIGHT));
 
     // A short, permanent idle bob on both sides. It is the cheapest thing that
     // stops a turn-based screen looking frozen between turns.
-    this.idle(this.pet);
+    this.petBob = this.idle(this.pet);
     this.idle(this.foe, 120);
 
     this.sparks = this.physics.add.group();
@@ -176,8 +214,8 @@ export class BattleGardenScene extends Phaser.Scene {
       .setDepth(8);
   }
 
-  private idle(target: Phaser.GameObjects.Image, delay = 0): void {
-    this.tweens.add({
+  private idle(target: Phaser.GameObjects.Image, delay = 0): Phaser.Tweens.Tween {
+    return this.tweens.add({
       targets: target,
       y: target.y - 2,
       duration: 900,
@@ -246,22 +284,55 @@ export class BattleGardenScene extends Phaser.Scene {
     }
     if (!isWalkable(this.arena, next.x, next.y)) return 'blocked';
 
-    const size = this.size;
     this.moving = true;
-    this.tweens.add({
-      targets: this.pet,
-      x: next.x * size,
-      y: next.y * size,
-      duration: STEP_MS,
-      onComplete: () => {
-        this.tile = next;
-        this.moving = false;
-        this.applyLighting();
-        this.hooks.onMove?.();
-        if (!this.beaten && isAdjacentToMonster(this.arena, next.x, next.y)) this.engage();
-      },
+    this.walkTo(next, STEP_MS, hopFor({ dy, calm: this.still }), () => {
+      this.moving = false;
+      this.hooks.onMove?.();
+      if (!this.beaten && isAdjacentToMonster(this.arena, next.x, next.y)) this.engage();
     });
     return 'moved';
+  }
+
+  /**
+   * Carry the pet, and its shadow, to a tile.
+   *
+   * One counter drives both, so the shadow stays underfoot for the whole step
+   * instead of jumping when it lands, and the hop is added on top of the
+   * straight line rather than being a second tween on `y`. The idle bob is
+   * stopped first and restarted from the new row for the same reason.
+   */
+  private walkTo(to: { x: number; y: number }, duration: number, hop: number, done: () => void): void {
+    const size = this.size;
+    const from = { x: this.pet.x, y: this.pet.y };
+    const shadowFrom = { x: this.petShadow.x, y: this.petShadow.y };
+    const dx = to.x * size - from.x;
+    const dy = to.y * size - from.y;
+    this.petBob?.remove();
+    this.petBob = undefined;
+    // Draw order changes as the step starts, so walking up behind the monster
+    // goes behind it rather than over it.
+    this.pet.setDepth(depthForRow(to.y, ARENA_HEIGHT));
+
+    const land = () => {
+      this.pet.setPosition(to.x * size, to.y * size);
+      this.tile = { ...to };
+      this.applyLighting();
+      this.petBob = this.idle(this.pet);
+      done();
+    };
+    if (duration === 0) { land(); return; }
+
+    this.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration,
+      onUpdate: (tween) => {
+        const t = tween.getValue() ?? 0;
+        this.pet.setPosition(from.x + dx * t, from.y + dy * t - liftAt(t, hop * this.zoom));
+        this.petShadow.setPosition(shadowFrom.x + dx * t, shadowFrom.y + dy * t);
+      },
+      onComplete: land,
+    });
   }
 
   private engage(): void {
@@ -276,7 +347,7 @@ export class BattleGardenScene extends Phaser.Scene {
    * Resolves when it is done, so the page can pace the two halves of a round
    * apart instead of playing them on top of each other.
    */
-  strike(blow: Blow, effectiveness: 'weak' | 'plain' | 'strong'): Promise<void> {
+  strike(blow: Blow, effectiveness: 'weak' | 'plain' | 'strong', cast?: Cast): Promise<void> {
     const attacker = blow === 'player-hits' ? this.pet : this.foe;
     const victim = blow === 'player-hits' ? this.foe : this.pet;
     if (!attacker || !victim) return Promise.resolve();
@@ -288,7 +359,16 @@ export class BattleGardenScene extends Phaser.Scene {
     const home = { x: attacker.x, y: attacker.y };
     const victimHome = victim.x;
 
-    this.throwSpark(attacker, towards, effectiveness);
+    // A companion's own move is drawn its own way; the monster's swings and
+    // Together keep the plain spark. A hit on the weakness throws two more.
+    const look = cast && blow === 'player-hits' ? moveVfxFor(cast.kit, cast.move) : undefined;
+    if (look) {
+      const { from, to } = this.ends(attacker, victim);
+      const extra = effectiveness === 'strong' ? 2 : 0;
+      void this.playShape(look.shape, from, to, { ...this.colours(look.token), count: look.count + extra, pace: look.pace });
+    } else {
+      this.throwSpark(attacker, towards, effectiveness);
+    }
 
     return new Promise((resolve) => {
       this.tweens.add({
@@ -329,116 +409,221 @@ export class BattleGardenScene extends Phaser.Scene {
    */
   skill(vfx: string): Promise<void> {
     if (!this.pet || this.still) return Promise.resolve();
+    const { from, to } = this.ends(this.pet, this.foe);
     const shape = shapeFor(vfx);
-    const size = this.size;
-    const at = { x: this.pet.x + size / 2, y: this.pet.y + size / 2 };
-    const foeAt = this.foe
-      ? { x: this.foe.x + size / 2, y: this.foe.y + size / 2 }
-      : { x: at.x + size * 3, y: at.y };
-    const { accent } = this;
+    const piece = signatureFor(vfx);
+    // A skill's burst is the companion's own bloom, so it lands on the pet.
+    const motion = this.playShape(shape, from, shape === 'burst' ? from : to, { fill: this.accent, count: 1, pace: 1 });
+    if (!piece) return motion;
+    return motion.then(() => this.drawSignature(piece, piece.at === 'foe' ? to : from));
+  }
+
+  /**
+   * A companion's own piece (`scene/signatures.ts`), drawn from primitives in
+   * the accent — with its edge where the accent cannot stand on the ground.
+   * Every piece does the same thing over time: swells a little and fades, so
+   * the drawing is the difference and the motion stays quiet.
+   */
+  private drawSignature(piece: SignaturePiece, at: Point): Promise<void> {
+    if (this.still) return Promise.resolve();
+    const { fill, edge } = this.colours('accent');
+    const z = this.zoom;
+    const r = this.size * 0.45;
+    const outline = <T extends Phaser.GameObjects.Shape>(part: T): T =>
+      (edge === undefined ? part : part.setStrokeStyle(z * 0.5, edge, 1));
+    const ring = (part: Phaser.GameObjects.Shape, width: number) =>
+      part.setStrokeStyle(width, edge ?? fill, 1).setFillStyle(fill, edge === undefined ? 0 : 0.35);
+
+    const parts: Phaser.GameObjects.Shape[] = [];
+    switch (piece.kind) {
+      case 'star':
+        parts.push(outline(this.add.star(at.x, at.y, piece.points, r * 0.45, r, fill, 0.95)));
+        break;
+      case 'spiral':
+        for (let i = 0; i < piece.arcs; i += 1) {
+          const start = i * (360 / piece.arcs);
+          parts.push(ring(this.add.arc(at.x, at.y, r * (0.6 + i * 0.3), start, start + 200, false), z));
+        }
+        break;
+      case 'cells': {
+        const corners = Array.from({ length: piece.sides }, (_, i) => {
+          const a = (Math.PI * 2 * i) / piece.sides;
+          return [Math.cos(a) * r, Math.sin(a) * r];
+        }).flat();
+        parts.push(ring(this.add.polygon(at.x, at.y, corners), z * 1.5));
+        parts.push(ring(this.add.polygon(at.x, at.y, corners.map((c) => c * 0.45)), z));
+        break;
+      }
+      case 'crescent':
+        parts.push(ring(this.add.arc(at.x, at.y, r, 40, 320, false), z * 2));
+        for (let i = 0; i < piece.stars; i += 1) {
+          parts.push(outline(this.add.star(at.x + r * (1.1 + i * 0.35), at.y - r * (0.9 - i * 0.5), 4, z * 0.6, z * 1.6, fill)));
+        }
+        break;
+      case 'fan':
+        for (let i = 0; i < piece.flames; i += 1) {
+          const flame = outline(this.add.triangle(at.x, at.y - r * 0.4, 0, z * 5, z * 1.5, 0, z * 3, z * 5, fill, 0.9));
+          flame.setOrigin(0.5, 1).setAngle(-60 + (120 * i) / Math.max(1, piece.flames - 1));
+          parts.push(flame);
+        }
+        break;
+    }
+    for (const part of parts) part.setDepth(14);
 
     return new Promise((resolve) => {
-      const done = () => resolve();
+      this.tweens.add({
+        targets: parts,
+        scale: 1.3,
+        alpha: 0,
+        duration: this.timing.skill,
+        ease: 'Sine.easeOut',
+        onComplete: () => { for (const part of parts) part.destroy(); resolve(); },
+      });
+    });
+  }
 
-      switch (shape) {
-        case 'bolt': {
-          // Something crossing the gap. The one shape that actually travels,
-          // and the reason it reads as an attack rather than as an aura.
-          const bolt = this.add
-            .rectangle(at.x, at.y, this.zoom * 3, this.zoom, accent, 0.95)
-            .setDepth(13);
-          this.tweens.add({
-            targets: bolt,
-            x: foeAt.x,
-            y: foeAt.y,
-            duration: this.timing.skill * 0.6,
-            ease: 'Quad.easeIn',
-            onComplete: () => {
-              bolt.destroy();
-              this.flash(foeAt, accent, done);
-            },
-          });
-          return;
-        }
+  /** The middles of two sprites; a missing target stands three tiles ahead. */
+  private ends(
+    self: Phaser.GameObjects.Image,
+    other: Phaser.GameObjects.Image | undefined,
+  ): { from: Point; to: Point } {
+    const half = this.size / 2;
+    const from = { x: self.x + half, y: self.y + half };
+    const to = other ? { x: other.x + half, y: other.y + half } : { x: from.x + this.size * 3, y: from.y };
+    return { from, to };
+  }
 
-        case 'ring': {
-          const ring = this.add
-            .circle(at.x, at.y, size * 0.4)
-            .setStrokeStyle(this.zoom, accent, 0.9)
-            .setFillStyle(0, 0)
-            .setDepth(11);
-          this.tweens.add({
-            targets: ring,
-            scale: 2.4,
-            alpha: 0,
-            duration: this.timing.skill,
-            ease: 'Quad.easeOut',
-            onComplete: () => { ring.destroy(); done(); },
-          });
-          return;
-        }
+  /**
+   * One of the five motions, from `from` towards `to`.
+   *
+   * `bolt` crosses the gap and `burst` blooms where it lands; `ring`, `shield`
+   * and `motes` happen around `from`, because they are things you do rather
+   * than things you throw. `count` repeats the shape, staggered, which is most
+   * of what makes one companion's bolt a hoofbeat and another's a gust.
+   *
+   * Shapes that are only a stroke get their edge as a wider stroke laid
+   * underneath, since a Phaser shape has one stroke to give.
+   */
+  private playShape(shape: VfxShape, from: Point, to: Point, look: Look): Promise<void> {
+    const { fill, edge, pace } = look;
+    const count = Math.max(1, look.count);
+    const beat = this.timing.skill * pace;
+    const stagger = beat * 0.15;
+    const z = this.zoom;
+    const size = this.size;
+    const edged = <T extends Phaser.GameObjects.Shape>(piece: T): T =>
+      (edge === undefined ? piece : piece.setStrokeStyle(z * 0.5, edge, 1));
+    const stroked = (make: (colour: number, width: number) => Phaser.GameObjects.Shape, width: number) =>
+      [
+        ...(edge === undefined ? [] : [make(edge, width + z)]),
+        make(fill, width),
+      ];
 
-        case 'shield': {
-          // Held in front of you, on the side the monster is on.
-          const towards = foeAt.x >= at.x ? 1 : -1;
-          const guard = this.add
-            .arc(at.x + towards * size * 0.35, at.y, size * 0.55, -60, 60, false)
-            .setStrokeStyle(this.zoom * 1.5, accent, 0.9)
-            .setFillStyle(0, 0)
-            .setDepth(11);
-          guard.setScale(towards, 1);
-          this.tweens.add({
-            targets: guard,
-            alpha: 0,
-            scaleY: 1.25,
-            duration: this.timing.skill,
-            ease: 'Sine.easeOut',
-            onComplete: () => { guard.destroy(); done(); },
-          });
-          return;
-        }
+    return new Promise((resolve) => {
+      let left = count;
+      const one = () => { left -= 1; if (left === 0) resolve(); };
 
-        case 'motes': {
-          // Something opening around you, and the only one that goes upward —
-          // which is what makes rest and gratitude read differently from a hit.
-          const motes = Array.from({ length: 7 }, (_, i) => {
-            const dot = this.add
-              .rectangle(
-                at.x + (i - 3) * this.zoom * 2.2,
-                at.y + this.zoom * 2,
-                this.zoom, this.zoom, accent, 0.9,
-              )
-              .setDepth(12);
+      for (let i = 0; i < count; i += 1) {
+        const offset = (i - (count - 1) / 2) * z * 2;
+        const delay = i * stagger;
+
+        switch (shape) {
+          case 'bolt': {
+            // Something crossing the gap. The one shape that actually travels,
+            // and the reason it reads as an attack rather than as an aura.
+            const bolt = edged(this.add.rectangle(from.x, from.y + offset, z * 3, z, fill, 0.95)).setDepth(13);
+            this.tweens.add({
+              targets: bolt,
+              x: to.x,
+              y: to.y + offset,
+              delay,
+              duration: beat * 0.6,
+              ease: 'Quad.easeIn',
+              onComplete: () => {
+                bolt.destroy();
+                this.flash(to, fill, edge, beat, one);
+              },
+            });
+            break;
+          }
+
+          case 'ring': {
+            const rings = stroked(
+              (colour, width) => this.add.circle(from.x, from.y, size * 0.4)
+                .setStrokeStyle(width, colour, 0.9).setFillStyle(0, 0).setDepth(11),
+              z,
+            );
+            this.tweens.add({
+              targets: rings,
+              scale: 2.4 + i * 0.5,
+              alpha: 0,
+              delay,
+              duration: beat,
+              ease: 'Quad.easeOut',
+              onComplete: () => { for (const r of rings) r.destroy(); one(); },
+            });
+            break;
+          }
+
+          case 'shield': {
+            // Held in front of you, on the side the monster is on; a second
+            // and third are held a little further out.
+            const towards = to.x >= from.x ? 1 : -1;
+            const guards = stroked(
+              (colour, width) => this.add
+                .arc(from.x + towards * size * 0.35, from.y, size * (0.55 + i * 0.12), -60, 60, false)
+                .setStrokeStyle(width, colour, 0.9).setFillStyle(0, 0).setDepth(11)
+                .setScale(towards, 1),
+              z * 1.5,
+            );
+            this.tweens.add({
+              targets: guards,
+              alpha: 0,
+              scaleY: 1.25,
+              delay,
+              duration: beat,
+              ease: 'Sine.easeOut',
+              onComplete: () => { for (const g of guards) g.destroy(); one(); },
+            });
+            break;
+          }
+
+          case 'motes': {
+            // Something opening around you, and the only one that goes upward —
+            // which is what makes rest and gratitude read differently from a hit.
+            const dot = edged(this.add.rectangle(from.x + offset * 1.1, from.y + z * 2, z, z, fill, 0.9)).setDepth(12);
             this.tweens.add({
               targets: dot,
               y: dot.y - size * (0.8 + i * 0.08),
               alpha: 0,
-              duration: this.timing.skill + i * 40,
+              delay: i * 40 * pace,
+              duration: beat,
               ease: 'Sine.easeOut',
-              onComplete: () => dot.destroy(),
+              onComplete: () => { dot.destroy(); one(); },
             });
-            return dot;
-          });
-          this.time.delayedCall(this.timing.skill + 7 * 40, () => { void motes; done(); });
-          return;
-        }
+            break;
+          }
 
-        case 'burst':
-        default: {
-          this.flash(at, accent, done);
+          case 'burst':
+          default: {
+            // Several blooms scatter a little around the landing point.
+            const at = { x: to.x + (i === 0 ? 0 : offset), y: to.y - (i === 0 ? 0 : Math.abs(offset)) };
+            this.time.delayedCall(delay, () => this.flash(at, fill, edge, beat, one));
+          }
         }
       }
     });
   }
 
   /** A short bloom at a point, used as the landing of a bolt and as a burst. */
-  private flash(at: { x: number; y: number }, colour: number, done: () => void): void {
+  private flash(at: Point, colour: number, edge: number | undefined, beat: number, done: () => void): void {
     const bloom = this.add.circle(at.x, at.y, this.size * 0.25, colour, 0.8).setDepth(13);
+    if (edge !== undefined) bloom.setStrokeStyle(this.zoom * 0.5, edge, 1);
     this.tweens.add({
       targets: bloom,
       scale: 2.2,
       alpha: 0,
-      duration: this.timing.skill * 0.5,
+      duration: beat * 0.5,
       ease: 'Quad.easeOut',
       onComplete: () => { bloom.destroy(); done(); },
     });
@@ -503,21 +688,8 @@ export class BattleGardenScene extends Phaser.Scene {
   withdraw(): void {
     this.engaged = false;
     if (!this.pet) return;
-    const size = this.size;
-    this.tile = { ...this.arena.spawn };
-    if (this.still) {
-      this.pet.setPosition(this.tile.x * size, this.tile.y * size);
-      this.applyLighting();
-      return;
-    }
-    this.tweens.add({
-      targets: this.pet,
-      x: this.tile.x * size,
-      y: this.tile.y * size,
-      duration: STEP_MS * 3,
-      ease: 'Quad.easeInOut',
-      onComplete: () => this.applyLighting(),
-    });
+    this.moving = true;
+    this.walkTo({ ...this.arena.spawn }, this.still ? 0 : STEP_MS * 3, 0, () => { this.moving = false; });
   }
 
   private onKey(event: KeyboardEvent): void {

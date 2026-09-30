@@ -1,3 +1,5 @@
+import type { MoveKey } from '../../../domain/rpg/companionSkills';
+
 /**
  * The two directions across the React/Phaser boundary.
  *
@@ -29,6 +31,17 @@ export interface SceneHooks {
 export type Blow = 'player-hits' | 'monster-hits';
 
 /**
+ * Whose move a player swing was, so the scene can draw that companion's own
+ * effect (`MOVE_VFX` in `scene/vfx.ts`). Absent for the monster's swings and
+ * for Together, which is the couple's and nobody's to decorate.
+ */
+export interface Cast {
+  move: MoveKey;
+  /** The kit's theme id, as `COMPANION_KITS` keys it. */
+  kit: string;
+}
+
+/**
  * What one step did. `busy` covers a tween still running, a fight open, and a
  * scene that has not finished booting — all three mean "try again in a moment".
  */
@@ -37,7 +50,7 @@ export type StepResult = 'moved' | 'blocked' | 'engaged' | 'busy';
 /** What the page tells the scene. Every method is safe to call at any time. */
 export interface SceneHandle {
   /** Play one exchange. Resolves when the animation is done. */
-  strike(blow: Blow, effectiveness: 'weak' | 'plain' | 'strong'): Promise<void>;
+  strike(blow: Blow, effectiveness: 'weak' | 'plain' | 'strong', cast?: Cast): Promise<void>;
   /**
    * Play a companion's skill, named by its `vfx` key.
    *
