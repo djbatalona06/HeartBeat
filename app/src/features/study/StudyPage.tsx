@@ -10,6 +10,7 @@ import type {
 import type { QuizAnswer, QuizResult } from '../../domain/study/quiz';
 import type { StudyReceipt, StudyStore } from '../../db/studyStore';
 import { DAILY_CARD_CAP } from '../../domain/study/payout';
+import { useElapsed } from '../../pwa/useElapsed';
 import { SecondaryAction } from '../../ui/SecondaryAction';
 import { PrimaryAction } from '../../ui/PrimaryAction';
 
@@ -419,7 +420,10 @@ function QuizRun({ stage, store, day, onStage, onDone }: {
   onDone: (stage: Stage) => void;
 }) {
   const card = stage.queue[stage.index];
-  const [now, setNow] = useState(() => Date.now());
+  // One clock per question, keyed on when it was asked. It stops while the
+  // tab is hidden, so a phone call neither times the question out nor slows
+  // the score. Resumed, never restarted, or backgrounding would farm the bonus.
+  const { elapsed, read } = useElapsed(stage.chosen === null, stage.askedAt);
   const busy = useRef(false);
 
   const options = useMemo(
@@ -431,7 +435,7 @@ function QuizRun({ stage, store, day, onStage, onDone }: {
     if (busy.current || !card) return;
     busy.current = true;
     try {
-      const elapsedMs = Date.now() - stage.askedAt;
+      const elapsedMs = read();
       const correct = chosen === card.answer;
 
       // A quiz answer is still a review — it schedules the card. Getting it
@@ -444,17 +448,9 @@ function QuizRun({ stage, store, day, onStage, onDone }: {
     } finally {
       busy.current = false;
     }
-  }, [card, stage, store, day, onStage]);
+  }, [card, stage, store, day, onStage, read]);
 
-  // The clock. Ticking in state rather than in the DOM keeps the countdown and
-  // the auto-miss reading from the same value.
-  useEffect(() => {
-    if (stage.chosen !== null) return;
-    const timer = setInterval(() => setNow(Date.now()), 200);
-    return () => clearInterval(timer);
-  }, [stage.chosen, stage.index]);
-
-  const elapsed = now - stage.askedAt;
+  // The countdown and the auto-miss read the same ticked value.
   const outOfTime = elapsed >= TIME_LIMIT_MS;
 
   useEffect(() => {
@@ -467,7 +463,6 @@ function QuizRun({ stage, store, day, onStage, onDone }: {
     const done = stage.index + 1 >= stage.queue.length;
     if (!done) {
       onStage({ ...stage, index: stage.index + 1, chosen: null, askedAt: Date.now() });
-      setNow(Date.now());
       return;
     }
     const result = scoreRun(stage.answers);
