@@ -7,6 +7,7 @@ import {
 import { lightingAt } from '../../../domain/rpg/diorama';
 import { bakeAll } from '../../rpg/overworld/bake';
 import { strikePlan, type FightTiming } from '../../../domain/scene/strikePlan';
+import { depthForRow, hopFor, liftAt } from '../../../domain/scene/walk';
 import {
   effectColours, moveVfxFor, shapeFor, type EffectPalette, type EffectToken, type VfxShape,
 } from './vfx';
@@ -93,6 +94,12 @@ export class BattleGardenScene extends Phaser.Scene {
   private petShadow!: Phaser.GameObjects.Ellipse;
   private foeShadow!: Phaser.GameObjects.Ellipse;
   private sparks!: Phaser.Physics.Arcade.Group;
+  /**
+   * The pet's idle bob. Kept so a step can stop it: it tweens `y`, and so does
+   * walking, and two tweens on one property is what made up/down steps drift
+   * back towards the row the bob started on.
+   */
+  private petBob?: Phaser.Tweens.Tween;
 
   private tile = { x: 0, y: 0 };
   private moving = false;
@@ -179,17 +186,17 @@ export class BattleGardenScene extends Phaser.Scene {
     this.foe = this.add
       .image(this.arena.monster.x * size, this.arena.monster.y * size, this.monsterSprite)
       .setOrigin(0, 0)
-      .setDepth(9);
+      .setDepth(depthForRow(this.arena.monster.y, ARENA_HEIGHT));
 
     this.tile = { ...this.arena.spawn };
     this.pet = this.add
       .image(this.tile.x * size, this.tile.y * size, this.petSprite)
       .setOrigin(0, 0)
-      .setDepth(10);
+      .setDepth(depthForRow(this.tile.y, ARENA_HEIGHT));
 
     // A short, permanent idle bob on both sides. It is the cheapest thing that
     // stops a turn-based screen looking frozen between turns.
-    this.idle(this.pet);
+    this.petBob = this.idle(this.pet);
     this.idle(this.foe, 120);
 
     this.sparks = this.physics.add.group();
@@ -207,8 +214,8 @@ export class BattleGardenScene extends Phaser.Scene {
       .setDepth(8);
   }
 
-  private idle(target: Phaser.GameObjects.Image, delay = 0): void {
-    this.tweens.add({
+  private idle(target: Phaser.GameObjects.Image, delay = 0): Phaser.Tweens.Tween {
+    return this.tweens.add({
       targets: target,
       y: target.y - 2,
       duration: 900,
@@ -277,22 +284,55 @@ export class BattleGardenScene extends Phaser.Scene {
     }
     if (!isWalkable(this.arena, next.x, next.y)) return 'blocked';
 
-    const size = this.size;
     this.moving = true;
-    this.tweens.add({
-      targets: this.pet,
-      x: next.x * size,
-      y: next.y * size,
-      duration: STEP_MS,
-      onComplete: () => {
-        this.tile = next;
-        this.moving = false;
-        this.applyLighting();
-        this.hooks.onMove?.();
-        if (!this.beaten && isAdjacentToMonster(this.arena, next.x, next.y)) this.engage();
-      },
+    this.walkTo(next, STEP_MS, hopFor({ dy, calm: this.still }), () => {
+      this.moving = false;
+      this.hooks.onMove?.();
+      if (!this.beaten && isAdjacentToMonster(this.arena, next.x, next.y)) this.engage();
     });
     return 'moved';
+  }
+
+  /**
+   * Carry the pet, and its shadow, to a tile.
+   *
+   * One counter drives both, so the shadow stays underfoot for the whole step
+   * instead of jumping when it lands, and the hop is added on top of the
+   * straight line rather than being a second tween on `y`. The idle bob is
+   * stopped first and restarted from the new row for the same reason.
+   */
+  private walkTo(to: { x: number; y: number }, duration: number, hop: number, done: () => void): void {
+    const size = this.size;
+    const from = { x: this.pet.x, y: this.pet.y };
+    const shadowFrom = { x: this.petShadow.x, y: this.petShadow.y };
+    const dx = to.x * size - from.x;
+    const dy = to.y * size - from.y;
+    this.petBob?.remove();
+    this.petBob = undefined;
+    // Draw order changes as the step starts, so walking up behind the monster
+    // goes behind it rather than over it.
+    this.pet.setDepth(depthForRow(to.y, ARENA_HEIGHT));
+
+    const land = () => {
+      this.pet.setPosition(to.x * size, to.y * size);
+      this.tile = { ...to };
+      this.applyLighting();
+      this.petBob = this.idle(this.pet);
+      done();
+    };
+    if (duration === 0) { land(); return; }
+
+    this.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration,
+      onUpdate: (tween) => {
+        const t = tween.getValue() ?? 0;
+        this.pet.setPosition(from.x + dx * t, from.y + dy * t - liftAt(t, hop * this.zoom));
+        this.petShadow.setPosition(shadowFrom.x + dx * t, shadowFrom.y + dy * t);
+      },
+      onComplete: land,
+    });
   }
 
   private engage(): void {
@@ -648,21 +688,8 @@ export class BattleGardenScene extends Phaser.Scene {
   withdraw(): void {
     this.engaged = false;
     if (!this.pet) return;
-    const size = this.size;
-    this.tile = { ...this.arena.spawn };
-    if (this.still) {
-      this.pet.setPosition(this.tile.x * size, this.tile.y * size);
-      this.applyLighting();
-      return;
-    }
-    this.tweens.add({
-      targets: this.pet,
-      x: this.tile.x * size,
-      y: this.tile.y * size,
-      duration: STEP_MS * 3,
-      ease: 'Quad.easeInOut',
-      onComplete: () => this.applyLighting(),
-    });
+    this.moving = true;
+    this.walkTo({ ...this.arena.spawn }, this.still ? 0 : STEP_MS * 3, 0, () => { this.moving = false; });
   }
 
   private onKey(event: KeyboardEvent): void {
