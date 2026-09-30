@@ -743,7 +743,6 @@ export function EveGardenPage() {
         hour={new Date().getHours()}
         dark={dark}
         resonance={resonance}
-        petLevel={petLevel}
         world={world}
         onEnter={onEnter}
       />

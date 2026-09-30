@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   AFFINITY_RANKS, MASCOT_ELEMENTS, MASCOT_RAID_ORDER, MAX_AFFINITY_RANK,
-  affinityRank, canEnter, gateCards, gateDecision, gateGreeting, mostFavoured, movePreview,
-  skillPreview, statBubbles, tierForRank, toNextRank, withAffinity,
+  affinityRank, canEnter, gateCards, gateDecision, gateGreeting, mostFavoured,
+  statBubbles, tierForRank, toNextRank, withAffinity,
 } from './raidGate';
 import { COMPANION_KITS } from './companionSkills';
 import { MASCOT_ROSTER } from '../../features/pet/mascots/roster';
@@ -79,11 +79,6 @@ describe('the cards', () => {
     for (const card of cards) expect(MASCOT_ELEMENTS[card.themeId]).toBe(card.element);
   });
 
-  it('names the three moves each companion fights with', () => {
-    const pony = gateCards().find((c) => c.themeId === 'pony')!;
-    expect(movePreview(pony)).toBe('Hoofbeat · Bell Ward · Wishfire');
-  });
-
   it('reads affinity, and defaults everybody to a fresh rank one', () => {
     const cards = gateCards({ affinity: { pony: AFFINITY_RANKS[2] } });
     const pony = cards.find((c) => c.themeId === 'pony')!;
@@ -118,11 +113,6 @@ describe('the cards', () => {
     const avatar = gateCards().find((c) => c.themeId === 'avatar')!;
     expect(pony.resonance).toBeCloseTo(8, 6);
     expect(avatar.resonance).toBe(0);
-  });
-
-  it('previews the kit in one line', () => {
-    const pony = gateCards().find((c) => c.themeId === 'pony')!;
-    expect(skillPreview(pony)).toBe('Star Missile · Horn Glow');
   });
 
   it('marks one out of reach when it is told to, with the reason given', () => {

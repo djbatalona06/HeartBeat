@@ -1,15 +1,23 @@
+import type { CSSProperties } from 'react';
 import { getMascot } from '../../pet/mascots';
 import { RAID_STAT_NAMES } from '../../../domain/rpg/raidStats';
 import { TIER_NAMES } from '../../../domain/rpg/tiers';
-import { MAX_AFFINITY_RANK, movePreview, skillPreview, type GateCard } from '../../../domain/rpg/raidGate';
+import { MAX_AFFINITY_RANK, statBubbles, type GateCard } from '../../../domain/rpg/raidGate';
 
 /**
- * One companion, as a card in the gate's roster.
+ * One companion, as a card in the gate's roster: who it is, and bubbles.
  *
+ * The card used to carry species, element, the moves, the skills, the passive
+ * and the affinity sentence, which made choosing a companion a reading test.
+ * It now answers the one question the gate asks — how built-up is this one —
+ * as a rank bubble by the name and one bubble per stat it leans on. The moves
+ * are on the move bar once you are in; nothing is lost, only moved to where it
+ * is used.
+ *
+ * Each ring is filled with a CSS custom property, and every bubble carries its
+ * number and a visually-hidden sentence, so the fill is never the only signal.
  * A button rather than a div with a click handler, so it is reachable by
  * keyboard and announced as selectable without any aria plumbing of its own.
- * It shows the three moves the companion fights with by name, because those
- * are the buttons you are choosing between.
  */
 
 export interface GatePedestalProps {
@@ -17,6 +25,8 @@ export interface GatePedestalProps {
   selected: boolean;
   onSelect(themeId: string): void;
 }
+
+const fillStyle = (fill: number) => ({ '--fill': fill.toFixed(3) }) as CSSProperties;
 
 export function GatePedestal({ card, selected, onSelect }: GatePedestalProps) {
   const mascot = getMascot(card.themeId);
@@ -42,35 +52,29 @@ export function GatePedestal({ card, selected, onSelect }: GatePedestalProps) {
       <span className="gate-card">
         <span className="gate-card-top">
           <span className="gate-name">{card.name}</span>
-          <span className="gate-rank" data-tier={card.tier}>
-            {TIER_NAMES[card.tier]} · {card.rank}/{MAX_AFFINITY_RANK}
+          <span
+            className="gate-bubble gate-bubble-rank"
+            data-tier={card.tier}
+            style={fillStyle(card.rank / MAX_AFFINITY_RANK)}
+          >
+            <span className="gate-bubble-value">{card.rank}</span>
+            <span className="visually-hidden">
+              {`, ${TIER_NAMES[card.tier]}, rank ${card.rank} of ${MAX_AFFINITY_RANK}`}
+            </span>
           </span>
         </span>
 
-        <span className="gate-species">{card.species} · {card.element}</span>
-
-        <span className="gate-leans">
-          {card.leans.map((stat) => (
-            <span key={stat} className="gate-lean">{RAID_STAT_NAMES[stat]}</span>
-          ))}
-        </span>
-
-        <span className="gate-moves">{movePreview(card)}</span>
-        <span className="gate-skill">{skillPreview(card)}</span>
-
-        <span className="gate-foot">
-          {card.resonance > 0
-            ? `+${card.resonance}% to the tether`
-            : card.kit.passive.description}
-        </span>
-
         {card.available ? (
-          <span className="gate-affinity">
-            {card.affinity === 0
-              ? 'Never taken out.'
-              : card.toNextRank === null
-                ? `${card.affinity} rounds. Nothing left to prove.`
-                : `${card.affinity} rounds · ${card.toNextRank} to the next rank`}
+          <span className="gate-bubbles">
+            {statBubbles(card).map(({ stat, value, fill }) => (
+              <span key={stat} className="gate-bubble" style={fillStyle(fill)}>
+                <span className="gate-bubble-value">{value}</span>
+                <span className="gate-bubble-label" aria-hidden="true">{RAID_STAT_NAMES[stat]}</span>
+                <span className="visually-hidden">
+                  {`, ${RAID_STAT_NAMES[stat]} ${value}, ${Math.round(fill * 100)}% of the way to its cap`}
+                </span>
+              </span>
+            ))}
           </span>
         ) : (
           <span className="gate-affinity">{card.unavailableBecause}</span>

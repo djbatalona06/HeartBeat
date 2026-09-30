@@ -284,17 +284,6 @@ export function canEnter(
   return { ok: true, card };
 }
 
-/** What a card's skill kit reads as, in one line, for the preview on the card. */
-export function skillPreview(card: GateCard): string {
-  return `${card.kit.signature.name} · ${card.kit.passive.name}`;
-}
-
-/** The three moves a card fights with, by name, for the line under its skill. */
-export function movePreview(card: GateCard): string {
-  const { physical, defensive, magic } = card.kit.moves;
-  return `${physical.name} · ${defensive.name} · ${magic.name}`;
-}
-
 /**
  * The affinity ledger after a raid, as a new object.
  *
