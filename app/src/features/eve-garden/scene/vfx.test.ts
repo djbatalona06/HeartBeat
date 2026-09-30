@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { FALLBACK_SHAPE, KNOWN_VFX, shapeFor } from './vfx';
-import { COMPANION_KITS, skillsOf } from '../../../domain/rpg/companionSkills';
+import {
+  DRAWN_MOVES, FALLBACK_SHAPE, KNOWN_VFX, MEND_VFX, MOVE_VFX, moveVfxFor, shapeFor,
+} from './vfx';
+import { COMPANION_KITS, MOVE_KEYS, skillsOf } from '../../../domain/rpg/companionSkills';
 
 /**
  * The join between the kits and the drawings. Two lists in two directories
@@ -40,5 +42,35 @@ describe('skill pictures', () => {
       expect(shapeFor(kit.signature.vfx), kit.themeId)
         .not.toBe(shapeFor(kit.support.vfx));
     }
+  });
+});
+
+describe('move pictures', () => {
+  it('draws every kit × move, and nothing for a kit or move that does not exist', () => {
+    const kits = COMPANION_KITS.map((k) => k.themeId);
+    expect(Object.keys(MOVE_VFX).sort()).toEqual([...kits].sort());
+    for (const kit of kits) {
+      expect(Object.keys(MOVE_VFX[kit]).sort(), kit).toEqual([...DRAWN_MOVES].sort());
+    }
+    for (const move of DRAWN_MOVES) expect(MOVE_KEYS).toContain(move);
+  });
+
+  it('never gives two companions the same shape and colour for one move', () => {
+    for (const move of DRAWN_MOVES) {
+      const pairs = Object.values(MOVE_VFX).map((kit) => `${kit[move].shape}/${kit[move].token}`);
+      expect(new Set(pairs).size, move).toBe(pairs.length);
+    }
+  });
+
+  it('gives each kit three different motions, so a guard never reads as a hit', () => {
+    for (const [kit, moves] of Object.entries(MOVE_VFX)) {
+      expect(new Set(DRAWN_MOVES.map((m) => moves[m].shape)).size, kit).toBe(3);
+    }
+  });
+
+  it('keeps mend a rising heal for everyone, and a missing kit on the plain spark', () => {
+    expect(moveVfxFor('pony', 'mend')).toEqual(MEND_VFX);
+    expect(MEND_VFX.shape).toBe('motes');
+    expect(moveVfxFor('a-kit-from-the-future', 'physical')).toBeUndefined();
   });
 });

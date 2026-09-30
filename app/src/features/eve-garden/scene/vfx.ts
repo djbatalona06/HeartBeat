@@ -46,3 +46,76 @@ export function shapeFor(vfx: string | undefined): VfxShape {
 
 /** Every vfx key this table knows, for the test that holds it against the kits. */
 export const KNOWN_VFX: readonly string[] = Object.keys(SHAPES);
+
+/**
+ * The three moves a companion draws its own way. Mend is a heal, not a blow,
+ * and keeps `MEND_VFX`; Together is the couple's and keeps the plain spark.
+ */
+export type DrawnMove = 'physical' | 'defensive' | 'magic';
+
+export const DRAWN_MOVES: readonly DrawnMove[] = ['physical', 'defensive', 'magic'];
+
+/** A theme token, never a colour: the pack being worn decides the hue. */
+export type EffectToken = 'accent' | 'success' | 'danger' | 'text';
+
+export interface MoveVfx {
+  shape: VfxShape;
+  token: EffectToken;
+  /** How many of the shape — streaks, arcs, motes. */
+  count: number;
+  /** A multiplier on the beat's length; under calm the beat is zero anyway. */
+  pace: number;
+}
+
+const v = (shape: VfxShape, token: EffectToken, count: number, pace: number): MoveVfx =>
+  ({ shape, token, count, pace });
+
+/**
+ * One look per companion per move — fifteen, not five.
+ *
+ * The motion says what kind of move it was; the token, count and pace say
+ * whose. Two rules hold it together and `vfx.test.ts` enforces both: for any
+ * one move no two companions share a shape *and* token, and inside a kit the
+ * three moves are three different shapes, so a guard never looks like a hit.
+ */
+export const MOVE_VFX: Record<string, Record<DrawnMove, MoveVfx>> = {
+  // Wishbell: one clean shot of the pack's own colour.
+  pony: {
+    physical: v('bolt', 'accent', 1, 1),
+    defensive: v('shield', 'accent', 1, 1),
+    magic: v('burst', 'accent', 1, 1),
+  },
+  // Cirrus: quick, thin, several at once — wind is never one thing.
+  avatar: {
+    physical: v('bolt', 'text', 3, 0.7),
+    defensive: v('shield', 'text', 3, 0.8),
+    magic: v('ring', 'text', 2, 0.8),
+  },
+  // Marigold: slow and round, in twos, and the magic bubbles upward.
+  sponge: {
+    physical: v('bolt', 'success', 2, 1.2),
+    defensive: v('shield', 'success', 2, 1.2),
+    magic: v('motes', 'success', 7, 1.2),
+  },
+  // Mochi: three pads of a pounce, a ribbon held up, one warm lantern ring.
+  kitty: {
+    physical: v('bolt', 'danger', 3, 0.9),
+    defensive: v('shield', 'danger', 1, 1),
+    magic: v('ring', 'accent', 1, 1.1),
+  },
+  // Foxglove: claw marks where it lands, smoke to step through, a fire ring.
+  shinobi: {
+    physical: v('burst', 'text', 3, 0.8),
+    defensive: v('motes', 'text', 9, 0.9),
+    magic: v('ring', 'danger', 5, 0.9),
+  },
+};
+
+/** Mend is the one move every companion draws alike: it rises, and it is green. */
+export const MEND_VFX: MoveVfx = v('motes', 'success', 7, 1);
+
+/** The picture for a swing, or nothing — which means the plain spark. */
+export function moveVfxFor(kit: string, move: string): MoveVfx | undefined {
+  if (move === 'mend') return MEND_VFX;
+  return MOVE_VFX[kit]?.[move as DrawnMove];
+}
