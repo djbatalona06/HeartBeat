@@ -20,7 +20,7 @@ Numbering note: these letters replace the "Phase 1/2/3" numbering in `plan.md` a
 
 ## Round 1
 
-### Phase A — Quiz timer pauses when hidden (plan.md Phase 1)
+### Phase A — Quiz timer pauses when hidden (plan.md Phase 1) — **done**
 1. **You first:** write `clock.test.ts` cases — unbalanced pause/resume, `elapsed`
    never goes backwards, pause-on-paused is a no-op.
 2. `domain/study/clock.ts` (pure): `start`, `pause`, `resume`, `elapsed`.
@@ -33,7 +33,7 @@ Numbering note: these letters replace the "Phase 1/2/3" numbering in `plan.md` a
   change, so no `study:build` — but run it anyway if anything reachable from
   `standalone.tsx` moved.
 
-### Phase B — Fight scene: calm and accent
+### Phase B — Fight scene: calm and accent — **done**
 1. **You first:** write `strikePlan.test.ts` (mirror `levelUpAnimator.test.ts`):
    calm ⇒ all zeros; non-calm totals under a stated ceiling.
 2. `domain/scene/strikePlan.ts`: `strikePlan({ calm, kind })`.
@@ -53,10 +53,11 @@ Numbering note: these letters replace the "Phase 1/2/3" numbering in `plan.md` a
 3. `scene/vfx.ts`: `MOVE_VFX[themeId][move]` ×15; extend `vfx.test.ts` two-way
    (every kit × move has an entry; every entry is reachable).
 4. Palettes from theme tokens; extend the contrast proof to 5 packs × 2 modes.
-5. Battle log / live region names the move and effect (check C# `battle.log` first;
-   only add TS text where C# doesn't already say it).
-6. Bespoke signature piece per companion: primitives first; sprites only if
-   primitives can't carry it, and then lazy, outside the entry chunk and precache.
+5. Battle log / live region: C# already names the move (`Battle.cs`, `"<move> hits
+   for N."`). Add only the weak/strong edge, which is decided TS-side (`edgeOf`).
+6. Bespoke signature piece per companion: **Phaser primitives (decided)**. Sprites
+   only if primitives can't carry it, and then lazy, outside the entry chunk and precache.
+   Every new motion must respect `strikePlan` — calm is already zero for all of them.
 7. Extend the originality guard tests to any new art file.
 - Done when: 15 distinguishable effects across the five companions; no two share a
   palette-and-motion pair for the same move; calm shows none of the motion and all of

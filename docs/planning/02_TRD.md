@@ -58,7 +58,7 @@
 ## Constraints
 
 - Offline-first PWA; precache budget asserted by `app/tools/lighthouse.mjs` off the
-  built `sw.js` (882 KB / 12 entries at the last audit).
+  built `sw.js`: budget 24 entries / 1,200 KiB; 20 entries / 1,184 KiB after Phase B.
 - Phaser and the 3.5 MB wasm runtime must not boot for screens that don't need them.
 - No new dependency without a reason the repo's "bundles nothing third-party"
   stance can live with.

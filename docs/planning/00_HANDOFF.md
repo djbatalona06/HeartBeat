@@ -31,9 +31,8 @@ companions should fight with attack / defence / magic effects that look like
 
 ## What Opus should settle (open questions)
 
-1. **Bespoke art method (Phase C):** code-drawn Phaser primitives (zero assets,
-   zero precache cost) or small sprites (more distinctive, must stay lazy and out
-   of the entry chunk and the 882 KB precache)?
+1. ~~**Bespoke art method (Phase C)**~~ — **decided: Phaser primitives** (zero
+   assets, zero precache cost). Sprites only if primitives cannot carry a piece.
 2. **Nursing-deck `why` rationales** (`plan.md` Phase 3): author 126 rationales in
    the study repo (recommended), or make `why` optional for imported cards?
 3. **Wellness "today" ring:** is a new Home surface worth it, or does
@@ -41,7 +40,27 @@ companions should fight with attack / defence / magic effects that look like
 4. **Level-up spec reversal:** `docs/superpowers/specs/2026-09-24-levelup-moment-design.md`
    decided "Home only, no on-screen text beyond `Lv N`". The reveal line reverses
    that; confirm and update the spec's decisions table when building Phase E.
-5. **Worker and .NET tests** were not re-run while planning. Run them first.
+5. ~~**Worker and .NET tests**~~ — run at the start of Round 1: worker 143 pass,
+   `game:test` 264 pass, `check:config` and `ui:check` pass.
+
+## Round 1 progress
+
+**Phases A and B are built** (branch `gng/great-mccarthy-95hpck`). Phase C is next,
+in a fresh session. The Step 0 audit changed these assumptions:
+
+- **C# already names the move in the log.** `Battle.cs` writes `"<move> hits for N."`
+  using the kit's names (passed in as `MoveNames`), and `BattleLog.tsx` is a polite
+  live region. S6 is therefore mostly met; what the text lacks is the weak/strong
+  edge, which is decided TS-side (`edgeOf`). That wording is Phase C's to add.
+- **`calm` already folds in `prefers-reduced-motion`** (`ThemeProvider.tsx`), so the
+  scene reads no media query of its own.
+- `levelUpPlan` lives in `features/pet/levelUpAnimator.ts`, not `domain/`.
+- The quiz clock also fed the **score** (`elapsedMs` on each answer), not only the
+  countdown; Phase A fixed both.
+- The scene already reads the theme off its host element in `preload`, so the accent
+  is read there too — `StartOptions` gained `calm` but not `accent`.
+- `npm run visual` walks home, mood, tasks, shop and settings. **The garden and the
+  fight are not in the axe walk** — Phase F should add them.
 
 ## What is verified vs not
 

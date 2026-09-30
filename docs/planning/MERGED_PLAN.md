@@ -15,8 +15,8 @@ of each stay current, which were wrong, and how their phase numbers map.
 
 | Merged | `plan.md` | `WELLNESS_GAME_PLAN.md` | Status |
 |---|---|---|---|
-| **A** quiz timer | Phase 1 | — | Not built (`clock.ts`, `useElapsed.ts` absent) |
-| **B** fight calm + accent | — | Phase 1 | Not built |
+| **A** quiz timer | Phase 1 | — | **Built** (`domain/study/clock.ts`, `pwa/useElapsed.ts`) |
+| **B** fight calm + accent | — | Phase 1 | **Built** (`domain/scene/strikePlan.ts`, `SceneHandle.setCalm`) |
 | **C** per-move effects | — | Phase 2 | Not built |
 | **D** goals + wellness framing | Phase 2 | Phase 4 | **Partly shipped**: `TogetherPanel` shows next tier + points-to-go; `unlocks.ts` and the locked-goals card are not built |
 | **E** level-up reveal | — | Phase 3 | Level-up moment **built** (`1fd325a`); reveal line + all-kinds-big not built |
@@ -37,7 +37,7 @@ of each stay current, which were wrong, and how their phase numbers map.
 | Level-up spec "Home only, no on-screen text" | **Reversed by the owner** for the reveal line; Phase E updates the spec |
 | "356 `aria-` attributes" (wellness §4) | **Corrected** to ~340; it counted lines |
 | "No lint script" (wellness §3) | **Corrected**: no `lint`, but `check:config` and `ui:check` exist; neither was run |
-| BattleLog announces move + effect | **Unverified**: it is `aria-live="polite"`; log-line text unread |
+| BattleLog announces move + effect | **Verified, partly**: C# names the move (`"<move> hits for N."`); the weak/strong edge is not in the text yet (Phase C) |
 | User font-size setting | **Not found** (searched settings/types); unverified |
 
 ## 3 · RAG (Red / Amber / Green)
@@ -45,14 +45,14 @@ of each stay current, which were wrong, and how their phase numbers map.
 | Area | RAG | Basis |
 |---|---|---|
 | Types + app tests | **Green** | typecheck clean; 2,677 tests pass |
-| Worker / .NET tests, build, visual, Lighthouse | **Amber** | not run while planning |
+| Worker / .NET tests, build, visual, Lighthouse | **Green** | all run after Phase B: 2,689 app / 143 worker / 264 .NET; axe clean; Lighthouse a11y 100, precache 1,184 of 1,200 KiB |
 | Push delivery | **Amber** | crypto pinned to RFC 8291 vectors; real delivery is manual-only |
 | Economy, levels, milestones, charges | **Green** | built and tested |
 | Level-up moment | **Green** built / **Amber** reveal | reveal line not built |
 | Per-move, per-character effects | **Red** | F1, F2: not built |
-| Fight canvas accessibility | **Red** | F3: no calm path; log text unverified |
+| Fight canvas accessibility | **Amber** | calm path built (Phase B); fight route not yet in the axe walk |
 | DOM-screen accessibility | **Green/Amber** | axe gate fails on serious/critical across the walk; manual passes not recorded |
-| Quiz timer | **Red** | defect: runs while backgrounded |
+| Quiz timer | **Green** | pauses while hidden; score uses the same clock |
 | Visible goals | **Amber** | next tier shown; locked-goals card missing |
 | Visual-regression pixel diff | **Amber** | baselines not committed (seed-only) |
 

@@ -34,9 +34,8 @@ companions should fight with attack / defence / magic effects that look like
 
 ## What Opus should settle (open questions)
 
-1. **Bespoke art method (Phase C):** code-drawn Phaser primitives (zero assets,
-   zero precache cost) or small sprites (more distinctive, must stay lazy and out
-   of the entry chunk and the 882 KB precache)?
+1. ~~**Bespoke art method (Phase C)**~~ — **decided: Phaser primitives** (zero
+   assets, zero precache cost). Sprites only if primitives cannot carry a piece.
 2. **Nursing-deck `why` rationales** (`plan.md` Phase 3): author 126 rationales in
    the study repo (recommended), or make `why` optional for imported cards?
 3. **Wellness "today" ring:** is a new Home surface worth it, or does
@@ -44,7 +43,27 @@ companions should fight with attack / defence / magic effects that look like
 4. **Level-up spec reversal:** `docs/superpowers/specs/2026-09-24-levelup-moment-design.md`
    decided "Home only, no on-screen text beyond `Lv N`". The reveal line reverses
    that; confirm and update the spec's decisions table when building Phase E.
-5. **Worker and .NET tests** were not re-run while planning. Run them first.
+5. ~~**Worker and .NET tests**~~ — run at the start of Round 1: worker 143 pass,
+   `game:test` 264 pass, `check:config` and `ui:check` pass.
+
+## Round 1 progress
+
+**Phases A and B are built** (branch `gng/great-mccarthy-95hpck`). Phase C is next,
+in a fresh session. The Step 0 audit changed these assumptions:
+
+- **C# already names the move in the log.** `Battle.cs` writes `"<move> hits for N."`
+  using the kit's names (passed in as `MoveNames`), and `BattleLog.tsx` is a polite
+  live region. S6 is therefore mostly met; what the text lacks is the weak/strong
+  edge, which is decided TS-side (`edgeOf`). That wording is Phase C's to add.
+- **`calm` already folds in `prefers-reduced-motion`** (`ThemeProvider.tsx`), so the
+  scene reads no media query of its own.
+- `levelUpPlan` lives in `features/pet/levelUpAnimator.ts`, not `domain/`.
+- The quiz clock also fed the **score** (`elapsedMs` on each answer), not only the
+  countdown; Phase A fixed both.
+- The scene already reads the theme off its host element in `preload`, so the accent
+  is read there too — `StartOptions` gained `calm` but not `accent`.
+- `npm run visual` walks home, mood, tasks, shop and settings. **The garden and the
+  fight are not in the axe walk** — Phase F should add them.
 
 ## What is verified vs not
 
@@ -213,7 +232,7 @@ promise the README makes; nothing here may weaken it.
 ## Constraints
 
 - Offline-first PWA; precache budget asserted by `app/tools/lighthouse.mjs` off the
-  built `sw.js` (882 KB / 12 entries at the last audit).
+  built `sw.js`: budget 24 entries / 1,200 KiB; 20 entries / 1,184 KiB after Phase B.
 - Phaser and the 3.5 MB wasm runtime must not boot for screens that don't need them.
 - No new dependency without a reason the repo's "bundles nothing third-party"
   stance can live with.
@@ -446,7 +465,7 @@ Numbering note: these letters replace the "Phase 1/2/3" numbering in `plan.md` a
 
 ## Round 1
 
-### Phase A — Quiz timer pauses when hidden (plan.md Phase 1)
+### Phase A — Quiz timer pauses when hidden (plan.md Phase 1) — **done**
 1. **You first:** write `clock.test.ts` cases — unbalanced pause/resume, `elapsed`
    never goes backwards, pause-on-paused is a no-op.
 2. `domain/study/clock.ts` (pure): `start`, `pause`, `resume`, `elapsed`.
@@ -459,7 +478,7 @@ Numbering note: these letters replace the "Phase 1/2/3" numbering in `plan.md` a
   change, so no `study:build` — but run it anyway if anything reachable from
   `standalone.tsx` moved.
 
-### Phase B — Fight scene: calm and accent
+### Phase B — Fight scene: calm and accent — **done**
 1. **You first:** write `strikePlan.test.ts` (mirror `levelUpAnimator.test.ts`):
    calm ⇒ all zeros; non-calm totals under a stated ceiling.
 2. `domain/scene/strikePlan.ts`: `strikePlan({ calm, kind })`.
@@ -479,10 +498,11 @@ Numbering note: these letters replace the "Phase 1/2/3" numbering in `plan.md` a
 3. `scene/vfx.ts`: `MOVE_VFX[themeId][move]` ×15; extend `vfx.test.ts` two-way
    (every kit × move has an entry; every entry is reachable).
 4. Palettes from theme tokens; extend the contrast proof to 5 packs × 2 modes.
-5. Battle log / live region names the move and effect (check C# `battle.log` first;
-   only add TS text where C# doesn't already say it).
-6. Bespoke signature piece per companion: primitives first; sprites only if
-   primitives can't carry it, and then lazy, outside the entry chunk and precache.
+5. Battle log / live region: C# already names the move (`Battle.cs`, `"<move> hits
+   for N."`). Add only the weak/strong edge, which is decided TS-side (`edgeOf`).
+6. Bespoke signature piece per companion: **Phaser primitives (decided)**. Sprites
+   only if primitives can't carry it, and then lazy, outside the entry chunk and precache.
+   Every new motion must respect `strikePlan` — calm is already zero for all of them.
 7. Extend the originality guard tests to any new art file.
 - Done when: 15 distinguishable effects across the five companions; no two share a
   palette-and-motion pair for the same move; calm shows none of the motion and all of
@@ -569,8 +589,8 @@ of each stay current, which were wrong, and how their phase numbers map.
 
 | Merged | `plan.md` | `WELLNESS_GAME_PLAN.md` | Status |
 |---|---|---|---|
-| **A** quiz timer | Phase 1 | — | Not built (`clock.ts`, `useElapsed.ts` absent) |
-| **B** fight calm + accent | — | Phase 1 | Not built |
+| **A** quiz timer | Phase 1 | — | **Built** (`domain/study/clock.ts`, `pwa/useElapsed.ts`) |
+| **B** fight calm + accent | — | Phase 1 | **Built** (`domain/scene/strikePlan.ts`, `SceneHandle.setCalm`) |
 | **C** per-move effects | — | Phase 2 | Not built |
 | **D** goals + wellness framing | Phase 2 | Phase 4 | **Partly shipped**: `TogetherPanel` shows next tier + points-to-go; `unlocks.ts` and the locked-goals card are not built |
 | **E** level-up reveal | — | Phase 3 | Level-up moment **built** (`1fd325a`); reveal line + all-kinds-big not built |
@@ -591,7 +611,7 @@ of each stay current, which were wrong, and how their phase numbers map.
 | Level-up spec "Home only, no on-screen text" | **Reversed by the owner** for the reveal line; Phase E updates the spec |
 | "356 `aria-` attributes" (wellness §4) | **Corrected** to ~340; it counted lines |
 | "No lint script" (wellness §3) | **Corrected**: no `lint`, but `check:config` and `ui:check` exist; neither was run |
-| BattleLog announces move + effect | **Unverified**: it is `aria-live="polite"`; log-line text unread |
+| BattleLog announces move + effect | **Verified, partly**: C# names the move (`"<move> hits for N."`); the weak/strong edge is not in the text yet (Phase C) |
 | User font-size setting | **Not found** (searched settings/types); unverified |
 
 ## 3 · RAG (Red / Amber / Green)
@@ -599,14 +619,14 @@ of each stay current, which were wrong, and how their phase numbers map.
 | Area | RAG | Basis |
 |---|---|---|
 | Types + app tests | **Green** | typecheck clean; 2,677 tests pass |
-| Worker / .NET tests, build, visual, Lighthouse | **Amber** | not run while planning |
+| Worker / .NET tests, build, visual, Lighthouse | **Green** | all run after Phase B: 2,689 app / 143 worker / 264 .NET; axe clean; Lighthouse a11y 100, precache 1,184 of 1,200 KiB |
 | Push delivery | **Amber** | crypto pinned to RFC 8291 vectors; real delivery is manual-only |
 | Economy, levels, milestones, charges | **Green** | built and tested |
 | Level-up moment | **Green** built / **Amber** reveal | reveal line not built |
 | Per-move, per-character effects | **Red** | F1, F2: not built |
-| Fight canvas accessibility | **Red** | F3: no calm path; log text unverified |
+| Fight canvas accessibility | **Amber** | calm path built (Phase B); fight route not yet in the axe walk |
 | DOM-screen accessibility | **Green/Amber** | axe gate fails on serious/critical across the walk; manual passes not recorded |
-| Quiz timer | **Red** | defect: runs while backgrounded |
+| Quiz timer | **Green** | pauses while hidden; score uses the same clock |
 | Visible goals | **Amber** | next tier shown; locked-goals card missing |
 | Visual-regression pixel diff | **Amber** | baselines not committed (seed-only) |
 
