@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   DRAWN_MOVES, EFFECT_CONTRAST, FALLBACK_SHAPE, effectColours, KNOWN_VFX, MEND_VFX, MOVE_VFX, moveVfxFor, shapeFor,
@@ -117,4 +119,21 @@ describe('signature pieces', () => {
     expect(new Set(kinds).size).toBe(kinds.length);
     for (const kit of COMPANION_KITS) expect(signatureFor(kit.support.vfx), kit.themeId).toBeUndefined();
   });
+});
+
+/**
+ * The same guard `companionSkills.test.ts` keeps on the kits, on the files that
+ * draw them. Copied rather than imported: the list cannot live in shipping
+ * code, since the point is that shipping code never contains it. Keep the two
+ * in step.
+ */
+describe('nobody else\'s characters, in the drawings either', () => {
+  const BORROWED =
+    /hello kitty|sanrio|spongebob|squarepants|naruto|uzumaki|shadow clone|rasengan|airbender|aang|appa|avatar state|my little pony|twilight sparkle|rainbow dash|hasbro|pikachu|mickey/i;
+
+  for (const file of ['vfx.ts', 'signatures.ts', 'BattleGardenScene.ts']) {
+    it(`${file} names nobody else's character`, () => {
+      expect(readFileSync(resolve(__dirname, file), 'utf8')).not.toMatch(BORROWED);
+    });
+  }
 });
