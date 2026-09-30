@@ -314,6 +314,16 @@ body {
   transition: background var(--motion-slow) var(--ease-soft);
 }
 
+/* Shared Aura (unlocks.ts): a season of the two of you, as a ring around the
+   pet's light. Drawn on the light that is already there rather than a new
+   layer, and still: an aura that pulsed would be the one thing on Home moving
+   for no reason, and calm would have to switch it off. */
+.home-mascot-standalone[data-aura]::before {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-accent) 45%, transparent),
+    0 0 1.5rem 0.4rem color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
 /* ---- the ground under the pet ---------------------------------------------
    The mascots are flat SVGs drawn in theme variables, and that is what lets
    them follow a palette when it changes — so the way to give them depth is not
@@ -605,6 +615,15 @@ body {
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-large);
   box-shadow: var(--shadow);
+}
+
+/* Evergreen Frame (unlocks.ts): most of a year together, as a second border
+   held just outside the first. An outline rather than a thicker border, so the
+   card's contents do not shift the day it opens. Accent leaned toward the
+   border colour, so it reads as a frame and not as a focus ring. */
+.home-pet[data-frame] {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 65%, var(--color-border));
+  outline-offset: 3px;
 }
 
 .home-pet-head {
