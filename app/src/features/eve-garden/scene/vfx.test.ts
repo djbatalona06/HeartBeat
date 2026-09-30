@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DRAWN_MOVES, FALLBACK_SHAPE, KNOWN_VFX, MEND_VFX, MOVE_VFX, moveVfxFor, shapeFor,
+  DRAWN_MOVES, EFFECT_CONTRAST, FALLBACK_SHAPE, effectColours, KNOWN_VFX, MEND_VFX, MOVE_VFX, moveVfxFor, shapeFor,
 } from './vfx';
+import { THEMES } from '../../../themes/index';
+import { contrast, darkVariantOf } from '../../../themes/tokens';
 import { COMPANION_KITS, MOVE_KEYS, skillsOf } from '../../../domain/rpg/companionSkills';
 
 /**
@@ -72,5 +74,36 @@ describe('move pictures', () => {
     expect(moveVfxFor('pony', 'mend')).toEqual(MEND_VFX);
     expect(MEND_VFX.shape).toBe('motes');
     expect(moveVfxFor('a-kit-from-the-future', 'physical')).toBeUndefined();
+  });
+});
+
+/**
+ * Every effect, in every pack, in both palettes — the `mood.test.ts` walk.
+ *
+ * Any companion can be taken into any pack, so a kit's token is proven against
+ * all ten grounds, not just its own theme's. What is proven is what is drawn:
+ * the fill if it stands on the ground, otherwise the edge around it.
+ */
+describe('move pictures stay visible on every ground', () => {
+  for (const theme of THEMES) {
+    for (const [mode, variant] of [['dark', darkVariantOf(theme)], ['light', theme.light]] as const) {
+      it(`${theme.name} (${mode})`, () => {
+        const { accent, success, danger, text, base } = variant.colors;
+        const palette = { accent, success, danger, text, base };
+        for (const kit of Object.keys(MOVE_VFX)) {
+          for (const move of [...DRAWN_MOVES, 'mend']) {
+            const look = moveVfxFor(kit, move)!;
+            const { fill, edge } = effectColours(look.token, palette);
+            expect(contrast(edge ?? fill, base), `${kit} ${move} ${look.token}`)
+              .toBeGreaterThanOrEqual(EFFECT_CONTRAST);
+          }
+        }
+      });
+    }
+  }
+
+  it('outlines a colour it cannot measure', () => {
+    const palette = { accent: 'rgba(0,0,0,0.5)', success: '#000000', danger: '#000000', text: '#ffffff', base: '#000000' };
+    expect(effectColours('accent', palette).edge).toBe('#ffffff');
   });
 });

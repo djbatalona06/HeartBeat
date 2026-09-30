@@ -1,3 +1,5 @@
+import { contrast } from '../../../themes/tokens';
+
 /**
  * What a companion's skill looks like when it lands.
  *
@@ -118,4 +120,28 @@ export const MEND_VFX: MoveVfx = v('motes', 'success', 7, 1);
 export function moveVfxFor(kit: string, move: string): MoveVfx | undefined {
   if (move === 'mend') return MEND_VFX;
   return MOVE_VFX[kit]?.[move as DrawnMove];
+}
+
+/** WCAG 1.4.11: a graphic that carries meaning needs 3:1 against what it sits on. */
+export const EFFECT_CONTRAST = 3;
+
+/** The pack colours a fight draws with, as hex read off the page. */
+export type EffectPalette = Record<EffectToken | 'base', string>;
+
+const HEX = /^#?[0-9a-f]{6}$/i;
+
+/**
+ * What to paint a token with, and whether it needs an outline.
+ *
+ * Measured, not assumed: every pack's accent sits under 2.6:1 against its own
+ * light ground, and one pack's `danger` does in dark. So a fill that cannot
+ * stand on the ground gets an edge in `text`, which clears it everywhere by a
+ * wide margin. A colour that is not plain hex cannot be measured, so it gets
+ * the edge too — the safe answer to "don't know".
+ */
+export function effectColours(token: EffectToken, palette: EffectPalette): { fill: string; edge?: string } {
+  const fill = palette[token];
+  const measurable = HEX.test(fill) && HEX.test(palette.base);
+  if (measurable && contrast(fill, palette.base) >= EFFECT_CONTRAST) return { fill };
+  return { fill, edge: palette.text };
 }
