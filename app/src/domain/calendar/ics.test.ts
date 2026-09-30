@@ -5,7 +5,7 @@ const AT = new Date('2026-09-27T04:15:00Z');
 
 describe('icsText', () => {
   it('escapes the four characters that change meaning', () => {
-    expect(icsText('a,b;c\\d\ne')).toBe('a\\,b\;c\\\\d\\ne');
+    expect(icsText('a,b;c\\d\ne')).toBe('a\\,b\\;c\\\\d\\ne');
   });
 });
 
@@ -74,6 +74,6 @@ describe('toCalendarIcs', () => {
 
   it('escapes a title so it cannot break out of its line', () => {
     const ics = toCalendarIcs([{ id: 'x', day: '2026-09-28', title: 'Lunch, with;\nnew line' }], AT);
-    expect(ics).toContain('SUMMARY:Lunch\\, with\;\\nnew line');
+    expect(ics).toContain('SUMMARY:Lunch\\, with\\;\\nnew line');
   });
 });
