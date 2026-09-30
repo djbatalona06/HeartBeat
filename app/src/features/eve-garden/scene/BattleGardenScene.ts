@@ -82,11 +82,10 @@ export class BattleGardenScene extends Phaser.Scene {
   private accent = 0xffffff;
   /**
    * The pack's colours as hex, for the per-move effects. Read beside the
-   * accent; `effectColours` decides which ones need an edge to be seen.
+   * accent; `effectColours` decides which ones need an edge to be seen. Empty
+   * until then, and an empty one draws in the accent.
    */
-  private palette: EffectPalette = {
-    accent: '#ffffff', success: '#ffffff', danger: '#ffffff', text: '#ffffff', base: '#000000',
-  };
+  private palette: EffectPalette = { accent: '', success: '', danger: '', text: '', base: '' };
 
   private pet!: Phaser.GameObjects.Image;
   private foe!: Phaser.GameObjects.Image;
@@ -134,7 +133,7 @@ export class BattleGardenScene extends Phaser.Scene {
   /** A token as Phaser numbers: the fill, and the edge it needs if any. */
   private colours(token: EffectToken): { fill: number; edge?: number } {
     const { fill, edge } = effectColours(token, this.palette);
-    const toInt = (css: string) => Phaser.Display.Color.ValueToColor(css).color;
+    const toInt = (css: string) => (css ? Phaser.Display.Color.ValueToColor(css).color : this.accent);
     return { fill: toInt(fill), edge: edge === undefined ? undefined : toInt(edge) };
   }
 
