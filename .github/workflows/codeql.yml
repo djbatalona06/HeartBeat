@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           # JavaScript/TypeScript only. It covers the Worker, the Pages
           # Functions and the app — which is all of the auth code and all of
@@ -61,6 +61,6 @@ jobs:
       # No build step. `autobuild` exists for compiled languages; for
       # JavaScript/TypeScript CodeQL reads the source directly, and running the
       # real build here would need the .NET wasm workload for no benefit.
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
         with:
           category: /language:javascript-typescript
