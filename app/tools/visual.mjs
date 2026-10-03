@@ -348,7 +348,7 @@ async function prime(page) {
         if ((location.hash || '#/') !== '#/') return { open: false };
         // Either is past onboarding. Neither is "the gate has not run yet",
         // which renders nothing and is what the poll has to outlast.
-        const past = document.querySelector('.home-pet') || document.querySelector('.raid-gate-title');
+        const past = document.querySelector('.home-pet') || document.querySelector('.gate-title');
         return past ? { open: true } : undefined;
       }, null, { timeout: 15000, polling: 100 })
       .then((handle) => handle.jsonValue())
