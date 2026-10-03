@@ -1473,7 +1473,8 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   background: var(--color-border);
 }
 
-.menu-scrim {
+.menu-scrim,
+.popup-scrim {
   position: fixed;
   inset: 0;
   z-index: 5;
@@ -7812,7 +7813,7 @@ a, button, input, select, textarea, summary, label, [role='button'] {
     backdrop-filter: none;
     background: var(--color-surface);
   }
-  .menu-scrim, .cmd-scrim { backdrop-filter: none; }
+  .menu-scrim, .popup-scrim, .cmd-scrim { backdrop-filter: none; }
 }
 
 /* More contrast: borders that were decoration become edges. Muted text on the
@@ -7876,6 +7877,32 @@ a, button, input, select, textarea, summary, label, [role='button'] {
 .purse-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-2); }
 .purse-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .garden-victory-loot { font-size: var(--text-sm); color: var(--color-text); }
+
+/* ---- popups -----------------------------------------------------------------
+   A centred dialog on the same scrim and z-scale the menu uses. Shared by the
+   login award and the boss gate prompt. */
+.popup-panel {
+  position: fixed;
+  z-index: var(--z-sheet);
+  left: 50%;
+  top: 50%;
+  width: min(24rem, calc(100vw - var(--space-6)));
+  max-height: calc(100dvh - var(--space-7));
+  overflow-y: auto;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+  transform: translate(-50%, -50%);
+  animation: popup-in var(--motion-medium) var(--ease-soft);
+}
+@keyframes popup-in {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+:root[data-calm='true'] .popup-panel { animation: none; }
+.popup-actions { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
 
 /* ---- costumes ------------------------------------------------------------
    Laid over a mascot in the same 100x100 box it is drawn in. The layer is

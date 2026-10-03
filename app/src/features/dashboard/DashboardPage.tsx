@@ -30,7 +30,6 @@ import { isPaired } from '../../domain/identity/rekey';
 import { Tile } from '../../components/Tile';
 import { EmptyState } from '../../ui/EmptyState';
 import { LogStrip } from './LogStrip';
-import { LoginAward } from './LoginAward';
 import { CostumeLayer } from '../party/art/costumes';
 
 /**
@@ -117,8 +116,6 @@ export function DashboardPage() {
       {/* Logging is what feeds everything below it, so it comes straight
           after the pet and before what logging has added up to. */}
       <LogStrip day={day} />
-
-      <LoginAward memberId={memberId} coupleId={coupleId} day={day} />
 
       {/* Directly under the pet, because it is the rest of the same sentence:
           the bar above is what the two of you have been *given* — quests, boss

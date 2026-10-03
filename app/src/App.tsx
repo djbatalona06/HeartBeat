@@ -22,6 +22,7 @@ import { BottomNav } from './ui/layout/BottomNav';
 import { useBadges } from './features/notifications/useBadges';
 import { useNotices } from './features/notifications/useNotices';
 import { NotificationHeader } from './features/notifications/NotificationHeader';
+import { LoginPopup } from './features/dashboard/LoginPopup';
 import { ToastHost } from './ui/Toast';
 import { SceneBackdrop } from './features/home/SceneBackdrop';
 import { WelcomePage } from './features/onboarding/WelcomePage';
@@ -141,6 +142,9 @@ export function App() {
                         something is waiting, and it is handed the badges `App`
                         already holds rather than reading its own. */}
                     <NotificationHeader badges={badges} notices={notices} />
+                    {/* Here rather than on Home, so the daily award finds you on
+                        whichever screen the app opens to. */}
+                    <LoginPopup />
                     {/* Around the routes only. A single page throwing should leave the
                         nav bar and the thread standing, so there is still a way out of
                         the broken screen without force-quitting the app. */}
