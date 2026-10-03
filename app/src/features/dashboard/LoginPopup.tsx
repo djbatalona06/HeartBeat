@@ -7,7 +7,7 @@ import {
   LOGIN_CYCLE, LOGIN_REWARDS, loginPopupOpen, loginState, purseById,
 } from '../../domain/rpg/coinSources';
 import { todayKey } from '../../domain/day';
-import { BEFORE_THE_APP } from '../../components/StatusHud';
+import { OPEN_WHILE_UNPAIRED } from '../../nav';
 import { PrimaryAction } from '../../ui/PrimaryAction';
 import { SecondaryAction } from '../../ui/SecondaryAction';
 import { Sheet } from '../../ui/Sheet';
@@ -20,6 +20,11 @@ import { Sheet } from '../../ui/Sheet';
  * saw it, and Home was the only route that ever mentioned it. This is mounted
  * once in `App` and shows on whatever route the app opens to, as soon as there
  * is something to claim.
+ *
+ * It stays off every route an unpaired phone can reach (`OPEN_WHILE_UNPAIRED`):
+ * Settings holds the pairing form, which a popup over it would cover, the first
+ * run is not the moment for a reward, and First Aid is a page for somebody's
+ * worst hour and gets nothing in front of it.
  *
  * "Later" puts it off for today only (kept per day in `sessionStorage`, so a new
  * day, or a new session on the same day, offers it again). Counted in claims
@@ -51,7 +56,7 @@ export function LoginPopup() {
   const [receipt, setReceipt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (!memberId || !coupleId || !avatar || BEFORE_THE_APP.includes(pathname)) return null;
+  if (!memberId || !coupleId || !avatar || OPEN_WHILE_UNPAIRED.includes(pathname)) return null;
 
   const state = loginState(avatar, day);
   const open = loginPopupOpen({
