@@ -47,13 +47,18 @@ if (!existsSync(join(DIST, 'index.html'))) {
  * in the failure message is a number somebody has to think about.
  */
 const PRECACHE_CEILING_ENTRIES = 24;
-// Raised from 1200 when islands 8-10, the costume art, the coin sources and the
-// partner gate landed together: main measured 1186 KiB and the branch 1207, so
-// the headroom is 13 KiB where it was 14. The growth is content and code that
-// ships to every phone (about 6 KiB of island data, the rest features), not a
-// chunk that slipped into the precache; the three guards below that catch
-// that — phaser, the game worker and the 3D mascots — are unchanged.
-const PRECACHE_CEILING_KIB = 1220;
+// Raised twice, each time for shipped content rather than for a chunk that
+// slipped into the precache (the three guards below that catch that — phaser,
+// the game worker and the 3D mascots — are unchanged):
+//   1200 -> 1220  islands 8-10, costume art, coin sources and the partner gate.
+//                 Main measured 1186 KiB and the branch 1207.
+//   1220 -> 1235  fifteen more costumes and gear drawings (24 new SVG
+//                 components). The branch then measured 1221.
+// Headroom is about 14 KiB each time, which is what it was at 1200. Every
+// drawing is precached because every JS chunk is; if this needs raising a
+// third time, that is the moment to look at drawing icons from data instead
+// of one JSX component each.
+const PRECACHE_CEILING_KIB = 1235;
 
 const sw = await readFile(join(DIST, 'sw.js'), 'utf8');
 const manifest = [...sw.matchAll(/"revision":\s*(?:"[^"]*"|null),\s*"url":\s*"([^"]+)"/g)]
