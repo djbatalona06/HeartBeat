@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ISLAND_COUNT, STAGES_PER_ISLAND, clearStage, clearedCount, currentStage,
   isIslandComplete, isIslandUnlocked, islandOfMonster, islandProgress,
-  mergeGate, mergeWorld, newWorldProgress, stageOfMonster, standingIsland, travelTo, type WorldProgress,
+  mergeGate, mergeWorld, withGateStamp, newWorldProgress, stageOfMonster, standingIsland, travelTo, type WorldProgress,
 } from './world';
 
 const AT = 1_700_000_000_000;
@@ -226,5 +226,24 @@ describe('merging two phones\' worlds', () => {
     const merged = mergeWorld(local, pulled)!;
     expect(merged.gate).toEqual({ me: AT + 5, them: AT + 6 });
     expect(merged.cleared).toEqual(ISLAND_1.slice(0, 2));
+  });
+});
+
+describe('standing at the gate', () => {
+  it('stamps the member and the row', () => {
+    const next = withGateStamp(fresh(), 'me', AT + 1000, 300_000);
+    expect(next.gate).toEqual({ me: AT + 1000 });
+    expect(next.updatedAt).toBe(AT + 1000);
+  });
+
+  it('leaves a fresh stamp alone, so the world is not rewritten every visit', () => {
+    const once = withGateStamp(fresh(), 'me', AT + 1000, 300_000);
+    expect(withGateStamp(once, 'me', AT + 2000, 300_000)).toBe(once);
+  });
+
+  it('refreshes a stale stamp and keeps the partner\'s', () => {
+    const base = { ...fresh(), gate: { me: AT, them: AT + 50 } };
+    const next = withGateStamp(base, 'me', AT + 400_000, 300_000);
+    expect(next.gate).toEqual({ me: AT + 400_000, them: AT + 50 });
   });
 });

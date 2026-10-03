@@ -2,8 +2,9 @@ import { db } from '../database';
 import type { CoupleId, DayKey } from '../../domain/types';
 import { addDays, daysBetween } from '../../domain/day';
 import {
-  clearStage, newWorldProgress, travelTo, type WorldProgress,
+  clearStage, newWorldProgress, travelTo, withGateStamp, type WorldProgress,
 } from '../../domain/rpg/world';
+import { PRESENCE_REFRESH_MS } from '../../domain/rpg/raidGate';
 import { FRESH_MOMENTUM, type Momentum } from '../../domain/rpg/diorama';
 import { dayLogs } from './vitals';
 import { now } from './shared';
@@ -57,6 +58,24 @@ export async function travelToIsland(
   return db.transaction('rw', db.worldProgress, async () => {
     const current = await db.worldProgress.get(coupleId) ?? newWorldProgress(coupleId, now());
     const next = travelTo(current, island, now());
+    if (next === current && await db.worldProgress.get(coupleId)) return current;
+    await db.worldProgress.put(next);
+    return next;
+  });
+}
+
+/**
+ * Say you are standing at the Raid Gate on a boss stage. Only the boss stage
+ * calls this — see `partnerGateApplies` — so a world that never reaches one is
+ * never written for presence at all. A no-op while your last stamp is fresh.
+ */
+export async function stampGatePresence(
+  coupleId: CoupleId,
+  memberId: string,
+): Promise<WorldProgress> {
+  return db.transaction('rw', db.worldProgress, async () => {
+    const current = await db.worldProgress.get(coupleId) ?? newWorldProgress(coupleId, now());
+    const next = withGateStamp(current, memberId, now(), PRESENCE_REFRESH_MS);
     if (next === current && await db.worldProgress.get(coupleId)) return current;
     await db.worldProgress.put(next);
     return next;

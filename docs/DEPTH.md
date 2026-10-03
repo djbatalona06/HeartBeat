@@ -65,7 +65,7 @@ from "a rebuild" to "a finishing pass":
   gate scene and the garden's sky/mid/near layers. This is the brief's item 3,
   built, with the reduced-motion and `data-calm` guards the brief does not
   mention.
-- **A real depth axis from the domain.** `.gate-pedestal` reads `--gate-depth`,
+- **A real depth axis from the domain.** `.raid-gate-pedestal` reads `--gate-depth`,
   written by `archLayout` in `domain/rpg/raidGate.ts`, and turns it into
   `translateY(…) scale(…)`. That *is* 2.5D: the middle of the arch stands
   nearest and largest, the ends sit back and smaller, and the number is a

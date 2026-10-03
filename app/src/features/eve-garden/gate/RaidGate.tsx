@@ -2,19 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   canEnter, gateGreeting, type GateCard, type GateVerdict,
 } from '../../../domain/rpg/raidGate';
-import { clearedCount, currentStage, standingIsland, type WorldProgress } from '../../../domain/rpg/world';
+import { standingIsland, type WorldProgress } from '../../../domain/rpg/world';
 import { GateBackdrop } from './GateBackdrop';
 import { GateBoss } from './GateBoss';
 import { GatePedestal } from './GatePedestal';
-import { IslandTrail } from './IslandTrail';
+import { TogetherTether } from './TogetherTether';
 import { Icon } from '../../../components/icons';
 
 /**
  * The Raid Gate.
  *
- * Top to bottom: the seven islands as a trail, this island's boss standing in
- * the arch between the two trees, the companions you could take, and the one
- * button that commits. The boss is the point of the redesign — a gate that
+ * Top to bottom: this island's boss standing in the arch between the two
+ * trees, the partner gate when the stage is a boss, the companions you could
+ * take, and the one button that commits. The boss is the point of the redesign — a gate that
  * only held five companions was a wardrobe; one with the thing you are going
  * in to fight is a threshold.
  *
@@ -38,15 +38,20 @@ export interface RaidGateProps {
   dark: boolean;
   /** How full the tether is, 0-1. */
   resonance: number;
-  /** Where the couple are in the world, for the trail and the boss. */
+  /** Where the couple are in the world, for the boss. */
   world: WorldProgress;
+  /**
+   * Present only on a boss stage with a partner linked. Every other stage is
+   * asynchronous and the gate does not mention the other half of the couple.
+   */
+  together?: { partnerName: string; present: boolean; blockedReason: string | null };
   onEnter(themeId: string): void;
   /** Absent on a first visit — there is nothing to go back to yet. */
   onCancel?: () => void;
 }
 
 export function RaidGate({
-  cards, verdict, hour, dark, resonance, world, onEnter, onCancel,
+  cards, verdict, hour, dark, resonance, world, together, onEnter, onCancel,
 }: RaidGateProps) {
   const island = standingIsland(world);
   const [chosen, setChosen] = useState<string | undefined>(verdict.preselected);
@@ -70,6 +75,10 @@ export function RaidGate({
   }
 
   function enter() {
+    if (together?.blockedReason) {
+      setRefused(together.blockedReason);
+      return;
+    }
     const verdictOn = canEnter(cards, chosen);
     if (!verdictOn.ok) {
       setRefused(verdictOn.reason);
@@ -79,20 +88,17 @@ export function RaidGate({
   }
 
   return (
-    <section className={`page gate${dark ? ' is-dark' : ''}`} aria-label="The Raid Gate">
-      <IslandTrail world={world} dark={dark} />
-
-      <div className="gate-scene">
+    <section className={`page raid-gate${dark ? ' is-dark' : ''}`} aria-label="The Raid Gate">
+      <div className="raid-gate-scene">
         <GateBackdrop hour={hour} dark={dark} resonance={resonance} />
-        <GateBoss
-          island={island}
-          stage={currentStage(world, island)}
-          cleared={clearedCount(world, island)}
-          dark={dark}
-        />
+        <GateBoss island={island} dark={dark} />
       </div>
 
-      <div className="gate-roster" role="group" aria-label="Choose a companion">
+      {together ? (
+        <TogetherTether partnerName={together.partnerName} present={together.present} />
+      ) : null}
+
+      <div className="raid-gate-roster" role="group" aria-label="Choose a companion">
         {cards.map((card) => (
           <GatePedestal
             key={card.themeId}
@@ -103,19 +109,19 @@ export function RaidGate({
         ))}
       </div>
 
-      <div className="gate-foot-bar">
-        <div className="gate-words">
-          <h1 className="gate-title">
+      <div className="raid-gate-foot-bar">
+        <div className="raid-gate-words">
+          <h1 className="raid-gate-title">
             {verdict.reason === 'asked' ? 'Change companion' : "Eve's Garden"}
           </h1>
-          <p className="gate-greeting">{greeting}</p>
-          {refused && <p className="gate-refused" role="alert">{refused}</p>}
+          <p className="raid-gate-greeting">{greeting}</p>
+          {refused && <p className="raid-gate-refused" role="alert">{refused}</p>}
         </div>
 
-        <div className="gate-actions">
+        <div className="raid-gate-actions">
           <button
             type="button"
-            className="gate-enter"
+            className="raid-gate-enter"
             onClick={enter}
             disabled={!selected}
           >
@@ -125,7 +131,7 @@ export function RaidGate({
               : 'Pick a companion'}
           </button>
           {onCancel && (
-            <button type="button" className="gate-back" onClick={onCancel}>
+            <button type="button" className="raid-gate-back" onClick={onCancel}>
               <Icon name="arrow" turn="left" />
               Not yet
             </button>

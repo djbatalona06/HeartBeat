@@ -4,7 +4,7 @@ import { db, loadSettings } from '../../db/database';
 import {
   awardPetXp, chooseRaidCompanion, clearStageFor, coupleVitals, ensureIdentity,
   gardenMomentum, loadWorldProgress, openRaidGate,
-  recordRaidRounds, todaysCharges, travelToIsland,
+  recordRaidRounds, stampGatePresence, todaysCharges, travelToIsland,
 } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { levelForXp } from '../../domain/xp';
@@ -18,11 +18,15 @@ import { holdingsLoadout, loadoutSheet } from '../../domain/rpg/loadout';
 import { chargeOnWeakness, gardenAwardId, payingActivities } from '../../domain/rpg/charges';
 import { bossOf, faceOf } from '../../domain/rpg/islands';
 import { fireSkill, kitFor, moveKeyFor, moveNamesFor } from '../../domain/rpg/companionSkills';
-import type { GateCard, GateVerdict } from '../../domain/rpg/raidGate';
+import {
+  NO_BONUS, PRESENCE_REFRESH_MS, bossEntryBlockedBecause, partnerAtGate, partnerGateApplies,
+  togetherBonus, togetherXp, type GateCard, type GateVerdict, type TogetherBonus,
+} from '../../domain/rpg/raidGate';
+import { partnerOf } from '../pairing/namingGate';
 import { variantFor } from '../../domain/rpg/diorama';
 import {
   ISLAND_COUNT, currentStage, isIslandComplete, islandProgress, standingIsland,
-  newWorldProgress, type WorldProgress,
+  STAGES_PER_ISLAND, newWorldProgress, stageOfMonster, type WorldProgress,
 } from '../../domain/rpg/world';
 import { createGameClient, isClosed, type GameClient } from './engine/client';
 import type {
@@ -150,6 +154,12 @@ export function EveGardenPage() {
     [memberId],
   );
 
+  const members = useLiveQuery(
+    () => (coupleId ? db.members.where('coupleId').equals(coupleId).toArray() : []),
+    [coupleId],
+  );
+  const partner = partnerOf(members, { coupleId, memberId });
+
   const world: WorldProgress = stored ?? newWorldProgress(coupleId ?? 'unpaired', Date.now());
   const theme: DioramaTheme = momentum ? variantFor(momentum) : 'Light';
   const dark = theme === 'Dark';
@@ -210,7 +220,17 @@ export function EveGardenPage() {
   const openGate = useCallback((askedToChange = false) => {
     let live = true;
     openRaidGate({ askedToChange })
-      .then((next) => { if (live) { setGate(next); setCompanion(null); } })
+      .then((next) => {
+        if (!live) return;
+        setGate(next);
+        setCompanion(null);
+        // Nothing of the last fight may survive a trip through the gate: a
+        // stale battle would be handed to a worker that has just been torn down.
+        setBattle(null);
+        setWeakHits([]);
+        setVictory(null);
+        setMapOpen(false);
+      })
       // The earliest thing that can fail, and it used to fail silently: `gate`
       // stayed null and the screen waited on it forever. Now that waiting has a
       // skeleton, staying silent here would be a prettier version of the same
@@ -223,14 +243,37 @@ export function EveGardenPage() {
   // gate. `openGate` itself is stable, so this only ever re-runs on a retry.
   useEffect(() => openGate(false), [openGate, reload]);
 
+  /**
+   * The partner gate exists on a boss stage and nowhere else. Stages 1-6 are
+   * asynchronous: no stamp is written, none is read, and nothing waits.
+   */
+  const bossStage = partnerGateApplies(stage);
+  const partnerPresent = bossStage && partnerAtGate(world.gate, partner?.id, Date.now());
+  const atGate = !companion && gate !== null;
+  useEffect(() => {
+    if (!atGate || !bossStage || !coupleId || !memberId || !partner) return undefined;
+    void stampGatePresence(coupleId, memberId).catch(() => {});
+    const timer = setInterval(() => {
+      void stampGatePresence(coupleId, memberId).catch(() => {});
+    }, PRESENCE_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [atGate, bossStage, coupleId, memberId, partner]);
+
+  /** Who was ringed before "Change", so "Not yet" can put them back. */
+  const cameFrom = useRef<string | null>(null);
+  /** What going in together is worth, decided as the fight is entered and held for it. */
+  const together = useRef<TogetherBonus>(NO_BONUS);
+
   const onEnter = useCallback((themeId: string) => {
+    together.current = togetherBonus(stage, partnerPresent);
+    cameFrom.current = null;
     setCompanion(themeId);
     rounds.current = 0;
     cooldowns.current = {};
     spent.current = new Set();
     setFlourish(null);
     void chooseRaidCompanion(themeId);
-  }, []);
+  }, [stage, partnerPresent]);
 
   const petXp = pet?.xp ?? 0;
   const petLevel = levelForXp(petXp);
@@ -491,10 +534,17 @@ export function EveGardenPage() {
     // victory and both will report it, and `awardPetXp` dedups on the id — so
     // a stage pays once however many devices watched it fall.
     await awardPetXp(coupleId, `garden-stage-${ended.monsterId}`, ended.xpOwed);
+    // The partner gate's share, on a boss stage only and only if the other half
+    // was at the gate when this fight began. Its own id, per monster, so both
+    // phones reporting the same win still pay it once.
+    const bonusXp = stageOfMonster(ended.monsterId) === STAGES_PER_ISLAND
+      ? togetherXp(ended.xpOwed, together.current)
+      : 0;
+    if (bonusXp > 0) await awardPetXp(coupleId, `garden-together-${ended.monsterId}`, bonusXp);
     const after = await clearStageFor(coupleId, ended.monsterId);
 
     const game = client.current;
-    const next = game ? await game.progress(petXp + ended.xpOwed) : null;
+    const next = game ? await game.progress(petXp + ended.xpOwed + bonusXp) : null;
     if (next) setProgress(next);
 
     /**
@@ -508,14 +558,14 @@ export function EveGardenPage() {
      * from the first would have announced a plot opening on the wrong level.
      */
     const petLevelBefore = levelForXp(petXp);
-    const petLevelAfter = levelForXp(petXp + ended.xpOwed);
+    const petLevelAfter = levelForXp(petXp + ended.xpOwed + bonusXp);
     const crossed = petLevelAfter > petLevelBefore
       ? milestonesAt(petLevelAfter)
       : [];
 
     setVictory({
       monster: foe,
-      xp: ended.xpOwed,
+      xp: ended.xpOwed + bonusXp,
       leveledUp: petLevelAfter > petLevelBefore,
       level: petLevelAfter,
       rewardText: crossed.length > 0
@@ -756,7 +806,15 @@ export function EveGardenPage() {
         dark={dark}
         resonance={resonance}
         world={world}
+        together={bossStage && partner
+          ? {
+            partnerName: partner.displayName?.trim() || 'your partner',
+            present: partnerPresent,
+            blockedReason: bossEntryBlockedBecause(stage, true, partnerPresent),
+          }
+          : undefined}
         onEnter={onEnter}
+        onCancel={cameFrom.current ? () => onEnter(cameFrom.current as string) : undefined}
       />
     );
   }
@@ -776,7 +834,7 @@ export function EveGardenPage() {
         <button
           type="button"
           className="garden-companion"
-          onClick={() => openGate(true)}
+          onClick={() => { cameFrom.current = companion; openGate(true); }}
           title={`${kit.mascot} · ${kit.signature.name}`}
         >
           <span className="garden-companion-name">{kit.mascot}</span>

@@ -4,6 +4,7 @@ import { COMPANION_KITS, kitFor, type CompanionKit } from './companionSkills';
 import { RAID_STATS, raidSheet, sourceStatLevel, type RaidStatKey, type StatSource } from './raidStats';
 import { FIGHT_HALF_AT } from './loadout';
 import { TIERS, tierRank, type Tier } from './tiers';
+import { STAGES_PER_ISLAND } from './world';
 
 /**
  * The Raid Gate: the scene you pass through on the way into Eve's Garden, and
@@ -306,6 +307,85 @@ export function mostFavoured(cards: readonly GateCard[]): GateCard | undefined {
   return [...cards]
     .filter((card) => card.affinity > 0)
     .sort((a, b) => b.affinity - a.affinity || tierRank(b.tier) - tierRank(a.tier))[0];
+}
+
+/* -- the partner gate -------------------------------------------------------- */
+
+/**
+ * Only the boss stage asks for the other half of the couple. Every stage before
+ * it is **asynchronous**: you fight when you like, your partner fights when
+ * they like, and what each of you clears reaches the other through the world
+ * row. Nothing on those stages waits on anybody, and nothing reads presence.
+ */
+export function partnerGateApplies(stage: number): boolean {
+  return stage === STAGES_PER_ISLAND;
+}
+
+/**
+ * Whether the boss stage refuses a lone entrant. Off: the gate is an
+ * invitation with a better payout, not a lock, so a couple whose other half is
+ * asleep is never stood outside a door. The one switch to flip for a hard gate.
+ */
+export const BOSS_REQUIRES_PARTNER = false;
+
+/** How long a stamp at the gate counts as "is here". */
+export const PRESENCE_WINDOW_MS = 20 * 60 * 1000;
+/** How often your own stamp is refreshed while the gate stays open. */
+export const PRESENCE_REFRESH_MS = 5 * 60 * 1000;
+/** Stamps are device clocks; a partner whose clock runs a little ahead is not a ghost. */
+export const CLOCK_SKEW_MS = 2 * 60 * 1000;
+
+export function partnerAtGate(
+  gate: Readonly<Record<string, number>> | undefined,
+  partnerId: string | undefined,
+  now: number,
+): boolean {
+  const stamp = partnerId ? gate?.[partnerId] : undefined;
+  if (stamp === undefined) return false;
+  return stamp <= now + CLOCK_SKEW_MS && now - stamp <= PRESENCE_WINDOW_MS;
+}
+
+/** What going in together adds on a boss stage. */
+export const TOGETHER_XP_SHARE = 0.5;
+export const TOGETHER_COIN_MULTIPLIER = 2;
+export const TOGETHER_PURSES = 1;
+
+export interface TogetherBonus {
+  active: boolean;
+  /** Extra pet XP, as a share of the stage's own. */
+  xpShare: number;
+  /** What coin drops are multiplied by. */
+  coinMultiplier: number;
+  /** Coin purses on top of the clear. */
+  purses: number;
+}
+
+export const NO_BONUS: TogetherBonus = { active: false, xpShare: 0, coinMultiplier: 1, purses: 0 };
+
+/** The bonus for a fight begun at `stage`, decided once and held for that fight. */
+export function togetherBonus(stage: number, partnerPresent: boolean): TogetherBonus {
+  if (!partnerGateApplies(stage) || !partnerPresent) return NO_BONUS;
+  return {
+    active: true,
+    xpShare: TOGETHER_XP_SHARE,
+    coinMultiplier: TOGETHER_COIN_MULTIPLIER,
+    purses: TOGETHER_PURSES,
+  };
+}
+
+export function togetherXp(baseXp: number, bonus: TogetherBonus): number {
+  return bonus.active ? Math.round(Math.max(0, baseXp) * bonus.xpShare) : 0;
+}
+
+/** A reason to refuse entry on a boss stage, or null. Always null while the gate is only an invitation. */
+export function bossEntryBlockedBecause(
+  stage: number,
+  hasPartner: boolean,
+  partnerPresent: boolean,
+  required: boolean = BOSS_REQUIRES_PARTNER,
+): string | null {
+  if (!required || !partnerGateApplies(stage) || !hasPartner || partnerPresent) return null;
+  return 'The boss will not come out for one. Wait for your partner at the gate.';
 }
 
 export { kitFor };

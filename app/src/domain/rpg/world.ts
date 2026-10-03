@@ -218,3 +218,18 @@ export function mergeWorld(local: WorldProgress, pulled: WorldProgress): WorldPr
   if (sameContent(merged, local)) return null;
   return sameContent(merged, pulled) ? merged : { ...merged, updatedAt: at + 1 };
 }
+
+/**
+ * Record that a member is standing at the Raid Gate, as a new row. Returns the
+ * same object when their stamp is still fresh, so a gate that re-opens every
+ * few minutes does not rewrite (and re-sync) the world for nothing.
+ */
+export function withGateStamp(
+  progress: WorldProgress,
+  memberId: string,
+  at: number,
+  refreshMs: number,
+): WorldProgress {
+  if (at - (progress.gate?.[memberId] ?? 0) < refreshMs) return progress;
+  return { ...progress, gate: { ...progress.gate, [memberId]: at }, updatedAt: at };
+}
