@@ -4,6 +4,7 @@ import { DEFAULT_DYE_ID, dyeById } from '../../domain/rpg/dyes';
 import { furnitureById, refurnish } from '../../domain/rpg/furniture';
 import { canAfford } from '../../domain/rpg/shop';
 import { offerFor } from '../../domain/rpg/mysteryShop';
+import { dealById } from '../../domain/rpg/merchant';
 import { spend } from '../../domain/rpg/avatar';
 import { id, now } from './shared';
 import { getOrCreateAvatar } from './rpg';
@@ -262,6 +263,56 @@ export async function buyOffer(
       acquiredAt: now(),
       updatedAt: now(),
     });
+    return { ok: true };
+  });
+}
+
+/**
+ * Buy one of today's merchant deals, at the deal price.
+ *
+ * The shelf is re-derived from `day` *inside* the transaction and the item must
+ * be on it, so a stale screen, or a call for something that is not stocked
+ * today, cannot buy at a price the merchant is not offering. Gear and dyes land
+ * as one inventory row; a piece of furniture also moves in, the way
+ * `buyFurniture` does. Gear you already own is refined from the "refine" row
+ * instead -- a discounted refine would undercut `refinePrice`.
+ */
+export async function buyDeal(
+  memberId: MemberId,
+  coupleId: CoupleId,
+  day: DayKey,
+  itemId: string,
+): Promise<PurchaseResult> {
+  const deal = dealById(day, itemId);
+  if (!deal) return { ok: false, reason: 'The merchant is not selling that today.' };
+
+  return db.transaction('rw', db.avatars, db.inventory, db.pet, async () => {
+    const [avatar, owned] = await Promise.all([
+      getOrCreateAvatar(memberId, coupleId),
+      db.inventory.where('[memberId+itemId]').equals([memberId, deal.id]).first(),
+    ]);
+    if (owned) {
+      return { ok: false, reason: deal.kind === 'gear' ? 'Already yours -- refine it below.' : 'Already yours.' };
+    }
+
+    const affordCheck = canAfford(avatar.coins, deal.price);
+    if (!affordCheck.ok) return { ok: false, reason: affordCheck.reason };
+
+    const paid = spend(avatar, { coins: deal.price }, now());
+    if (!paid) return { ok: false, reason: 'Not enough coins.' };
+    await db.avatars.put(paid);
+
+    await db.inventory.put({
+      id: id(),
+      coupleId,
+      memberId,
+      itemId: deal.id,
+      refine: 0,
+      acquiredAt: now(),
+      updatedAt: now(),
+    });
+
+    if (deal.kind === 'decor') await refurnishHouse(memberId, coupleId);
     return { ok: true };
   });
 }
