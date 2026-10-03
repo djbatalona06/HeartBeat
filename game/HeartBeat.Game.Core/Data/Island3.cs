@@ -42,7 +42,7 @@ public static class Island3
                 Id: "i3s2-pebblenook",
                 Name: "Pebblenook",
                 Type: MonsterType.Common,
-                Hp: 163, Attack: 19, Defense: 7, Speed: 5,
+                Hp: 170, Attack: 20, Defense: 7, Speed: 5,
                 Weakness: Element.Focus, Strength: Element.Mood,
                 Actions:
                 [
@@ -57,7 +57,7 @@ public static class Island3
                 Id: "i3s3-eddywhirl",
                 Name: "Eddywhirl",
                 Type: MonsterType.Common,
-                Hp: 233, Attack: 25, Defense: 10, Speed: 8,
+                Hp: 243, Attack: 26, Defense: 10, Speed: 8,
                 Weakness: Element.Focus, Strength: Element.Movement,
                 Actions:
                 [
@@ -72,14 +72,14 @@ public static class Island3
                 Id: "i3s4-pingwing",
                 Name: "Pingwing",
                 Type: MonsterType.SemiBoss,
-                Hp: 275, Attack: 31, Defense: 10, Speed: 5,
+                Hp: 296, Attack: 34, Defense: 11, Speed: 5,
                 Weakness: Element.Focus, Strength: Element.Mood,
                 Actions:
                 [
                     new MonsterAction("Ping", 11, Element.Mood, ActionType.Attack),
                     new MonsterAction("Just One More", 0, Element.Mood, ActionType.Debuff,
                         new StatusEffect(StatusKind.SpeedDown, 50, 2)),
-                    new MonsterAction("Refresh", 42, Element.Mood, ActionType.Heal),
+                    new MonsterAction("Refresh", 45, Element.Mood, ActionType.Heal),
                 ],
                 SpriteKey: "pingwing",
                 Theme: DioramaTheme.Light)),
@@ -88,7 +88,7 @@ public static class Island3
                 Id: "i3s5-lilypad-imp",
                 Name: "Lilypad Imp",
                 Type: MonsterType.Common,
-                Hp: 157, Attack: 26, Defense: 5, Speed: 10,
+                Hp: 174, Attack: 29, Defense: 6, Speed: 10,
                 Weakness: Element.Focus, Strength: Element.Rest,
                 Actions:
                 [
@@ -101,7 +101,7 @@ public static class Island3
                 Id: "i3s6-gristmill",
                 Name: "Gristmill Golem",
                 Type: MonsterType.Elite,
-                Hp: 423, Attack: 35, Defense: 15, Speed: 5,
+                Hp: 479, Attack: 40, Defense: 17, Speed: 5,
                 Weakness: Element.Focus, Strength: Element.Nourishment,
                 Actions:
                 [
@@ -109,7 +109,7 @@ public static class Island3
                     new MonsterAction("Lock Gears", 0, Element.Nourishment, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 40, 2)),
                     new MonsterAction("Idle Churn", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 8, 3)),
+                        new StatusEffect(StatusKind.Drain, 9, 3)),
                 ],
                 SpriteKey: "gristmill",
                 Theme: DioramaTheme.Light)),
@@ -118,7 +118,7 @@ public static class Island3
                 Id: "i3s7-cascade-warden",
                 Name: "The Cascade Warden",
                 Type: MonsterType.Boss,
-                Hp: 610, Attack: 35, Defense: 12, Speed: 6,
+                Hp: 705, Attack: 41, Defense: 14, Speed: 6,
                 Weakness: Element.Focus, Strength: Element.Rest,
                 Actions:
                 [
@@ -126,7 +126,7 @@ public static class Island3
                     new MonsterAction("Mist Veil", 0, Element.Rest, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 50, 2)),
                     new MonsterAction("Wander Off", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 11, 3)),
+                        new StatusEffect(StatusKind.Drain, 13, 3)),
                 ],
                 SpriteKey: "cascade-warden",
                 Theme: DioramaTheme.Light)),

@@ -17,6 +17,7 @@ import {
   unequip,
 } from './gear';
 import { statsFor } from './avatar';
+import { TIER_STAT_LEVELS } from './tiers';
 import { GEAR_SLOTS, type GearSlot, type StatKey } from './types';
 
 const STAT_KEYS: StatKey[] = ['strength', 'insight', 'heart', 'luck'];
@@ -37,12 +38,16 @@ describe('the gear catalogue', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('fills all five slots at all four rarities', () => {
-    expect(GEAR).toHaveLength(GEAR_SLOTS.length * RARITIES.length);
+  it('fills all five slots at every rarity, with the top of the ladder deeper than the bottom', () => {
     for (const slot of GEAR_SLOTS) {
       const rarities = gearForSlot(slot).map((g) => g.rarity);
       expect(new Set(rarities), slot).toEqual(new Set(RARITIES));
     }
+    const at = (rarity: (typeof RARITIES)[number]) => GEAR.filter((g) => g.rarity === rarity).length;
+    // One at the bottom for each slot, and a choice to be made from rare up.
+    expect(at('common')).toBe(GEAR_SLOTS.length);
+    for (const rarity of RARITIES.slice(1)) expect(at(rarity), rarity).toBeGreaterThan(GEAR_SLOTS.length);
+    expect(GEAR).toHaveLength(40);
   });
 
   it('files every item under the slot it claims', () => {
@@ -51,13 +56,28 @@ describe('the gear catalogue', () => {
     }
   });
 
-  it('gates rarer items behind higher levels', () => {
+  it('gates rarer items behind higher levels, and holds two of one rarity level', () => {
     for (const slot of GEAR_SLOTS) {
       const byLevel = gearForSlot(slot);
       for (let i = 1; i < byLevel.length; i += 1) {
-        expect(byLevel[i].minLevel, slot).toBeGreaterThan(byLevel[i - 1].minLevel);
-        expect(worth(byLevel[i].bonus), slot).toBeGreaterThan(worth(byLevel[i - 1].bonus));
+        const [low, high] = [byLevel[i - 1], byLevel[i]];
+        if (low.rarity === high.rarity) {
+          // Level and budget come from the rarity alone, so two of a kind tie.
+          expect(high.minLevel, slot).toBe(low.minLevel);
+          expect(worth(high.bonus), slot).toBe(worth(low.bonus));
+        } else {
+          expect(high.minLevel, slot).toBeGreaterThan(low.minLevel);
+          expect(worth(high.bonus), slot).toBeGreaterThan(worth(low.bonus));
+        }
       }
+    }
+  });
+
+  it('keeps every item inside its own rarity\'s stat band, so a deeper catalogue cannot out-scale the ladder', () => {
+    for (const item of GEAR) {
+      const band = TIER_STAT_LEVELS[item.rarity];
+      expect(item.statLevel, item.id).toBeGreaterThanOrEqual(band.min);
+      expect(item.statLevel, item.id).toBeLessThanOrEqual(band.max);
     }
   });
 

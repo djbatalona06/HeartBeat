@@ -2,11 +2,14 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../database';
 import { chestPityFor, getOrCreateAvatar, openChestFor } from './index';
-import { CHESTS, PRIZES_PER_CHEST, chestById, poolOf } from '../../domain/rpg/chests';
-import type { ChestOutcome } from './chests';
+import {
+  CHESTS, PRIZES_PER_CHEST, PRIZE_KINDS, candidatesFor, chestById, poolOf,
+} from '../../domain/rpg/chests';
+import { FLORA, floraTier } from '../../domain/rpg/plots';
+import { nameOf, priceOf, type ChestOutcome } from './chests';
 import { gearById } from '../../domain/rpg/gear';
 import { REFINE_MAX } from '../../domain/rpg/shop';
-import { tierRank } from '../../domain/rpg/tiers';
+import { TIERS, tierRank } from '../../domain/rpg/tiers';
 import { FURNITURE } from '../../domain/rpg/furniture';
 import { DYES } from '../../domain/rpg/dyes';
 
@@ -351,5 +354,43 @@ describe('the counter', () => {
       expect(a.prizes.map((p) => p.itemId)).toEqual(b.prizes.map((p) => p.itemId));
       expect(a.prizes.map((p) => p.tier)).toEqual(b.prizes.map((p) => p.tier));
     }
+  });
+});
+
+describe('nothing a chest can hand over is nameless or worthless', () => {
+  // Both of the bugs this guards were the same shape: a catalogue the chest
+  // reads from had an entry the repository's own helpers did not cover. A flora
+  // prize was revealed as "Something" and refunded 0 on a repeat, and the free
+  // starter dye could be rolled as a prize at all.
+  it('names every prize in every catalogue at every tier', () => {
+    for (const kind of PRIZE_KINDS) {
+      for (const tier of TIERS) {
+        for (const itemId of candidatesFor(kind, tier)) {
+          expect(nameOf(kind, itemId), `${kind} ${itemId}`).toBeTruthy();
+        }
+      }
+    }
+  });
+
+  it('refunds something real for every cosmetic prize, so a repeat is never worth nothing', () => {
+    for (const kind of ['decor', 'dye', 'flora'] as const) {
+      for (const tier of TIERS) {
+        for (const itemId of candidatesFor(kind, tier)) {
+          expect(priceOf(kind, itemId), `${kind} ${itemId}`).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it('never offers the free starter dye as a prize', () => {
+    for (const tier of TIERS) {
+      expect(candidatesFor('dye', tier)).not.toContain('dye-house-sparrow');
+    }
+  });
+
+  it('refunds a duplicate plant at its share of the price instead of nothing', async () => {
+    const flora = FLORA.find((f) => floraTier(f) === 'rare')!;
+    expect(priceOf('flora', flora.id)).toBe(flora.price);
+    expect(nameOf('flora', flora.id)).toBe(flora.name);
   });
 });

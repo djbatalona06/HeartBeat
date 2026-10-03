@@ -38,8 +38,8 @@ request no email/profile scope, and `/api/health` reports `github`/`google`
 as booleans so the client can render nothing rather than a broken button when
 a deploy hasn't set the secrets.
 
-**The RPG/game layer.** All seven islands carry real content
-(`game/HeartBeat.Game.Core/Data/Island1.cs`–`Island7.cs`, 19–23 monsters
+**The RPG/game layer.** All ten islands carry real content
+(`game/HeartBeat.Game.Core/Data/Island1.cs`–`Island10.cs`, 19–23 monsters
 each, mirrored and pinned by `domain/rpg/islands.ts` + `islands.test.ts`
 parsing the C# directly). The wasm bridge
 (`features/eve-garden/engine/{client,game.worker,protocol}.ts`) is a real

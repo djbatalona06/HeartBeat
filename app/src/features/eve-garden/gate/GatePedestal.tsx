@@ -35,7 +35,7 @@ export function GatePedestal({ card, selected, onSelect }: GatePedestalProps) {
   return (
     <button
       type="button"
-      className="gate-pedestal"
+      className="raid-gate-pedestal"
       data-selected={selected || undefined}
       data-unavailable={!card.available || undefined}
       data-tier={card.tier}
@@ -43,21 +43,21 @@ export function GatePedestal({ card, selected, onSelect }: GatePedestalProps) {
       disabled={!card.available}
       onClick={() => onSelect(card.themeId)}
     >
-      <span className="gate-figure">
+      <span className="raid-gate-figure">
         <mascot.Art mood={mood} />
       </span>
 
-      <span className="gate-plinth" aria-hidden="true" />
+      <span className="raid-gate-plinth" aria-hidden="true" />
 
-      <span className="gate-card">
-        <span className="gate-card-top">
-          <span className="gate-name">{card.name}</span>
+      <span className="raid-gate-card">
+        <span className="raid-gate-card-top">
+          <span className="raid-gate-name">{card.name}</span>
           <span
-            className="gate-bubble gate-bubble-rank"
+            className="raid-gate-bubble raid-gate-bubble-rank"
             data-tier={card.tier}
             style={fillStyle(card.rank / MAX_AFFINITY_RANK)}
           >
-            <span className="gate-bubble-value">{card.rank}</span>
+            <span className="raid-gate-bubble-value">{card.rank}</span>
             <span className="visually-hidden">
               {`, ${TIER_NAMES[card.tier]}, rank ${card.rank} of ${MAX_AFFINITY_RANK}`}
             </span>
@@ -65,11 +65,11 @@ export function GatePedestal({ card, selected, onSelect }: GatePedestalProps) {
         </span>
 
         {card.available ? (
-          <span className="gate-bubbles">
+          <span className="raid-gate-bubbles">
             {statBubbles(card).map(({ stat, value, fill }) => (
-              <span key={stat} className="gate-bubble" style={fillStyle(fill)}>
-                <span className="gate-bubble-value">{value}</span>
-                <span className="gate-bubble-label" aria-hidden="true">{RAID_STAT_NAMES[stat]}</span>
+              <span key={stat} className="raid-gate-bubble" style={fillStyle(fill)}>
+                <span className="raid-gate-bubble-value">{value}</span>
+                <span className="raid-gate-bubble-label" aria-hidden="true">{RAID_STAT_NAMES[stat]}</span>
                 <span className="visually-hidden">
                   {`, ${RAID_STAT_NAMES[stat]} ${value}, ${Math.round(fill * 100)}% of the way to its cap`}
                 </span>
@@ -77,7 +77,7 @@ export function GatePedestal({ card, selected, onSelect }: GatePedestalProps) {
             ))}
           </span>
         ) : (
-          <span className="gate-affinity">{card.unavailableBecause}</span>
+          <span className="raid-gate-affinity">{card.unavailableBecause}</span>
         )}
       </span>
     </button>

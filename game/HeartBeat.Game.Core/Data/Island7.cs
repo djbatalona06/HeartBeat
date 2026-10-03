@@ -26,7 +26,7 @@ public static class Island7
                 Id: "i7s1-rootling",
                 Name: "Rootling",
                 Type: MonsterType.Common,
-                Hp: 327, Attack: 43, Defense: 16, Speed: 7,
+                Hp: 509, Attack: 67, Defense: 25, Speed: 7,
                 Weakness: Element.Balance, Strength: Element.Mood,
                 Actions:
                 [
@@ -41,7 +41,7 @@ public static class Island7
                 Id: "i7s2-acornet",
                 Name: "Acornet",
                 Type: MonsterType.Common,
-                Hp: 490, Attack: 56, Defense: 22, Speed: 9,
+                Hp: 790, Attack: 89, Defense: 35, Speed: 9,
                 Weakness: Element.Balance, Strength: Element.Rest,
                 Actions:
                 [
@@ -56,7 +56,7 @@ public static class Island7
                 Id: "i7s3-sapsprite",
                 Name: "Sapsprite",
                 Type: MonsterType.Common,
-                Hp: 688, Attack: 71, Defense: 30, Speed: 12,
+                Hp: 1137, Attack: 116, Defense: 50, Speed: 12,
                 Weakness: Element.Balance, Strength: Element.Focus,
                 Actions:
                 [
@@ -71,14 +71,14 @@ public static class Island7
                 Id: "i7s4-twin-oak",
                 Name: "The Twin Oak",
                 Type: MonsterType.SemiBoss,
-                Hp: 802, Attack: 90, Defense: 30, Speed: 9,
+                Hp: 1364, Attack: 151, Defense: 51, Speed: 9,
                 Weakness: Element.Balance, Strength: Element.Movement,
                 Actions:
                 [
                     new MonsterAction("Branch Slam", 11, Element.Movement, ActionType.Attack),
                     new MonsterAction("Creak", 0, Element.Movement, ActionType.Debuff,
                         new StatusEffect(StatusKind.SpeedDown, 50, 2)),
-                    new MonsterAction("Regrow", 125, Element.Movement, ActionType.Heal),
+                    new MonsterAction("Regrow", 213, Element.Movement, ActionType.Heal),
                 ],
                 SpriteKey: "twin-oak",
                 Theme: DioramaTheme.Light)),
@@ -87,7 +87,7 @@ public static class Island7
                 Id: "i7s5-leaflit",
                 Name: "Leaflit",
                 Type: MonsterType.Common,
-                Hp: 454, Attack: 75, Defense: 14, Speed: 14,
+                Hp: 797, Attack: 130, Defense: 25, Speed: 14,
                 Weakness: Element.Balance, Strength: Element.Nourishment,
                 Actions:
                 [
@@ -100,7 +100,7 @@ public static class Island7
                 Id: "i7s6-heartwood-golem",
                 Name: "Heartwood Golem",
                 Type: MonsterType.Elite,
-                Hp: 1223, Attack: 102, Defense: 44, Speed: 9,
+                Hp: 2196, Attack: 182, Defense: 79, Speed: 9,
                 Weakness: Element.Balance, Strength: Element.Rest,
                 Actions:
                 [
@@ -108,7 +108,7 @@ public static class Island7
                     new MonsterAction("Bark Up", 0, Element.Rest, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 40, 2)),
                     new MonsterAction("Dry Rot", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 24, 3)),
+                        new StatusEffect(StatusKind.Drain, 43, 3)),
                 ],
                 SpriteKey: "heartwood-golem",
                 Theme: DioramaTheme.Light)),
@@ -117,7 +117,7 @@ public static class Island7
                 Id: "i7s7-heartwood-crown",
                 Name: "The Heartwood Crown",
                 Type: MonsterType.Boss,
-                Hp: 1865, Attack: 102, Defense: 36, Speed: 10,
+                Hp: 3452, Attack: 187, Defense: 67, Speed: 10,
                 Weakness: Element.Balance, Strength: Element.Bond,
                 Actions:
                 [
@@ -125,7 +125,7 @@ public static class Island7
                     new MonsterAction("Ring of Years", 0, Element.Bond, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 50, 2)),
                     new MonsterAction("All at Once", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 32, 3)),
+                        new StatusEffect(StatusKind.Drain, 59, 3)),
                 ],
                 SpriteKey: "heartwood-crown",
                 Theme: DioramaTheme.Light)),

@@ -17,6 +17,7 @@ import {
   spendMp,
   spendPetMp,
   startAdventure,
+  wearCostume,
   wearDye,
 } from '../../db/repository';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
@@ -34,6 +35,9 @@ import type { Avatar } from '../../domain/rpg/types';
 import { findOwned, ownsItem, refineByItemId, type InventoryItem } from '../../domain/rpg/inventory';
 import { EGG_PRICE, GEAR_PRICE, REFINE_MAX, gearBonusWithRefinement, refinePrice } from '../../domain/rpg/shop';
 import { DEFAULT_DYE_ID, DYES, dyeStyle } from '../../domain/rpg/dyes';
+import { COSTUMES } from '../../domain/rpg/costumes';
+import { TIER_NAMES } from '../../domain/rpg/tiers';
+import { CostumeLayer } from '../party/art/costumes';
 import {
   FURNITURE,
   HOUSE_SLOTS,
@@ -122,7 +126,7 @@ const RARITY_INTENSITY: Record<Rarity, number> = {
  * redirects here for the links that still carry it. Wearing gear lives on the
  * Bag's slot grid now, and the achievement shelf on Tasks.
  */
-export type ShopSection = 'companions' | 'colours' | 'house' | 'plots' | 'raid' | 'shop';
+export type ShopSection = 'companions' | 'colours' | 'costumes' | 'house' | 'plots' | 'raid' | 'shop';
 
 /**
  * The shop: what coins are for. Birb and Raid are this page asked for other
@@ -220,6 +224,7 @@ export function ShopPage({ only = ['shop'], title = 'Shop' }: {
         <>
           {only.includes('companions') ? <CompanionsSection ctx={ctx} /> : null}
           {only.includes('colours') ? <ColoursSection ctx={ctx} /> : null}
+          {only.includes('costumes') ? <CostumesSection ctx={ctx} /> : null}
           {only.includes('raid') ? <RaidSection ctx={ctx} /> : null}
           {only.includes('house') ? (
             <Birbhouse house={(ctx.pet?.house ?? {}) as House} avatar={ctx.avatar} />
@@ -267,12 +272,18 @@ function CompanionsSection({ ctx }: { ctx: ShopContext }) {
         const result = await buyEgg(
           identity.coupleId,
           identity.memberId,
-          { rarity: Math.random(), species: Math.random() },
+          { rarity: Math.random(), species: Math.random(), costume: Math.random() },
           luck,
         );
         if (!result.ok) { say(result.reason ?? null, 'error'); return; }
         const name = petKindById(result.pet!.kindId)!.name;
-        say(result.merged ? `Another ${name}. Two of the same found each other.` : `${name} hatched.`);
+        const hatched = result.merged ? `Another ${name}. Two of the same found each other.` : `${name} hatched.`;
+        const costume = result.costume;
+        const brought = !costume ? ''
+          : costume.duplicate
+            ? ` Already had the ${costume.name.toLowerCase()}: ${costume.refunded ?? 0} coins back.`
+            : ` It brought a ${TIER_NAMES[costume.tier].toLowerCase()} costume: ${costume.name}.`;
+        say(`${hatched}${brought}`);
       }}
       /* Stays here now that Adventures has moved to /raid, because it
          is not the same action: this sends the companion out for a
@@ -282,6 +293,20 @@ function CompanionsSection({ ctx }: { ctx: ShopContext }) {
       onAdventure={async () => {
         const result = await startAdventure(identity.memberId, identity.coupleId);
         say(result.ok ? `Gone for ${result.hours} hours.` : result.reason ?? null);
+      }}
+    />
+  );
+}
+
+function CostumesSection({ ctx }: { ctx: ShopContext }) {
+  const { avatar, identity, owned, say } = ctx;
+  return (
+    <Costumes
+      avatar={avatar}
+      owned={owned}
+      onWear={async (costumeId) => {
+        const result = await wearCostume(identity.memberId, identity.coupleId, costumeId);
+        if (!result.ok) say(result.reason ?? null, 'error');
       }}
     />
   );
@@ -697,6 +722,7 @@ function Birbhouse({ house, avatar }: {
             and a canvas cannot live in an SVG. */}
         <div className="house-birb" style={dyeStyle(avatar.dye) as React.CSSProperties}>
           <mascot.Art mood="content" />
+          <CostumeLayer id={avatar.costume} />
         </div>
       </div>
 
@@ -783,6 +809,71 @@ function Colours({ avatar, owned, onBuy, onWear }: {
                 <span className="dye-name">{dye.name}</span>
                 <span className="dye-state">
                   {isWorn ? 'Worn' : isOwned ? 'Wear it' : `${dye.price} coins`}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * The wardrobe: every costume, shown on the actual bird, worn if it is yours.
+ *
+ * Costumes are not sold. Every egg brings one at the tier of the companion that
+ * hatched, so the rarest things to wear come out of the rarest hatches — the
+ * ones you have not found yet are shown shut away, with the tier of egg they
+ * come from, so the hunt has a direction. Kept apart from Colours on purpose: a
+ * costume is drawn over the bird in colours of its own, so the preview here
+ * wears the bird's *current* dye and the costume does not follow it. Tapping the
+ * worn one takes it off.
+ */
+function Costumes({ avatar, owned, onWear }: {
+  avatar: Avatar;
+  owned: InventoryItem[];
+  onWear: (costumeId: string | null) => void;
+}) {
+  const { theme } = useTheme();
+  const mascot = getMascot(theme.id);
+  const have = COSTUMES.filter((costume) => ownsItem(owned, costume.id)).length;
+
+  return (
+    <section className="panel">
+      <h2 className="section-title">Costumes</h2>
+      <p className="section-sub">
+        {have} of {COSTUMES.length}. Every egg brings one, at the same rarity as the
+        companion that hatches — something {mascot.name} wears, not a colour it is.
+      </p>
+
+      <ul className="costume-grid">
+        {COSTUMES.map((costume) => {
+          const isOwned = ownsItem(owned, costume.id);
+          const isWorn = avatar.costume === costume.id;
+          return (
+            <li key={costume.id} className="costume" data-tier={costume.tier}>
+              <button
+                type="button"
+                className="costume-button"
+                data-worn={isWorn ? 'true' : 'false'}
+                data-owned={isOwned ? 'true' : 'false'}
+                disabled={!isOwned}
+                title={isOwned ? costume.blurb : `Comes out of a ${TIER_NAMES[costume.tier].toLowerCase()} hatch`}
+                onClick={() => onWear(isWorn ? null : costume.id)}
+                aria-label={
+                  isWorn ? `${costume.name}, currently worn. Take it off`
+                    : isOwned ? `Put ${costume.name} on`
+                      : `${TIER_NAMES[costume.tier]} costume, not found yet`
+                }
+              >
+                <span className="costume-art" style={dyeStyle(avatar.dye) as React.CSSProperties}>
+                  <mascot.Art mood="content" />
+                  <CostumeLayer id={costume.id} />
+                </span>
+                <span className="costume-name">{isOwned ? costume.name : '???'}</span>
+                <span className="costume-state">
+                  {isWorn ? 'Worn' : isOwned ? 'Wear it' : `${TIER_NAMES[costume.tier]} egg`}
                 </span>
               </button>
             </li>

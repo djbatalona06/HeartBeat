@@ -1,8 +1,9 @@
 import { db, loadSettings, saveSettings } from '../db/database';
 import {
-  HOLDING_KINDS, highWaterAfter, mineToPush, pendingSince, shouldApply,
+  HOLDING_KINDS, highWaterAfter, isPartnerVisible, mineToPush, pendingSince, shouldApply,
   type HoldingKind, type HoldingRow, type PulledHolding, type WireHolding,
 } from '../domain/sync/holdings';
+import { mergeWorld, type WorldProgress } from '../domain/rpg/world';
 
 /**
  * The RPG layer's round trip.
@@ -152,6 +153,16 @@ export async function applyPulled(rows: readonly PulledHolding[]): Promise<numbe
     if (!store) continue;
     // react-doctor-disable-next-line async-await-in-loop -- rows and chunks are applied in order so the last writer within a batch wins, and a push burst is bounded
     const local = (await store.get(row.id as never)) as HoldingRow | undefined;
+    if (row.kind === 'world' && local && (row.mine || isPartnerVisible(row.kind))) {
+      // Not last-write-wins: the world is a set of stages beaten, so two phones'
+      // copies are unioned rather than one thrown away. See `mergeWorld`.
+      const merged = mergeWorld(local as WorldProgress, row.payload as WorldProgress);
+      if (merged) {
+        await store.put(merged as never);
+        applied += 1;
+      }
+      continue;
+    }
     if (!shouldApply(row, local)) continue;
     await store.put(row.payload as never);
     applied += 1;

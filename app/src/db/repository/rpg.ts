@@ -25,6 +25,8 @@ import {
 } from '../../domain/rpg/pets';
 import { refineByItemId } from '../../domain/rpg/inventory';
 import { DUPLICATE_PET_BOND, EGG_PRICE, canAfford, gearBonusWithRefinement } from '../../domain/rpg/shop';
+import { COSTUME_REFUND, COSTUME_PREFIX, pickCostume } from '../../domain/rpg/costumes';
+import type { Tier } from '../../domain/rpg/tiers';
 import { id, now } from './shared';
 import { addXp } from './petXp';
 
@@ -446,9 +448,21 @@ export async function hatchPet(
   return pet;
 }
 
+/** The costume an egg brought with it, at the tier of the companion that hatched. */
+export interface HatchedCostume {
+  id: string;
+  name: string;
+  tier: Tier;
+  /** True when every costume at this tier was already owned. */
+  duplicate: boolean;
+  /** Coins handed back for a repeat. */
+  refunded?: number;
+}
+
 export interface HatchResult {
   ok: boolean;
   reason?: string;
+  costume?: HatchedCostume;
   pet?: PetInstance;
   /** True when this hatch folded into an existing pet of the same kind
    *  rather than adding a new one. */
@@ -468,11 +482,11 @@ export interface HatchResult {
 export async function buyEgg(
   coupleId: string,
   memberId: MemberId,
-  rolls: { rarity: number; species: number },
+  rolls: { rarity: number; species: number; costume?: number },
   luck: number,
   victoryBonus = 0,
 ): Promise<HatchResult> {
-  return db.transaction('rw', db.avatars, db.pets, async () => {
+  return db.transaction('rw', db.avatars, db.pets, db.inventory, async () => {
     const avatar = await getOrCreateAvatar(memberId, coupleId);
     const check = canAfford(avatar.coins, EGG_PRICE);
     if (!check.ok) return { ok: false, reason: check.reason };
@@ -485,7 +499,31 @@ export async function buyEgg(
     // transaction either way, so a roll and its counter cannot come apart.
     const pity = paid.pity ?? 0;
     const kind = rollKind(rolls.rarity, rolls.species, luck, victoryBonus, pity);
-    await db.avatars.put({ ...paid, pity: nextPity(pity, kind.rarity) });
+
+    // Every egg brings one costume, at the companion's own tier. Picked from
+    // what this member does not own yet, and a repeat refunds a few coins rather
+    // than nothing — see `COSTUME_REFUND`. Decided before the wallet is written
+    // so the refund rides the same `put` as the payment and the pity counter.
+    const heldCostumes = new Set(
+      (await db.inventory.where('memberId').equals(memberId).toArray())
+        .filter((row) => row.itemId.startsWith(COSTUME_PREFIX))
+        .map((row) => row.itemId),
+    );
+    const drop = pickCostume(kind.rarity, rolls.costume ?? 0.5, heldCostumes);
+    const refund = drop.duplicate ? COSTUME_REFUND[kind.rarity] : 0;
+    await db.avatars.put({ ...paid, coins: paid.coins + refund, pity: nextPity(pity, kind.rarity) });
+    if (!drop.duplicate) {
+      await db.inventory.put({
+        id: id(), coupleId, memberId, itemId: drop.costume.id, refine: 0, acquiredAt: now(), updatedAt: now(),
+      });
+    }
+    const costume: HatchedCostume = {
+      id: drop.costume.id,
+      name: drop.costume.name,
+      tier: kind.rarity,
+      duplicate: drop.duplicate,
+      ...(refund > 0 ? { refunded: refund } : {}),
+    };
 
     const existing = await db.pets.where('[memberId+kindId]').equals([memberId, kind.id]).first();
 
@@ -496,7 +534,7 @@ export async function buyEgg(
         updatedAt: now(),
       };
       await db.pets.put(merged);
-      return { ok: true, pet: merged, merged: true };
+      return { ok: true, pet: merged, merged: true, costume };
     }
 
     const pet: PetInstance = {
@@ -510,7 +548,7 @@ export async function buyEgg(
       updatedAt: now(),
     };
     await db.pets.put(pet);
-    return { ok: true, pet };
+    return { ok: true, pet, costume };
   });
 }
 

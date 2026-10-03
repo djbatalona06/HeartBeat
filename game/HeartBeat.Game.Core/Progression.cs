@@ -17,12 +17,12 @@ public readonly record struct PlayerStats(int MaxHp, int Attack, int Defense, in
 public static class Progression
 {
     /// <summary>
-    /// Thirty-four ranks: four for each of the seven islands on top of the ten
+    /// Forty-six ranks: four for each of the ten islands on top of the ten
     /// island 1 was built for. Island <c>k</c> is balanced to be entered at
     /// <c>1 + 4(k-1)</c> and its boss beaten at <c>8 + 4(k-1)</c>, which
     /// <c>IslandTests</c> holds.
     /// </summary>
-    public const int MaxLevel = 34;
+    public const int MaxLevel = 46;
 
     /// <summary>
     /// Total XP needed to *reach* <paramref name="level"/> from nothing.
@@ -58,7 +58,7 @@ public static class Progression
     }
 
     /// <summary>Past level 10, each rank lifts HP, attack and defense by this share.</summary>
-    public const double LateGrowth = 0.07;
+    public const double LateGrowth = 0.10;
 
     /// <summary>
     /// What reaching one level adds, given the stats before it. One table for

@@ -14,19 +14,22 @@ export interface VictoryBannerProps {
   leveledUp: boolean;
   level: number;
   rewardText: string;
+  /** What this member's own coins and bag got, if anything. Theirs alone — the XP above is the couple's. */
+  lootText?: string;
   islandComplete: boolean;
   nextIslandName: string | null;
   onDismiss(): void;
 }
 
 export function VictoryBanner({
-  monster, xp, leveledUp, level, rewardText, islandComplete, nextIslandName, onDismiss,
+  monster, xp, leveledUp, level, rewardText, lootText, islandComplete, nextIslandName, onDismiss,
 }: VictoryBannerProps) {
   return (
     <div className="garden-victory" role="status">
       <div className="garden-victory-card">
         <h2>{monster.name} is down.</h2>
         <p className="garden-victory-xp">+{xp} XP, to the two of you.</p>
+        {lootText ? <p className="garden-victory-loot">{lootText}</p> : null}
 
         {leveledUp && (
           <p className="garden-victory-level">

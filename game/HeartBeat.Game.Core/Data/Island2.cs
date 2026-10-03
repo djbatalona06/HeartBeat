@@ -102,7 +102,7 @@ public static class Island2
                 Id: "i2s6-frostcrate",
                 Name: "Frostcrate Golem",
                 Type: MonsterType.Elite,
-                Hp: 319, Attack: 26, Defense: 11, Speed: 4,
+                Hp: 334, Attack: 27, Defense: 12, Speed: 4,
                 Weakness: Element.Nourishment, Strength: Element.Focus,
                 Actions:
                 [
@@ -119,7 +119,7 @@ public static class Island2
                 Id: "i2s7-mother-marzipan",
                 Name: "Mother Marzipan",
                 Type: MonsterType.Boss,
-                Hp: 496, Attack: 26, Defense: 9, Speed: 5,
+                Hp: 517, Attack: 27, Defense: 9, Speed: 5,
                 Weakness: Element.Nourishment, Strength: Element.Mood,
                 Actions:
                 [

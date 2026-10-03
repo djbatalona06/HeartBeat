@@ -30,7 +30,7 @@ export function GateBackdrop({ hour, dark, resonance }: GateBackdropProps) {
 
   return (
     <svg
-      className="gate-backdrop"
+      className="raid-gate-backdrop"
       viewBox="0 0 400 260"
       preserveAspectRatio="xMidYMax slice"
       aria-hidden="true"
@@ -52,7 +52,7 @@ export function GateBackdrop({ hour, dark, resonance }: GateBackdropProps) {
       </defs>
 
       {/* -- far: sky, sun, hills ------------------------------------------- */}
-      <g className="gate-layer gate-layer-far">
+      <g className="raid-gate-layer raid-gate-layer-far">
         <rect x="0" y="0" width="400" height="260" fill="url(#gate-sky)" />
         <circle cx={sun.x} cy={sun.y} r="52" fill="url(#gate-sun)" />
         <circle
@@ -70,7 +70,7 @@ export function GateBackdrop({ hour, dark, resonance }: GateBackdropProps) {
       </g>
 
       {/* -- middle: the two trees ------------------------------------------ */}
-      <g className="gate-layer gate-layer-mid">
+      <g className="raid-gate-layer raid-gate-layer-mid">
         <GateTree x={62} scale={1} />
         <GateTree x={338} scale={0.94} flip />
         {/* The light coming through the leaves. Three shafts, because two reads
@@ -83,7 +83,7 @@ export function GateBackdrop({ hour, dark, resonance }: GateBackdropProps) {
       </g>
 
       {/* -- near: the ground, and the tether running along it --------------- */}
-      <g className="gate-layer gate-layer-near">
+      <g className="raid-gate-layer raid-gate-layer-near">
         <path
           d="M0 226 Q100 210 200 216 Q300 222 400 208 L400 260 L0 260 Z"
           fill="var(--color-surface)"
@@ -106,7 +106,7 @@ export function GateBackdrop({ hour, dark, resonance }: GateBackdropProps) {
           />
         </g>
         <path
-          className="gate-tether"
+          className="raid-gate-tether"
           d="M-10 238 Q100 220 200 232 Q300 244 410 224"
           fill="none"
           stroke="url(#gate-tether)"

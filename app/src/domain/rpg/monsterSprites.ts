@@ -1,7 +1,8 @@
 import type { Sprite } from './sprites';
 
 /**
- * Eve's Garden's monsters, islands 2 to 7: forty-two hand-placed sprites.
+ * Eve's Garden's monsters, islands 2 to 7: forty-two hand-placed sprites. Islands 8 to 10 wear
+ * remixes of these, built in `sprites.ts`.
  *
  * Kept apart from `sprites.ts` only for length — `SPRITES` spreads this in,
  * so every reader (the garden's scene, the Raid Gate's portrait,

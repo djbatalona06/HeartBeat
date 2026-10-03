@@ -27,7 +27,7 @@ public static class Island4
                 Id: "i4s1-chirplet",
                 Name: "Chirplet",
                 Type: MonsterType.Common,
-                Hp: 151, Attack: 21, Defense: 7, Speed: 4,
+                Hp: 167, Attack: 23, Defense: 8, Speed: 4,
                 Weakness: Element.Mood, Strength: Element.Focus,
                 Actions:
                 [
@@ -42,7 +42,7 @@ public static class Island4
                 Id: "i4s2-kitetail",
                 Name: "Kitetail",
                 Type: MonsterType.Common,
-                Hp: 226, Attack: 26, Defense: 10, Speed: 6,
+                Hp: 256, Attack: 30, Defense: 11, Speed: 6,
                 Weakness: Element.Mood, Strength: Element.Movement,
                 Actions:
                 [
@@ -57,7 +57,7 @@ public static class Island4
                 Id: "i4s3-glimmerbug",
                 Name: "Glimmerbug",
                 Type: MonsterType.Common,
-                Hp: 317, Attack: 32, Defense: 13, Speed: 9,
+                Hp: 367, Attack: 38, Defense: 15, Speed: 9,
                 Weakness: Element.Mood, Strength: Element.Rest,
                 Actions:
                 [
@@ -72,14 +72,14 @@ public static class Island4
                 Id: "i4s4-the-echo",
                 Name: "The Echo",
                 Type: MonsterType.SemiBoss,
-                Hp: 366, Attack: 41, Defense: 13, Speed: 6,
+                Hp: 441, Attack: 50, Defense: 16, Speed: 6,
                 Weakness: Element.Mood, Strength: Element.Focus,
                 Actions:
                 [
                     new MonsterAction("Echo Shout", 11, Element.Focus, ActionType.Attack),
                     new MonsterAction("Say It Again", 0, Element.Focus, ActionType.Debuff,
                         new StatusEffect(StatusKind.SpeedDown, 50, 2)),
-                    new MonsterAction("Echo Back", 56, Element.Focus, ActionType.Heal),
+                    new MonsterAction("Echo Back", 68, Element.Focus, ActionType.Heal),
                 ],
                 SpriteKey: "the-echo",
                 Theme: DioramaTheme.Light)),
@@ -88,7 +88,7 @@ public static class Island4
                 Id: "i4s5-puffball",
                 Name: "Puffball",
                 Type: MonsterType.Common,
-                Hp: 207, Attack: 34, Defense: 6, Speed: 11,
+                Hp: 259, Attack: 42, Defense: 8, Speed: 11,
                 Weakness: Element.Mood, Strength: Element.Nourishment,
                 Actions:
                 [
@@ -101,7 +101,7 @@ public static class Island4
                 Id: "i4s6-cairn-keeper",
                 Name: "Cairn Keeper",
                 Type: MonsterType.Elite,
-                Hp: 558, Attack: 47, Defense: 20, Speed: 6,
+                Hp: 715, Attack: 60, Defense: 26, Speed: 6,
                 Weakness: Element.Mood, Strength: Element.Rest,
                 Actions:
                 [
@@ -109,7 +109,7 @@ public static class Island4
                     new MonsterAction("Stand Tall", 0, Element.Rest, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 40, 2)),
                     new MonsterAction("Cold Shoulder", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 11, 3)),
+                        new StatusEffect(StatusKind.Drain, 14, 3)),
                 ],
                 SpriteKey: "cairn-keeper",
                 Theme: DioramaTheme.Light)),
@@ -118,7 +118,7 @@ public static class Island4
                 Id: "i4s7-merriweather",
                 Name: "Mother Merriweather",
                 Type: MonsterType.Boss,
-                Hp: 862, Attack: 45, Defense: 16, Speed: 7,
+                Hp: 1129, Attack: 59, Defense: 21, Speed: 7,
                 Weakness: Element.Mood, Strength: Element.Movement,
                 Actions:
                 [
@@ -126,7 +126,7 @@ public static class Island4
                     new MonsterAction("Cloud Cover", 0, Element.Movement, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 50, 2)),
                     new MonsterAction("Rain on the Parade", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 14, 3)),
+                        new StatusEffect(StatusKind.Drain, 18, 3)),
                 ],
                 SpriteKey: "merriweather",
                 Theme: DioramaTheme.Light)),

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   AFFINITY_RANKS, MASCOT_ELEMENTS, MASCOT_RAID_ORDER, MAX_AFFINITY_RANK,
+  CLOCK_SKEW_MS, NO_BONUS, PRESENCE_WINDOW_MS, bossEntryBlockedBecause, partnerAtGate,
+  partnerGateApplies, togetherBonus, togetherXp,
   affinityRank, canEnter, gateCards, gateDecision, gateGreeting, mostFavoured,
   statBubbles, tierForRank, toNextRank, withAffinity,
 } from './raidGate';
@@ -8,6 +10,7 @@ import { COMPANION_KITS } from './companionSkills';
 import { MASCOT_ROSTER } from '../../features/pet/mascots/roster';
 import { RAID_STATS } from './raidStats';
 import { TIERS, TIER_STAT_LEVELS } from './tiers';
+import { STAGES_PER_ISLAND } from './world';
 
 describe('affinity', () => {
   it('starts everybody at rank one, for free', () => {
@@ -260,5 +263,52 @@ describe('the gate\'s bubbles', () => {
     const seasoned = gateCards({ affinity: { pony: 9999 } }).find((c) => c.themeId === 'pony')!;
     const sum = (card: typeof fresh) => statBubbles(card).reduce((n, b) => n + b.fill, 0);
     expect(sum(seasoned)).toBeGreaterThan(sum(fresh));
+  });
+});
+
+describe('the partner gate', () => {
+  const NOW = 1_700_000_000_000;
+
+  it('applies on the boss stage and on no other, so stages 1-6 stay asynchronous', () => {
+    const applies = Array.from({ length: STAGES_PER_ISLAND }, (_, i) => partnerGateApplies(i + 1));
+    expect(applies).toEqual([false, false, false, false, false, false, true]);
+  });
+
+  it('sees a partner who stood at the gate recently, and not one who left long ago', () => {
+    expect(partnerAtGate({ them: NOW - 60_000 }, 'them', NOW)).toBe(true);
+    expect(partnerAtGate({ them: NOW - PRESENCE_WINDOW_MS - 1 }, 'them', NOW)).toBe(false);
+    expect(partnerAtGate({ me: NOW }, 'them', NOW)).toBe(false);
+    expect(partnerAtGate(undefined, 'them', NOW)).toBe(false);
+    expect(partnerAtGate({ them: NOW }, undefined, NOW)).toBe(false);
+  });
+
+  it('forgives a partner whose clock runs a little ahead, not a long way ahead', () => {
+    expect(partnerAtGate({ them: NOW + CLOCK_SKEW_MS }, 'them', NOW)).toBe(true);
+    expect(partnerAtGate({ them: NOW + CLOCK_SKEW_MS + 1 }, 'them', NOW)).toBe(false);
+  });
+
+  it('pays the together bonus only on a boss stage with the partner there', () => {
+    expect(togetherBonus(STAGES_PER_ISLAND, true).active).toBe(true);
+    expect(togetherBonus(STAGES_PER_ISLAND, false)).toBe(NO_BONUS);
+    for (let stage = 1; stage < STAGES_PER_ISLAND; stage += 1) {
+      expect(togetherBonus(stage, true)).toBe(NO_BONUS);
+    }
+  });
+
+  it('is worth more, never less, than going alone', () => {
+    const bonus = togetherBonus(STAGES_PER_ISLAND, true);
+    expect(bonus.coinMultiplier).toBeGreaterThan(1);
+    expect(bonus.purses).toBeGreaterThan(0);
+    expect(togetherXp(200, bonus)).toBe(100);
+    expect(togetherXp(200, NO_BONUS)).toBe(0);
+    expect(togetherXp(-5, bonus)).toBe(0);
+  });
+
+  it('refuses a lone entrant only when the gate is switched to a hard one', () => {
+    expect(bossEntryBlockedBecause(STAGES_PER_ISLAND, true, false)).toBeNull();
+    expect(bossEntryBlockedBecause(STAGES_PER_ISLAND, true, false, true)).toMatch(/partner/i);
+    expect(bossEntryBlockedBecause(STAGES_PER_ISLAND, true, true, true)).toBeNull();
+    expect(bossEntryBlockedBecause(3, true, false, true)).toBeNull();
+    expect(bossEntryBlockedBecause(STAGES_PER_ISLAND, false, false, true)).toBeNull();
   });
 });

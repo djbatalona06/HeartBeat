@@ -19,6 +19,7 @@ import { passiveFor } from '../../domain/rpg/tiers';
 import type { GearSlot } from '../../domain/rpg/types';
 import { gearArt } from '../party/art/gear';
 import { RaidSheet } from '../party/RaidSheet';
+import { PurseShelf } from './PurseShelf';
 import { RAID_STAT_NAMES } from '../../domain/rpg/raidStats';
 import type { House } from '../../domain/rpg/furniture';
 import type { Garden } from '../../domain/rpg/plots';
@@ -111,6 +112,8 @@ export function AssetsPage() {
           New gear is bought in the <Link to="/shop">Shop</Link>.
         </p>
       </section>
+
+      <PurseShelf memberId={identity.memberId} />
 
       {/* The same component `/raid` renders, not a copy — one implementation,
           two callers, the argument `ChestAlcove` makes about published odds.

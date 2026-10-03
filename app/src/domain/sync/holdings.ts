@@ -36,7 +36,8 @@ export type HoldingKind = (typeof HOLDING_KINDS)[number];
  * and a world that advanced on only one phone would not be a shared world.
  *
  * What makes the world safe to widen this list for is that its merge is not
- * really last-write-wins over an opaque blob: `clearStage` only ever *appends*
+ * last-write-wins over an opaque blob — `applyPulled` unions the two rows with
+ * `mergeWorld` — and that: `clearStage` only ever *appends*
  * a monster id it does not already hold, so the two phones' rows converge
  * rather than clobber. A phone that has been offline still loses nothing worse
  * than a re-clear of a stage it already beat, which `clearStageFor` treats as

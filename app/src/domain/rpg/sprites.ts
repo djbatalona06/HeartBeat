@@ -588,7 +588,7 @@ export const SPRITES: Record<string, Sprite> = {
     '..oooo....oooo..',
   ],
 
-  // --- islands 2 to 7, from their own file. ---
+  // --- islands 2 to 7, from their own file (8 to 10 are derived below). ---
   ...ISLAND_SPRITES,
 };
 
@@ -609,6 +609,15 @@ export const ISLAND_1_SPRITE_KEYS = [
   'dust-drifter', 'couch-moss', 'sedentary-sentinel',
 ] as const;
 
+/** Which island's drawings each of the last three islands wears. */
+const ELDER_ISLANDS: ReadonlyArray<readonly [number, number]> = [[8, 4], [9, 2], [10, 3]];
+
+const SWAP: Record<string, string> = { m: 'l', l: 'm' };
+
+function remix(sprite: Sprite): Sprite {
+  return sprite.map((row) => [...row].reverse().map((c) => SWAP[c] ?? c).join(''));
+}
+
 /**
  * Every island's monster sprites, in stage order: island 1's from above and
  * the rest from `monsterSprites.ts`. `sprites.test.ts` holds each list against
@@ -617,7 +626,21 @@ export const ISLAND_1_SPRITE_KEYS = [
 export const ISLAND_SPRITE_KEYS: Record<number, readonly string[]> = {
   1: ISLAND_1_SPRITE_KEYS,
   ...ISLAND_SPRITE_ORDER,
+  ...Object.fromEntries(ELDER_ISLANDS.map(([island, from]) => [
+    island,
+    (from === 1 ? ISLAND_1_SPRITE_KEYS : ISLAND_SPRITE_ORDER[from]).map((key) => `${key}-elder`),
+  ])),
 };
+
+// Islands 8-10 reuse the drawings of islands 4, 2 and 3, turned to face the other way
+// with their mid and light colours swapped, so a returning couple meets the
+// same spirits grown old rather than a blank. Derived rather than redrawn: the
+// painted pixels, and so every weight rule `sprites.test.ts` holds, carry over
+// unchanged. Hand-drawn replacements can take these keys over one at a time.
+for (const [, from] of ELDER_ISLANDS) {
+  const sources = from === 1 ? ISLAND_1_SPRITE_KEYS : ISLAND_SPRITE_ORDER[from];
+  for (const key of sources) SPRITES[`${key}-elder`] = remix(SPRITES[key]);
+}
 
 const KEYS = new Set(Object.keys(SPRITES));
 

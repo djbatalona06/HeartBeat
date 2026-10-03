@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   finishedTodos, gearShelves, keptUp, ownedInSlot, ownedPets, summarize,
 } from './holdings';
-import { GEAR, gearById } from './gear';
+import { GEAR, RARITIES, gearById } from './gear';
 import { GEAR_SLOTS, type Task } from './types';
 import type { InventoryItem } from './inventory';
 import type { PetInstance } from './pets';
@@ -73,20 +73,39 @@ describe('ownedInSlot', () => {
   });
 
   /**
-   * Why the refinement comparator below rarity cannot fire today, stated as a
-   * test rather than as a comment that would go stale. `GEAR` carries exactly
-   * one item per rarity per slot and `inventory` holds one row per member per
-   * item, so two entries on a shelf always differ by rarity. Add a second
-   * common boot and this fails — which is the point: that is the day the
-   * refinement step starts deciding real orderings and wants a test of its
-   * own.
+   * The day this file's old tripwire named has come: the catalogue now carries
+   * several items at one rarity in a slot (two epic helmets, say), so two
+   * entries on a shelf can tie on rarity and the refinement step below it decides
+   * real orderings. It wants a test of its own, and this is it.
    */
-  it('has one item per rarity per slot, which is what makes rarity decisive', () => {
-    for (const slot of GEAR_SLOTS) {
-      const inSlot = GEAR.filter((item) => item.slot === slot);
-      const rarities = inSlot.map((item) => item.rarity);
-      expect(new Set(rarities).size, slot).toBe(inSlot.length);
-    }
+  const twins = (slot: string, rarity: string) =>
+    GEAR.filter((item) => item.slot === slot && item.rarity === rarity);
+
+  it('has slots with more than one item at a rarity, so the tie-break is live', () => {
+    const tied = GEAR_SLOTS.some((slot) => RARITIES.some((rarity) => twins(slot, rarity).length > 1));
+    expect(tied).toBe(true);
+  });
+
+  it('puts the more refined of two items of one rarity first', () => {
+    const [a, b] = twins('helmet', 'epic');
+    const shelf = ownedInSlot([held(a.id, { refine: 1 }), held(b.id, { refine: 4 })], {}, 'helmet', LEVEL);
+    expect(shelf.map((e) => e.item.id)).toEqual([b.id, a.id]);
+  });
+
+  it('falls back to the name when rarity and refinement both tie, in either input order', () => {
+    const [a, b] = twins('helmet', 'epic');
+    const byName = [a, b].sort((x, y) => x.name.localeCompare(y.name)).map((item) => item.id);
+    const forwards = ownedInSlot([held(a.id), held(b.id)], {}, 'helmet', LEVEL).map((e) => e.item.id);
+    const backwards = ownedInSlot([held(b.id), held(a.id)], {}, 'helmet', LEVEL).map((e) => e.item.id);
+    expect(forwards).toEqual(byName);
+    expect(backwards).toEqual(byName);
+  });
+
+  it('still lets rarity decide before refinement does', () => {
+    const [epic] = twins('helmet', 'epic');
+    const [common] = twins('helmet', 'common');
+    const shelf = ownedInSlot([held(common.id, { refine: 5 }), held(epic.id, { refine: 0 })], {}, 'helmet', LEVEL);
+    expect(shelf[0].item.rarity).toBe('epic');
   });
 
   it('is a total order, so two rows that tie do not swap between renders', () => {

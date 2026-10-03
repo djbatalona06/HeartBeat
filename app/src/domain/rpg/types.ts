@@ -186,6 +186,12 @@ export interface Avatar {
    */
   dye?: string;
   /**
+   * The costume being worn — a `costume-` id from `costumes.ts`, or none.
+   * Optional like `dye`, so no migration. Separate from `dye` on purpose: one is
+   * a drawing over the bird, the other is the bird's colour.
+   */
+  costume?: string;
+  /**
    * Draws since the last payout, per chest — the counters behind the pity
    * floors in `chests.ts`. One per chest rather than one shared, because a bad
    * run on the cheap chest is not insurance you have paid for on the dear one.
@@ -228,6 +234,23 @@ export interface Avatar {
    * queue in `repository/petXp.ts`.
    */
   bested?: string[];
+  /**
+   * Garden monsters this member has beaten, by monster id: the once-ever coin
+   * for a first clear, and what tells a later win it is a replay. Per member,
+   * because coins are, and because the world row's `cleared` is the couple's —
+   * a stage your partner beat first still pays you your own first clear.
+   */
+  gardenBested?: string[];
+  /** Claims made in the current seven-day login cycle, 0 to 6. */
+  loginClaims?: number;
+  /** The day (member's own zone) the last login award was claimed. */
+  lastLoginDay?: string;
+  /** Replay-loot drops taken on `replayDay`, against `REPLAY_DAILY_CAP`. */
+  replayDay?: string;
+  replayCount?: number;
+  /** Coins the overworld's repeat-win trickle has paid on `foeCoinsDay`. */
+  foeCoinsDay?: string;
+  foeCoinsPaid?: number;
   updatedAt: number;
 }
 

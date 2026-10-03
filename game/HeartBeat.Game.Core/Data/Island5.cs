@@ -26,7 +26,7 @@ public static class Island5
                 Id: "i5s1-glowmoth",
                 Name: "Glowmoth",
                 Type: MonsterType.Common,
-                Hp: 184, Attack: 26, Defense: 9, Speed: 5,
+                Hp: 230, Attack: 32, Defense: 11, Speed: 5,
                 Weakness: Element.Rest, Strength: Element.Focus,
                 Actions:
                 [
@@ -41,7 +41,7 @@ public static class Island5
                 Id: "i5s2-shellsnooze",
                 Name: "Shellsnooze",
                 Type: MonsterType.Common,
-                Hp: 277, Attack: 33, Defense: 13, Speed: 7,
+                Hp: 355, Attack: 42, Defense: 17, Speed: 7,
                 Weakness: Element.Rest, Strength: Element.Movement,
                 Actions:
                 [
@@ -56,7 +56,7 @@ public static class Island5
                 Id: "i5s3-steepling",
                 Name: "Steepling",
                 Type: MonsterType.Common,
-                Hp: 391, Attack: 41, Defense: 18, Speed: 10,
+                Hp: 512, Attack: 54, Defense: 24, Speed: 10,
                 Weakness: Element.Rest, Strength: Element.Mood,
                 Actions:
                 [
@@ -71,14 +71,14 @@ public static class Island5
                 Id: "i5s4-midnight-clock",
                 Name: "The Midnight Clock",
                 Type: MonsterType.SemiBoss,
-                Hp: 457, Attack: 51, Defense: 18, Speed: 7,
+                Hp: 619, Attack: 69, Defense: 24, Speed: 7,
                 Weakness: Element.Rest, Strength: Element.Focus,
                 Actions:
                 [
                     new MonsterAction("Toll", 11, Element.Focus, ActionType.Attack),
                     new MonsterAction("One More Hour", 0, Element.Focus, ActionType.Debuff,
                         new StatusEffect(StatusKind.SpeedDown, 50, 2)),
-                    new MonsterAction("Wind Back", 71, Element.Focus, ActionType.Heal),
+                    new MonsterAction("Wind Back", 96, Element.Focus, ActionType.Heal),
                 ],
                 SpriteKey: "midnight-clock",
                 Theme: DioramaTheme.Light)),
@@ -87,7 +87,7 @@ public static class Island5
                 Id: "i5s5-fluffkin",
                 Name: "Fluffkin",
                 Type: MonsterType.Common,
-                Hp: 261, Attack: 43, Defense: 8, Speed: 12,
+                Hp: 364, Attack: 60, Defense: 11, Speed: 12,
                 Weakness: Element.Rest, Strength: Element.Nourishment,
                 Actions:
                 [
@@ -100,7 +100,7 @@ public static class Island5
                 Id: "i5s6-anvil-golem",
                 Name: "Anvil Golem",
                 Type: MonsterType.Elite,
-                Hp: 691, Attack: 59, Defense: 26, Speed: 7,
+                Hp: 1003, Attack: 84, Defense: 38, Speed: 7,
                 Weakness: Element.Rest, Strength: Element.Mood,
                 Actions:
                 [
@@ -108,7 +108,7 @@ public static class Island5
                     new MonsterAction("Clock In", 0, Element.Mood, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 40, 2)),
                     new MonsterAction("Burn the Oil", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 14, 3)),
+                        new StatusEffect(StatusKind.Drain, 20, 3)),
                 ],
                 SpriteKey: "anvil-golem",
                 Theme: DioramaTheme.Light)),
@@ -117,7 +117,7 @@ public static class Island5
                 Id: "i5s7-lady-lullaby",
                 Name: "Lady Lullaby",
                 Type: MonsterType.Boss,
-                Hp: 1068, Attack: 59, Defense: 21, Speed: 8,
+                Hp: 1573, Attack: 86, Defense: 31, Speed: 8,
                 Weakness: Element.Rest, Strength: Element.Movement,
                 Actions:
                 [
@@ -125,7 +125,7 @@ public static class Island5
                     new MonsterAction("Pillow Fort", 0, Element.Movement, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 50, 2)),
                     new MonsterAction("Keep Going", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 19, 3)),
+                        new StatusEffect(StatusKind.Drain, 28, 3)),
                 ],
                 SpriteKey: "lady-lullaby",
                 Theme: DioramaTheme.Light)),

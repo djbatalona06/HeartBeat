@@ -1,7 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { GEAR } from '../../../domain/rpg/gear';
 import { PET_KINDS } from '../../../domain/rpg/pets';
 import { FURNITURE } from '../../../domain/rpg/furniture';
+import { COSTUMES } from '../../../domain/rpg/costumes';
+import { costumeArt } from './costumes';
 import { gearArt } from './gear';
 import { petArt } from './pets';
 import { houseArt } from './house';
@@ -46,5 +50,29 @@ describe('house art', () => {
   it('has nothing for a piece that does not exist', () => {
     expect(houseArt('decor-not-a-real-piece')).toBeUndefined();
     expect(houseArt(undefined)).toBeUndefined();
+  });
+});
+
+describe('costume art', () => {
+  it('draws every costume in the catalogue', () => {
+    for (const costume of COSTUMES) expect(costumeArt(costume.id), costume.id).toBeDefined();
+  });
+
+  it('has nothing for a costume that does not exist', () => {
+    expect(costumeArt('costume-not-a-real-one')).toBeUndefined();
+    expect(costumeArt(undefined)).toBeUndefined();
+  });
+
+  // A dye sets exactly these three custom properties on the bird's wrapper, and
+  // a costume sits inside that wrapper. A drawing that read any of them would
+  // be recoloured by every dye, which is the mixing this separation exists to
+  // prevent.
+  it('never paints in a colour a dye sets', () => {
+    const source = readFileSync(resolve(__dirname, 'costumes/index.tsx'), 'utf8');
+    for (const forbidden of ['--color-text', '--color-accent', '--color-text-muted']) {
+      expect(source, forbidden).not.toContain(`var(${forbidden}`);
+    }
+    expect(source).toContain('var(--costume-main)');
+    expect(source).toContain('var(--costume-trim)');
   });
 });

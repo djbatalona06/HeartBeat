@@ -1,3 +1,4 @@
+import { CostumeLayer } from './art/costumes';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -154,6 +155,7 @@ function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouse
           aria-label={`${partner.displayName || 'Their'} birb`}
         >
           <mascot.Art mood="content" />
+          <CostumeLayer id={partnerAvatar?.costume} />
         </div>
         <dl className="friend-facts">
           <div>
