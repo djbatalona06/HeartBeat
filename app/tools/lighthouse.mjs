@@ -17,6 +17,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DIST = join(ROOT, 'app', 'dist');
@@ -71,12 +72,21 @@ if (manifest.length === 0) {
     'no entries matched — the injectManifest output shape changed');
 } else {
   let bytes = 0;
+  let gzipBytes = 0;
   for (const url of manifest) {
     const file = join(DIST, url.replace(/^\//, '').split('?')[0]);
-    try { bytes += (await readFile(file)).byteLength; } catch { /* generated */ }
+    try {
+      const body = await readFile(file);
+      bytes += body.byteLength;
+      gzipBytes += gzipSync(body).byteLength;
+    } catch { /* generated */ }
   }
   const kib = Math.round(bytes / 1024);
-  console.log(`\n  precache: ${manifest.length} entries, ${kib} KiB`);
+  // Reported, not asserted: the ceiling above is raw KiB and is left as it is.
+  // Raw is what the build prints and what this budget was written in; gzip is
+  // closer to what a phone downloads on install, so it is the number to read
+  // when deciding whether a raise matters.
+  console.log(`\n  precache: ${manifest.length} entries, ${kib} KiB raw, ${Math.round(gzipBytes / 1024)} KiB gzip`);
 
   check(`precache is at most ${PRECACHE_CEILING_ENTRIES} entries`,
     manifest.length <= PRECACHE_CEILING_ENTRIES,

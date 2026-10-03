@@ -5238,7 +5238,10 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   border-radius: 999px;
   border: var(--border-width) solid var(--color-border);
   background: transparent;
-  color: var(--color-accent);
+  /* The text in the body colour and the accent on the edge: accent text on the
+     tinted tile was too pale to read in the lighter packs. */
+  color: var(--color-text);
+  border-color: var(--color-accent);
   font-size: var(--text-sm);
   cursor: pointer;
 }
@@ -7904,6 +7907,7 @@ a, button, input, select, textarea, summary, label, [role='button'] {
 :root[data-calm='true'] .popup-panel { animation: none; }
 .boss-gate-rewards { margin: var(--space-3) 0 0; padding-left: var(--space-4); font-size: var(--text-sm); color: var(--color-text); }
 .boss-gate-rewards li + li { margin-top: var(--space-1); }
+.login-popup .chips { list-style: none; padding: 0; }
 .popup-actions { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
 
 /* ---- costumes ------------------------------------------------------------
