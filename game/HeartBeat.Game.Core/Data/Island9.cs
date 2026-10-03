@@ -3,32 +3,29 @@ using HeartBeat.Game.Core.Models;
 namespace HeartBeat.Game.Core.Data;
 
 /// <summary>
-/// Island 2 - Kitchen Grove, and its dark face, Craving Cavern.
+/// Island 9 - Harvest Terrace, and its dark face, Famine Hollow.
 ///
-/// The axis is nourishment, so every monster here is weak to
-/// <see cref="Element.Nourishment"/>: a Nourish charge - eating something
-/// proper today - is what makes them flinch. The residents are a kitchen
-/// garden's worth of friendly spirits, from a seed that has not sprouted yet
-/// to the oven that bakes for everyone.
-///
-/// Same seven-stage shape as <see cref="Island1"/>, and the same stat curve
-/// scaled to this island's level band (entered at 5, boss at 12);
-/// <c>IslandTests</c> holds both ends for every island.
+/// The far end of the world: the same axis and the same seven-stage shape as
+/// <see cref="Island2"/>, fought at ranks 33 to 40 against monsters
+/// that are Island 2's own, grown to match the player at that rank. The
+/// seven elements are reused rather than extended: the type chart has seven
+/// rows because the app has seven things worth logging, and a new island is
+/// a harder visit to one of them, not an eighth.
 /// </summary>
-public static class Island2
+public static class Island9
 {
     public static readonly Island Value = new(
-        Number: 2,
-        LightName: "Kitchen Grove",
-        DarkName: "Craving Cavern",
+        Number: 9,
+        LightName: "Harvest Terrace",
+        DarkName: "Famine Hollow",
         Element: Element.Nourishment,
         Stages:
         [
-            new Stage(1, "The Orchard Gate", new Monster(
-                Id: "i2s1-pipkin",
-                Name: "Pipkin",
+            new Stage(1, "The Deep Orchard Gate", new Monster(
+                Id: "i9s1-pipkin",
+                Name: "Elder Pipkin",
                 Type: MonsterType.Common,
-                Hp: 98, Attack: 7, Defense: 4, Speed: 3,
+                Hp: 1143, Attack: 100, Defense: 47, Speed: 6,
                 Weakness: Element.Nourishment, Strength: Element.Rest,
                 Actions:
                 [
@@ -36,14 +33,14 @@ public static class Island2
                     new MonsterAction("Sugar Slump", 0, Element.Rest, ActionType.Debuff,
                         new StatusEffect(StatusKind.SpeedDown, 50, 1)),
                 ],
-                SpriteKey: "pipkin",
+                SpriteKey: "pipkin-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(2, "Honey Row", new Monster(
-                Id: "i2s2-buzzbun",
-                Name: "Buzzbun",
+            new Stage(2, "Deep Honey Row", new Monster(
+                Id: "i9s2-buzzbun",
+                Name: "Elder Buzzbun",
                 Type: MonsterType.Common,
-                Hp: 137, Attack: 16, Defense: 6, Speed: 5,
+                Hp: 1758, Attack: 251, Defense: 77, Speed: 10,
                 Weakness: Element.Nourishment, Strength: Element.Focus,
                 Actions:
                 [
@@ -51,14 +48,14 @@ public static class Island2
                     new MonsterAction("Wax Shell", 0, Element.Focus, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 30, 2)),
                 ],
-                SpriteKey: "buzzbun",
+                SpriteKey: "buzzbun-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(3, "The Spice Rack", new Monster(
-                Id: "i2s3-pepperwisp",
-                Name: "Pepperwisp",
+            new Stage(3, "The Deep Spice Rack", new Monster(
+                Id: "i9s3-pepperwisp",
+                Name: "Elder Pepperwisp",
                 Type: MonsterType.Common,
-                Hp: 208, Attack: 18, Defense: 9, Speed: 7,
+                Hp: 2516, Attack: 310, Defense: 109, Speed: 15,
                 Weakness: Element.Nourishment, Strength: Element.Mood,
                 Actions:
                 [
@@ -66,43 +63,43 @@ public static class Island2
                     new MonsterAction("Sneeze Cloud", 0, Element.Mood, ActionType.Debuff,
                         new StatusEffect(StatusKind.AttackDown, 25, 2)),
                 ],
-                SpriteKey: "pepperwisp",
+                SpriteKey: "pepperwisp-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(4, "The Long Table", new Monster(
-                Id: "i2s4-auntie-crumble",
-                Name: "Auntie Crumble",
+            new Stage(4, "The Deep Long Table", new Monster(
+                Id: "i9s4-auntie-crumble",
+                Name: "Elder Auntie Crumble",
                 Type: MonsterType.SemiBoss,
-                Hp: 228, Attack: 25, Defense: 8, Speed: 4,
+                Hp: 3029, Attack: 328, Defense: 106, Speed: 9,
                 Weakness: Element.Nourishment, Strength: Element.Movement,
                 Actions:
                 [
                     new MonsterAction("Crust Slam", 11, Element.Movement, ActionType.Attack),
                     new MonsterAction("Second Helping", 0, Element.Movement, ActionType.Debuff,
                         new StatusEffect(StatusKind.SpeedDown, 50, 2)),
-                    new MonsterAction("Warm Leftovers", 35, Element.Movement, ActionType.Heal),
+                    new MonsterAction("Warm Leftovers", 465, Element.Movement, ActionType.Heal),
                 ],
-                SpriteKey: "auntie-crumble",
+                SpriteKey: "auntie-crumble-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(5, "Melon Patch", new Monster(
-                Id: "i2s5-rindroll",
-                Name: "Rindroll",
+            new Stage(5, "Deep Melon Patch", new Monster(
+                Id: "i9s5-rindroll",
+                Name: "Elder Rindroll",
                 Type: MonsterType.Common,
-                Hp: 121, Attack: 19, Defense: 4, Speed: 9,
+                Hp: 1769, Attack: 274, Defense: 58, Speed: 20,
                 Weakness: Element.Nourishment, Strength: Element.Rest,
                 Actions:
                 [
                     new MonsterAction("Rolling Rind", 8, Element.Movement, ActionType.Attack),
                 ],
-                SpriteKey: "rindroll",
+                SpriteKey: "rindroll-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(6, "The Cold Pantry", new Monster(
-                Id: "i2s6-frostcrate",
-                Name: "Frostcrate Golem",
+            new Stage(6, "The Deep Cold Pantry", new Monster(
+                Id: "i9s6-frostcrate",
+                Name: "Elder Frostcrate Golem",
                 Type: MonsterType.Elite,
-                Hp: 334, Attack: 27, Defense: 12, Speed: 4,
+                Hp: 4908, Attack: 390, Defense: 176, Speed: 9,
                 Weakness: Element.Nourishment, Strength: Element.Focus,
                 Actions:
                 [
@@ -110,16 +107,16 @@ public static class Island2
                     new MonsterAction("Seal Tight", 0, Element.Focus, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 40, 2)),
                     new MonsterAction("Frost Nip", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 6, 3)),
+                        new StatusEffect(StatusKind.Drain, 87, 3)),
                 ],
-                SpriteKey: "frostcrate",
+                SpriteKey: "frostcrate-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(7, "The Great Oven", new Monster(
-                Id: "i2s7-mother-marzipan",
-                Name: "Mother Marzipan",
+            new Stage(7, "The Deep Great Oven", new Monster(
+                Id: "i9s7-mother-marzipan",
+                Name: "Elder Mother Marzipan",
                 Type: MonsterType.Boss,
-                Hp: 517, Attack: 27, Defense: 9, Speed: 5,
+                Hp: 7693, Attack: 391, Defense: 134, Speed: 10,
                 Weakness: Element.Nourishment, Strength: Element.Mood,
                 Actions:
                 [
@@ -127,9 +124,9 @@ public static class Island2
                     new MonsterAction("Crust Wall", 0, Element.Mood, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 50, 2)),
                     new MonsterAction("Sugar Crash", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 8, 3)),
+                        new StatusEffect(StatusKind.Drain, 116, 3)),
                 ],
-                SpriteKey: "mother-marzipan",
+                SpriteKey: "mother-marzipan-elder",
                 Theme: DioramaTheme.Light)),
         ]);
 
@@ -137,12 +134,12 @@ public static class Island2
     public static readonly IReadOnlyDictionary<string, string> DarkNames =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["i2s1-pipkin"] = "Hollow Pipkin",
-            ["i2s2-buzzbun"] = "Sticky Buzzbun",
-            ["i2s3-pepperwisp"] = "Scorch Pepperwisp",
-            ["i2s4-auntie-crumble"] = "The Stale Crumble",
-            ["i2s5-rindroll"] = "Overripe Rindroll",
-            ["i2s6-frostcrate"] = "Freezer-Burnt Frostcrate",
-            ["i2s7-mother-marzipan"] = "The Hollow Marzipan",
+            ["i9s1-pipkin"] = "Elder Hollow Pipkin",
+            ["i9s2-buzzbun"] = "Elder Sticky Buzzbun",
+            ["i9s3-pepperwisp"] = "Elder Scorch Pepperwisp",
+            ["i9s4-auntie-crumble"] = "The Elder Stale Crumble",
+            ["i9s5-rindroll"] = "Elder Overripe Rindroll",
+            ["i9s6-frostcrate"] = "Elder Freezer-Burnt Frostcrate",
+            ["i9s7-mother-marzipan"] = "The Elder Hollow Marzipan",
         };
 }

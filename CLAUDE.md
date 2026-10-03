@@ -258,15 +258,37 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   `cap × t / (t + 60)`; `gearLift` in `loadout.ts` restates that curve for the
   move bar's "+N% gear" and `loadout.test.ts` reads the C# constants. The caps
   are held by `IslandTests.GearHelpsButDoesNotSkipAnIsland`.
-- **Seven islands, one level band each.** Island *k* is entered at combat rank
+- **Ten islands, one level band each.** Island *k* is entered at combat rank
   `1 + 4(k−1)` and its boss beaten at `8 + 4(k−1)`; `Progression.MaxLevel` is
-  34 and growth past 10 compounds at 7%. Monster heals fade to nothing by
-  round 20 (`Battle.MonsterHealFadeRounds`) — without it an under-levelled
-  healer made a fight that could never end. The gate and the world map read
-  bosses from `domain/rpg/islands.ts`, which `islands.test.ts` parses the C#
-  to hold in step; change a monster's name, HP or sprite key in C# and that
-  test tells you to change the mirror. Sprites for islands 2–7 live in
-  `domain/rpg/monsterSprites.ts` and are spread into `SPRITES`.
+  46 and growth past 10 compounds at 10% (`LateGrowth`). **The player's curve
+  and every monster are one coupled system:** when `StatsAt` changed, islands
+  1–7 were rescaled by the new/old stats ratio at each stage's arrival rank
+  (HP and defence follow the player's attack, attack follows the player's HP),
+  which is what kept every `IslandTests` threshold where it was. Change one
+  without the other and the winnability tests move. Islands 8–10 are islands
+  4, 2 and 3 grown to their rank band (`Data/Island8–10.cs`, "Elder" names,
+  sprites derived in `sprites.ts` by mirroring and swapping mid/light until
+  hand-drawn ones replace them), and **reuse the seven elements** — the type
+  chart has seven rows because the app has seven things worth logging. Monster
+  heals fade to nothing by round 20 (`Battle.MonsterHealFadeRounds`) — without
+  it an under-levelled healer made a fight that could never end. The gate and
+  the world map read bosses from `domain/rpg/islands.ts`, which
+  `islands.test.ts` parses the C# to hold in step; change a monster's name, HP
+  or sprite key in C# and that test tells you to change the mirror. Sprites
+  for islands 2–7 live in `domain/rpg/monsterSprites.ts` and are spread into
+  `SPRITES`.
+- **Only the boss stage asks for the partner; every other stage is
+  asynchronous.** The Raid Gate's `TogetherTether` (`partnerGateApplies`,
+  `togetherBonus` in `raidGate.ts`) shows on stage 7 only, and presence is a
+  per-member stamp in `WorldProgress.gate`, merged by `mergeWorld` — the world
+  row is a union of cleared stages, not last-write-wins. No stage 1–6 screen may
+  render a partner-waiting message. `BOSS_REQUIRES_PARTNER` is false: the gate
+  is an invitation with a better payout, not a lock.
+- **A fight can open on the monster's turn.** `Battle.Begin` hands the first
+  move to the monster when the player is slower and a seeded flip says so;
+  `shouldRedriveMonster` (`eve-garden/round.ts`) is what plays it. Every scene
+  animation the round awaits goes through `settle`, which gives up after 3 s,
+  because a destroyed Phaser scene never resolves its tween promise.
 - **There are two level numbers and they are different on purpose.** C# owns
   the combat rank that gates the move bar, pinned by `IslandTests`; the pet's
   level is the fifty-rung curve in `domain/xp.ts` that the couple climbs.

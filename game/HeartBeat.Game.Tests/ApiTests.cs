@@ -23,13 +23,13 @@ public class ApiTests
     }
 
     [Fact]
-    public void WorldListsSevenIslandsWithCamelCaseFields()
+    public void WorldListsTenIslandsWithCamelCaseFields()
     {
         JsonElement world = Parse(Api.World());
         Assert.Equal(7, world.GetProperty("stagesPerIsland").GetInt32());
 
         JsonElement islands = world.GetProperty("islands");
-        Assert.Equal(7, islands.GetArrayLength());
+        Assert.Equal(10, islands.GetArrayLength());
 
         JsonElement first = islands[0];
         Assert.Equal(1, first.GetProperty("number").GetInt32());
@@ -93,10 +93,10 @@ public class ApiTests
     public void StagesThatDoNotExistComeBackNullRatherThanThrowing()
     {
         Assert.Null(Api.Stage(1, 99, "light"));
-        Assert.Null(Api.Stage(8, 1, "light"));   // there are seven islands
+        Assert.Null(Api.Stage(11, 1, "light"));  // there are ten islands
         Assert.Null(Api.Stage(99, 1, "light"));
         Assert.Null(Api.BeginBattle(99, 1, "light", 5, 1));
-        Assert.Equal(0, Api.DefeatXp(8, 1));
+        Assert.Equal(0, Api.DefeatXp(11, 1));
     }
 
     [Fact]

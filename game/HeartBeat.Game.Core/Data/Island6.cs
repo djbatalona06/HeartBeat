@@ -27,7 +27,7 @@ public static class Island6
                 Id: "i6s1-clamlet",
                 Name: "Clamlet",
                 Type: MonsterType.Common,
-                Hp: 247, Attack: 32, Defense: 12, Speed: 6,
+                Hp: 345, Attack: 44, Defense: 17, Speed: 6,
                 Weakness: Element.Bond, Strength: Element.Rest,
                 Actions:
                 [
@@ -42,7 +42,7 @@ public static class Island6
                 Id: "i6s2-starfin",
                 Name: "Starfin",
                 Type: MonsterType.Common,
-                Hp: 367, Attack: 42, Defense: 17, Speed: 8,
+                Hp: 533, Attack: 60, Defense: 25, Speed: 8,
                 Weakness: Element.Bond, Strength: Element.Focus,
                 Actions:
                 [
@@ -57,7 +57,7 @@ public static class Island6
                 Id: "i6s3-kelpkin",
                 Name: "Kelpkin",
                 Type: MonsterType.Common,
-                Hp: 519, Attack: 55, Defense: 23, Speed: 11,
+                Hp: 764, Attack: 81, Defense: 34, Speed: 11,
                 Weakness: Element.Bond, Strength: Element.Movement,
                 Actions:
                 [
@@ -72,14 +72,14 @@ public static class Island6
                 Id: "i6s4-lamp-keeper",
                 Name: "The Lamp Keeper",
                 Type: MonsterType.SemiBoss,
-                Hp: 608, Attack: 69, Defense: 23, Speed: 8,
+                Hp: 917, Attack: 104, Defense: 35, Speed: 8,
                 Weakness: Element.Bond, Strength: Element.Mood,
                 Actions:
                 [
                     new MonsterAction("Beam", 11, Element.Mood, ActionType.Attack),
                     new MonsterAction("Look Away", 0, Element.Mood, ActionType.Debuff,
                         new StatusEffect(StatusKind.SpeedDown, 50, 2)),
-                    new MonsterAction("Relight", 95, Element.Mood, ActionType.Heal),
+                    new MonsterAction("Relight", 143, Element.Mood, ActionType.Heal),
                 ],
                 SpriteKey: "lamp-keeper",
                 Theme: DioramaTheme.Light)),
@@ -88,7 +88,7 @@ public static class Island6
                 Id: "i6s5-crablet",
                 Name: "Crablet",
                 Type: MonsterType.Common,
-                Hp: 346, Attack: 57, Defense: 10, Speed: 13,
+                Hp: 538, Attack: 88, Defense: 16, Speed: 13,
                 Weakness: Element.Bond, Strength: Element.Nourishment,
                 Actions:
                 [
@@ -101,7 +101,7 @@ public static class Island6
                 Id: "i6s6-barnacle-golem",
                 Name: "Barnacle Golem",
                 Type: MonsterType.Elite,
-                Hp: 917, Attack: 77, Defense: 34, Speed: 8,
+                Hp: 1478, Attack: 122, Defense: 55, Speed: 8,
                 Weakness: Element.Bond, Strength: Element.Rest,
                 Actions:
                 [
@@ -109,7 +109,7 @@ public static class Island6
                     new MonsterAction("Batten Down", 0, Element.Rest, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 40, 2)),
                     new MonsterAction("Undertow", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 18, 3)),
+                        new StatusEffect(StatusKind.Drain, 29, 3)),
                 ],
                 SpriteKey: "barnacle-golem",
                 Theme: DioramaTheme.Light)),
@@ -118,7 +118,7 @@ public static class Island6
                 Id: "i6s7-queen-coralie",
                 Name: "Queen Coralie",
                 Type: MonsterType.Boss,
-                Hp: 1415, Attack: 77, Defense: 27, Speed: 9,
+                Hp: 2339, Attack: 126, Defense: 45, Speed: 9,
                 Weakness: Element.Bond, Strength: Element.Focus,
                 Actions:
                 [
@@ -126,7 +126,7 @@ public static class Island6
                     new MonsterAction("Coral Wall", 0, Element.Focus, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 50, 2)),
                     new MonsterAction("Pull Apart", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 25, 3)),
+                        new StatusEffect(StatusKind.Drain, 41, 3)),
                 ],
                 SpriteKey: "queen-coralie",
                 Theme: DioramaTheme.Light)),

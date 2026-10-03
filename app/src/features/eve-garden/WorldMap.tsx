@@ -5,7 +5,7 @@ import { bossOf, faceOf } from '../../domain/rpg/islands';
 import type { IslandDto } from './engine/types';
 
 /**
- * All seven islands, who waits at the top of each, and which you may walk to.
+ * All ten islands, who waits at the top of each, and which you may walk to.
  *
  * Opens from the compass. An island you have not reached still gets its name
  * and its boss here rather than a gap, so the shape of the whole climb is
@@ -79,7 +79,8 @@ export function WorldMap({ islands, progress, dark, onTravel, onClose }: WorldMa
         <p className="garden-map-foot">
           Each island answers to one thing. Morning Meadow gives way to movement,
           Focus Falls to study; log it today and every monster there feels it.
-          The last two answer to the two of you together.
+          Tandem Tides and Heartwood Summit answer to the two of you together;
+          the three beyond them come back to where you began, and hit harder.
         </p>
       </div>
     </div>

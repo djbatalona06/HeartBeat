@@ -19,8 +19,8 @@ import type { CoupleId } from '../types';
 /** Seven, and the same for every island. Mirrors `Island.StagesPerIsland` in C#. */
 export const STAGES_PER_ISLAND = 7;
 
-/** Seven, and the same list as `World.Islands` in C#, every one of them built. */
-export const ISLAND_COUNT = 7;
+/** Ten, and the same list as `World.Islands` in C#, every one of them built. */
+export const ISLAND_COUNT = 10;
 
 /**
  * The island the couple are actually on, clamped to the world.

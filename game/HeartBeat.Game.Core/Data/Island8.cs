@@ -3,31 +3,29 @@ using HeartBeat.Game.Core.Models;
 namespace HeartBeat.Game.Core.Data;
 
 /// <summary>
-/// Island 4 - Joy Ridge, and its dark face, Isolation Peak.
+/// Island 8 - Skyward Ridge, and its dark face, Drift Mire.
 ///
-/// The axis is mood, so every monster here is weak to <see cref="Element.Mood"/>:
-/// checking in with how you feel - or saying what you are grateful for -
-/// charges the thing they are weak to. Birds, kites and a cave that only ever
-/// repeats you back to yourself.
-///
-/// Same seven-stage shape as <see cref="Island1"/>, and the same stat curve
-/// scaled to this island's level band (entered at 13, boss at 20);
-/// <c>IslandTests</c> holds both ends for every island.
+/// The far end of the world: the same axis and the same seven-stage shape as
+/// <see cref="Island4"/>, fought at ranks 29 to 36 against monsters
+/// that are Island 4's own, grown to match the player at that rank. The
+/// seven elements are reused rather than extended: the type chart has seven
+/// rows because the app has seven things worth logging, and a new island is
+/// a harder visit to one of them, not an eighth.
 /// </summary>
-public static class Island4
+public static class Island8
 {
     public static readonly Island Value = new(
-        Number: 4,
-        LightName: "Joy Ridge",
-        DarkName: "Isolation Peak",
+        Number: 8,
+        LightName: "Skyward Ridge",
+        DarkName: "Drift Mire",
         Element: Element.Mood,
         Stages:
         [
-            new Stage(1, "Wildflower Path", new Monster(
-                Id: "i4s1-chirplet",
-                Name: "Chirplet",
+            new Stage(1, "High Wildflower Path", new Monster(
+                Id: "i8s1-chirplet",
+                Name: "Elder Chirplet",
                 Type: MonsterType.Common,
-                Hp: 167, Attack: 23, Defense: 8, Speed: 4,
+                Hp: 776, Attack: 106, Defense: 37, Speed: 6,
                 Weakness: Element.Mood, Strength: Element.Focus,
                 Actions:
                 [
@@ -35,14 +33,14 @@ public static class Island4
                     new MonsterAction("Sigh", 0, Element.Focus, ActionType.Debuff,
                         new StatusEffect(StatusKind.SpeedDown, 50, 1)),
                 ],
-                SpriteKey: "chirplet",
+                SpriteKey: "chirplet-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(2, "Kite Hill", new Monster(
-                Id: "i4s2-kitetail",
-                Name: "Kitetail",
+            new Stage(2, "High Kite Hill", new Monster(
+                Id: "i8s2-kitetail",
+                Name: "Elder Kitetail",
                 Type: MonsterType.Common,
-                Hp: 256, Attack: 30, Defense: 11, Speed: 6,
+                Hp: 1190, Attack: 138, Defense: 51, Speed: 9,
                 Weakness: Element.Mood, Strength: Element.Movement,
                 Actions:
                 [
@@ -50,14 +48,14 @@ public static class Island4
                     new MonsterAction("Wind Up", 0, Element.Movement, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 30, 2)),
                 ],
-                SpriteKey: "kitetail",
+                SpriteKey: "kitetail-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(3, "Sunny Ledge", new Monster(
-                Id: "i4s3-glimmerbug",
-                Name: "Glimmerbug",
+            new Stage(3, "High Sunny Ledge", new Monster(
+                Id: "i8s3-glimmerbug",
+                Name: "Elder Glimmerbug",
                 Type: MonsterType.Common,
-                Hp: 367, Attack: 38, Defense: 15, Speed: 9,
+                Hp: 1726, Attack: 175, Defense: 71, Speed: 14,
                 Weakness: Element.Mood, Strength: Element.Rest,
                 Actions:
                 [
@@ -65,43 +63,43 @@ public static class Island4
                     new MonsterAction("Gloom Dust", 0, Element.Rest, ActionType.Debuff,
                         new StatusEffect(StatusKind.AttackDown, 25, 2)),
                 ],
-                SpriteKey: "glimmerbug",
+                SpriteKey: "glimmerbug-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(4, "The Echo Cave", new Monster(
-                Id: "i4s4-the-echo",
-                Name: "The Echo",
+            new Stage(4, "The High Echo Cave", new Monster(
+                Id: "i8s4-the-echo",
+                Name: "The Elder Echo",
                 Type: MonsterType.SemiBoss,
-                Hp: 441, Attack: 50, Defense: 16, Speed: 6,
+                Hp: 2054, Attack: 230, Defense: 75, Speed: 9,
                 Weakness: Element.Mood, Strength: Element.Focus,
                 Actions:
                 [
                     new MonsterAction("Echo Shout", 11, Element.Focus, ActionType.Attack),
                     new MonsterAction("Say It Again", 0, Element.Focus, ActionType.Debuff,
                         new StatusEffect(StatusKind.SpeedDown, 50, 2)),
-                    new MonsterAction("Echo Back", 68, Element.Focus, ActionType.Heal),
+                    new MonsterAction("Echo Back", 317, Element.Focus, ActionType.Heal),
                 ],
-                SpriteKey: "the-echo",
+                SpriteKey: "the-echo-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(5, "Meadow Crest", new Monster(
-                Id: "i4s5-puffball",
-                Name: "Puffball",
+            new Stage(5, "High Meadow Crest", new Monster(
+                Id: "i8s5-puffball",
+                Name: "Elder Puffball",
                 Type: MonsterType.Common,
-                Hp: 259, Attack: 42, Defense: 8, Speed: 11,
+                Hp: 1209, Attack: 194, Defense: 37, Speed: 17,
                 Weakness: Element.Mood, Strength: Element.Nourishment,
                 Actions:
                 [
                     new MonsterAction("Bounce", 8, Element.Movement, ActionType.Attack),
                 ],
-                SpriteKey: "puffball",
+                SpriteKey: "puffball-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(6, "The Stone Circle", new Monster(
-                Id: "i4s6-cairn-keeper",
-                Name: "Cairn Keeper",
+            new Stage(6, "The High Stone Circle", new Monster(
+                Id: "i8s6-cairn-keeper",
+                Name: "Elder Cairn Keeper",
                 Type: MonsterType.Elite,
-                Hp: 715, Attack: 60, Defense: 26, Speed: 6,
+                Hp: 3303, Attack: 276, Defense: 120, Speed: 9,
                 Weakness: Element.Mood, Strength: Element.Rest,
                 Actions:
                 [
@@ -109,16 +107,16 @@ public static class Island4
                     new MonsterAction("Stand Tall", 0, Element.Rest, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 40, 2)),
                     new MonsterAction("Cold Shoulder", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 14, 3)),
+                        new StatusEffect(StatusKind.Drain, 65, 3)),
                 ],
-                SpriteKey: "cairn-keeper",
+                SpriteKey: "cairn-keeper-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(7, "The Summit Bonfire", new Monster(
-                Id: "i4s7-merriweather",
-                Name: "Mother Merriweather",
+            new Stage(7, "The High Summit Bonfire", new Monster(
+                Id: "i8s7-merriweather",
+                Name: "Elder Mother Merriweather",
                 Type: MonsterType.Boss,
-                Hp: 1129, Attack: 59, Defense: 21, Speed: 7,
+                Hp: 5214, Attack: 272, Defense: 97, Speed: 10,
                 Weakness: Element.Mood, Strength: Element.Movement,
                 Actions:
                 [
@@ -126,9 +124,9 @@ public static class Island4
                     new MonsterAction("Cloud Cover", 0, Element.Movement, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 50, 2)),
                     new MonsterAction("Rain on the Parade", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 18, 3)),
+                        new StatusEffect(StatusKind.Drain, 83, 3)),
                 ],
-                SpriteKey: "merriweather",
+                SpriteKey: "merriweather-elder",
                 Theme: DioramaTheme.Light)),
         ]);
 
@@ -136,12 +134,12 @@ public static class Island4
     public static readonly IReadOnlyDictionary<string, string> DarkNames =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["i4s1-chirplet"] = "Hushed Chirplet",
-            ["i4s2-kitetail"] = "Tangled Kitetail",
-            ["i4s3-glimmerbug"] = "Dim Glimmerbug",
-            ["i4s4-the-echo"] = "The Lonely Echo",
-            ["i4s5-puffball"] = "Gray Puffball",
-            ["i4s6-cairn-keeper"] = "Toppled Cairn",
-            ["i4s7-merriweather"] = "The Silent Merriweather",
+            ["i8s1-chirplet"] = "Elder Hushed Chirplet",
+            ["i8s2-kitetail"] = "Elder Tangled Kitetail",
+            ["i8s3-glimmerbug"] = "Elder Dim Glimmerbug",
+            ["i8s4-the-echo"] = "The Elder Lonely Echo",
+            ["i8s5-puffball"] = "Elder Gray Puffball",
+            ["i8s6-cairn-keeper"] = "Elder Toppled Cairn",
+            ["i8s7-merriweather"] = "The Elder Silent Merriweather",
         };
 }

@@ -104,8 +104,8 @@ describe("Eve's Garden, every island", () => {
     return [...cs.matchAll(/SpriteKey: "([^"]+)"/g)].map((m) => m[1]);
   };
 
-  it('draws every monster on all seven islands, in stage order', () => {
-    for (let island = 1; island <= 7; island += 1) {
+  it('draws every monster on all ten islands, in stage order', () => {
+    for (let island = 1; island <= 10; island += 1) {
       expect(ISLAND_SPRITE_KEYS[island], `island ${island}`).toEqual(authored(island));
       for (const key of ISLAND_SPRITE_KEYS[island]) expect(hasSprite(key), key).toBe(true);
     }
@@ -114,7 +114,7 @@ describe("Eve's Garden, every island", () => {
   it('draws every boss heavier than its island\'s first monster, and the breather lighter than the semi-boss', () => {
     const painted = (key: string) =>
       (spriteFor(key) ?? []).join('').split('').filter((c) => c !== '.').length;
-    for (let island = 1; island <= 7; island += 1) {
+    for (let island = 1; island <= 10; island += 1) {
       const keys = ISLAND_SPRITE_KEYS[island];
       expect(painted(keys[6]), `island ${island} boss`).toBeGreaterThan(painted(keys[0]));
       expect(painted(keys[4]), `island ${island} breather`).toBeLessThan(painted(keys[3]));

@@ -3,7 +3,7 @@ using HeartBeat.Game.Core.Models;
 namespace HeartBeat.Game.Core.Data;
 
 /// <summary>
-/// The world: seven islands of seven stages, every one of them built.
+/// The world: ten islands of seven stages, every one of them built.
 ///
 /// Each island is one file in <c>Data/</c> and one line in <see cref="Islands"/>.
 /// <see cref="StageFor"/> returning null is still the whole of the "no such
@@ -11,7 +11,7 @@ namespace HeartBeat.Game.Core.Data;
 /// </summary>
 public static class World
 {
-    public const int IslandCount = 7;
+    public const int IslandCount = 10;
 
     public static readonly IReadOnlyList<Island> Islands =
     [
@@ -22,6 +22,9 @@ public static class World
         Island5.Value,
         Island6.Value,
         Island7.Value,
+        Island8.Value,
+        Island9.Value,
+        Island10.Value,
     ];
 
     /// <summary>
@@ -34,6 +37,7 @@ public static class World
         {
             Island1.DarkNames, Island2.DarkNames, Island3.DarkNames, Island4.DarkNames,
             Island5.DarkNames, Island6.DarkNames, Island7.DarkNames,
+            Island8.DarkNames, Island9.DarkNames, Island10.DarkNames,
         }
         .SelectMany(names => names)
         .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);

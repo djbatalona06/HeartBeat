@@ -212,10 +212,14 @@ public class IslandTests
     }
 
     [Fact]
-    public void EveryIslandHasItsOwnElement()
+    public void TheFirstSevenIslandsEachTakeTheirOwnElementAndTheRestReuseThem()
     {
-        var elements = World.Islands.Select(i => i.Element).ToList();
-        Assert.Equal(elements.Count, elements.Distinct().Count());
+        // Seven elements because the app has seven things worth logging. Islands
+        // 8 to 10 are harder visits to one of them, not new rows in the type
+        // chart, so they must land on an element the first seven already cover.
+        var first = World.Islands.Take(7).Select(i => i.Element).ToList();
+        Assert.Equal(7, first.Distinct().Count());
+        foreach (Island later in World.Islands.Skip(7)) Assert.Contains(later.Element, first);
     }
 
     [Fact]

@@ -3,31 +3,29 @@ using HeartBeat.Game.Core.Models;
 namespace HeartBeat.Game.Core.Data;
 
 /// <summary>
-/// Island 3 - Focus Falls, and its dark face, Fog Marsh.
+/// Island 10 - Zenith Falls, and its dark face, Fogbound Falls.
 ///
-/// The axis is focus, so every monster here is weak to
-/// <see cref="Element.Focus"/>: an hour of study or deep work logged today
-/// is what cuts through them. Water spirits all the way up the falls, and a
-/// semi-boss that will not stop chiming.
-///
-/// Same seven-stage shape as <see cref="Island1"/>, and the same stat curve
-/// scaled to this island's level band (entered at 9, boss at 16);
-/// <c>IslandTests</c> holds both ends for every island.
+/// The far end of the world: the same axis and the same seven-stage shape as
+/// <see cref="Island3"/>, fought at ranks 37 to 44 against monsters
+/// that are Island 3's own, grown to match the player at that rank. The
+/// seven elements are reused rather than extended: the type chart has seven
+/// rows because the app has seven things worth logging, and a new island is
+/// a harder visit to one of them, not an eighth.
 /// </summary>
-public static class Island3
+public static class Island10
 {
     public static readonly Island Value = new(
-        Number: 3,
-        LightName: "Focus Falls",
-        DarkName: "Fog Marsh",
+        Number: 10,
+        LightName: "Zenith Falls",
+        DarkName: "Fogbound Falls",
         Element: Element.Focus,
         Stages:
         [
-            new Stage(1, "The Spray Line", new Monster(
-                Id: "i3s1-driplet",
-                Name: "Driplet",
+            new Stage(1, "The Far Spray Line", new Monster(
+                Id: "i10s1-driplet",
+                Name: "Elder Driplet",
                 Type: MonsterType.Common,
-                Hp: 112, Attack: 15, Defense: 5, Speed: 3,
+                Hp: 1637, Attack: 217, Defense: 73, Speed: 7,
                 Weakness: Element.Focus, Strength: Element.Rest,
                 Actions:
                 [
@@ -35,14 +33,14 @@ public static class Island3
                     new MonsterAction("Lull", 0, Element.Rest, ActionType.Debuff,
                         new StatusEffect(StatusKind.SpeedDown, 50, 1)),
                 ],
-                SpriteKey: "driplet",
+                SpriteKey: "driplet-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(2, "Stepping Stones", new Monster(
-                Id: "i3s2-pebblenook",
-                Name: "Pebblenook",
+            new Stage(2, "Far Stepping Stones", new Monster(
+                Id: "i10s2-pebblenook",
+                Name: "Elder Pebblenook",
                 Type: MonsterType.Common,
-                Hp: 170, Attack: 20, Defense: 7, Speed: 5,
+                Hp: 2498, Attack: 289, Defense: 103, Speed: 11,
                 Weakness: Element.Focus, Strength: Element.Mood,
                 Actions:
                 [
@@ -50,14 +48,14 @@ public static class Island3
                     new MonsterAction("Stone Skin", 0, Element.Mood, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 30, 2)),
                 ],
-                SpriteKey: "pebblenook",
+                SpriteKey: "pebblenook-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(3, "The Whirlpool", new Monster(
-                Id: "i3s3-eddywhirl",
-                Name: "Eddywhirl",
+            new Stage(3, "The Far Whirlpool", new Monster(
+                Id: "i10s3-eddywhirl",
+                Name: "Elder Eddywhirl",
                 Type: MonsterType.Common,
-                Hp: 243, Attack: 26, Defense: 10, Speed: 8,
+                Hp: 3616, Attack: 376, Defense: 149, Speed: 16,
                 Weakness: Element.Focus, Strength: Element.Movement,
                 Actions:
                 [
@@ -65,43 +63,43 @@ public static class Island3
                     new MonsterAction("Dizzy Mist", 0, Element.Movement, ActionType.Debuff,
                         new StatusEffect(StatusKind.AttackDown, 25, 2)),
                 ],
-                SpriteKey: "eddywhirl",
+                SpriteKey: "eddywhirl-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(4, "The Chattering Rapids", new Monster(
-                Id: "i3s4-pingwing",
-                Name: "Pingwing",
+            new Stage(4, "The Far Chattering Rapids", new Monster(
+                Id: "i10s4-pingwing",
+                Name: "Elder Pingwing",
                 Type: MonsterType.SemiBoss,
-                Hp: 296, Attack: 34, Defense: 11, Speed: 5,
+                Hp: 4324, Attack: 491, Defense: 161, Speed: 10,
                 Weakness: Element.Focus, Strength: Element.Mood,
                 Actions:
                 [
                     new MonsterAction("Ping", 11, Element.Mood, ActionType.Attack),
                     new MonsterAction("Just One More", 0, Element.Mood, ActionType.Debuff,
                         new StatusEffect(StatusKind.SpeedDown, 50, 2)),
-                    new MonsterAction("Refresh", 45, Element.Mood, ActionType.Heal),
+                    new MonsterAction("Refresh", 657, Element.Mood, ActionType.Heal),
                 ],
-                SpriteKey: "pingwing",
+                SpriteKey: "pingwing-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(5, "Quiet Pool", new Monster(
-                Id: "i3s5-lilypad-imp",
-                Name: "Lilypad Imp",
+            new Stage(5, "Far Quiet Pool", new Monster(
+                Id: "i10s5-lilypad-imp",
+                Name: "Elder Lilypad Imp",
                 Type: MonsterType.Common,
-                Hp: 174, Attack: 29, Defense: 6, Speed: 10,
+                Hp: 2526, Attack: 420, Defense: 87, Speed: 20,
                 Weakness: Element.Focus, Strength: Element.Rest,
                 Actions:
                 [
                     new MonsterAction("Hop", 8, Element.Movement, ActionType.Attack),
                 ],
-                SpriteKey: "lilypad-imp",
+                SpriteKey: "lilypad-imp-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(6, "The Mill Wheel", new Monster(
-                Id: "i3s6-gristmill",
-                Name: "Gristmill Golem",
+            new Stage(6, "The Far Mill Wheel", new Monster(
+                Id: "i10s6-gristmill",
+                Name: "Elder Gristmill Golem",
                 Type: MonsterType.Elite,
-                Hp: 479, Attack: 40, Defense: 17, Speed: 5,
+                Hp: 6974, Attack: 579, Defense: 248, Speed: 10,
                 Weakness: Element.Focus, Strength: Element.Nourishment,
                 Actions:
                 [
@@ -109,16 +107,16 @@ public static class Island3
                     new MonsterAction("Lock Gears", 0, Element.Nourishment, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 40, 2)),
                     new MonsterAction("Idle Churn", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 9, 3)),
+                        new StatusEffect(StatusKind.Drain, 130, 3)),
                 ],
-                SpriteKey: "gristmill",
+                SpriteKey: "gristmill-elder",
                 Theme: DioramaTheme.Light)),
 
-            new Stage(7, "The Top of the Falls", new Monster(
-                Id: "i3s7-cascade-warden",
-                Name: "The Cascade Warden",
+            new Stage(7, "The Far Top of the Falls", new Monster(
+                Id: "i10s7-cascade-warden",
+                Name: "The Elder Cascade Warden",
                 Type: MonsterType.Boss,
-                Hp: 705, Attack: 41, Defense: 14, Speed: 6,
+                Hp: 10384, Attack: 593, Defense: 206, Speed: 11,
                 Weakness: Element.Focus, Strength: Element.Rest,
                 Actions:
                 [
@@ -126,9 +124,9 @@ public static class Island3
                     new MonsterAction("Mist Veil", 0, Element.Rest, ActionType.Shield,
                         new StatusEffect(StatusKind.Guard, 50, 2)),
                     new MonsterAction("Wander Off", 0, Element.Nourishment, ActionType.Debuff,
-                        new StatusEffect(StatusKind.Drain, 13, 3)),
+                        new StatusEffect(StatusKind.Drain, 188, 3)),
                 ],
-                SpriteKey: "cascade-warden",
+                SpriteKey: "cascade-warden-elder",
                 Theme: DioramaTheme.Light)),
         ]);
 
@@ -136,12 +134,12 @@ public static class Island3
     public static readonly IReadOnlyDictionary<string, string> DarkNames =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["i3s1-driplet"] = "Murk Driplet",
-            ["i3s2-pebblenook"] = "Mossy Pebblenook",
-            ["i3s3-eddywhirl"] = "Fog Eddy",
-            ["i3s4-pingwing"] = "The Endless Pingwing",
-            ["i3s5-lilypad-imp"] = "Sunken Lilypad",
-            ["i3s6-gristmill"] = "Rusted Gristmill",
-            ["i3s7-cascade-warden"] = "The Fogbound Warden",
+            ["i10s1-driplet"] = "Elder Murk Driplet",
+            ["i10s2-pebblenook"] = "Elder Mossy Pebblenook",
+            ["i10s3-eddywhirl"] = "Elder Fog Eddy",
+            ["i10s4-pingwing"] = "The Elder Endless Pingwing",
+            ["i10s5-lilypad-imp"] = "Elder Sunken Lilypad",
+            ["i10s6-gristmill"] = "Elder Rusted Gristmill",
+            ["i10s7-cascade-warden"] = "The Elder Fogbound Warden",
         };
 }
