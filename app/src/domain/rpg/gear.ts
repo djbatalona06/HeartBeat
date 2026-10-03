@@ -210,6 +210,44 @@ const CATALOGUE: GearEntry[] = [
     blurb: 'Cut for somebody. The whole of what it means is in the cutting of it.' },
   { id: 'weapon-plain-sentence', slot: 'weapon', name: 'Plain Sentence', rarity: 'mythic',
     blurb: 'Said once, without hedging. Nothing in the app hits harder.' },
+
+  // Added with the world's last three islands --------------------------------
+  // Fifteen more, three to every slot, between rare and mythic: the top of the
+  // ladder is where the new islands are fought, and a rung with one item on it
+  // gave a long game nothing to choose between. Still the same imagery -- an
+  // ordinary evening, a coat by the door -- and still no stats written here:
+  // each comes out of the rarity budget and the hash like the rest, which is
+  // why this list is names and blurbs and nothing else.
+  { id: 'head-rain-hood', slot: 'helmet', name: 'Rain Hood', rarity: 'epic',
+    blurb: 'Up before the first drop and down after the last. Dry, mostly.' },
+  { id: 'head-streetlamp', slot: 'helmet', name: 'Streetlamp', rarity: 'legendary',
+    blurb: 'Comes on at dusk exactly when it is needed, and never earlier.' },
+  { id: 'head-first-snow', slot: 'helmet', name: 'First Snow', rarity: 'mythic',
+    blurb: 'The hush before anybody says it has started. Worn for the quiet.' },
+  { id: 'weapon-garden-shears', slot: 'weapon', name: 'Garden Shears', rarity: 'epic',
+    blurb: 'Cuts back what was never going to flower, and is thanked for it by spring.' },
+  { id: 'weapon-lighthouse-beam', slot: 'weapon', name: 'Lighthouse Beam', rarity: 'legendary',
+    blurb: 'Sweeps the dark once a minute, and has never once been in a hurry.' },
+  { id: 'weapon-kind-reply', slot: 'weapon', name: 'Kind Reply', rarity: 'mythic',
+    blurb: 'Sent before the argument had finished. It finished.' },
+  { id: 'body-cardigan', slot: 'chestplate', name: 'Cardigan', rarity: 'rare',
+    blurb: 'Buttoned wrong by one, and nobody has ever mentioned it.' },
+  { id: 'body-harbour-jacket', slot: 'chestplate', name: 'Harbour Jacket', rarity: 'epic',
+    blurb: 'Smells faintly of rope, and of a day where nothing went wrong.' },
+  { id: 'body-woodsmoke-coat', slot: 'chestplate', name: 'Woodsmoke Coat', rarity: 'legendary',
+    blurb: 'Carries the evening fire home in its lining, long after the fire.' },
+  { id: 'boots-garden-clogs', slot: 'boots', name: 'Garden Clogs', rarity: 'rare',
+    blurb: 'Left by the back door, always facing out, in case.' },
+  { id: 'boots-night-bus', slot: 'boots', name: 'Night Bus', rarity: 'epic',
+    blurb: 'Takes the long way round, and you let it.' },
+  { id: 'boots-coastal-path', slot: 'boots', name: 'Coastal Path', rarity: 'legendary',
+    blurb: 'Narrow and windy, and the only way anybody ever considered.' },
+  { id: 'charm-mixtape', slot: 'amulet', name: 'Mixtape', rarity: 'rare',
+    blurb: 'Twelve tracks, labelled in a hand you would know anywhere.' },
+  { id: 'charm-brass-compass', slot: 'amulet', name: 'Brass Compass', rarity: 'epic',
+    blurb: 'Points the wrong way on purpose, which is towards home.' },
+  { id: 'charm-polaroid', slot: 'amulet', name: 'Polaroid', rarity: 'legendary',
+    blurb: 'Slightly overexposed. Neither of you would change a thing about it.' },
 ];
 
 /**

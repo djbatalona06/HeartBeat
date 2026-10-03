@@ -25,6 +25,10 @@ import { TheGoodBlanket } from './TheGoodBlanket';
 import { TheDriveHome } from './TheDriveHome';
 import { SpareKey } from './SpareKey';
 import { PlainSentence } from './PlainSentence';
+import {
+  BrassCompass, Cardigan, CoastalPath, FirstSnow, GardenClogs, GardenShears, HarbourJacket,
+  KindReply, LighthouseBeam, Mixtape, NightBus, Polaroid, RainHood, Streetlamp, WoodsmokeCoat,
+} from './more';
 
 /**
  * One drawing per catalogue item — see `art/pets/index.ts` for the sibling
@@ -59,6 +63,21 @@ const ART: Record<string, ComponentType> = {
   'boots-the-drive-home': TheDriveHome,
   'charm-spare-key': SpareKey,
   'weapon-plain-sentence': PlainSentence,
+  'head-rain-hood': RainHood,
+  'head-streetlamp': Streetlamp,
+  'head-first-snow': FirstSnow,
+  'weapon-garden-shears': GardenShears,
+  'weapon-lighthouse-beam': LighthouseBeam,
+  'weapon-kind-reply': KindReply,
+  'body-cardigan': Cardigan,
+  'body-harbour-jacket': HarbourJacket,
+  'body-woodsmoke-coat': WoodsmokeCoat,
+  'boots-garden-clogs': GardenClogs,
+  'boots-night-bus': NightBus,
+  'boots-coastal-path': CoastalPath,
+  'charm-mixtape': Mixtape,
+  'charm-brass-compass': BrassCompass,
+  'charm-polaroid': Polaroid,
 };
 
 for (const item of GEAR) {
