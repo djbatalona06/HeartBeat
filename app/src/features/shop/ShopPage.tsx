@@ -631,7 +631,7 @@ function Adventures({ avatar, owned, onGo }: {
                     that cannot take the theme, and icons.tsx rejects
                     glyph-as-icon for exactly this reason. */}
                 {locked
-                  ? `Lv ${place.unlockLevel}`
+                  ? `Your Lv ${place.unlockLevel}`
                   : `${travelCost(place, base)} energy`}
               </button>
             </li>
