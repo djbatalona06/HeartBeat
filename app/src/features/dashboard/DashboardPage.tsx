@@ -31,6 +31,7 @@ import { Tile } from '../../components/Tile';
 import { EmptyState } from '../../ui/EmptyState';
 import { LogStrip } from './LogStrip';
 import { CostumeLayer } from '../party/art/costumes';
+import { BossGateCard } from './BossGateCard';
 
 /**
  * Home. What the pet is doing, and what is left to do today.
@@ -135,6 +136,10 @@ export function DashboardPage() {
           the tree since the dashboard was a grid and had no call sites left
           after the ring came out; this is what it was for. */}
       {!paired ? <PairInvite /> : null}
+
+      {/* The way to the Boss Gate. It was only in the menu, behind two taps and
+          a screen called Eve's Garden. */}
+      <BossGateCard coupleId={coupleId} memberId={memberId} />
 
       <TodaySection
         open={open}

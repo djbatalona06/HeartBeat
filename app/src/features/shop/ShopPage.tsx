@@ -65,6 +65,7 @@ import type { ChestOutcome } from '../../db/repository/chests';
 import { ChestReveal } from '../chest/ChestReveal';
 import { openingLine } from '../chest/receipt';
 import { SecondaryAction } from '../../ui/SecondaryAction';
+import { Tile } from '../../components/Tile';
 
 /**
  * How brightly a companion's card is lit, by how rare it is.
@@ -350,6 +351,8 @@ function RaidSection({ ctx }: { ctx: ShopContext }) {
   const companion = pets.find((p) => p.id === avatar.companionId);
   return (
     <>
+      {/* First, because the sheet below is what you bring to the gate. */}
+      <Tile to="/eve-garden" title="Boss Gate" icon="sword" value="Enter" hint="The islands and the boss. Better together." />
       <RaidSheet
         avatar={avatar}
         owned={owned}

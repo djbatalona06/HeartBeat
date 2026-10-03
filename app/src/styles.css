@@ -7902,6 +7902,8 @@ a, button, input, select, textarea, summary, label, [role='button'] {
   to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 :root[data-calm='true'] .popup-panel { animation: none; }
+.boss-gate-rewards { margin: var(--space-3) 0 0; padding-left: var(--space-4); font-size: var(--text-sm); color: var(--color-text); }
+.boss-gate-rewards li + li { margin-top: var(--space-1); }
 .popup-actions { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
 
 /* ---- costumes ------------------------------------------------------------
