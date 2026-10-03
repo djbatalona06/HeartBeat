@@ -96,7 +96,7 @@ export const PRIMARY_TABS: Tab[] = [
   { to: '/shop', label: 'Shop', icon: 'shop', hint: 'Gear, eggs, and what coins are for' },
   { to: '/friends', label: 'Friends', icon: 'friends', hint: 'Their birb, and something kind to send' },
   { to: '/assets', label: 'Bag', icon: 'bag', hint: 'Gear and your stat sheet' },
-  { to: '/birb', label: 'Birb', icon: 'bird', hint: 'Your companions, colours, and room' },
+  { to: '/birb', label: 'Birb', icon: 'bird', hint: 'Your companions, colours, costumes, and room' },
 ];
 
 /**

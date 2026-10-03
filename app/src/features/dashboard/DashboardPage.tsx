@@ -31,6 +31,7 @@ import { Tile } from '../../components/Tile';
 import { EmptyState } from '../../ui/EmptyState';
 import { LogStrip } from './LogStrip';
 import { LoginAward } from './LoginAward';
+import { CostumeLayer } from '../party/art/costumes';
 
 /**
  * Home. What the pet is doing, and what is left to do today.
@@ -106,6 +107,7 @@ export function DashboardPage() {
         greetPose={greetPose}
         greetingLine={greeting.line}
         dye={avatar?.dye}
+        costume={avatar?.costume}
         radiance={vitals ? glowOf(vitals) : 1}
         progress={progress}
         mascotRef={mascotRef}
@@ -388,6 +390,7 @@ interface PetStageProps {
   greetPose: string | undefined;
   greetingLine: string;
   dye: string | undefined;
+  costume: string | undefined;
   radiance: number;
   progress: ReturnType<typeof levelProgress>;
   mascotRef: React.RefObject<HTMLDivElement>;
@@ -397,7 +400,7 @@ interface PetStageProps {
 /** The mascot in its colours, what it says, and how far along it is. */
 function PetStage(props: PetStageProps) {
   const {
-    aura, framed, mascot, petMood, calm, greetPose, greetingLine, dye, radiance, progress, mascotRef, fillRef,
+    aura, framed, mascot, petMood, calm, greetPose, greetingLine, dye, costume, radiance, progress, mascotRef, fillRef,
   } = props;
   return (
     <>
@@ -424,6 +427,7 @@ function PetStage(props: PetStageProps) {
       aria-label={`${mascot.name} the ${mascot.species}, level ${progress.level}, ${moodWords(petMood)}`}
     >
       <mascot.Art mood={petMood} />
+      <CostumeLayer id={costume} />
     </div>
 
     <PetGreeting line={greetingLine} />

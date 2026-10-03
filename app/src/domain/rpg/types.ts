@@ -186,6 +186,12 @@ export interface Avatar {
    */
   dye?: string;
   /**
+   * The costume being worn — a `costume-` id from `costumes.ts`, or none.
+   * Optional like `dye`, so no migration. Separate from `dye` on purpose: one is
+   * a drawing over the bird, the other is the bird's colour.
+   */
+  costume?: string;
+  /**
    * Draws since the last payout, per chest — the counters behind the pity
    * floors in `chests.ts`. One per chest rather than one shared, because a bad
    * run on the cheap chest is not insurance you have paid for on the dear one.

@@ -5249,7 +5249,7 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
    Each tile previews the real mascot with the dye's three custom properties
    set on `.dye-art`, so the swatch is the bird rather than a square of colour
    that has to be trusted to match it. */
-.dye-grid {
+.dye-grid, .costume-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   gap: var(--space-3);
@@ -5257,7 +5257,7 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   margin-top: var(--space-4);
 }
 
-.dye-button {
+.dye-button, .costume-button {
   width: 100%;
   display: grid;
   justify-items: center;
@@ -5271,22 +5271,22 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   transition: transform var(--motion-fast) var(--ease-soft),
               border-color var(--motion-fast) var(--motion-easing);
 }
-.dye-button:active { transform: scale(0.96); }
-.dye-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.dye-button:active, .costume-button:active { transform: scale(0.96); }
+.dye-button:focus-visible, .costume-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 /* Worn is disabled, so it must not read as unavailable — it is the one you
    already chose. The ring says so and the opacity rule below exempts it. */
-.dye-button[data-worn='true'] {
+.dye-button[data-worn='true'], .costume-button[data-worn='true'] {
   border-color: var(--color-accent);
   box-shadow: inset 0 0 0 1px var(--color-accent);
 }
-.dye-button:disabled { cursor: default; }
-.dye-button:disabled[data-worn='false'] { opacity: 0.45; }
+.dye-button:disabled, .costume-button:disabled { cursor: default; }
+.dye-button:disabled[data-worn='false'], .costume-button:disabled[data-worn='false'] { opacity: 0.45; }
 
-.dye-art { width: 62px; height: 62px; display: block; }
-.dye-art svg { width: 100%; height: 100%; }
-.dye-name { font-size: var(--text-xs); text-align: center; line-height: var(--line-tight); }
-.dye-state { font-size: var(--text-xs); color: var(--color-text-muted); }
-.dye-button[data-worn='true'] .dye-state { color: var(--color-accent); }
+.dye-art, .costume-art { width: 62px; height: 62px; display: block; }
+.dye-art svg, .costume-art svg { width: 100%; height: 100%; }
+.dye-name, .costume-name { font-size: var(--text-xs); text-align: center; line-height: var(--line-tight); }
+.dye-state, .costume-state { font-size: var(--text-xs); color: var(--color-text-muted); }
+.dye-button[data-worn='true'] .dye-state, .costume-button[data-worn='true'] .costume-state { color: var(--color-accent); }
 
 /* ---- goals, ideas and the areas grid ---------------------------------------
    Everything here tints with `color-mix()` against `--color-accent` rather
@@ -7876,3 +7876,11 @@ a, button, input, select, textarea, summary, label, [role='button'] {
 .purse-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-2); }
 .purse-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .garden-victory-loot { font-size: var(--text-sm); color: var(--color-text); }
+
+/* ---- costumes ------------------------------------------------------------
+   Laid over a mascot in the same 100x100 box it is drawn in. The layer is
+   inert, and its drawings read --costume-main and --costume-trim, never the
+   three custom properties a dye sets. */
+.costume-layer { position: absolute; inset: 0; display: block; pointer-events: none; }
+.costume-layer svg { width: 100%; height: 100%; display: block; }
+.costume-art, .friend-birb { position: relative; }

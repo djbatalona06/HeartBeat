@@ -19,6 +19,7 @@ export * from './cheers';
 export * from './chests';
 export * from './coinSources';
 export * from './cosmetics';
+export * from './costumes';
 export * from './encounters';
 export * from './entries';
 export * from './garden';

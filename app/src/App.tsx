@@ -181,7 +181,7 @@ export function App() {
                             The raid left: the sheet, the boss and the adventures
                             are one subject and now have one screen, so /birb is
                             the bird and the room it lives in. */}
-                        <Route path="/birb" element={<ShopPage only={['colours', 'house', 'plots', 'companions']} title="Birb" />} />
+                        <Route path="/birb" element={<ShopPage only={['colours', 'costumes', 'house', 'plots', 'companions']} title="Birb" />} />
                         <Route path="/raid" element={<ShopPage only={['raid']} title="Raid" />} />
                         {/* The everything view went when each of its sections had a
                             home of its own. Kept as a redirect, like /cycle, for
