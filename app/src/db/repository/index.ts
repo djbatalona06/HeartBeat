@@ -17,6 +17,7 @@ export * from './charges';
 export * from './chat';
 export * from './cheers';
 export * from './chests';
+export * from './coinSources';
 export * from './cosmetics';
 export * from './encounters';
 export * from './entries';

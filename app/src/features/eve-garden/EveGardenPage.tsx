@@ -4,7 +4,7 @@ import { db, loadSettings } from '../../db/database';
 import {
   awardPetXp, chooseRaidCompanion, clearStageFor, coupleVitals, ensureIdentity,
   gardenMomentum, loadWorldProgress, openRaidGate,
-  recordRaidRounds, stampGatePresence, todaysCharges, travelToIsland,
+  recordRaidRounds, settleGardenClear, stampGatePresence, todaysCharges, travelToIsland,
 } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { levelForXp } from '../../domain/xp';
@@ -26,7 +26,7 @@ import { partnerOf } from '../pairing/namingGate';
 import { variantFor } from '../../domain/rpg/diorama';
 import {
   ISLAND_COUNT, currentStage, isIslandComplete, islandProgress, standingIsland,
-  STAGES_PER_ISLAND, newWorldProgress, stageOfMonster, type WorldProgress,
+  STAGES_PER_ISLAND, islandOfMonster, newWorldProgress, stageOfMonster, type WorldProgress,
 } from '../../domain/rpg/world';
 import { createGameClient, isClosed, type GameClient } from './engine/client';
 import type {
@@ -181,7 +181,7 @@ export function EveGardenPage() {
   const [busy, setBusy] = useState<Busy>('idle');
   const [mapOpen, setMapOpen] = useState(false);
   const [victory, setVictory] = useState<
-    { monster: MonsterDto; xp: number; leveledUp: boolean; level: number; rewardText: string } | null
+    { monster: MonsterDto; xp: number; leveledUp: boolean; level: number; rewardText: string; lootText: string } | null
   >(null);
   const [note, setNote] = useState<string | null>(null);
 
@@ -541,6 +541,22 @@ export function EveGardenPage() {
       ? togetherXp(ended.xpOwed, together.current)
       : 0;
     if (bonusXp > 0) await awardPetXp(coupleId, `garden-together-${ended.monsterId}`, bonusXp);
+
+    // Coins are the member's own, so this one is per phone: a first clear pays
+    // its coins once, and a boss already beaten drops replay loot (capped a day).
+    const loot = memberId
+      ? await settleGardenClear(memberId, coupleId, {
+        monsterId: ended.monsterId,
+        island: islandOfMonster(ended.monsterId) ?? island,
+        stage: stageOfMonster(ended.monsterId) ?? stage,
+        day,
+        coinMultiplier: together.current.coinMultiplier,
+        extraPurses: together.current.purses,
+      })
+      : null;
+    const lootText = loot && (loot.coins > 0 || loot.purses.length > 0)
+      ? `${loot.replay ? 'Loot: ' : ''}+${loot.coins} coins${loot.purses.length > 0 ? ` and ${loot.purses.length === 1 ? 'a purse' : `${loot.purses.length} purses`} in your bag` : ''}.`
+      : '';
     const after = await clearStageFor(coupleId, ended.monsterId);
 
     const game = client.current;
@@ -571,9 +587,10 @@ export function EveGardenPage() {
       rewardText: crossed.length > 0
         ? crossed.map((entry) => `${entry.name}. ${entry.blurb}`).join(' ')
         : '',
+      lootText,
     });
     void after;
-  }, [coupleId, petXp, companion]);
+  }, [coupleId, memberId, petXp, companion, island, stage, day]);
 
   const playRound = useCallback(async (opening: BattleDto, actionId: string) => {
     const game = client.current;
@@ -964,6 +981,7 @@ export function EveGardenPage() {
           leveledUp={victory.leveledUp}
           level={victory.level}
           rewardText={victory.rewardText}
+          lootText={victory.lootText}
           islandComplete={isIslandComplete(world, island)}
           nextIslandName={nextIslandName}
           onDismiss={() => { setVictory(null); setBattle(null); }}

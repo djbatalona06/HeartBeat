@@ -72,14 +72,24 @@ describe('settleVictory', () => {
     expect(await coinsOf(HER)).toBe(STARTER_COINS + SNAIL.bounty);
   });
 
-  it('credits again the next day, but never pays the bounty twice', async () => {
+  it('credits again the next day, never pays the bounty twice, and pays a small trickle instead', async () => {
     await settleVictory(HER, COUPLE, SNAIL.id, DAY);
     const tomorrow = await settleVictory(HER, COUPLE, SNAIL.id, NEXT_DAY);
+    const trickle = Math.max(1, Math.round(SNAIL.bounty / 4));
     expect(tomorrow.xp).toBe(SNAIL.xp);
-    expect(tomorrow.coins).toBe(0);
+    expect(tomorrow.coins).toBe(trickle);
+    expect(tomorrow.coins).toBeLessThan(SNAIL.bounty);
     expect(tomorrow.first).toBe(false);
     expect(await petXp()).toBe(SNAIL.xp * 2);
-    expect(await coinsOf(HER)).toBe(STARTER_COINS + SNAIL.bounty);
+    expect(await coinsOf(HER)).toBe(STARTER_COINS + SNAIL.bounty + trickle);
+  });
+
+  it('pays the trickle once per enemy per day, not once per tap', async () => {
+    await settleVictory(HER, COUPLE, SNAIL.id, DAY);
+    const once = await settleVictory(HER, COUPLE, SNAIL.id, NEXT_DAY);
+    const twice = await settleVictory(HER, COUPLE, SNAIL.id, NEXT_DAY);
+    expect(once.coins).toBeGreaterThan(0);
+    expect(twice.coins).toBe(0);
   });
 
   // The design call: both halves of the couple doing something is two things done.

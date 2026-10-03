@@ -7,6 +7,7 @@ import { petSheet } from '../../domain/rpg/pets';
 import type { SkillEffect } from '../../domain/rpg/skills';
 import type { Stats } from '../../domain/rpg/types';
 import { enemyById } from '../../domain/rpg/enemies';
+import { repeatWinCoins } from '../../domain/rpg/coinSources';
 import { vigourOf, type Vigour } from '../../domain/rpg/vigour';
 import { getOrCreateAvatar } from './rpg';
 import { awardPetXp } from './petXp';
@@ -167,24 +168,40 @@ export async function settleVictory(
   // One transaction: the bounty and the `bested` entry are the same decision, and
   // a read-modify-write on `avatars` outside one races a sync applying a pulled
   // avatar.
-  const first = await db.transaction('rw', db.avatars, async () => {
+  const settled = await db.transaction('rw', db.avatars, async () => {
     const avatar = await getOrCreateAvatar(memberId, coupleId);
     const bested = avatar.bested ?? [];
-    if (bested.includes(enemyId)) return false;
+    if (bested.includes(enemyId)) {
+      // A repeat win pays a small trickle, once per enemy per day and capped
+      // per day overall, so going back to a wasp is worth a little and farming
+      // one is not worth the evening.
+      const extra = alreadyCounted ? 0 : repeatWinCoins(enemy.bounty, avatar, day);
+      if (extra > 0) {
+        const paid = avatar.foeCoinsDay === day ? avatar.foeCoinsPaid ?? 0 : 0;
+        await db.avatars.put({
+          ...avatar,
+          coins: avatar.coins + extra,
+          foeCoinsDay: day,
+          foeCoinsPaid: paid + extra,
+          updatedAt: now(),
+        });
+      }
+      return { first: false, coins: extra };
+    }
     await db.avatars.put({
       ...avatar,
       coins: avatar.coins + enemy.bounty,
       bested: [...bested, enemyId],
       updatedAt: now(),
     });
-    return true;
+    return { first: true, coins: enemy.bounty };
   });
 
   return {
     ok: true,
     xp: alreadyCounted ? 0 : enemy.xp,
-    coins: first ? enemy.bounty : 0,
-    first,
+    coins: settled.coins,
+    first: settled.first,
   };
 }
 

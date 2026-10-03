@@ -7869,3 +7869,10 @@ a, button, input, select, textarea, summary, label, [role='button'] {
 /* The Connections group: one heading, then the blocks it gathers, spaced the
    way the page spaces its own children. */
 .connections { display: grid; gap: var(--stack); }
+
+/* ---- coin purses and the daily award ---- */
+.login-award .chips { list-style: none; margin: 0; padding: 0; }
+.login-award-said { text-align: center; }
+.purse-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-2); }
+.purse-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.garden-victory-loot { font-size: var(--text-sm); color: var(--color-text); }

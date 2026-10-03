@@ -228,6 +228,23 @@ export interface Avatar {
    * queue in `repository/petXp.ts`.
    */
   bested?: string[];
+  /**
+   * Garden monsters this member has beaten, by monster id: the once-ever coin
+   * for a first clear, and what tells a later win it is a replay. Per member,
+   * because coins are, and because the world row's `cleared` is the couple's —
+   * a stage your partner beat first still pays you your own first clear.
+   */
+  gardenBested?: string[];
+  /** Claims made in the current seven-day login cycle, 0 to 6. */
+  loginClaims?: number;
+  /** The day (member's own zone) the last login award was claimed. */
+  lastLoginDay?: string;
+  /** Replay-loot drops taken on `replayDay`, against `REPLAY_DAILY_CAP`. */
+  replayDay?: string;
+  replayCount?: number;
+  /** Coins the overworld's repeat-win trickle has paid on `foeCoinsDay`. */
+  foeCoinsDay?: string;
+  foeCoinsPaid?: number;
   updatedAt: number;
 }
 

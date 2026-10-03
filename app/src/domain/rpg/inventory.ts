@@ -18,6 +18,12 @@ export interface InventoryItem {
   refine: number;
   acquiredAt: number;
   updatedAt: number;
+  /**
+   * Set when a coin purse is opened. A purse is spent by marking it, never by
+   * deleting the row: holdings sync has no tombstones, so a deleted row is
+   * recreated by the next pull and the purse can be opened again.
+   */
+  openedAt?: number;
 }
 
 export function ownsItem(owned: readonly InventoryItem[], itemId: string): boolean {
