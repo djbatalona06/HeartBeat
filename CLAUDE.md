@@ -361,6 +361,21 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   (`functions/api/_offboard.ts`) is the one place a member is turned off, and
   it clears push, nudges and OAuth/study links, because a revoked row that keeps
   those still acts for the person who left.
+- **Coins can arrive as items, and a purse is spent by marking it, never by
+  deleting it.** Holdings sync has no tombstones, so a deleted inventory row is
+  recreated by the next pull and opened again. `purse-` rows carry `openedAt`;
+  their row id comes from where they were found (`purseRowId`), so a retried
+  grant is the same row. Purses are **found, never sold** — a shop price below
+  what one opens for would be a machine. Sources: the seventh login day, a first
+  boss clear done together, and boss replay loot (three drops a day per member).
+  Garden coins are **per member** (`Avatar.gardenBested`), not read off the
+  couple's world row, so a stage your partner beat first still pays you yours.
+- **Costumes and dyes are two different things and must stay two.** A dye sets
+  `--color-text` / `--color-accent` / `--color-text-muted` on the bird's wrapper;
+  a costume is a drawing laid over it in `--costume-main` / `--costume-trim` and
+  worn through `Avatar.costume`. `art.test.ts` reads the costume drawings and
+  fails if one paints in a dye's property. Costumes are cosmetic only and stay
+  out of the loadout.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)
