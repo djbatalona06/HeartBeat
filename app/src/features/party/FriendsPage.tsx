@@ -1,4 +1,3 @@
-import { CostumeLayer } from './art/costumes';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -9,9 +8,8 @@ import { todayKey } from '../../domain/day';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import { petKindById } from '../../domain/rpg/pets';
 import { dyeStyle } from '../../domain/rpg/dyes';
+import { costumeById } from '../../domain/rpg/costumes';
 import { GOOD_VIBES_PER_SENDER_PER_DAY } from '../../domain/rpg/lifeEvents';
-import { getMascot } from '../pet/mascots';
-import { useTheme } from '../../themes/ThemeProvider';
 import { petArt } from './art/pets';
 import { PrimaryAction } from '../../ui/PrimaryAction';
 import type { Avatar } from '../../domain/rpg/types';
@@ -134,28 +132,31 @@ interface PartnerHouseProps {
   companionId: string | undefined;
 }
 
-/** The other house in town: their bird in their colours, and how long you have both been at it. */
+/**
+ * The other house in town: the companion they last chose, in their colours.
+ *
+ * Their companion rather than a mascot, because the mascot is a function of the
+ * *viewer's* theme -- drawing it here showed you your own bird under their
+ * name. The companion is chosen per member and travels with their avatar.
+ */
 function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouseProps) {
-  const { theme } = useTheme();
-  const mascot = getMascot(theme.id);
   const companionKind = companionId ? petKindById(companionId) : undefined;
   const CompanionArt = companionId ? petArt(companionId) : undefined;
-  const partnerAvatar = avatar;
+  const costume = costumeById(avatar?.costume);
+  const name = partner.displayName || 'Them';
 
   return (
     <section className="panel">
-      <h2 className="section-title">{partner.displayName || 'Them'}</h2>
+      <h2 className="section-title">{name}</h2>
       <div className="friend-house">
-        {/* Their colourway, not yours — the dye lives on their avatar, so
-            visiting shows the bird they actually dressed. */}
+        {/* Their colourway, not yours -- the dye lives on their avatar. */}
         <div
           className="friend-birb"
-          style={dyeStyle(partnerAvatar?.dye) as React.CSSProperties}
+          style={dyeStyle(avatar?.dye) as React.CSSProperties}
           role="img"
-          aria-label={`${partner.displayName || 'Their'} birb`}
+          aria-label={companionKind ? `${name}'s companion, ${companionKind.name}` : `${name} has not chosen a companion`}
         >
-          <mascot.Art mood="content" />
-          <CostumeLayer id={partnerAvatar?.costume} />
+          {CompanionArt ? <CompanionArt /> : null}
         </div>
         <dl className="friend-facts">
           <div>
@@ -164,20 +165,18 @@ function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouse
           </div>
           <div>
             <dt>Level</dt>
-            <dd>{partnerAvatar ? levelOf(partnerAvatar) : '—'}</dd>
+            <dd>{avatar ? levelOf(avatar) : '—'}</dd>
           </div>
           <div>
             <dt>Coins</dt>
-            <dd>{partnerAvatar ? sheetFor(partnerAvatar).coins : '—'}</dd>
+            <dd>{avatar ? sheetFor(avatar).coins : '—'}</dd>
           </div>
         </dl>
       </div>
-      {companionKind && CompanionArt ? (
-        <p className="section-sub friend-companion">
-          <span className="friend-companion-art" aria-hidden="true"><CompanionArt /></span>
-          Walking with {companionKind.name}.
-        </p>
-      ) : null}
+      <p className="section-sub friend-companion">
+        {companionKind ? `Walking with ${companionKind.name}.` : 'Has not chosen a companion yet.'}
+        {costume ? ` Wearing the ${costume.name.toLowerCase()}.` : ''}
+      </p>
     </section>
   );
 }

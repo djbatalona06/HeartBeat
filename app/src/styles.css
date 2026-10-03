@@ -7883,7 +7883,18 @@ a, button, input, select, textarea, summary, label, [role='button'] {
    three custom properties a dye sets. */
 .costume-layer { position: absolute; inset: 0; display: block; pointer-events: none; }
 .costume-layer svg { width: 100%; height: 100%; display: block; }
-.costume-art, .friend-birb { position: relative; }
+.costume-art { position: relative; }
+
+/* ---- friends ---------------------------------------------------------------
+   The partner's companion beside the three numbers. The portrait is a bare
+   SVG, so the box gives it a size. */
+.friend-house { display: flex; align-items: center; gap: var(--space-4); }
+.friend-birb { width: 96px; height: 96px; flex: none; }
+.friend-birb svg { width: 100%; height: 100%; display: block; }
+.friend-facts { display: grid; gap: var(--space-2); margin: 0; flex: 1; }
+.friend-facts div { display: flex; justify-content: space-between; gap: var(--space-3); }
+.friend-facts dt { color: var(--color-text-muted); font-size: var(--text-sm); }
+.friend-facts dd { margin: 0; font-weight: 600; }
 
 /* An unfound costume is shown shut away: the drawing dimmed to a silhouette, the
    tier of egg it comes from in the caption. Still a button, so it keeps its
