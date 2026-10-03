@@ -47,7 +47,13 @@ if (!existsSync(join(DIST, 'index.html'))) {
  * in the failure message is a number somebody has to think about.
  */
 const PRECACHE_CEILING_ENTRIES = 24;
-const PRECACHE_CEILING_KIB = 1200;
+// Raised from 1200 when islands 8-10, the costume art, the coin sources and the
+// partner gate landed together: main measured 1186 KiB and the branch 1207, so
+// the headroom is 13 KiB where it was 14. The growth is content and code that
+// ships to every phone (about 6 KiB of island data, the rest features), not a
+// chunk that slipped into the precache; the three guards below that catch
+// that — phaser, the game worker and the 3D mascots — are unchanged.
+const PRECACHE_CEILING_KIB = 1220;
 
 const sw = await readFile(join(DIST, 'sw.js'), 'utf8');
 const manifest = [...sw.matchAll(/"revision":\s*(?:"[^"]*"|null),\s*"url":\s*"([^"]+)"/g)]
