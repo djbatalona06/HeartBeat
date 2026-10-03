@@ -417,7 +417,10 @@ export function candidatesFor(kind: PrizeKind, tier: Tier): string[] {
     case 'decor':
       return FURNITURE.filter((p) => tierForPrice(p.price) === tier).map((p) => p.id);
     case 'dye':
-      return DYES.filter((d) => tierForPrice(d.price) === tier).map((d) => d.id);
+      // Not the starter colourway: it is free and everybody already wears it,
+      // so as a prize it was an item worth nothing, and a repeat of it refunded
+      // nothing either. `tierForPrice(0)` is `common`, which is how it got in.
+      return DYES.filter((d) => d.price > 0 && tierForPrice(d.price) === tier).map((d) => d.id);
     case 'flora':
       return FLORA.filter((f) => floraTier(f) === tier).map((f) => f.id);
     default:
