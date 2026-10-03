@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ISLAND_COUNT, STAGES_PER_ISLAND, clearStage, clearedCount, currentStage,
   isIslandComplete, isIslandUnlocked, islandOfMonster, islandProgress,
-  newWorldProgress, stageOfMonster, standingIsland, travelTo, type WorldProgress,
+  mergeGate, mergeWorld, newWorldProgress, stageOfMonster, standingIsland, travelTo, type WorldProgress,
 } from './world';
 
 const AT = 1_700_000_000_000;
@@ -169,5 +169,62 @@ describe('travelling', () => {
   it('is a no-op when already there', () => {
     const start = fresh();
     expect(travelTo(start, 1, AT + 10)).toBe(start);
+  });
+});
+
+describe('merging two phones\' worlds', () => {
+  const row = (ids: readonly string[], at: number, extra: Partial<WorldProgress> = {}): WorldProgress => ({
+    ...fresh(), cleared: [...ids], updatedAt: at, ...extra,
+  });
+
+  it('keeps stages a stale phone had not heard about', () => {
+    const mine = row(ISLAND_1.slice(0, 2), AT + 10);
+    const theirs = row(ISLAND_1.slice(0, 4), AT + 5);
+    const merged = mergeWorld(mine, theirs)!;
+    expect(merged.cleared).toEqual(ISLAND_1.slice(0, 4));
+  });
+
+  it('does not let a newer but shorter row regress the partner\'s stages', () => {
+    const local = row(ISLAND_1.slice(0, 4), AT + 5);
+    const pulled = row(ISLAND_1.slice(0, 3), AT + 20);
+    expect(mergeWorld(local, pulled)).toBeNull();
+  });
+
+  it('pushes the union back when it holds something the other side lacked', () => {
+    const local = row([ISLAND_1[0], ISLAND_1[3]], AT + 5);
+    const pulled = row(ISLAND_1.slice(0, 2), AT + 20);
+    const merged = mergeWorld(local, pulled)!;
+    expect(new Set(merged.cleared)).toEqual(new Set([ISLAND_1[0], ISLAND_1[1], ISLAND_1[3]]));
+    expect(merged.updatedAt).toBeGreaterThan(pulled.updatedAt);
+  });
+
+  it('adopts a row that already holds everything without stamping it again', () => {
+    const local = row(ISLAND_1.slice(0, 2), AT + 5);
+    const pulled = row(ISLAND_1.slice(0, 4), AT + 20);
+    expect(mergeWorld(local, pulled)!.updatedAt).toBe(AT + 20);
+  });
+
+  it('is a no-op for identical rows, so the two phones cannot ping-pong', () => {
+    const a = row(ISLAND_1.slice(0, 3), AT + 5);
+    expect(mergeWorld(a, { ...a, updatedAt: AT + 9 })).toBeNull();
+  });
+
+  it('moves on when the union finishes the island', () => {
+    const local = row(ISLAND_1.slice(0, 4), AT + 5);
+    const pulled = row(ISLAND_1.slice(3), AT + 6);
+    expect(mergeWorld(local, pulled)!.island).toBe(2);
+  });
+
+  it('keeps the later gate stamp for each member', () => {
+    expect(mergeGate({ a: 5, b: 9 }, { a: 7, c: 1 })).toEqual({ a: 7, b: 9, c: 1 });
+    expect(mergeGate(undefined, undefined)).toBeUndefined();
+  });
+
+  it('merges presence without touching the stages', () => {
+    const local = row(ISLAND_1.slice(0, 2), AT + 5, { gate: { me: AT + 5 } });
+    const pulled = row(ISLAND_1.slice(0, 2), AT + 6, { gate: { them: AT + 6 } });
+    const merged = mergeWorld(local, pulled)!;
+    expect(merged.gate).toEqual({ me: AT + 5, them: AT + 6 });
+    expect(merged.cleared).toEqual(ISLAND_1.slice(0, 2));
   });
 });

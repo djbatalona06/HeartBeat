@@ -39,6 +39,7 @@ import { NotHere } from '../errors/NotHere';
 import { GardenBackdrop } from './GardenBackdrop';
 import { GardenHabitat } from './GardenHabitat';
 import { RaidGate } from './gate/RaidGate';
+import { REDRIVE_DELAY_MS, settle, shouldRedriveMonster } from './round';
 import { Compass } from './Compass';
 import { WorldMap } from './WorldMap';
 import { BattleLog } from './BattleLog';
@@ -376,6 +377,21 @@ export function EveGardenPage() {
   const sprite = monster?.spriteKey;
 
   /**
+   * What the scene is built from, held still while a fight is on.
+   *
+   * `island` and `stage` come off the couple's shared world row, which the other
+   * phone may rewrite at any moment, and `dark` off a live query on the logs. A
+   * scene rebuilt under a fight destroys the tween a round is awaiting. The
+   * values catch up the moment the fight ends — a win changes them on purpose.
+   */
+  const pose = useRef({ island, stage, dark, sprite });
+  if (battle?.outcome !== 'Fighting') pose.current = { island, stage, dark, sprite };
+  const sceneIsland = pose.current.island;
+  const sceneStage = pose.current.stage;
+  const sceneDark = pose.current.dark;
+  const sceneSprite = pose.current.sprite;
+
+  /**
    * Whether the fight is read rather than watched.
    *
    * Two entrances, one room. Somebody who turned "Resolve quickly" on in
@@ -394,7 +410,7 @@ export function EveGardenPage() {
     // Chosen text mode never reaches for the chunk at all, so the megabyte is
     // not merely unused — it is not fetched.
     if (textMode) return undefined;
-    if (!sprite || !companion || !host.current) return undefined;
+    if (!sceneSprite || !companion || !host.current) return undefined;
     let live = true;
 
     import('./scene/game')
@@ -403,12 +419,12 @@ export function EveGardenPage() {
         scene.current = startGarden(
           host.current,
           {
-            island,
-            stage,
-            monsterSprite: sprite,
+            island: sceneIsland,
+            stage: sceneStage,
+            monsterSprite: sceneSprite,
             petSprite,
             hour: new Date().getHours(),
-            dark,
+            dark: sceneDark,
             calm: calmRef.current,
           },
           { onEngage: () => engageRef.current() },
@@ -424,7 +440,7 @@ export function EveGardenPage() {
       scene.current?.destroy();
       scene.current = null;
     };
-  }, [island, stage, sprite, petSprite, companion, dark, textMode, reload]);
+  }, [sceneIsland, sceneStage, sceneSprite, petSprite, companion, sceneDark, textMode, reload]);
 
   /**
    * Stop rendering while the tab is hidden.
@@ -545,7 +561,7 @@ export function EveGardenPage() {
             cooldowns.current[kit.themeId] = 0;
             if (verdict.skill.oncePerRaid) spent.current.add(verdict.skill.id);
             setFlourish(verdict.skill.name);
-            await scene.current?.skill(verdict.skill.vfx);
+            await settle(scene.current?.skill(verdict.skill.vfx));
           }
         }
         for (const key of Object.keys(cooldowns.current)) cooldowns.current[key] += 1;
@@ -555,11 +571,11 @@ export function EveGardenPage() {
           const line = mine.log.map((entry) => entry.who).lastIndexOf('Player');
           if (line >= 0) setWeakHits((seen) => [...seen, line]);
         }
-        await scene.current?.strike(
+        await settle(scene.current?.strike(
           'player-hits',
           edge,
           move ? { move, kit: kit.themeId } : undefined,
-        );
+        ));
       }
 
       if (mine.outcome !== 'Fighting') {
@@ -575,7 +591,7 @@ export function EveGardenPage() {
       const theirs = await game.monsterMove(mine);
       if (!theirs) return;
       setBattle(theirs);
-      await scene.current?.strike('monster-hits', 'plain');
+      await settle(scene.current?.strike('monster-hits', 'plain'));
 
       if (theirs.outcome !== 'Fighting') await finish(theirs, foe);
     } catch (error) {
@@ -590,6 +606,34 @@ export function EveGardenPage() {
     if (busy !== 'idle') return;
     if (battle?.outcome === 'Fighting') await playRound(battle, action.id);
   }, [busy, battle, playRound]);
+
+  /**
+   * The monster's move when nothing else will play it — see `shouldRedriveMonster`.
+   * A fight that opens on the monster's turn, or a round cut short, would
+   * otherwise sit on "Waiting on them." with every control disabled.
+   */
+  const redriving = useRef(false);
+  useEffect(() => {
+    const game = client.current;
+    const foe = monster;
+    if (redriving.current || !game || !foe || !battle || !shouldRedriveMonster(battle, busy)) return undefined;
+    // Only the timer is cancelled on cleanup. Once the move is asked for, taking
+    // `busy` below re-runs this effect, and a cancel there would drop the answer.
+    const timer = setTimeout(() => {
+      redriving.current = true;
+      setBusy('acting');
+      game.monsterMove(battle)
+        .then(async (theirs) => {
+          if (!theirs) throw new Error('the monster could not take its turn');
+          setBattle(theirs);
+          await settle(scene.current?.strike('monster-hits', 'plain'));
+          if (theirs.outcome !== 'Fighting') await finish(theirs, foe);
+        })
+        .catch((error) => setFault(faultFrom('round', error)))
+        .finally(() => { redriving.current = false; setBusy('idle'); });
+    }, REDRIVE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [battle, busy, monster, finish]);
 
   /**
    * Each lit charge pays its XP once a day, the first time the garden sees it.

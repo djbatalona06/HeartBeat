@@ -117,6 +117,22 @@ export function canStart(view: Pick<BossView, 'readyA' | 'readyB' | 'state'>): b
   return view.state === 'gathering' && view.readyA && view.readyB;
 }
 
+/**
+ * How often a phone should ask the Worker again, or null to stop asking.
+ *
+ * Boss state changes from the *other* phone — the partner readying, or landing
+ * the killing blow — and the Worker has no way to push it to a screen that is
+ * already open. A panel that read it once on mount sat on "Waiting on the other
+ * half of the couple." until its owner left and came back, however long ago the
+ * partner had said ready. A finished fight changes only when somebody asks for
+ * the next one, which is their own tap, so it needs no polling.
+ */
+export const BOSS_POLL_MS = 8000;
+
+export function bossPollMs(state: BossState | undefined): number | null {
+  return state === 'gathering' || state === 'fighting' ? BOSS_POLL_MS : null;
+}
+
 export function waitingOn(view: Pick<BossView, 'readyA' | 'readyB' | 'state'>): string | null {
   if (view.state !== 'gathering') return null;
   if (view.readyA && view.readyB) return null;

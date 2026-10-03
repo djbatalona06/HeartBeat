@@ -4,8 +4,10 @@ import {
   BASE_HP,
   MAX_VICTORY_BONUS,
   MIN_VICTORY_BONUS,
+  BOSS_POLL_MS,
   TIER_STEP,
   bossDamage,
+  bossPollMs,
   bossMaxHp,
   canStart,
   hitsToClear,
@@ -154,5 +156,18 @@ describe('the fight as the screen sees it', () => {
     const stats = statsFor(10);
     expect(hitsToClear(1, stats)).toBe(Math.ceil(bossMaxHp(1) / plainHit(stats)));
     expect(hitsToClear(5, stats)).toBeGreaterThan(hitsToClear(1, stats));
+  });
+});
+
+describe('bossPollMs', () => {
+  it('keeps asking while the other half can still change the fight', () => {
+    expect(bossPollMs('gathering')).toBe(BOSS_POLL_MS);
+    expect(bossPollMs('fighting')).toBe(BOSS_POLL_MS);
+  });
+
+  it('stops once a fight is finished or not yet read', () => {
+    expect(bossPollMs('won')).toBeNull();
+    expect(bossPollMs('lost')).toBeNull();
+    expect(bossPollMs(undefined)).toBeNull();
   });
 });

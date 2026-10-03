@@ -5,7 +5,7 @@ import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import { petSheet, type PetInstance } from '../../domain/rpg/pets';
 import { SKILLS, castBlockedBecause, skillById } from '../../domain/rpg/skills';
 import {
-  hpFraction, resolveBlow, victoryDropBonus, waitingOn, type BossState,
+  bossPollMs, hpFraction, resolveBlow, victoryDropBonus, waitingOn, type BossState,
 } from '../../domain/rpg/boss';
 import type { Avatar } from '../../domain/rpg/types';
 import { refineByItemId, type InventoryItem } from '../../domain/rpg/inventory';
@@ -72,7 +72,9 @@ export function Boss({ avatar, pets, owned, workerUrl, token, onSpendMp, onSpend
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-    if (!response.ok) return null;
+    // A refused call (a 409 from an attack on a fight that has moved on) still
+    // carries the fight as it really is. Returning it, rather than null, is what
+    // lets the panel catch up instead of doing nothing at all.
     const payload = (await response.json().catch(() => ({}))) as { boss?: BossPayload };
     return payload.boss ?? null;
   }, [workerUrl, token]);
@@ -82,6 +84,27 @@ export function Boss({ avatar, pets, owned, workerUrl, token, onSpendMp, onSpend
     call('/boss').then((next) => { if (live && next) setBoss(next); }).catch(() => {});
     return () => { live = false; };
   }, [call]);
+
+  // The other half of the couple changes this fight from their phone. Without
+  // asking again, whoever readied first stayed on "Waiting on the other half of
+  // the couple." for good — and a partner's win left this screen still fighting
+  // a boss that was already down.
+  const pollMs = bossPollMs(boss?.state);
+  useEffect(() => {
+    if (pollMs === null) return undefined;
+    let live = true;
+    const refresh = () => {
+      if (document.hidden) return;
+      call('/boss').then((next) => { if (live && next) setBoss(next); }).catch(() => {});
+    };
+    const timer = setInterval(refresh, pollMs);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      live = false;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [call, pollMs]);
 
   if (!workerUrl || !token) {
     return (
@@ -130,10 +153,14 @@ export function Boss({ avatar, pets, owned, workerUrl, token, onSpendMp, onSpend
       }
 
       const blow = resolveBlow(sheet.stats, effects);
+      const before = boss;
       const next = await call('/boss/attack', { damage: blow.damage });
       if (next) {
         setBoss(next);
         if (next.state === 'won') await celebrate(avatar.coupleId, next.tier, onMessage);
+        else if (before && next.state !== 'fighting') {
+          onMessage('That fight has already moved on. Here is where it stands.');
+        }
       }
     } finally {
       setBusy(false);

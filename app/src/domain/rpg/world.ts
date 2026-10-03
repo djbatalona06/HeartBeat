@@ -55,6 +55,14 @@ export interface WorldProgress {
    * row written today still reads correctly after island 2 ships.
    */
   cleared: string[];
+  /**
+   * When each member last stood at the Raid Gate on a **boss stage**, by member
+   * id. How the gate knows the other half of the couple is there. Only the boss
+   * stage reads or writes it — every other stage is asynchronous — and it
+   * merges per member by the later stamp, so neither phone overwrites the
+   * other's. Optional, so no stored row needs a migration.
+   */
+  gate?: Record<string, number>;
   /** Last-write time. The holdings sync compares these, so it must be set on every write. */
   updatedAt: number;
 }
@@ -156,4 +164,57 @@ export function travelTo(progress: WorldProgress, island: number, at: number): W
   if (island === progress.island) return progress;
   if (!isIslandUnlocked(progress, island)) return progress;
   return { ...progress, island, updatedAt: at };
+}
+
+/** The later stamp for each member. Neither side is ever lowered. */
+export function mergeGate(
+  a: Record<string, number> | undefined,
+  b: Record<string, number> | undefined,
+): Record<string, number> | undefined {
+  if (!a && !b) return undefined;
+  const out: Record<string, number> = { ...a };
+  for (const [member, at] of Object.entries(b ?? {})) out[member] = Math.max(out[member] ?? 0, at);
+  return out;
+}
+
+function sameContent(a: WorldProgress, b: WorldProgress): boolean {
+  if (a.island !== b.island || a.cleared.length !== b.cleared.length) return false;
+  const have = new Set(a.cleared);
+  if (!b.cleared.every((id) => have.has(id))) return false;
+  const ag = a.gate ?? {};
+  const bg = b.gate ?? {};
+  const members = new Set([...Object.keys(ag), ...Object.keys(bg)]);
+  return [...members].every((member) => (ag[member] ?? 0) === (bg[member] ?? 0));
+}
+
+/**
+ * Fold a row the partner wrote into ours, or null when nothing would change.
+ *
+ * The world used to be pure last-write-wins on the whole row, which let a phone
+ * with a stale copy that re-cleared stage 3 overwrite the partner's stages 1-4
+ * and put the couple back on a stage they had beaten. `clearStage` only ever
+ * appends, so the honest merge is a union of what has fallen.
+ *
+ * The island follows whichever row is newer (travelling is deliberate), then
+ * moves on if the union just finished it. When the merged row holds something
+ * the pulled one lacked, it is stamped one past both so it is pushed and wins
+ * the server's last-write-wins; when the pulled row already holds everything,
+ * it is adopted as it stands and nothing is pushed back. That is what stops
+ * the two phones passing the same row back and forth.
+ */
+export function mergeWorld(local: WorldProgress, pulled: WorldProgress): WorldProgress | null {
+  const have = new Set(local.cleared);
+  const cleared = [...local.cleared, ...pulled.cleared.filter((id) => !have.has(id))];
+  const base = pulled.updatedAt > local.updatedAt ? pulled : local;
+  const at = Math.max(local.updatedAt, pulled.updatedAt);
+  let merged: WorldProgress = {
+    ...base, cleared, gate: mergeGate(local.gate, pulled.gate), updatedAt: at,
+  };
+  if (merged.gate === undefined) delete merged.gate;
+
+  const done = clearedOn(merged, merged.island).length >= STAGES_PER_ISLAND;
+  if (done && merged.island < ISLAND_COUNT) merged = { ...merged, island: merged.island + 1 };
+
+  if (sameContent(merged, local)) return null;
+  return sameContent(merged, pulled) ? merged : { ...merged, updatedAt: at + 1 };
 }
