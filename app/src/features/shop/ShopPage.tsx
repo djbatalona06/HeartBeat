@@ -4,7 +4,6 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useToast } from '../../ui/Toast';
 import { db, loadSettings } from '../../db/database';
 import {
-  buyCostume,
   buyDye,
   buyEgg,
   buyFurniture,
@@ -37,6 +36,7 @@ import { findOwned, ownsItem, refineByItemId, type InventoryItem } from '../../d
 import { EGG_PRICE, GEAR_PRICE, REFINE_MAX, gearBonusWithRefinement, refinePrice } from '../../domain/rpg/shop';
 import { DEFAULT_DYE_ID, DYES, dyeStyle } from '../../domain/rpg/dyes';
 import { COSTUMES } from '../../domain/rpg/costumes';
+import { TIER_NAMES } from '../../domain/rpg/tiers';
 import { CostumeLayer } from '../party/art/costumes';
 import {
   FURNITURE,
@@ -272,12 +272,18 @@ function CompanionsSection({ ctx }: { ctx: ShopContext }) {
         const result = await buyEgg(
           identity.coupleId,
           identity.memberId,
-          { rarity: Math.random(), species: Math.random() },
+          { rarity: Math.random(), species: Math.random(), costume: Math.random() },
           luck,
         );
         if (!result.ok) { say(result.reason ?? null, 'error'); return; }
         const name = petKindById(result.pet!.kindId)!.name;
-        say(result.merged ? `Another ${name}. Two of the same found each other.` : `${name} hatched.`);
+        const hatched = result.merged ? `Another ${name}. Two of the same found each other.` : `${name} hatched.`;
+        const costume = result.costume;
+        const brought = !costume ? ''
+          : costume.duplicate
+            ? ` Already had the ${costume.name.toLowerCase()}: ${costume.refunded ?? 0} coins back.`
+            : ` It brought a ${TIER_NAMES[costume.tier].toLowerCase()} costume: ${costume.name}.`;
+        say(`${hatched}${brought}`);
       }}
       /* Stays here now that Adventures has moved to /raid, because it
          is not the same action: this sends the companion out for a
@@ -298,10 +304,6 @@ function CostumesSection({ ctx }: { ctx: ShopContext }) {
     <Costumes
       avatar={avatar}
       owned={owned}
-      onBuy={async (costumeId) => {
-        const result = await buyCostume(identity.memberId, identity.coupleId, costumeId);
-        say(result.ok ? 'Bought. Tap it again to put it on.' : result.reason ?? null, result.ok ? 'success' : 'error');
-      }}
       onWear={async (costumeId) => {
         const result = await wearCostume(identity.memberId, identity.coupleId, costumeId);
         if (!result.ok) say(result.reason ?? null, 'error');
@@ -818,56 +820,60 @@ function Colours({ avatar, owned, onBuy, onWear }: {
 }
 
 /**
- * Costumes, each shown on the actual bird. Kept apart from Colours on purpose:
- * a costume is drawn over the bird in colours of its own, so the preview here
- * wears the bird's *current* dye and the costume does not follow it. One button
- * per costume buys it if it is not yours and wears it if it is; tapping the
+ * The wardrobe: every costume, shown on the actual bird, worn if it is yours.
+ *
+ * Costumes are not sold. Every egg brings one at the tier of the companion that
+ * hatched, so the rarest things to wear come out of the rarest hatches — the
+ * ones you have not found yet are shown shut away, with the tier of egg they
+ * come from, so the hunt has a direction. Kept apart from Colours on purpose: a
+ * costume is drawn over the bird in colours of its own, so the preview here
+ * wears the bird's *current* dye and the costume does not follow it. Tapping the
  * worn one takes it off.
  */
-function Costumes({ avatar, owned, onBuy, onWear }: {
+function Costumes({ avatar, owned, onWear }: {
   avatar: Avatar;
   owned: InventoryItem[];
-  onBuy: (costumeId: string) => void;
   onWear: (costumeId: string | null) => void;
 }) {
   const { theme } = useTheme();
   const mascot = getMascot(theme.id);
+  const have = COSTUMES.filter((costume) => ownsItem(owned, costume.id)).length;
 
   return (
     <section className="panel">
       <h2 className="section-title">Costumes</h2>
       <p className="section-sub">
-        {avatar.coins} coins. Something {mascot.name} wears, not a colour it is —
-        a costume changes nothing you can do.
+        {have} of {COSTUMES.length}. Every egg brings one, at the same rarity as the
+        companion that hatches — something {mascot.name} wears, not a colour it is.
       </p>
 
       <ul className="costume-grid">
         {COSTUMES.map((costume) => {
           const isOwned = ownsItem(owned, costume.id);
           const isWorn = avatar.costume === costume.id;
-          const afford = avatar.coins >= costume.price;
           return (
-            <li key={costume.id} className="costume">
+            <li key={costume.id} className="costume" data-tier={costume.tier}>
               <button
                 type="button"
                 className="costume-button"
                 data-worn={isWorn ? 'true' : 'false'}
-                disabled={!isOwned && !afford}
-                title={costume.blurb}
-                onClick={() => (isOwned ? onWear(isWorn ? null : costume.id) : onBuy(costume.id))}
+                data-owned={isOwned ? 'true' : 'false'}
+                disabled={!isOwned}
+                title={isOwned ? costume.blurb : `Comes out of a ${TIER_NAMES[costume.tier].toLowerCase()} hatch`}
+                onClick={() => onWear(isWorn ? null : costume.id)}
                 aria-label={
                   isWorn ? `${costume.name}, currently worn. Take it off`
                     : isOwned ? `Put ${costume.name} on`
-                      : `Buy ${costume.name} for ${costume.price} coins`
+                      : `${TIER_NAMES[costume.tier]} costume, not found yet`
                 }
               >
                 <span className="costume-art" style={dyeStyle(avatar.dye) as React.CSSProperties}>
                   <mascot.Art mood="content" />
                   <CostumeLayer id={costume.id} />
                 </span>
-                <span className="costume-name">{costume.name}</span>
+                <span className="costume-name">{isOwned ? costume.name : '???'}</span>
                 <span className="costume-state">
-                  {isWorn ? 'Worn' : isOwned ? 'Wear it' : `${costume.price} coins`}
+                  {isWorn ? 'Worn' : isOwned ? 'Wear it' : `${TIER_NAMES[costume.tier]} egg`}
                 </span>
               </button>
             </li>

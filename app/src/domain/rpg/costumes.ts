@@ -1,3 +1,5 @@
+import type { Tier } from './tiers';
+
 /**
  * Costumes for the birb: things it wears, as opposed to the colour it is.
  *
@@ -11,8 +13,16 @@
  * Purely cosmetic. A costume has no stat and stays out of the loadout, so
  * nothing here is ever the reason a fight is won.
  *
- * Bought with coins like a dye, one row each in the shared inventory table under
- * its own prefix, and worn through `Avatar.costume`.
+ * ## Costumes come out of eggs, at the companion's own rung
+ *
+ * They are not sold. Every egg hatched brings one costume of the **same tier as
+ * the companion that hatched** — a common hatch a common costume, a mythic hatch
+ * a mythic one — so the rarest things to wear come with the rarest companions
+ * and the tier means the same thing on both. A repeat refunds a few coins
+ * (`COSTUME_REFUND`) rather than nothing; see `buyEgg`.
+ *
+ * One row each in the shared inventory table under its own prefix, worn through
+ * `Avatar.costume`.
  */
 
 export const COSTUME_PREFIX = 'costume-';
@@ -21,20 +31,39 @@ export interface Costume {
   id: string;
   name: string;
   blurb: string;
-  price: number;
+  /** Which hatches it can come out of: the companion's tier, exactly. */
+  tier: Tier;
   /** The garment's body colour. A mid-tone: the packs run near-black to near-white. */
   main: string;
   /** Its edging and small details. */
   trim: string;
 }
 
+/**
+ * Fifteen: four, four, three, two, two up the ladder, so the commons are the
+ * everyday and the top is something you happened to be given.
+ */
 export const COSTUMES: readonly Costume[] = [
-  { id: 'costume-bow-tie', name: 'Bow tie', blurb: 'For no occasion in particular.', price: 60, main: '#2a7f9e', trim: '#f2cc6b' },
-  { id: 'costume-party-cone', name: 'Party cone', blurb: 'Somebody, somewhere, is having a birthday.', price: 60, main: '#e76f51', trim: '#f4d35e' },
-  { id: 'costume-flower-crown', name: 'Flower crown', blurb: 'Picked this morning. Probably.', price: 90, main: '#e8749a', trim: '#ffd95a' },
-  { id: 'costume-scarf', name: 'Long scarf', blurb: 'Knitted slowly, by someone who cared.', price: 90, main: '#d64550', trim: '#f6efe0' },
-  { id: 'costume-wizard-hat', name: 'Wizard hat', blurb: 'Wisdom not included.', price: 150, main: '#6c5ce7', trim: '#ffd166' },
-  { id: 'costume-cape', name: 'Little cape', blurb: 'Fastened with something shiny.', price: 150, main: '#8e44ad', trim: '#f4a261' },
+  // Common --------------------------------------------------------------------
+  { id: 'costume-bow-tie', name: 'Bow tie', tier: 'common', blurb: 'For no occasion in particular.', main: '#2a7f9e', trim: '#f2cc6b' },
+  { id: 'costume-party-cone', name: 'Party cone', tier: 'common', blurb: 'Somebody, somewhere, is having a birthday.', main: '#e76f51', trim: '#f4d35e' },
+  { id: 'costume-beanie', name: 'Wool beanie', tier: 'common', blurb: 'Pulled down over the ears, against the wind and most opinions.', main: '#5b8fb9', trim: '#f2efe6' },
+  { id: 'costume-bandana', name: 'Bandana', tier: 'common', blurb: 'Knotted at the back, in a hurry, and it held.', main: '#c8553d', trim: '#f6e9d7' },
+  // Rare ----------------------------------------------------------------------
+  { id: 'costume-flower-crown', name: 'Flower crown', tier: 'rare', blurb: 'Picked this morning. Probably.', main: '#e8749a', trim: '#ffd95a' },
+  { id: 'costume-scarf', name: 'Long scarf', tier: 'rare', blurb: 'Knitted slowly, by someone who cared.', main: '#d64550', trim: '#f6efe0' },
+  { id: 'costume-straw-hat', name: 'Straw hat', tier: 'rare', blurb: 'Sat on once, and better for it.', main: '#d9b25f', trim: '#c04b3c' },
+  { id: 'costume-headphones', name: 'Big headphones', tier: 'rare', blurb: 'Playing the one album, again, with feeling.', main: '#4b5d8a', trim: '#ff8fa3' },
+  // Epic ----------------------------------------------------------------------
+  { id: 'costume-wizard-hat', name: 'Wizard hat', tier: 'epic', blurb: 'Wisdom not included.', main: '#6c5ce7', trim: '#ffd166' },
+  { id: 'costume-cape', name: 'Little cape', tier: 'epic', blurb: 'Fastened with something shiny.', main: '#8e44ad', trim: '#f4a261' },
+  { id: 'costume-top-hat', name: 'Top hat', tier: 'epic', blurb: 'Nothing comes out of it. It is simply very tall.', main: '#4a4458', trim: '#d94f6b' },
+  // Legendary -----------------------------------------------------------------
+  { id: 'costume-starlit-crown', name: 'Starlit crown', tier: 'legendary', blurb: 'The stars it holds were all there before it was made.', main: '#e3b341', trim: '#7ed6ff' },
+  { id: 'costume-phoenix-plume', name: 'Phoenix plume', tier: 'legendary', blurb: 'Warm to stand near, and never quite the same twice.', main: '#ff7a3d', trim: '#ffd23f' },
+  // Mythic --------------------------------------------------------------------
+  { id: 'costume-eclipse-crown', name: 'Eclipse crown', tier: 'mythic', blurb: 'The one afternoon everybody stopped and looked up together.', main: '#6a4bd6', trim: '#ffe9a8' },
+  { id: 'costume-heartbound-wings', name: 'Heartbound wings', tier: 'mythic', blurb: 'Not for flying. For being carried the last bit of the way.', main: '#f5a3c0', trim: '#fff0f5' },
 ];
 
 export function costumeById(id: string | undefined): Costume | undefined {
@@ -43,6 +72,42 @@ export function costumeById(id: string | undefined): Costume | undefined {
 
 export function isCostumeItem(itemId: string): boolean {
   return itemId.startsWith(COSTUME_PREFIX);
+}
+
+export function costumesOfTier(tier: Tier): Costume[] {
+  return COSTUMES.filter((costume) => costume.tier === tier);
+}
+
+/**
+ * What a repeat costume refunds. Small, and well under an egg's price: the egg
+ * still brought a companion, so this is only the costume's share, and an egg
+ * can never pay for itself by repeating.
+ */
+export const COSTUME_REFUND: Record<Tier, number> = {
+  common: 8,
+  rare: 15,
+  epic: 30,
+  legendary: 60,
+  mythic: 100,
+};
+
+/**
+ * The costume a hatch of `tier` brings, from a roll in [0, 1).
+ *
+ * Prefers one the member does not have, so a refund is the last resort rather
+ * than the common case — the same rule `pickPrizeId` follows for chests.
+ * `duplicate` is true only when every costume at the tier is already owned.
+ */
+export function pickCostume(
+  tier: Tier,
+  roll: number,
+  owned: ReadonlySet<string>,
+): { costume: Costume; duplicate: boolean } {
+  const all = costumesOfTier(tier);
+  const fresh = all.filter((costume) => !owned.has(costume.id));
+  const from = fresh.length > 0 ? fresh : all;
+  const index = Math.min(from.length - 1, Math.floor(Math.min(0.999999, Math.max(0, roll)) * from.length));
+  return { costume: from[index], duplicate: fresh.length === 0 };
 }
 
 /** The two custom properties a costume's drawing reads, as a style object. */
