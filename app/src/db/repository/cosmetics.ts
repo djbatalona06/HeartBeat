@@ -316,3 +316,20 @@ export async function buyDeal(
     return { ok: true };
   });
 }
+
+/**
+ * Record which mascot this member's app is drawing, so the partner's Friends
+ * page can draw the same one.
+ *
+ * Only ever updates an avatar that exists: minting one here would hand out the
+ * starter wallet before onboarding has revealed it. Writes nothing -- and so
+ * bumps no `updatedAt` and syncs nothing -- when the value is already current.
+ */
+export async function setAvatarMascot(memberId: MemberId, mascotId: string): Promise<boolean> {
+  return db.transaction('rw', db.avatars, async () => {
+    const avatar = await db.avatars.get(memberId);
+    if (!avatar || avatar.mascot === mascotId) return false;
+    await db.avatars.put({ ...avatar, mascot: mascotId, updatedAt: now() });
+    return true;
+  });
+}

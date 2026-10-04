@@ -192,6 +192,14 @@ export interface Avatar {
    */
   costume?: string;
   /**
+   * Which mascot this member's app draws -- a `Theme.id`, since the mascot is
+   * the theme's. Written from the theme by `MascotSync` and read by the Friends
+   * page, because the theme lives in `localStorage` on each phone and the
+   * partner's phone has no other way to know which bird to draw. Optional, so
+   * no migration, and absent until that member's app has run once.
+   */
+  mascot?: string;
+  /**
    * Draws since the last payout, per chest — the counters behind the pity
    * floors in `chests.ts`. One per chest rather than one shared, because a bad
    * run on the cheap chest is not insurance you have paid for on the dear one.

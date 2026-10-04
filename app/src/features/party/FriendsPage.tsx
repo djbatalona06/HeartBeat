@@ -6,9 +6,10 @@ import { db, loadSettings } from '../../db/database';
 import { ensureIdentity, grantLifeEvent } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
-import { petKindById } from '../../domain/rpg/pets';
 import { dyeStyle } from '../../domain/rpg/dyes';
 import { costumeById } from '../../domain/rpg/costumes';
+import { MASCOT_ROSTER, getMascot } from '../pet/mascots';
+import { CostumeLayer } from './art/costumes';
 import { GOOD_VIBES_PER_SENDER_PER_DAY } from '../../domain/rpg/lifeEvents';
 import { petArt } from './art/pets';
 import { PrimaryAction } from '../../ui/PrimaryAction';
@@ -133,17 +134,21 @@ interface PartnerHouseProps {
 }
 
 /**
- * The other house in town: the companion they last chose, in their colours.
+ * The other house in town: their bird, as their app draws it, in their colours.
  *
- * Their companion rather than a mascot, because the mascot is a function of the
- * *viewer's* theme -- drawing it here showed you your own bird under their
- * name. The companion is chosen per member and travels with their avatar.
+ * Which mascot is theirs travels on their avatar (`Avatar.mascot`, written by
+ * `MascotSync`), because the mascot follows the theme and the theme is a
+ * per-phone preference. Drawing `getMascot(myTheme)` here showed you your own
+ * bird under their name. Until their app has written the field once (an older
+ * install), the companion they walk with in Eve's Garden stands in, so the
+ * house is never empty and never shows the wrong bird.
  */
 function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouseProps) {
-  const companionKind = companionId ? petKindById(companionId) : undefined;
-  const CompanionArt = companionId ? petArt(companionId) : undefined;
-  const costume = costumeById(avatar?.costume);
   const name = partner.displayName || 'Them';
+  const known = avatar?.mascot && avatar.mascot in MASCOT_ROSTER ? avatar.mascot : undefined;
+  const mascot = known ? getMascot(known) : undefined;
+  const CompanionArt = !mascot && companionId ? petArt(companionId) : undefined;
+  const costume = costumeById(avatar?.costume);
 
   return (
     <section className="panel">
@@ -154,8 +159,10 @@ function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouse
           className="friend-birb"
           style={dyeStyle(avatar?.dye) as React.CSSProperties}
           role="img"
-          aria-label={companionKind ? `${name}'s companion, ${companionKind.name}` : `${name} has not chosen a companion`}
+          aria-label={mascot ? `${name}'s ${mascot.name}, ${mascot.species}` : `${name}'s birb`}
         >
+          {mascot ? <mascot.Art mood="content" /> : null}
+          {mascot ? <CostumeLayer id={avatar?.costume} mascot={known} /> : null}
           {CompanionArt ? <CompanionArt /> : null}
         </div>
         <dl className="friend-facts">
@@ -174,7 +181,7 @@ function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouse
         </dl>
       </div>
       <p className="section-sub friend-companion">
-        {companionKind ? `Walking with ${companionKind.name}.` : 'Has not chosen a companion yet.'}
+        {mascot ? `${mascot.name} the ${mascot.species}.` : ''}
         {costume ? ` Wearing the ${costume.name.toLowerCase()}.` : ''}
       </p>
     </section>

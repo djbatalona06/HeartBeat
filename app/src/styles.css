@@ -7922,7 +7922,7 @@ a, button, input, select, textarea, summary, label, [role='button'] {
    The partner's companion beside the three numbers. The portrait is a bare
    SVG, so the box gives it a size. */
 .friend-house { display: flex; align-items: center; gap: var(--space-4); }
-.friend-birb { width: 96px; height: 96px; flex: none; }
+.friend-birb { position: relative; width: 96px; height: 96px; flex: none; }
 .friend-birb svg { width: 100%; height: 100%; display: block; }
 .friend-facts { display: grid; gap: var(--space-2); margin: 0; flex: 1; }
 .friend-facts div { display: flex; justify-content: space-between; gap: var(--space-3); }

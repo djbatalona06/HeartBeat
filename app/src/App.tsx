@@ -23,6 +23,7 @@ import { useBadges } from './features/notifications/useBadges';
 import { useNotices } from './features/notifications/useNotices';
 import { NotificationHeader } from './features/notifications/NotificationHeader';
 import { LoginPopup } from './features/dashboard/LoginPopup';
+import { MascotSync } from './features/pet/MascotSync';
 import { BossGateGuard } from './features/eve-garden/gate/BossGateGuard';
 import { ToastHost } from './ui/Toast';
 import { SceneBackdrop } from './features/home/SceneBackdrop';
@@ -146,6 +147,7 @@ export function App() {
                     {/* Here rather than on Home, so the daily award finds you on
                         whichever screen the app opens to. */}
                     <LoginPopup />
+                    <MascotSync />
                     {/* Around the routes only. A single page throwing should leave the
                         nav bar and the thread standing, so there is still a way out of
                         the broken screen without force-quitting the app. */}
