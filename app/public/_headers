@@ -1,0 +1,10 @@
+# Cloudflare Pages reads this file and does not serve it.
+#
+# Everything under /assets/ is named by Vite with a content hash, so a URL
+# there never changes meaning and can be kept for a year. Pages' default asks
+# the browser to revalidate every one of them on every load, which for the
+# 5 MiB of .NET runtime and Phaser is a round trip per file per visit.
+# index.html and sw.js are outside /assets/ and keep revalidating, which is
+# what lets a deploy reach a phone at all.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
