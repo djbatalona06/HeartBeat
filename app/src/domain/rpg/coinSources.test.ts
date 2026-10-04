@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   LOGIN_CYCLE, LOGIN_REWARDS, PURSES, REPEAT_WIN_DAILY_CAP, REPLAY_DAILY_CAP,
-  claimLogin, isPurseItem, loginState, purseById, purseRowId, repeatWinCoins,
+  claimLogin, isPurseItem, loginPopupOpen, loginState, purseById, purseRowId, repeatWinCoins,
   replayAllowance, replayLoot, stageCoins, unopened,
 } from './coinSources';
 import { GEAR_PRICE } from './shop';
@@ -118,5 +118,26 @@ describe('the overworld trickle', () => {
     expect(repeatWinCoins(20, { foeCoinsDay: DAY, foeCoinsPaid: REPEAT_WIN_DAILY_CAP - 2 }, DAY)).toBe(2);
     expect(repeatWinCoins(20, { foeCoinsDay: DAY, foeCoinsPaid: REPEAT_WIN_DAILY_CAP + 50 }, DAY)).toBe(0);
     expect(repeatWinCoins(20, { foeCoinsDay: DAY, foeCoinsPaid: REPEAT_WIN_DAILY_CAP }, NEXT)).toBe(5);
+  });
+});
+
+describe('the login popup', () => {
+  const base = { claimable: true, day: '2026-10-05', putOffOn: null, showingReceipt: false };
+
+  it('opens while today is unclaimed', () => {
+    expect(loginPopupOpen(base)).toBe(true);
+  });
+
+  it('stays shut once claimed, and once put off today', () => {
+    expect(loginPopupOpen({ ...base, claimable: false })).toBe(false);
+    expect(loginPopupOpen({ ...base, putOffOn: '2026-10-05' })).toBe(false);
+  });
+
+  it('comes back the next day after being put off', () => {
+    expect(loginPopupOpen({ ...base, day: '2026-10-06', putOffOn: '2026-10-05' })).toBe(true);
+  });
+
+  it('stays open on the receipt even though nothing is claimable any more', () => {
+    expect(loginPopupOpen({ ...base, claimable: false, showingReceipt: true })).toBe(true);
   });
 });

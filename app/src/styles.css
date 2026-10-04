@@ -1473,7 +1473,8 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   background: var(--color-border);
 }
 
-.menu-scrim {
+.menu-scrim,
+.popup-scrim {
   position: fixed;
   inset: 0;
   z-index: 5;
@@ -5237,7 +5238,10 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
   border-radius: 999px;
   border: var(--border-width) solid var(--color-border);
   background: transparent;
-  color: var(--color-accent);
+  /* The text in the body colour and the accent on the edge: accent text on the
+     tinted tile was too pale to read in the lighter packs. */
+  color: var(--color-text);
+  border-color: var(--color-accent);
   font-size: var(--text-sm);
   cursor: pointer;
 }
@@ -7812,7 +7816,7 @@ a, button, input, select, textarea, summary, label, [role='button'] {
     backdrop-filter: none;
     background: var(--color-surface);
   }
-  .menu-scrim, .cmd-scrim { backdrop-filter: none; }
+  .menu-scrim, .popup-scrim, .cmd-scrim { backdrop-filter: none; }
 }
 
 /* More contrast: borders that were decoration become edges. Muted text on the
@@ -7877,13 +7881,53 @@ a, button, input, select, textarea, summary, label, [role='button'] {
 .purse-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .garden-victory-loot { font-size: var(--text-sm); color: var(--color-text); }
 
+/* ---- popups -----------------------------------------------------------------
+   A centred dialog on the same scrim and z-scale the menu uses. Shared by the
+   login award and the boss gate prompt. */
+.popup-panel {
+  position: fixed;
+  z-index: var(--z-sheet);
+  left: 50%;
+  top: 50%;
+  width: min(24rem, calc(100vw - var(--space-6)));
+  max-height: calc(100dvh - var(--space-7));
+  overflow-y: auto;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+  transform: translate(-50%, -50%);
+  animation: popup-in var(--motion-medium) var(--ease-soft);
+}
+@keyframes popup-in {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.97); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+:root[data-calm='true'] .popup-panel { animation: none; }
+.boss-gate-rewards { margin: var(--space-3) 0 0; padding-left: var(--space-4); font-size: var(--text-sm); color: var(--color-text); }
+.boss-gate-rewards li + li { margin-top: var(--space-1); }
+.login-popup .chips { list-style: none; padding: 0; }
+.popup-actions { display: grid; gap: var(--space-2); margin-top: var(--space-4); }
+
 /* ---- costumes ------------------------------------------------------------
    Laid over a mascot in the same 100x100 box it is drawn in. The layer is
    inert, and its drawings read --costume-main and --costume-trim, never the
    three custom properties a dye sets. */
 .costume-layer { position: absolute; inset: 0; display: block; pointer-events: none; }
 .costume-layer svg { width: 100%; height: 100%; display: block; }
-.costume-art, .friend-birb { position: relative; }
+.costume-art { position: relative; }
+
+/* ---- friends ---------------------------------------------------------------
+   The partner's companion beside the three numbers. The portrait is a bare
+   SVG, so the box gives it a size. */
+.friend-house { display: flex; align-items: center; gap: var(--space-4); }
+.friend-birb { position: relative; width: 96px; height: 96px; flex: none; }
+.friend-birb svg { width: 100%; height: 100%; display: block; }
+.friend-facts { display: grid; gap: var(--space-2); margin: 0; flex: 1; }
+.friend-facts div { display: flex; justify-content: space-between; gap: var(--space-3); }
+.friend-facts dt { color: var(--color-text-muted); font-size: var(--text-sm); }
+.friend-facts dd { margin: 0; font-weight: 600; }
 
 /* An unfound costume is shown shut away: the drawing dimmed to a silhouette, the
    tier of egg it comes from in the caption. Still a button, so it keeps its

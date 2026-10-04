@@ -27,8 +27,15 @@ import type { Tier } from './tiers';
 
 export const COSTUME_PREFIX = 'costume-';
 
+/**
+ * Where on the bird a garment sits, which is what decides how it is fitted to
+ * each of the five mascots -- see `costumeFit.ts`.
+ */
+export type CostumeSlot = 'head' | 'neck' | 'back';
+
 export interface Costume {
   id: string;
+  slot: CostumeSlot;
   name: string;
   blurb: string;
   /** Which hatches it can come out of: the companion's tier, exactly. */
@@ -45,25 +52,25 @@ export interface Costume {
  */
 export const COSTUMES: readonly Costume[] = [
   // Common --------------------------------------------------------------------
-  { id: 'costume-bow-tie', name: 'Bow tie', tier: 'common', blurb: 'For no occasion in particular.', main: '#2a7f9e', trim: '#f2cc6b' },
-  { id: 'costume-party-cone', name: 'Party cone', tier: 'common', blurb: 'Somebody, somewhere, is having a birthday.', main: '#e76f51', trim: '#f4d35e' },
-  { id: 'costume-beanie', name: 'Wool beanie', tier: 'common', blurb: 'Pulled down over the ears, against the wind and most opinions.', main: '#5b8fb9', trim: '#f2efe6' },
-  { id: 'costume-bandana', name: 'Bandana', tier: 'common', blurb: 'Knotted at the back, in a hurry, and it held.', main: '#c8553d', trim: '#f6e9d7' },
+  { id: 'costume-bow-tie', slot: 'neck', name: 'Bow tie', tier: 'common', blurb: 'For no occasion in particular.', main: '#2a7f9e', trim: '#f2cc6b' },
+  { id: 'costume-party-cone', slot: 'head', name: 'Party cone', tier: 'common', blurb: 'Somebody, somewhere, is having a birthday.', main: '#e76f51', trim: '#f4d35e' },
+  { id: 'costume-beanie', slot: 'head', name: 'Wool beanie', tier: 'common', blurb: 'Pulled down over the ears, against the wind and most opinions.', main: '#5b8fb9', trim: '#f2efe6' },
+  { id: 'costume-bandana', slot: 'neck', name: 'Bandana', tier: 'common', blurb: 'Knotted at the back, in a hurry, and it held.', main: '#c8553d', trim: '#f6e9d7' },
   // Rare ----------------------------------------------------------------------
-  { id: 'costume-flower-crown', name: 'Flower crown', tier: 'rare', blurb: 'Picked this morning. Probably.', main: '#e8749a', trim: '#ffd95a' },
-  { id: 'costume-scarf', name: 'Long scarf', tier: 'rare', blurb: 'Knitted slowly, by someone who cared.', main: '#d64550', trim: '#f6efe0' },
-  { id: 'costume-straw-hat', name: 'Straw hat', tier: 'rare', blurb: 'Sat on once, and better for it.', main: '#d9b25f', trim: '#c04b3c' },
-  { id: 'costume-headphones', name: 'Big headphones', tier: 'rare', blurb: 'Playing the one album, again, with feeling.', main: '#4b5d8a', trim: '#ff8fa3' },
+  { id: 'costume-flower-crown', slot: 'head', name: 'Flower crown', tier: 'rare', blurb: 'Picked this morning. Probably.', main: '#e8749a', trim: '#ffd95a' },
+  { id: 'costume-scarf', slot: 'neck', name: 'Long scarf', tier: 'rare', blurb: 'Knitted slowly, by someone who cared.', main: '#d64550', trim: '#f6efe0' },
+  { id: 'costume-straw-hat', slot: 'head', name: 'Straw hat', tier: 'rare', blurb: 'Sat on once, and better for it.', main: '#d9b25f', trim: '#c04b3c' },
+  { id: 'costume-headphones', slot: 'head', name: 'Big headphones', tier: 'rare', blurb: 'Playing the one album, again, with feeling.', main: '#4b5d8a', trim: '#ff8fa3' },
   // Epic ----------------------------------------------------------------------
-  { id: 'costume-wizard-hat', name: 'Wizard hat', tier: 'epic', blurb: 'Wisdom not included.', main: '#6c5ce7', trim: '#ffd166' },
-  { id: 'costume-cape', name: 'Little cape', tier: 'epic', blurb: 'Fastened with something shiny.', main: '#8e44ad', trim: '#f4a261' },
-  { id: 'costume-top-hat', name: 'Top hat', tier: 'epic', blurb: 'Nothing comes out of it. It is simply very tall.', main: '#4a4458', trim: '#d94f6b' },
+  { id: 'costume-wizard-hat', slot: 'head', name: 'Wizard hat', tier: 'epic', blurb: 'Wisdom not included.', main: '#6c5ce7', trim: '#ffd166' },
+  { id: 'costume-cape', slot: 'back', name: 'Little cape', tier: 'epic', blurb: 'Fastened with something shiny.', main: '#8e44ad', trim: '#f4a261' },
+  { id: 'costume-top-hat', slot: 'head', name: 'Top hat', tier: 'epic', blurb: 'Nothing comes out of it. It is simply very tall.', main: '#4a4458', trim: '#d94f6b' },
   // Legendary -----------------------------------------------------------------
-  { id: 'costume-starlit-crown', name: 'Starlit crown', tier: 'legendary', blurb: 'The stars it holds were all there before it was made.', main: '#e3b341', trim: '#7ed6ff' },
-  { id: 'costume-phoenix-plume', name: 'Phoenix plume', tier: 'legendary', blurb: 'Warm to stand near, and never quite the same twice.', main: '#ff7a3d', trim: '#ffd23f' },
+  { id: 'costume-starlit-crown', slot: 'head', name: 'Starlit crown', tier: 'legendary', blurb: 'The stars it holds were all there before it was made.', main: '#e3b341', trim: '#7ed6ff' },
+  { id: 'costume-phoenix-plume', slot: 'head', name: 'Phoenix plume', tier: 'legendary', blurb: 'Warm to stand near, and never quite the same twice.', main: '#ff7a3d', trim: '#ffd23f' },
   // Mythic --------------------------------------------------------------------
-  { id: 'costume-eclipse-crown', name: 'Eclipse crown', tier: 'mythic', blurb: 'The one afternoon everybody stopped and looked up together.', main: '#6a4bd6', trim: '#ffe9a8' },
-  { id: 'costume-heartbound-wings', name: 'Heartbound wings', tier: 'mythic', blurb: 'Not for flying. For being carried the last bit of the way.', main: '#f5a3c0', trim: '#fff0f5' },
+  { id: 'costume-eclipse-crown', slot: 'head', name: 'Eclipse crown', tier: 'mythic', blurb: 'The one afternoon everybody stopped and looked up together.', main: '#6a4bd6', trim: '#ffe9a8' },
+  { id: 'costume-heartbound-wings', slot: 'back', name: 'Heartbound wings', tier: 'mythic', blurb: 'Not for flying. For being carried the last bit of the way.', main: '#f5a3c0', trim: '#fff0f5' },
 ];
 
 export function costumeById(id: string | undefined): Costume | undefined {

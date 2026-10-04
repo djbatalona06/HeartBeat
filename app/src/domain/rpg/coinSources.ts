@@ -94,6 +94,23 @@ export function loginState(avatar: LoginFields, today: DayKey): LoginState {
   };
 }
 
+/**
+ * Whether the login popup is on screen.
+ *
+ * Open while today's award is unclaimed, unless it was put off *today* -- put
+ * off is per day, so tomorrow's offer comes back on its own -- and held open
+ * after a claim for as long as the receipt is being looked at, because
+ * claiming makes `claimable` false and would otherwise close it mid-sentence.
+ */
+export function loginPopupOpen(input: {
+  claimable: boolean;
+  day: DayKey;
+  putOffOn: DayKey | null;
+  showingReceipt: boolean;
+}): boolean {
+  return input.showingReceipt || (input.claimable && input.putOffOn !== input.day);
+}
+
 export function claimLogin(
   avatar: Avatar,
   today: DayKey,

@@ -105,7 +105,12 @@ const TOP_OF_THE_CURVE = 1_000_000;
 
 type Busy = 'idle' | 'acting';
 
-export function EveGardenPage() {
+/**
+ * `party` is false only when the Boss Gate prompt was answered "solo": the
+ * partner gate is then ignored for this visit -- no presence is stamped, none is
+ * read, and no bonus is held for the fight. Everything else is as it was.
+ */
+export function EveGardenPage({ party = true }: { party?: boolean } = {}) {
   const host = useRef<HTMLDivElement | null>(null);
   const scene = useRef<SceneHandle | null>(null);
   const client = useRef<GameClient | null>(null);
@@ -248,16 +253,16 @@ export function EveGardenPage() {
    * asynchronous: no stamp is written, none is read, and nothing waits.
    */
   const bossStage = partnerGateApplies(stage);
-  const partnerPresent = bossStage && partnerAtGate(world.gate, partner?.id, Date.now());
+  const partnerPresent = bossStage && party && partnerAtGate(world.gate, partner?.id, Date.now());
   const atGate = !companion && gate !== null;
   useEffect(() => {
-    if (!atGate || !bossStage || !coupleId || !memberId || !partner) return undefined;
+    if (!party || !atGate || !bossStage || !coupleId || !memberId || !partner) return undefined;
     void stampGatePresence(coupleId, memberId).catch(() => {});
     const timer = setInterval(() => {
       void stampGatePresence(coupleId, memberId).catch(() => {});
     }, PRESENCE_REFRESH_MS);
     return () => clearInterval(timer);
-  }, [atGate, bossStage, coupleId, memberId, partner]);
+  }, [party, atGate, bossStage, coupleId, memberId, partner]);
 
   /** Who was ringed before "Change", so "Not yet" can put them back. */
   const cameFrom = useRef<string | null>(null);
@@ -823,7 +828,7 @@ export function EveGardenPage() {
         dark={dark}
         resonance={resonance}
         world={world}
-        together={bossStage && partner
+        together={bossStage && party && partner
           ? {
             partnerName: partner.displayName?.trim() || 'your partner',
             present: partnerPresent,

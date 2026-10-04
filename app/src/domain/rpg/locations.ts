@@ -148,7 +148,7 @@ export function nextPlace(level: number): Place | null {
  */
 export function canTravel(place: Place, level: number, energy: number, baseCost: number): Verdict {
   if (level < place.unlockLevel) {
-    return { ok: false, reason: `Opens at level ${place.unlockLevel}.` };
+    return { ok: false, reason: `Opens at your level ${place.unlockLevel}.` };
   }
   const total = baseCost + place.surcharge;
   if (energy < total) return { ok: false, reason: `${total - energy} more energy to get there.` };

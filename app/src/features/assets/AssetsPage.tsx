@@ -349,7 +349,7 @@ function ItemFace({ entry, worth }: { entry: OwnedGear; worth: Worth }) {
           {/* Above its level an item gives nothing, and `gearSources` says so
               by leaving it out — the sheet counts it as nothing, and so does
               this line. */}
-          {source ? worthLine(source) : `Gives nothing until level ${item.minLevel}`}
+          {source ? worthLine(source) : `Gives nothing until your level ${item.minLevel}`}
         </span>
       </span>
     </div>

@@ -21,11 +21,12 @@ import type { GearSlot } from './types';
  * sheet against the other's, with a team total under it. Two reasons it is
  * not that.
  *
- * The blocking one is that the data is not there: `avatar` and `inventory` are
- * not in `PARTNER_VISIBLE_KINDS` (`domain/sync/holdings.ts`), so a phone never
- * receives the other member's gear at all. A two-person diff would need that
- * list extended first, which is the first time personal inventory would cross
- * between phones.
+ * The blocking one is that the data is not there: `inventory` is not in
+ * `PARTNER_VISIBLE_KINDS` (`domain/sync/holdings.ts`), so a phone never
+ * receives what the other member owns. Their avatar is visible now, for the
+ * Friends page, but it holds what they wear, not what they hold; a two-person
+ * diff would need the list extended again, which is the first time personal
+ * inventory would cross between phones.
  *
  * The better one is that this is the more useful question anyway. "Those boots
  * are worth four Fortify to you" is something to act on. A column of your
