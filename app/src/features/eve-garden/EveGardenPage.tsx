@@ -43,6 +43,8 @@ import { NotHere } from '../errors/NotHere';
 import { GardenBackdrop } from './GardenBackdrop';
 import { GardenHabitat } from './GardenHabitat';
 import { RaidGate } from './gate/RaidGate';
+import { BossGatePrompt } from './gate/BossGatePrompt';
+import { promptApplies } from '../../domain/rpg/gatePrompt';
 import { REDRIVE_DELAY_MS, settle, shouldRedriveMonster } from './round';
 import { Compass } from './Compass';
 import { WorldMap } from './WorldMap';
@@ -107,12 +109,7 @@ const TOP_OF_THE_CURVE = 1_000_000;
 
 type Busy = 'idle' | 'acting';
 
-/**
- * `party` is false only when the Boss Gate prompt was answered "solo": the
- * partner gate is then ignored for this visit -- no presence is stamped, none is
- * read, and no bonus is held for the fight. Everything else is as it was.
- */
-export function EveGardenPage({ party = true }: { party?: boolean } = {}) {
+export function EveGardenPage() {
   const host = useRef<HTMLDivElement | null>(null);
   const scene = useRef<SceneHandle | null>(null);
   const client = useRef<GameClient | null>(null);
@@ -218,6 +215,13 @@ export function EveGardenPage({ party = true }: { party?: boolean } = {}) {
 
   const [gate, setGate] = useState<{ cards: GateCard[]; verdict: GateVerdict } | null>(null);
   const [companion, setCompanion] = useState<string | null>(null);
+  /**
+   * False only after the Boss Gate was last answered "solo": the partner gate is
+   * then ignored -- no presence is stamped, none is read, no bonus is held.
+   * Asked again on every attempt at a boss (`asking`), never remembered.
+   */
+  const [party, setParty] = useState(true);
+  const [asking, setAsking] = useState(false);
   /** Rounds fought this visit, credited to the companion when a fight ends. */
   const rounds = useRef(0);
   /** Turns since each kit's skill last fired. Refs, not state: a cooldown that
@@ -407,7 +411,7 @@ export function EveGardenPage({ party = true }: { party?: boolean } = {}) {
 
   /* ---- the canvas ---- */
 
-  const onEngage = useCallback(() => {
+  const begin = useCallback(() => {
     const game = client.current;
     if (!game || !progress || !monster) return;
     game.beginBattle(island, stage, theme, progress.level, Date.now(), charges, sheet.total)
@@ -419,6 +423,26 @@ export function EveGardenPage({ party = true }: { party?: boolean } = {}) {
       // indistinguishable from having missed the tile.
       .catch((error) => setFault(faultFrom('round', error)));
   }, [island, stage, theme, progress, monster, charges, sheet, moveNames]);
+
+  // Every walk into a boss is an attempt, and every attempt meets the Boss
+  // Gate: first try, a retry after a loss or a flight, or a boss stage reached
+  // mid-visit. Stages 1-6 never ask and never mention anybody.
+  const onEngage = useCallback(() => {
+    if (partner && promptApplies(stage, true)) { setAsking(true); return; }
+    begin();
+  }, [partner, stage, begin]);
+
+  const onGateAnswer = useCallback((result: 'party' | 'solo' | 'leave') => {
+    setAsking(false);
+    // Backed out: no fight. Walking the pet home clears the scene's engaged
+    // latch, so walking in again asks again.
+    if (result === 'leave') { scene.current?.withdraw(); return; }
+    const joined = result === 'party';
+    setParty(joined);
+    // Decided as this attempt starts and held for it, as `onEnter` does for the gate.
+    together.current = togetherBonus(stage, joined && partnerAtGate(world.gate, partner?.id, Date.now()));
+    begin();
+  }, [stage, world.gate, partner?.id, begin]);
 
   // The scene is rebuilt when the stage or the island's face changes, and at no
   // other time. `onEngage` is deliberately absent from the dependencies: it
@@ -995,6 +1019,16 @@ export function EveGardenPage({ party = true }: { party?: boolean } = {}) {
           dark={dark}
           onTravel={(to) => { void onTravel(to); }}
           onClose={() => setMapOpen(false)}
+        />
+      )}
+
+      {asking && partner && (
+        <BossGatePrompt
+          partnerName={partner.displayName?.trim() || 'your partner'}
+          present={partnerAtGate(world.gate, partner.id, Date.now())}
+          coupleId={coupleId}
+          memberId={memberId}
+          onDone={onGateAnswer}
         />
       )}
 

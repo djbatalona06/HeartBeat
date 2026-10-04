@@ -284,6 +284,11 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   row is a union of cleared stages, not last-write-wins. No stage 1–6 screen may
   render a partner-waiting message. `BOSS_REQUIRES_PARTNER` is false: the gate
   is an invitation with a better payout, not a lock.
+  The party-mode popup (`gate/BossGatePrompt.tsx`) lives *inside* Eve's
+  Garden and opens on **every** walk into a boss — first try, retry after a
+  loss or a flight, a boss stage reached mid-visit — never as a route guard
+  that asks once. Backing out calls `scene.withdraw()` so the next walk asks
+  again; the together bonus is decided per attempt.
 - **A fight can open on the monster's turn.** `Battle.Begin` hands the first
   move to the monster when the player is slower and a seeded flip says so;
   `shouldRedriveMonster` (`eve-garden/round.ts`) is what plays it. Every scene
