@@ -33,6 +33,8 @@ const NOT_ON_A_SURFACE = new Set([
   // The everything view, until each of its sections had a screen. Redirects to
   // the Shop for the links that still carry it.
   '/party',
+  // The Partner tab's name when it shipped. Redirects to `/partner`.
+  '/friends',
   // Run before pairing is even the question, by FirstRunGate.
   '/welcome',
   '/onboarding',

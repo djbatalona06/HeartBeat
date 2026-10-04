@@ -161,7 +161,7 @@ export const GUIDES = {
     game: 'Everything you buy carries raid stats, so it makes you stronger in Eve\'s Garden. A pity counter guarantees a better prize after a bad run.',
   },
   friends: {
-    title: 'Friends',
+    title: 'Partner',
     steps: [
       'See your partner\'s bird and how many days you have both shown up.',
       'Tap Send good vibes (3 left a day).',
@@ -309,7 +309,7 @@ const BY_PATH: Record<string, GuideId> = {
   '/activities/support': 'support',
   '/activities/first-aid': 'firstAid',
   '/shop': 'shop',
-  '/friends': 'friends',
+  '/partner': 'friends',
   '/birb': 'birb',
   '/raid': 'raid',
   '/eve-garden': 'eveGarden',

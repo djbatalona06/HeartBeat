@@ -183,7 +183,9 @@ export function App() {
                         <Route path="/activities/first-aid" element={<FirstAidPage />} />
                         <Route path="/activities" element={<ActivitiesPage />} />
                         <Route path="/shop" element={<ShopPage />} />
-                        <Route path="/friends" element={<FriendsPage />} />
+                        <Route path="/partner" element={<FriendsPage />} />
+                        {/* The tab shipped as Friends; the old route stays for links. */}
+                        <Route path="/friends" element={<Navigate to="/partner" replace />} />
                         {/* No /bag of its own: `main` grew AssetsPage, which is the
                             same idea done properly, so the Bag tab points there.
                             Colours and companions sit on Birb, next to the house;

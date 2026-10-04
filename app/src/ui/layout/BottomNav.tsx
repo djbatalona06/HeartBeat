@@ -38,7 +38,7 @@ export interface BottomNavProps {
   /** Unpaired: tabs that need a partner are dimmed, not removed. */
   locked: boolean;
   /**
-   * Unread counts by route, e.g. `{ '/friends': 2 }`.
+   * Unread counts by route, e.g. `{ '/partner': 2 }`.
    *
    * Passed down from `App`, which calls `useBadges()` once for the whole shell
    * — the tab bar and the message pill want the same four live queries, and one
