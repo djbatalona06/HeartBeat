@@ -392,7 +392,7 @@ export function equip(equipped: StoredGear, itemId: string, level: number):
   const item = gearById(itemId);
   if (!item) return { ok: false, reason: 'No such item.' };
   if (!canEquip(item, level)) {
-    return { ok: false, reason: `${item.name} is worn from level ${item.minLevel}.` };
+    return { ok: false, reason: `${item.name} is worn from your level ${item.minLevel}.` };
   }
   // Normalising on the way through means a row heals itself the first time its
   // owner touches the wardrobe, without a migration pass having to find it.

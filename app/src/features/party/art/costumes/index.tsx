@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react';
-import { COSTUMES, costumeStyle } from '../../../../domain/rpg/costumes';
+import { COSTUMES, costumeById, costumeStyle } from '../../../../domain/rpg/costumes';
+import { fitStyle } from '../../../../domain/rpg/costumeFit';
+import { useTheme } from '../../../../themes/ThemeProvider';
 
 /**
  * One drawing per costume, laid over a mascot in the same 100×100 space every
@@ -237,12 +239,23 @@ export function costumeArt(id: string | undefined): ComponentType | undefined {
   return id ? ART[id] : undefined;
 }
 
-/** A costume laid over whatever box it is placed in. Nothing when no costume is worn. */
-export function CostumeLayer({ id }: { id: string | undefined }) {
+/**
+ * A costume laid over the mascot in the box it is placed in. Nothing when no
+ * costume is worn.
+ *
+ * Fitted to the mascot the current theme draws -- every caller lays it over
+ * `getMascot(theme.id)` -- so the garment is moved and scaled onto that head
+ * rather than sitting where Mochi's would. `mascot` overrides for a caller that
+ * draws a different one.
+ */
+export function CostumeLayer({ id, mascot }: { id: string | undefined; mascot?: string }) {
+  const { theme } = useTheme();
   const Art = costumeArt(id);
-  if (!Art) return null;
+  const costume = costumeById(id);
+  if (!Art || !costume) return null;
+  const style = { ...costumeStyle(id), ...fitStyle(costume.slot, mascot ?? theme.id) };
   return (
-    <span className="costume-layer" style={costumeStyle(id) as React.CSSProperties} aria-hidden="true">
+    <span className="costume-layer" style={style as React.CSSProperties} aria-hidden="true">
       <Art />
     </span>
   );

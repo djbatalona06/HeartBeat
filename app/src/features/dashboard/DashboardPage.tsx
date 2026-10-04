@@ -30,8 +30,8 @@ import { isPaired } from '../../domain/identity/rekey';
 import { Tile } from '../../components/Tile';
 import { EmptyState } from '../../ui/EmptyState';
 import { LogStrip } from './LogStrip';
-import { LoginAward } from './LoginAward';
 import { CostumeLayer } from '../party/art/costumes';
+import { BossGateCard } from './BossGateCard';
 
 /**
  * Home. What the pet is doing, and what is left to do today.
@@ -118,8 +118,6 @@ export function DashboardPage() {
           after the pet and before what logging has added up to. */}
       <LogStrip day={day} />
 
-      <LoginAward memberId={memberId} coupleId={coupleId} day={day} />
-
       {/* Directly under the pet, because it is the rest of the same sentence:
           the bar above is what the two of you have been *given* — quests, boss
           victories, tasks — and this is what you have *done*. */}
@@ -138,6 +136,10 @@ export function DashboardPage() {
           the tree since the dashboard was a grid and had no call sites left
           after the ring came out; this is what it was for. */}
       {!paired ? <PairInvite /> : null}
+
+      {/* The way to the Boss Gate. It was only in the menu, behind two taps and
+          a screen called Eve's Garden. */}
+      <BossGateCard coupleId={coupleId} memberId={memberId} />
 
       <TodaySection
         open={open}

@@ -4,9 +4,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useToast } from '../../ui/Toast';
 import { db, loadSettings } from '../../db/database';
 import {
+  buyDeal,
   buyDye,
   buyEgg,
-  buyFurniture,
   buyGear,
   buyOffer,
   ensureIdentity,
@@ -22,8 +22,9 @@ import {
 } from '../../db/repository';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import {
-  GEAR, RARITIES, RARITY_NAMES, type GearItem, type Rarity,
+  RARITIES, RARITY_NAMES, gearById, type Rarity,
 } from '../../domain/rpg/gear';
+import { dealsFor, type Deal } from '../../domain/rpg/merchant';
 import { adventureCost } from '../../domain/rpg/stage';
 import {
   PITY_AT, chancesFor, petKindById, petSheet, pityFloor, type PetInstance,
@@ -33,13 +34,12 @@ import { todayKey } from '../../domain/day';
 import type { DayKey } from '../../domain/types';
 import type { Avatar } from '../../domain/rpg/types';
 import { findOwned, ownsItem, refineByItemId, type InventoryItem } from '../../domain/rpg/inventory';
-import { EGG_PRICE, GEAR_PRICE, REFINE_MAX, gearBonusWithRefinement, refinePrice } from '../../domain/rpg/shop';
-import { DEFAULT_DYE_ID, DYES, dyeStyle } from '../../domain/rpg/dyes';
+import { EGG_PRICE, REFINE_MAX, gearBonusWithRefinement, refinePrice } from '../../domain/rpg/shop';
+import { DEFAULT_DYE_ID, DYES, dyeById, dyeStyle } from '../../domain/rpg/dyes';
 import { COSTUMES } from '../../domain/rpg/costumes';
 import { TIER_NAMES } from '../../domain/rpg/tiers';
 import { CostumeLayer } from '../party/art/costumes';
 import {
-  FURNITURE,
   HOUSE_SLOTS,
   HOUSE_SLOT_NAMES,
   furnitureById,
@@ -56,7 +56,7 @@ import { gearArt } from '../party/art/gear';
 import { petArt } from '../party/art/pets';
 import { ChestAlcove } from '../party/ChestAlcove';
 import { GardenPlots } from './GardenPlots';
-import { Purchases } from '../party/Purchases';
+import { Merchant } from '../party/Merchant';
 import { RaidSheet } from '../party/RaidSheet';
 import { Boss } from '../party/Boss';
 import { GearDiff } from '../party/GearDiff';
@@ -65,6 +65,7 @@ import type { ChestOutcome } from '../../db/repository/chests';
 import { ChestReveal } from '../chest/ChestReveal';
 import { openingLine } from '../chest/receipt';
 import { SecondaryAction } from '../../ui/SecondaryAction';
+import { Tile } from '../../components/Tile';
 
 /**
  * How brightly a companion's card is lit, by how rare it is.
@@ -350,6 +351,8 @@ function RaidSection({ ctx }: { ctx: ShopContext }) {
   const companion = pets.find((p) => p.id === avatar.companionId);
   return (
     <>
+      {/* First, because the sheet below is what you bring to the gate. */}
+      <Tile to="/eve-garden" title="Boss Gate" icon="sword" value="Enter" hint="The islands and the boss. Better together." />
       <RaidSheet
         avatar={avatar}
         owned={owned}
@@ -438,7 +441,7 @@ function ShopSectionView({ ctx, onRevealed }: {
         busy={opening}
         onOpen={openChest}
       />
-      <Purchases>
+      <Merchant>
         <Surprise
           avatar={avatar}
           owned={owned}
@@ -451,26 +454,25 @@ function ShopSectionView({ ctx, onRevealed }: {
             );
           }}
         />
-        <Shop
+        <Deals
           avatar={avatar}
           owned={owned}
+          day={day}
           onBuy={async (itemId) => {
+            const result = await buyDeal(identity.memberId, identity.coupleId, day, itemId);
+            say(result.ok ? 'Bought, at today\u2019s price.' : result.reason ?? null, result.ok ? 'success' : 'error');
+          }}
+        />
+        <Refine
+          avatar={avatar}
+          owned={owned}
+          onRefine={async (itemId) => {
             const result = await buyGear(identity.memberId, identity.coupleId, itemId);
             if (!result.ok) say(result.reason ?? null, 'error');
             else if (result.refined) say(`Refined to +${result.refined}.`);
           }}
         />
-        <Decor
-          avatar={avatar}
-          owned={owned}
-          onBuy={async (itemId) => {
-            const result = await buyFurniture(identity.memberId, identity.coupleId, itemId);
-            // No "place it" any more: buying furnished the room, in the same
-            // transaction that took the coins.
-            say(result.ok ? 'Bought, and it has moved in.' : result.reason ?? null, result.ok ? 'success' : 'error');
-          }}
-        />
-      </Purchases>
+      </Merchant>
     </>
   );
 }
@@ -631,7 +633,7 @@ function Adventures({ avatar, owned, onGo }: {
                     that cannot take the theme, and icons.tsx rejects
                     glyph-as-icon for exactly this reason. */}
                 {locked
-                  ? `Lv ${place.unlockLevel}`
+                  ? `Your Lv ${place.unlockLevel}`
                   : `${travelCost(place, base)} energy`}
               </button>
             </li>
@@ -744,7 +746,7 @@ function Birbhouse({ house, avatar }: {
       {bare.length > 0 ? (
         <p className="section-sub">
           {bare.length === HOUSE_SLOTS.length
-            ? 'Nothing in it yet. The Shop has the furniture.'
+            ? 'Nothing in it yet. The merchant stocks furniture most days.'
             : `Still bare: ${bare.map((slot) => HOUSE_SLOT_NAMES[slot].toLowerCase()).join(', ')}.`}
         </p>
       ) : null}
@@ -884,53 +886,6 @@ function Costumes({ avatar, owned, onWear }: {
   );
 }
 
-function Shop({ avatar, owned, onBuy }: {
-  avatar: Avatar;
-  owned: InventoryItem[];
-  onBuy: (itemId: string) => void;
-}) {
-  return (
-    <section className="panel">
-      <h2 className="section-title">Shop</h2>
-      <p className="section-sub">
-        {avatar.coins} coins. A second purchase of something already owned
-        refines it instead of sitting unworn.
-      </p>
-
-      <ul className="shop-grid">
-        {GEAR.map((item: GearItem) => {
-          const itemOwned = findOwned(owned, item.id);
-          const price = itemOwned ? refinePrice(item.rarity, itemOwned.refine) : GEAR_PRICE[item.rarity];
-          const atCap = itemOwned !== undefined && itemOwned.refine >= REFINE_MAX;
-          const afford = avatar.coins >= price;
-          const Art = gearArt(item.id);
-          return (
-            <li key={item.id} className="shop-item">
-              <button
-                type="button"
-                className="shop-item-button"
-                data-tier={item.rarity}
-                disabled={!afford || atCap}
-                title={item.blurb}
-                onClick={() => onBuy(item.id)}
-              >
-                {Art ? <span className="shop-item-art"><Art /></span> : null}
-                <span className="shop-item-name">
-                  {item.name}{itemOwned && itemOwned.refine > 0 ? ` +${itemOwned.refine}` : ''}
-                </span>
-                <span className="shop-item-rarity">{RARITY_NAMES[item.rarity]}</span>
-                <span className="shop-item-price">
-                  {atCap ? 'Fully refined' : itemOwned ? `Refine · ${price}` : `${price} coins`}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
 /**
  * What an egg is actually going to do, before anybody spends a hundred and
  * twenty coins finding out.
@@ -1027,51 +982,121 @@ function Surprise({ avatar, owned, day, onBuy }: {
   );
 }
 
+/** A deal's picture: the gear drawing, the furniture fragment, or the two colours of a dye. */
+function DealArt({ deal }: { deal: Deal }) {
+  if (deal.kind === 'gear') {
+    const Art = gearArt(deal.id);
+    return Art ? <Art /> : null;
+  }
+  if (deal.kind === 'decor') {
+    const Art = houseArt(deal.id);
+    return <svg viewBox="0 0 100 100">{Art ? <Art /> : null}</svg>;
+  }
+  const dye = dyeById(deal.id);
+  return (
+    <svg viewBox="0 0 100 100">
+      <circle cx="42" cy="50" r="28" fill={dye?.ink} />
+      <circle cx="66" cy="50" r="18" fill={dye?.accent} />
+    </svg>
+  );
+}
+
 /**
- * Furniture, sold here and moved in on its own — see `Birbhouse`.
+ * Today's shelf: a handful of gear, furniture and a colourway, each a fifth to
+ * a third off, the same on both phones. See `domain/rpg/merchant.ts` for why
+ * this is short and what is never on it.
  *
- * Its own section rather than more rows in the gear grid, because a rug has no
- * rarity, no stat bonus and no refine level — the three things every column of
- * that grid is showing. Putting it there would have meant either four empty
- * cells per row or four meaningless ones.
+ * Owned pieces stay listed as "Owned" rather than vanishing, so the two shelves
+ * match even when the two bags do not.
  */
-function Decor({ avatar, owned, onBuy }: {
+function Deals({ avatar, owned, day, onBuy }: {
   avatar: Avatar;
   owned: InventoryItem[];
+  day: DayKey;
   onBuy: (itemId: string) => void;
 }) {
   return (
     <section className="panel">
-      <h2 className="section-title">For the birbhouse</h2>
+      <h2 className="section-title">Today&rsquo;s deals</h2>
       <p className="section-sub">
-        Bought with your coins, into a room you both see. It moves in by itself; the Birb tab shows the room.
+        {avatar.coins} coins. New stock tomorrow; you both see the same shelf.
       </p>
-
       <ul className="decor-list">
-        {FURNITURE.map((item) => {
-          const isOwned = ownsItem(owned, item.id);
-          const afford = avatar.coins >= item.price;
-          const Art = houseArt(item.id);
+        {dealsFor(day).map((deal) => {
+          const isOwned = findOwned(owned, deal.id) !== undefined;
+          const afford = avatar.coins >= deal.price;
           return (
-            <li className="decor" key={item.id}>
-              {/* The same fragment the room draws, shown in its own 100×100
-                  window so a piece positioned for the far wall is still
-                  visible in a list row. */}
-              <span className="decor-art" aria-hidden="true">
-                <svg viewBox="0 0 100 100">{Art ? <Art /> : null}</svg>
-              </span>
+            <li className="decor" key={deal.id} data-tier={deal.rarity}>
+              <span className="decor-art" aria-hidden="true"><DealArt deal={deal} /></span>
               <span className="decor-body">
-                <span className="decor-name">{item.name}</span>
-                <span className="decor-blurb">{item.blurb}</span>
+                <span className="decor-name">
+                  {deal.name}{deal.rarity ? ` · ${RARITY_NAMES[deal.rarity]}` : ''}
+                </span>
+                <span className="decor-blurb">{deal.blurb}</span>
               </span>
               <button
                 type="button"
                 className="decor-buy"
                 disabled={isOwned || !afford}
-                onClick={() => onBuy(item.id)}
-                aria-label={isOwned ? `${item.name}, already owned` : `Buy ${item.name} for ${item.price} coins`}
+                onClick={() => onBuy(deal.id)}
+                aria-label={isOwned
+                  ? `${deal.name}, already owned`
+                  : `Buy ${deal.name} for ${deal.price} coins, ${deal.percentOff} percent off`}
               >
-                {isOwned ? 'Owned' : item.price}
+                {isOwned ? 'Owned' : <>{deal.price} <s className="surprise-was">{deal.listPrice}</s></>}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** How many refinable pieces the merchant lists at once: the cheapest next steps. */
+const REFINE_LISTED = 5;
+
+/**
+ * Gear you own, one refine further. Re-buying an owned piece refines it, and
+ * the rotating shelf would otherwise have stranded that -- the full catalogue
+ * used to be the only place to do it.
+ */
+function Refine({ avatar, owned, onRefine }: {
+  avatar: Avatar;
+  owned: InventoryItem[];
+  onRefine: (itemId: string) => void;
+}) {
+  const rows = owned
+    .map((row) => ({ row, item: gearById(row.itemId) }))
+    .filter((entry): entry is { row: InventoryItem; item: NonNullable<ReturnType<typeof gearById>> } =>
+      entry.item !== undefined && entry.row.refine < REFINE_MAX)
+    .map(({ row, item }) => ({ row, item, price: refinePrice(item.rarity, row.refine) }))
+    .sort((a, b) => a.price - b.price || a.item.id.localeCompare(b.item.id))
+    .slice(0, REFINE_LISTED);
+  if (rows.length === 0) return null;
+
+  return (
+    <section className="panel">
+      <h2 className="section-title">Refine what you own</h2>
+      <p className="section-sub">The next step for the gear in your bag, cheapest first.</p>
+      <ul className="decor-list">
+        {rows.map(({ row, item, price }) => {
+          const Art = gearArt(item.id);
+          return (
+            <li className="decor" key={item.id} data-tier={item.rarity}>
+              <span className="decor-art" aria-hidden="true">{Art ? <Art /> : null}</span>
+              <span className="decor-body">
+                <span className="decor-name">{item.name}{row.refine > 0 ? ` +${row.refine}` : ''}</span>
+                <span className="decor-blurb">Refine to +{row.refine + 1}</span>
+              </span>
+              <button
+                type="button"
+                className="decor-buy"
+                disabled={avatar.coins < price}
+                onClick={() => onRefine(item.id)}
+                aria-label={`Refine ${item.name} for ${price} coins`}
+              >
+                {price}
               </button>
             </li>
           );

@@ -1,16 +1,15 @@
 import { useState, type ReactNode } from 'react';
 
 /**
- * The buy-it-outright half of the shop, folded away.
+ * The merchant: the buy-it-outright half of the shop, folded away.
  *
- * The shop grew four purchase panels — gear, furniture, colourways, and the
- * day's offer — and stacked one after another they were the whole page, which
- * put a screen about spending money in front of somebody every time they went
- * looking for a chest.
+ * This was "Purchases", and it listed every gear piece and every piece of
+ * furniture at full price -- the whole catalogue in a drawer. It is the
+ * merchant now, with a short shelf that changes daily and is cheaper than
+ * anywhere else; see `domain/rpg/merchant.ts`.
  *
- * So the chests are the shop and this is a drawer under it. Collapsed by
- * default, one tap to open, and the contents are exactly what they were: this
- * moves the panels, it does not change a single price or a single button.
+ * The chests are the shop and this is a drawer under it. Collapsed by default,
+ * one tap to open.
  *
  * A `<button>` with `aria-expanded` and plain conditional children rather than
  * `<details>`, because `<details>` cannot be animated open on Safari without
@@ -18,13 +17,13 @@ import { useState, type ReactNode } from 'react';
  * fighting the marker.
  */
 
-export interface PurchasesProps {
-  /** Rendered only once the drawer is open — four panels' worth of live
+export interface MerchantProps {
+  /** Rendered only once the drawer is open — the shelf's live
    *  queries have no business running for a drawer nobody has opened. */
   children: ReactNode;
 }
 
-export function Purchases({ children }: PurchasesProps) {
+export function Merchant({ children }: MerchantProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -36,9 +35,9 @@ export function Purchases({ children }: PurchasesProps) {
         onClick={() => setOpen(!open)}
       >
         <span className="purchases-head">
-          <span className="section-title">Purchases</span>
+          <span className="section-title">Merchant</span>
           <span className="section-sub">
-            Gear, furniture, colourways, and today’s offer — bought outright.
+            Today’s deals, a little cheaper than anywhere else, and new each day.
           </span>
         </span>
         <span className="purchases-chevron" aria-hidden="true" />

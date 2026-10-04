@@ -3,19 +3,17 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import { ensureIdentity, getOrCreateAvatar } from '../db/repository';
-import { levelOf } from '../domain/rpg/avatar';
+import { levelForXp } from '../domain/xp';
 import { Icon } from './icons';
 
 /**
- * Level and coins, top right, on every screen.
+ * The pet's level and your coins, top right, on every screen.
  *
- * The two numbers that decide what you can do next were on four different
- * screens and on none of them at once: the level gated gear and locations from
- * inside the Bag, the balance was a line in the middle of the Shop, and Home —
- * the screen the app opens on — showed the *pet's* level, which is the
- * couple's and is not this one. So the answer to "can I afford that yet" cost
- * two taps and a scroll, and a purchase made in the Shop left no visible trace
- * anywhere else.
+ * The level is the shared pet's, the same number Home shows. It used to be this
+ * member's own, which put two different "Lv" figures on the two screens people
+ * look at most. Gear and place gates still read the member's level and say so
+ * in their own copy. The balance was a line in the middle of the Shop, and a
+ * purchase made there left no visible trace anywhere else; here it ticks down.
  *
  * It reads `db.avatars`, which is the same row the Bag totals and every
  * purchase debits, through a live query — so the badge is not a copy that can
@@ -43,7 +41,7 @@ import { Icon } from './icons';
  * `loadSettings` inside a live query, which re-fires up to twenty times a
  * foreground cycle.
  */
-const BEFORE_THE_APP = ['/welcome', '/onboarding'];
+export const BEFORE_THE_APP = ['/welcome', '/onboarding'];
 export function StatusHud() {
   // Settings carries an identity only once something else has written one.
   // Minting it here too is what lets a first run show a starting balance
@@ -52,36 +50,48 @@ export function StatusHud() {
   const { pathname } = useLocation();
   const hidden = BEFORE_THE_APP.includes(pathname);
 
-  const [memberId, setMemberId] = useState<string | null>(null);
+  const [identity, setIdentity] = useState<{ memberId: string; coupleId: string } | null>(null);
   useEffect(() => {
     if (hidden) return;
     let live = true;
     ensureIdentity()
-      .then(async (identity) => {
-        await getOrCreateAvatar(identity.memberId, identity.coupleId);
-        if (live) setMemberId(identity.memberId);
+      .then(async (next) => {
+        await getOrCreateAvatar(next.memberId, next.coupleId);
+        if (live) setIdentity(next);
       })
       .catch(() => {});
     return () => { live = false; };
   }, [hidden]);
 
+  const memberId = identity?.memberId;
+  const coupleId = identity?.coupleId;
   const avatar = useLiveQuery(
     () => (memberId ? db.avatars.get(memberId) : undefined),
     [memberId],
+  );
+  // Tagged with the couple it was read for: a live query keeps its last answer
+  // while its key changes, and an untagged `null` ("no pet") would pass for this
+  // couple's answer and flash level 1.
+  const petRead = useLiveQuery(
+    async () => (coupleId ? { for: coupleId, xp: (await db.pet.get(coupleId))?.xp ?? 0 } : undefined),
+    [coupleId],
   );
 
   if (hidden) return null;
 
   // Nothing rather than zeroes while the row is on its way: a badge that reads
   // "Lv 1 · 0" for a frame and then jumps is worse than one that arrives late.
-  if (!avatar) return null;
+  if (!avatar || !petRead || petRead.for !== coupleId) return null;
 
-  const level = levelOf(avatar);
+  // The shared pet's level, the one Home shows -- not this member's own. Both
+  // come off the same 50-level curve in `domain/xp.ts`, so they can only differ
+  // by whose XP is fed in, and a header that disagreed with Home was a bug.
+  const level = levelForXp(petRead.xp);
   return (
     <NavLink
       to="/assets"
       className="status-hud"
-      aria-label={`Level ${level}, ${avatar.coins} ${avatar.coins === 1 ? 'coin' : 'coins'}. Open the bag.`}
+      aria-label={`Pet level ${level}, ${avatar.coins} ${avatar.coins === 1 ? 'coin' : 'coins'}. Open the bag.`}
     >
       <span className="status-hud-cell">
         <span className="status-hud-key" aria-hidden="true">Lv</span>

@@ -64,6 +64,11 @@ export const PARTNER_WRITABLE_KINDS: readonly HoldingKind[] = ['quest', 'world',
 
 export const PARTNER_VISIBLE_KINDS: readonly HoldingKind[] = [
   'quest', 'lifeEvent', 'cheer', 'world', 'wager',
+  // The Friends page: their level, their colourway and costume, the companion
+  // they walk with. Visible, not writable -- `UPSERT_SQL` still refuses a row
+  // whose member is not the caller -- and `inventory` stays private, so what
+  // they own is still theirs; only what they wear and walk with is on show.
+  'avatar', 'pet',
 ];
 
 export function isPartnerWritable(kind: HoldingKind): boolean {

@@ -144,8 +144,17 @@ describe('which kinds are writable, and which are merely visible', () => {
     }
   });
 
-  it('shows both of you the quest, life events, cheers, the world and the wager', () => {
-    expect(PARTNER_VISIBLE_KINDS).toEqual(['quest', 'lifeEvent', 'cheer', 'world', 'wager']);
+  it('shows both of you the shared kinds, plus each other\'s avatar and companions', () => {
+    expect(PARTNER_VISIBLE_KINDS).toEqual([
+      'quest', 'lifeEvent', 'cheer', 'world', 'wager', 'avatar', 'pet',
+    ]);
+  });
+
+  it('keeps possessions private: inventory, tasks stay out of view', () => {
+    expect(isPartnerVisible('inventory')).toBe(false);
+    expect(isPartnerVisible('task')).toBe(false);
+    expect(isPartnerWritable('avatar')).toBe(false);
+    expect(isPartnerWritable('pet')).toBe(false);
   });
 
   it('makes every writable kind visible, but not the reverse', () => {
@@ -290,10 +299,17 @@ describe('applying a partner\'s row', () => {
    * Re-pinned after the gate changed from ownership to visibility, because the
    * change is exactly the sort that quietly widens what it was narrowing.
    */
-  it('still refuses every personal kind our partner wrote', () => {
-    for (const kind of ['inventory', 'pet', 'avatar', 'task'] as const) {
+  it('still refuses what our partner owns and plans', () => {
+    for (const kind of ['inventory', 'task'] as const) {
       const row = pulled({ kind, memberId: THEM, mine: false });
       expect(shouldApply(row, undefined), kind).toBe(false);
+    }
+  });
+
+  it('shows what our partner wears and walks with, for the Friends page', () => {
+    for (const kind of ['avatar', 'pet'] as const) {
+      const row = pulled({ kind, memberId: THEM, mine: false });
+      expect(shouldApply(row, undefined), kind).toBe(true);
     }
   });
 });

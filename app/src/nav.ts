@@ -129,8 +129,8 @@ export const MENU_GROUPS: MenuGroup[] = [
   {
     title: 'The app',
     tabs: [
-      { to: '/raid', label: 'Raid', icon: 'sword', hint: 'The sheet, the boss, and where to go' },
-      { to: '/eve-garden', label: "Eve's Garden", icon: 'sword', hint: 'The islands, and what stands on them' },
+      { to: '/eve-garden', label: 'Boss Gate', icon: 'sword', hint: 'The islands, the boss, and going in together' },
+      { to: '/raid', label: 'Raid', icon: 'shield', hint: 'The sheet, the boss, and where to go' },
       { to: '/settings', label: 'You', icon: 'person', hint: 'Pairing, theme, connections' },
     ],
   },
@@ -161,7 +161,10 @@ export const ALIASES: Tab[] = [
   // The garden was `/overworld` before it became Eve's Garden. Anyone who
   // bookmarked it, or typed it into the command menu out of habit, should still
   // land somewhere rather than on a blank route.
-  { to: '/eve-garden', label: 'Overworld', icon: 'sword', hint: 'Now Eve\u2019s Garden' },
+  { to: '/eve-garden', label: 'Overworld', icon: 'sword', hint: 'Now the Boss Gate' },
+  // The name the screen behind the gate still goes by in the settings copy and
+  // in the fight, so it should still be findable by it.
+  { to: '/eve-garden', label: "Eve's Garden", icon: 'sword', hint: 'The islands behind the Boss Gate' },
   // `/party` was the everything view until its sections each had a screen. The
   // route redirects to the shop, and the word still finds it.
   { to: '/shop', label: 'Party', icon: 'shop', hint: 'Now the Shop, with Birb and Bag beside it' },

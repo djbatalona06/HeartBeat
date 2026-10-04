@@ -22,6 +22,9 @@ import { BottomNav } from './ui/layout/BottomNav';
 import { useBadges } from './features/notifications/useBadges';
 import { useNotices } from './features/notifications/useNotices';
 import { NotificationHeader } from './features/notifications/NotificationHeader';
+import { LoginPopup } from './features/dashboard/LoginPopup';
+import { MascotSync } from './features/pet/MascotSync';
+import { BossGateGuard } from './features/eve-garden/gate/BossGateGuard';
 import { ToastHost } from './ui/Toast';
 import { SceneBackdrop } from './features/home/SceneBackdrop';
 import { WelcomePage } from './features/onboarding/WelcomePage';
@@ -141,6 +144,10 @@ export function App() {
                         something is waiting, and it is handed the badges `App`
                         already holds rather than reading its own. */}
                     <NotificationHeader badges={badges} notices={notices} />
+                    {/* Here rather than on Home, so the daily award finds you on
+                        whichever screen the app opens to. */}
+                    <LoginPopup />
+                    <MascotSync />
                     {/* Around the routes only. A single page throwing should leave the
                         nav bar and the thread standing, so there is still a way out of
                         the broken screen without force-quitting the app. */}
@@ -187,10 +194,17 @@ export function App() {
                             home of its own. Kept as a redirect, like /cycle, for
                             the links and home screens that still carry it. */}
                         <Route path="/party" element={<Navigate to="/shop" replace />} />
+                        {/* Through the Boss Gate's front door, so every way in meets
+                            the party-mode question on a boss stage -- and the
+                            garden stays unmounted until it is answered. */}
                         <Route path="/eve-garden" element={(
-                          <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>
-                            <EveGardenPage />
-                          </Suspense>
+                          <BossGateGuard>
+                            {(party) => (
+                              <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>
+                                <EveGardenPage party={party} />
+                              </Suspense>
+                            )}
+                          </BossGateGuard>
                         )}
                         />
                         <Route path="/overworld" element={(
