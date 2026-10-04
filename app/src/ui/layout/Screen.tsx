@@ -1,4 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import type { GuideCopy } from '../InfoBubble';
+import { PageTitle } from './PageTitle';
 import { overBudgetWarning } from './contract';
 
 /**
@@ -60,9 +62,11 @@ export interface ScreenProps {
    * being trustworthy.
    */
   as?: 'div' | 'section';
+  /** The page's guide, opened from the (i) beside the title. */
+  guide?: GuideCopy;
 }
 
-export function Screen({ title, sub, children, className, as = 'div' }: ScreenProps) {
+export function Screen({ title, sub, children, className, as = 'div', guide }: ScreenProps) {
   const root = useRef<HTMLDivElement | null>(null);
   // The warning names the screen, and four titles are expressions rather than
   // text. Those get the generic name rather than a stringified React element,
@@ -74,7 +78,7 @@ export function Screen({ title, sub, children, className, as = 'div' }: ScreenPr
   return (
     <Tag className={className ? `page ${className}` : 'page'} ref={root}>
       <header className="page-head">
-        <h1 className="page-title">{title}</h1>
+        <PageTitle guide={guide}>{title}</PageTitle>
         <p className="page-sub">{sub}</p>
       </header>
       {children}

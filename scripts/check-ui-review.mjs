@@ -89,6 +89,12 @@ const RAW_BUTTON_EXEMPT = new Set([
   // carrying its own `aria-label` (the × alone reads as nothing), sitting
   // *outside* the bar's own <Link> so that dismissing cannot also navigate.
   'features/notifications/NotificationHeader.tsx',
+  // The (i) beside a title, and the two section toggles in the guide it opens.
+  // The (i) is a `--tap` circle carrying its own `aria-label`, like the dismiss
+  // above; the toggles are disclosure headers with `aria-expanded`, the
+  // Merchant's pattern. None is a press the four primitives describe. The
+  // guide's one action, "Got it", is a PrimaryAction.
+  'ui/InfoBubble.tsx',
 ]);
 
 /**
