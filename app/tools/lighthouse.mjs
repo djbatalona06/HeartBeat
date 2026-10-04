@@ -49,16 +49,21 @@ if (!existsSync(join(DIST, 'index.html'))) {
  */
 const PRECACHE_CEILING_ENTRIES = 24;
 // Raised twice, each time for shipped content rather than for a chunk that
-// slipped into the precache (the three guards below that catch that — phaser,
-// the game worker and the 3D mascots — are unchanged):
+// slipped into the precache (the four guards below that catch that — phaser,
+// the game worker, the 3D mascots and the gear art — are unchanged):
 //   1200 -> 1220  islands 8-10, costume art, coin sources and the partner gate.
 //                 Main measured 1186 KiB and the branch 1207.
 //   1220 -> 1235  fifteen more costumes and gear drawings (24 new SVG
 //                 components). The branch then measured 1221.
-// Headroom is about 14 KiB each time, which is what it was at 1200. Every
-// drawing is precached because every JS chunk is; if this needs raising a
-// third time, that is the moment to look at drawing icons from data instead
-// of one JSX component each.
+//   1235 -> 1235  not raised. The forty gear drawings left the precache for a
+//                 lazy, runtime-cached chunk (`assets/gear-art-*.js`, reached
+//                 only through `GearIcon`): 1230 -> 1211 KiB raw, 404 -> 400 KiB
+//                 gzip, headroom 5 -> 24 KiB. The gzip barely moves, which is
+//                 the honest size of what a phone downloads; raw is the number
+//                 this ceiling is written in.
+// Headroom was about 14 KiB each time it was raised, which is what it was at
+// 1200. Costume (9 KB source), house (4.5 KB) and companion (17 KB) art can
+// leave the same way if it is needed again.
 const PRECACHE_CEILING_KIB = 1235;
 
 const sw = await readFile(join(DIST, 'sw.js'), 'utf8');
@@ -101,8 +106,8 @@ if (manifest.length === 0) {
   // phones that never open Eve's Garden. The 3D mascots' chunk is three.js,
   // several times the precache's headroom on its own, and every mascot has an
   // SVG to stand on until it arrives.
-  const leaked = manifest.filter((u) => /phaser-|game\.worker-|mascot3d-/.test(u));
-  check('neither phaser, the game worker nor the 3D mascots is precached', leaked.length === 0,
+  const leaked = manifest.filter((u) => /phaser-|game\.worker-|mascot3d-|gear-art-/.test(u));
+  check('none of phaser, the game worker, the 3D mascots or the gear art is precached', leaked.length === 0,
     leaked.join(', '));
   // Kept out of the precache is not the same as kept out of the first load.
   // A lazy chunk that the entry chunk imports anything from gets a
@@ -111,8 +116,8 @@ if (manifest.length === 0) {
   // `cjs-helpers` in vite.config.ts), and the 3D chunk captured `../roster`
   // (see `buildMascot` in `mascots/3d/models.ts`).
   const html = await readFile(join(DIST, 'index.html'), 'utf8');
-  const preloaded = [...html.matchAll(/rel="modulepreload"[^>]*href="[^"]*((?:phaser|mascot3d)-[^"]+)"/g)].map((m) => m[1]);
-  check('neither phaser nor the 3D mascots is preloaded on boot', preloaded.length === 0, preloaded.join(', '));
+  const preloaded = [...html.matchAll(/rel="modulepreload"[^>]*href="[^"]*((?:phaser|mascot3d|gear-art)-[^"]+)"/g)].map((m) => m[1]);
+  check('none of phaser, the 3D mascots or the gear art is preloaded on boot', preloaded.length === 0, preloaded.join(', '));
   const wasm = manifest.filter((u) => u.endsWith('.wasm'));
   check('no .wasm is precached', wasm.length === 0, `${wasm.length} found`);
 }

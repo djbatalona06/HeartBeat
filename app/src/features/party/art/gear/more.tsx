@@ -13,49 +13,6 @@ const text = 'var(--color-text)';
 const accent = 'var(--color-accent)';
 const muted = 'var(--color-text-muted)';
 
-/** Helmet, epic. Up before the first drop and down after the last. */
-export function RainHood() {
-  return (
-    <Svg>
-      <path d="M22 76 Q22 20 50 20 Q78 20 78 76 L64 76 Q64 40 50 40 Q36 40 36 76 Z" fill={text} />
-      <path d="M50 20 Q50 12 58 10" fill="none" stroke={muted} strokeWidth="3" strokeLinecap="round" />
-      <path d="M84 22 Q89 31 84 36 Q79 31 84 22 Z M16 40 Q20 47 16 51 Q12 47 16 40 Z" fill={accent} />
-    </Svg>
-  );
-}
-
-/** Helmet, legendary. Comes on at dusk exactly when it is needed, never earlier. */
-export function Streetlamp() {
-  return (
-    <Svg>
-      <circle cx="50" cy="32" r="26" fill={accent} opacity="0.18" />
-      <rect x="48" y="40" width="4" height="46" fill={text} />
-      <path d="M34 40 L66 40 L59 22 L41 22 Z" fill={text} />
-      <circle cx="50" cy="31" r="6" fill={accent} />
-      <path d="M38 86 L62 86" stroke={text} strokeWidth="4" strokeLinecap="round" />
-    </Svg>
-  );
-}
-
-/** Helmet, mythic. The hush before anybody says it is snowing. */
-export function FirstSnow() {
-  return (
-    <Svg>
-      <g stroke={text} strokeWidth="4" strokeLinecap="round">
-        <path d="M50 18 L50 82" />
-        <path d="M22.3 34 L77.7 66" />
-        <path d="M22.3 66 L77.7 34" />
-      </g>
-      <g fill={accent}>
-        <circle cx="50" cy="16" r="4" /><circle cx="50" cy="84" r="4" />
-        <circle cx="21" cy="33" r="4" /><circle cx="79" cy="67" r="4" />
-        <circle cx="21" cy="67" r="4" /><circle cx="79" cy="33" r="4" />
-      </g>
-      <circle cx="50" cy="50" r="7" fill={text} />
-    </Svg>
-  );
-}
-
 /** Weapon, epic. Cuts back what was never going to flower. */
 export function GardenShears() {
   return (

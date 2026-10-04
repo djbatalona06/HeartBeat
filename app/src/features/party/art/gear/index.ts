@@ -1,9 +1,5 @@
 import type { ComponentType } from 'react';
 import { GEAR } from '../../../../domain/rpg/gear';
-import { PaperCrown } from './PaperCrown';
-import { RedRibbon } from './RedRibbon';
-import { StargazerCirclet } from './StargazerCirclet';
-import { AuroraVeil } from './AuroraVeil';
 import { BorrowedHoodie } from './BorrowedHoodie';
 import { LilyShawl } from './LilyShawl';
 import { TidewalkerCoat } from './TidewalkerCoat';
@@ -20,14 +16,16 @@ import { WoodenSpoon } from './WoodenSpoon';
 import { EmberBrand } from './EmberBrand';
 import { CometLance } from './CometLance';
 import { SecondWind } from './SecondWind';
-import { PorchLight } from './PorchLight';
 import { TheGoodBlanket } from './TheGoodBlanket';
 import { TheDriveHome } from './TheDriveHome';
 import { SpareKey } from './SpareKey';
 import { PlainSentence } from './PlainSentence';
 import {
-  BrassCompass, Cardigan, CoastalPath, FirstSnow, GardenClogs, GardenShears, HarbourJacket,
-  KindReply, LighthouseBeam, Mixtape, NightBus, Polaroid, RainHood, Streetlamp, WoodsmokeCoat,
+  AuroraVeil, FirstSnow, PaperCrown, PorchLight, RainHood, RedRibbon, StargazerCirclet, Streetlamp,
+} from './head';
+import {
+  BrassCompass, Cardigan, CoastalPath, GardenClogs, GardenShears, HarbourJacket,
+  KindReply, LighthouseBeam, Mixtape, NightBus, Polaroid, WoodsmokeCoat,
 } from './more';
 
 /**

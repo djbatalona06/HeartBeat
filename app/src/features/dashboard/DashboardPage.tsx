@@ -24,7 +24,7 @@ import { PetGreeting, usePlayGreetingOnce } from '../pet/PetGreeting';
 import { useLevelUpMoment } from '../pet/useLevelUpMoment';
 import { greetingFor } from '../../domain/pet/greeting';
 import { FeedPanel } from '../party/FeedPanel';
-import { gearArt } from '../party/art/gear';
+import { GearIcon } from '../party/art/gear/GearIcon';
 import { Screen } from '../../ui/layout/Screen';
 import { isPaired } from '../../domain/identity/rekey';
 import { Tile } from '../../components/Tile';
@@ -367,11 +367,10 @@ function TodaySection({ open, loaded, equippedIds, onComplete }: TodaySectionPro
         <ul className="home-equipped" aria-label="Equipped">
           {equippedIds.map((itemId) => {
             const item = gearById(itemId);
-            const Art = gearArt(itemId);
-            if (!item || !Art) return null;
+            if (!item) return null;
             return (
               <li key={itemId} className="home-equipped-item" title={item.name}>
-                <Art />
+                <GearIcon id={itemId} />
               </li>
             );
           })}

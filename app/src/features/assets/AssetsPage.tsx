@@ -17,7 +17,7 @@ import { refineByItemId } from '../../domain/rpg/inventory';
 import { gearSources } from '../../domain/rpg/loadout';
 import { passiveFor } from '../../domain/rpg/tiers';
 import type { GearSlot } from '../../domain/rpg/types';
-import { gearArt } from '../party/art/gear';
+import { GearIcon } from '../party/art/gear/GearIcon';
 import { RaidSheet } from '../party/RaidSheet';
 import { PurseShelf } from './PurseShelf';
 import { RAID_STAT_NAMES } from '../../domain/rpg/raidStats';
@@ -224,7 +224,6 @@ function SlotTile({ shelf, open, worth, onOpen }: {
   }
 
   const worn = shelf.owned.find((entry) => entry.worn);
-  const Art = worn ? gearArt(worn.item.id) : undefined;
   const source = worn ? worth(worn.item) : undefined;
   const spare = shelf.owned.length - (worn ? 1 : 0);
 
@@ -239,7 +238,7 @@ function SlotTile({ shelf, open, worth, onOpen }: {
         aria-haspopup="dialog"
       >
         <span className="gear-slot-name">{name}</span>
-        <span className="asset-card-art">{Art ? <Art /> : null}</span>
+        <span className="asset-card-art">{worn ? <GearIcon id={worn.item.id} /> : null}</span>
         <span className="asset-card-name">{worn ? worn.item.name : 'Empty'}</span>
         {worn ? (
           <span className="asset-card-meta">
@@ -335,11 +334,10 @@ function SlotSheet({ shelf, worth, onClose, onEquip, onUnequip }: {
 /** Art, name, tier and refine, and the number: one item, the same way twice. */
 function ItemFace({ entry, worth }: { entry: OwnedGear; worth: Worth }) {
   const { item, row } = entry;
-  const Art = gearArt(item.id);
   const source = worth(item);
   return (
     <div className="gear-face">
-      <span className="asset-card-art">{Art ? <Art /> : null}</span>
+      <span className="asset-card-art"><GearIcon id={item.id} /></span>
       <span className="gear-face-text">
         <span className="asset-card-name">{item.name}</span>
         <span className="asset-card-meta">

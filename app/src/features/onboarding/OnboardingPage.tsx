@@ -7,7 +7,7 @@ import { writeStoredTheme } from '../settings/theme';
 import { THEMES } from '../../themes';
 import { getMascot } from '../pet/mascots';
 import { gearById } from '../../domain/rpg/gear';
-import { gearArt } from '../party/art/gear';
+import { GearIcon } from '../party/art/gear/GearIcon';
 import { SecondaryAction } from '../../ui/SecondaryAction';
 import { PrimaryAction } from '../../ui/PrimaryAction';
 
@@ -68,7 +68,6 @@ export function OnboardingPage() {
   const back = () => setIndex((i) => Math.max(0, i - 1));
 
   const item = gearById(STARTER_ITEM_ID);
-  const StarterArt = gearArt(STARTER_ITEM_ID);
 
   return (
     <div className="page onboarding">
@@ -134,9 +133,9 @@ export function OnboardingPage() {
       {step === 'item' ? (
         <section className="panel onboarding-step">
           <h2 className="section-title">Your first item</h2>
-          {item && StarterArt ? (
+          {item ? (
             <div className="onboarding-item">
-              <span className="onboarding-item-art"><StarterArt /></span>
+              <span className="onboarding-item-art"><GearIcon id={STARTER_ITEM_ID} /></span>
               <span className="onboarding-item-name">{item.name}</span>
               <p className="section-sub">{item.blurb}</p>
             </div>
