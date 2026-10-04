@@ -286,20 +286,7 @@ body {
   color: var(--color-accent);
   cursor: pointer;
 }
-.info-bubble > span {
-  display: grid;
-  place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 999px;
-  border: var(--border-width) solid currentColor;
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 700;
-  font-size: var(--text-sm);
-  line-height: 1;
-}
-.info-bubble[aria-expanded='true'] > span { background: var(--color-accent); color: var(--color-base); }
+.info-bubble[aria-expanded='true'] .icon .body { fill-opacity: 0.4; }
 .info-guide-toggle {
   display: flex;
   align-items: center;
