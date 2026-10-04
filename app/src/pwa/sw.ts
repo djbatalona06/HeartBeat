@@ -41,6 +41,36 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+/**
+ * The gear drawings, cache-first on first use.
+ *
+ * The chunk is kept out of the precache (`globIgnores` in vite.config.ts) and
+ * `GearIcon` fetches it at idle, so it lands here during the first online
+ * session. Its name carries a content hash, so a hit is never stale. A new
+ * deploy has a new name; the old entries are deleted when the new one is
+ * stored, or every release would leave one behind.
+ */
+const GEAR_ART = 'gear-art-v1';
+
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin || !/\/assets\/gear-art-[^/]+\.js$/.test(url.pathname)) return;
+  event.respondWith(
+    caches.open(GEAR_ART).then(async (cache) => {
+      const hit = await cache.match(event.request);
+      if (hit) return hit;
+      const response = await fetch(event.request);
+      if (response.ok) {
+        for (const stale of await cache.keys()) {
+          if (stale.url !== event.request.url) await cache.delete(stale);
+        }
+        await cache.put(event.request, response.clone());
+      }
+      return response;
+    }),
+  );
+});
+
 interface PushBody {
   title?: string;
   body?: string;

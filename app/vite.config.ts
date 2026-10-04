@@ -135,6 +135,14 @@ export default defineConfig({
           'assets/phaser-*.js',
           'assets/game.worker-*.js',
           'assets/mascot3d-*.js',
+          // The forty gear drawings, one lazy chunk reached only through
+          // `GearIcon`. About a fifth of the precache's headroom for icons that
+          // are only ever shown small, and which the service worker caches at
+          // runtime instead (`pwa/sw.ts`). Until the first online session has
+          // fetched it, each icon is an outlined square. Not a manual chunk, on
+          // purpose: that would pull `domain/rpg/gear` into it and the entry
+          // would then preload it on every boot, as happened to `mascot3d`.
+          'assets/gear-art-*.js',
           // The per-pack headline faces, ~160 KiB together. Cached on first
           // use by `pwa/sw.ts` instead; see the @font-face note in styles.css.
           'fonts/display/**',

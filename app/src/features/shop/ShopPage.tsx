@@ -52,7 +52,7 @@ import { PLACES, canTravel, nextPlace, travelCost } from '../../domain/rpg/locat
 import { useTheme } from '../../themes/ThemeProvider';
 import { getMascot } from '../pet/mascots';
 import { BorderGlow } from '../../components/BorderGlow';
-import { gearArt } from '../party/art/gear';
+import { GearIcon } from '../party/art/gear/GearIcon';
 import { petArt } from '../party/art/pets';
 import { ChestAlcove } from '../party/ChestAlcove';
 import { GardenPlots } from './GardenPlots';
@@ -985,8 +985,7 @@ function Surprise({ avatar, owned, day, onBuy }: {
 /** A deal's picture: the gear drawing, the furniture fragment, or the two colours of a dye. */
 function DealArt({ deal }: { deal: Deal }) {
   if (deal.kind === 'gear') {
-    const Art = gearArt(deal.id);
-    return Art ? <Art /> : null;
+    return <GearIcon id={deal.id} />;
   }
   if (deal.kind === 'decor') {
     const Art = houseArt(deal.id);
@@ -1081,10 +1080,9 @@ function Refine({ avatar, owned, onRefine }: {
       <p className="section-sub">The next step for the gear in your bag, cheapest first.</p>
       <ul className="decor-list">
         {rows.map(({ row, item, price }) => {
-          const Art = gearArt(item.id);
           return (
             <li className="decor" key={item.id} data-tier={item.rarity}>
-              <span className="decor-art" aria-hidden="true">{Art ? <Art /> : null}</span>
+              <span className="decor-art" aria-hidden="true"><GearIcon id={item.id} /></span>
               <span className="decor-body">
                 <span className="decor-name">{item.name}{row.refine > 0 ? ` +${row.refine}` : ''}</span>
                 <span className="decor-blurb">Refine to +{row.refine + 1}</span>

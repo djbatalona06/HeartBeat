@@ -24,6 +24,7 @@ import { useNotices } from './features/notifications/useNotices';
 import { NotificationHeader } from './features/notifications/NotificationHeader';
 import { LoginPopup } from './features/dashboard/LoginPopup';
 import { MascotSync } from './features/pet/MascotSync';
+import { useWarmGearArt } from './features/party/art/gear/GearIcon';
 import { BossGateGuard } from './features/eve-garden/gate/BossGateGuard';
 import { ToastHost } from './ui/Toast';
 import { SceneBackdrop } from './features/home/SceneBackdrop';
@@ -79,6 +80,9 @@ export function App() {
   // Reconciles the day log with the other phone. Mounted here rather than in a
   // page so it keeps running whichever tab is open.
   useSync();
+  // Fetches the gear drawings at idle so the service worker caches them for
+  // offline use; they are not in the precache. See `GearIcon`.
+  useWarmGearArt();
 
   // Whether there are two of you, and the re-key that carries this phone's rows
   // over the moment there are. See features/pairing/usePairing.ts.
