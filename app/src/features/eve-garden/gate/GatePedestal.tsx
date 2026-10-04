@@ -23,12 +23,18 @@ import { MAX_AFFINITY_RANK, statBubbles, type GateCard } from '../../../domain/r
 export interface GatePedestalProps {
   card: GateCard;
   selected: boolean;
+  /**
+   * The boss's weakness, when this kit really hits harder on it
+   * (`favoursWeakness`). The one reason to swap pets for a fight, said on the
+   * card rather than left for somebody to work out from the move bar.
+   */
+  strongHere?: string;
   onSelect(themeId: string): void;
 }
 
 const fillStyle = (fill: number) => ({ '--fill': fill.toFixed(3) }) as CSSProperties;
 
-export function GatePedestal({ card, selected, onSelect }: GatePedestalProps) {
+export function GatePedestal({ card, selected, strongHere, onSelect }: GatePedestalProps) {
   const mascot = getMascot(card.themeId);
   const mood = selected ? 'happy' : 'content';
 
@@ -63,6 +69,13 @@ export function GatePedestal({ card, selected, onSelect }: GatePedestalProps) {
             </span>
           </span>
         </span>
+
+        {strongHere ? (
+          <span className="raid-gate-strong">
+            Strong here
+            <span className="visually-hidden">{`: hits harder on this boss, which is weak to ${strongHere.toLowerCase()}`}</span>
+          </span>
+        ) : null}
 
         {card.available ? (
           <span className="raid-gate-bubbles">
