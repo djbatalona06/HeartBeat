@@ -51,6 +51,8 @@ import { ActionBar } from './ActionBar';
 import { ChargeMeter } from './ChargeMeter';
 import { VictoryBanner } from './VictoryBanner';
 import { Icon } from '../../components/icons';
+import { InfoBubble } from '../../ui/InfoBubble';
+import { GUIDES } from '../guide/guides';
 
 /**
  * Eve's Garden.
@@ -844,6 +846,7 @@ export function EveGardenPage({ party = true }: { party?: boolean } = {}) {
   return (
     <section className={`page garden${dark ? ' is-dark' : ''}`}>
       <div className="garden-top">
+        <InfoBubble guide={GUIDES.eveGarden} />
         <Compass
           islandNumber={island}
           islandName={islandName}

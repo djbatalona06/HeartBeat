@@ -44,6 +44,8 @@ import { SecondaryAction } from '../../ui/SecondaryAction';
 import { useBusyAction } from '../../ui/useBusyAction';
 import { PrimaryAction } from '../../ui/PrimaryAction';
 import { ListRow } from '../../ui/ListRow';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * Pairing, the theme picker, and the two of you.
@@ -122,7 +124,7 @@ export function SettingsPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Settings</h1>
+        <PageTitle guide={GUIDES.settings}>Settings</PageTitle>
         <p className="page-sub">Pairing, theme, your partner and connections.</p>
       </header>
 

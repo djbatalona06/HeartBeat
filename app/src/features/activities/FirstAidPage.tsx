@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ROUTINES, SIGNPOST } from '../../domain/selfcare/firstAid';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * First aid, for somebody's worst hour.
@@ -20,7 +22,7 @@ export function FirstAidPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">First aid</h1>
+        <PageTitle guide={GUIDES.firstAid}>First aid</PageTitle>
         <p className="page-sub">
           A few things to do with your hands. Nothing here is saved or shared.
         </p>

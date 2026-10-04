@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { MOVE_SETS, moveAt, setSeconds, type MoveSet } from '../../domain/selfcare/movements';
 import { clock, useElapsed } from './useElapsed';
 import { PrimaryAction } from '../../ui/PrimaryAction';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * Short movement sets, counted through one at a time.
@@ -29,7 +31,7 @@ export function MovementsPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Movements</h1>
+        <PageTitle guide={GUIDES.movements}>Movements</PageTitle>
         <p className="page-sub">{set.blurb}</p>
       </header>
 

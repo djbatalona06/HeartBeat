@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SOUNDSCAPES, fillNoise, type Soundscape } from '../../domain/selfcare/soundscapes';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * Soundscapes, synthesised on the phone.
@@ -112,7 +114,7 @@ export function SoundscapesPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Soundscapes</h1>
+        <PageTitle guide={GUIDES.soundscapes}>Soundscapes</PageTitle>
         <p className="page-sub">Made on the phone, so they work with no signal.</p>
       </header>
 

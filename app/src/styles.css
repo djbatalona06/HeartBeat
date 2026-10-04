@@ -268,6 +268,58 @@ body {
   line-height: var(--line-tight);
 }
 
+/* The (i) for a page's guide sits left of its title (ui/layout/PageTitle.tsx).
+   A full --tap target, with a smaller drawn circle, so it reads as a hint
+   beside the heading and is still easy to hit. The negative margin lines the
+   circle, not the hit area, up with the page's left edge. */
+.page-title-row, .section-title-row { display: flex; align-items: center; gap: var(--space-1); }
+:is(.page-title-row, .section-title-row) .info-bubble { margin-left: calc((var(--tap) - 1.75rem) / -2); }
+.info-bubble {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+.info-bubble > span {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  border: var(--border-width) solid currentColor;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  line-height: 1;
+}
+.info-bubble[aria-expanded='true'] > span { background: var(--color-accent); color: var(--color-base); }
+.info-guide-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0;
+  border: none;
+  border-top: var(--border-width) solid var(--color-border);
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.info-guide-steps { margin: 0 0 var(--space-2); padding-left: var(--space-5); line-height: var(--line-body); }
+.info-guide-steps li + li { margin-top: var(--space-1); }
+.info-guide-game { margin: 0 0 var(--space-2); }
+.info-guide-toggle[aria-expanded='true'] .purchases-chevron { transform: rotate(-135deg); }
+
 .page-sub {
   margin-top: var(--space-2);
   color: var(--color-text-muted);

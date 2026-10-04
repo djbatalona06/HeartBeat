@@ -14,6 +14,8 @@ import { GOOD_VIBES_PER_SENDER_PER_DAY } from '../../domain/rpg/lifeEvents';
 import { petArt } from './art/pets';
 import { PrimaryAction } from '../../ui/PrimaryAction';
 import type { Avatar } from '../../domain/rpg/types';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * Tree Town, with one other house in it.
@@ -98,7 +100,7 @@ export function FriendsPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Friends</h1>
+        <PageTitle guide={GUIDES.friends}>Friends</PageTitle>
         <p className="page-sub">Tree Town has two houses.</p>
       </header>
 

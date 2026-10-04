@@ -1,5 +1,7 @@
 import { SHIELD_EVERY, type Attribute, type Vitals } from '../../domain/rpg/vitals';
 import { glowOf } from './glow';
+import { InfoBubble } from '../../ui/InfoBubble';
+import { GUIDES } from '../guide/guides';
 
 /**
  * What the two of you have made of the pet: three attributes, the shared
@@ -34,7 +36,10 @@ export function VitalsPanel({ vitals }: { vitals: Vitals | undefined }) {
   return (
     <section className="vitals" style={{ '--vitals-glow': glowOf(vitals) } as React.CSSProperties}>
       <div className="vitals-head">
-        <h2 className="section-title">Together</h2>
+        <div className="section-title-row">
+          <InfoBubble guide={GUIDES.vitals} />
+          <h2 className="section-title">Together</h2>
+        </div>
         <span className="vitals-stage" title={vitals.stage.blurb}>{vitals.stage.name}</span>
       </div>
 

@@ -6,6 +6,8 @@ import { ensureIdentity, grantLifeEvent } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { actForDay, actsFor } from '../../domain/selfcare/kindness';
 import { PrimaryAction } from '../../ui/PrimaryAction';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * One small thing, for them or for anyone.
@@ -62,7 +64,7 @@ export function KindnessPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Act of kindness</h1>
+        <PageTitle guide={GUIDES.kindness}>Act of kindness</PageTitle>
         <p className="page-sub">One small thing. Today's, or pick your own.</p>
       </header>
 

@@ -10,6 +10,7 @@ import { Icon } from '../../components/icons';
 import { TaskRow } from '../tasks/TasksPage';
 import { Screen } from '../../ui/layout/Screen';
 import { PrimaryAction } from '../../ui/PrimaryAction';
+import { GUIDES } from '../guide/guides';
 
 const DIFFICULTIES = Object.keys(DIFFICULTY_WEIGHT) as TaskDifficulty[];
 
@@ -56,6 +57,7 @@ export function GoalsPage() {
 
   return (
     <Screen
+      guide={GUIDES.goals}
       title="Goals"
       sub={live.length
         ? `${live.filter((g) => g.lastCompletedOn === day).length} of ${live.length} done today.`

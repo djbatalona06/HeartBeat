@@ -23,6 +23,9 @@ import { PurseShelf } from './PurseShelf';
 import { RAID_STAT_NAMES } from '../../domain/rpg/raidStats';
 import type { House } from '../../domain/rpg/furniture';
 import type { Garden } from '../../domain/rpg/plots';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
+import { InfoBubble } from '../../ui/InfoBubble';
 
 /**
  * The bag: your gear, and the sheet it adds up to.
@@ -71,7 +74,7 @@ export function AssetsPage() {
     return (
       <div className="page">
         <header className="page-head">
-          <h1 className="page-title">Bag</h1>
+          <PageTitle guide={GUIDES.bag}>Bag</PageTitle>
           <p className="page-sub">Opening it up…</p>
         </header>
       </div>
@@ -99,7 +102,7 @@ export function AssetsPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Bag</h1>
+        <PageTitle guide={GUIDES.bag}>Bag</PageTitle>
         <p className="page-sub">Your gear, and the stat sheet it adds up to.</p>
       </header>
 
@@ -129,7 +132,10 @@ export function AssetsPage() {
       />
 
       <section className="panel">
-        <h2 className="section-title">Gear</h2>
+        <div className="section-title-row">
+          <InfoBubble guide={GUIDES.gear} />
+          <h2 className="section-title">Gear</h2>
+        </div>
         <p className="section-sub">
           Tap a slot to see what it gives, and to swap it for something else you own.
         </p>

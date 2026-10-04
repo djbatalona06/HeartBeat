@@ -20,6 +20,8 @@ import {
   type Reflection,
 } from '../../domain/selfcare/reflections';
 import { PrimaryAction } from '../../ui/PrimaryAction';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * The journal.
@@ -77,7 +79,7 @@ export function ReflectionsPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Reflections</h1>
+        <PageTitle guide={GUIDES.reflections}>Reflections</PageTitle>
         <p className="page-sub">
           {streak > 1 ? `${streak} days in a row. ` : ''}
           Yours alone unless you say otherwise.

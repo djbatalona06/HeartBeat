@@ -8,6 +8,8 @@ import type { Avatar } from '../../domain/rpg/types';
 import type { House } from '../../domain/rpg/furniture';
 import type { PetInstance } from '../../domain/rpg/pets';
 import type { Garden } from '../../domain/rpg/plots';
+import { InfoBubble } from '../../ui/InfoBubble';
+import { GUIDES } from '../guide/guides';
 
 /**
  * What the two of you are actually worth in a raid, and where every point of
@@ -58,7 +60,10 @@ export function RaidSheet({ avatar, owned, petXp, house, garden, companion }: Ra
 
   return (
     <section className="panel raid-sheet">
-      <h2 className="section-title">Raid sheet</h2>
+      <div className="section-title-row">
+        <InfoBubble guide={GUIDES.raidSheet} />
+        <h2 className="section-title">Raid sheet</h2>
+      </div>
       <p className="section-sub">
         What the two of you bring through the gate. Everything you own is in
         here — the rug included.

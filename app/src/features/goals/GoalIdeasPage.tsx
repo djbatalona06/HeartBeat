@@ -7,6 +7,8 @@ import { todayKey } from '../../domain/day';
 import { AREAS, areaById, tailoredFor } from '../../domain/rpg/selfCare';
 import { SCHEDULED_TYPES, type AreaId, type Task } from '../../domain/rpg/types';
 import { Icon } from '../../components/icons';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /** How many to show before the "more" button. A wall of sixty is a wall. */
 const PAGE = 12;
@@ -72,7 +74,7 @@ export function GoalIdeasPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Goal ideas</h1>
+        <PageTitle guide={GUIDES.goalIdeas}>Goal ideas</PageTitle>
         <p className="page-sub">
           {chosen.length
             ? `${ideas.length} left in ${chosen.length === 1 ? areaById(chosen[0])?.name ?? 'that area' : `${chosen.length} areas`}.`

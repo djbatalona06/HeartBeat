@@ -34,6 +34,8 @@ import {
 import { DEFAULT_TIMEZONE } from '../../domain/types';
 import { taskArt } from '../quests/art';
 import { PrimaryAction } from '../../ui/PrimaryAction';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 const DIFFICULTIES = Object.keys(DIFFICULTY_WEIGHT) as TaskDifficulty[];
 
@@ -112,7 +114,7 @@ export function TasksPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Tasks</h1>
+        <PageTitle guide={GUIDES.tasks}>Tasks</PageTitle>
         <p className="page-sub">
           {live.length ? 'Whatever has been waiting longest is at the top.' : 'Nothing here yet.'}
         </p>

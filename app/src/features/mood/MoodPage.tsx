@@ -29,6 +29,8 @@ import {
   type MoodKey,
   type MoodValues,
 } from './mood';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * Three meters a day, each, side by side.
@@ -97,7 +99,7 @@ export function MoodPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Mood</h1>
+        <PageTitle guide={GUIDES.mood}>Mood</PageTitle>
         <p className="page-sub">Drag a meter to where today actually is. The cycle log is below.</p>
       </header>
 
