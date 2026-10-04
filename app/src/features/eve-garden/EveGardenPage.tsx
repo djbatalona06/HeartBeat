@@ -45,6 +45,7 @@ import { GardenHabitat } from './GardenHabitat';
 import { RaidGate } from './gate/RaidGate';
 import { BossGatePrompt } from './gate/BossGatePrompt';
 import { promptApplies } from '../../domain/rpg/gatePrompt';
+import { starMilestone } from '../../domain/rpg/starChests';
 import { REDRIVE_DELAY_MS, settle, shouldRedriveMonster } from './round';
 import { Compass } from './Compass';
 import { WorldMap } from './WorldMap';
@@ -604,6 +605,10 @@ export function EveGardenPage() {
     const lootText = loot && (loot.coins > 0 || loot.purses.length > 0)
       ? `${loot.replay ? 'Loot: ' : ''}+${loot.coins} coins${loot.purses.length > 0 ? ` and ${loot.purses.length === 1 ? 'a purse' : `${loot.purses.length} purses`} in your bag` : ''}.`
       : '';
+    // A semi-boss or boss leaves a free star chest on the Raid path until opened.
+    const starText = starMilestone(ended.monsterId) && !(avatar?.starChests ?? []).includes(ended.monsterId)
+      ? ' A star chest is waiting on the Raid path.'
+      : '';
     const after = await clearStageFor(coupleId, ended.monsterId);
 
     const game = client.current;
@@ -634,10 +639,10 @@ export function EveGardenPage() {
       rewardText: crossed.length > 0
         ? crossed.map((entry) => `${entry.name}. ${entry.blurb}`).join(' ')
         : '',
-      lootText,
+      lootText: `${lootText}${starText}`.trim(),
     });
     void after;
-  }, [coupleId, memberId, petXp, companion, island, stage, day]);
+  }, [coupleId, memberId, petXp, companion, island, stage, day, avatar?.starChests]);
 
   const playRound = useCallback(async (opening: BattleDto, actionId: string) => {
     const game = client.current;

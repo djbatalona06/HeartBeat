@@ -180,11 +180,11 @@ export const GUIDES = {
   raid: {
     title: 'Raid',
     steps: [
-      'Read your raid sheet and compare gear.',
-      'Tap Ready, then Hit it on the shared boss.',
-      'Send your bird on an adventure, or go into Eve\'s Garden.',
+      'Find "You are here" on the island path, then tap Enter Eve\'s Garden.',
+      'Open a glowing star chest. Each semi-boss and boss you clear leaves one, free.',
+      'Open Your raid sheet to compare gear, or Boss and adventures for the rest.',
     ],
-    game: 'Boss hits spend MP and a win pays pet XP. Adventures cost energy, and arriving first pays a coin bounty.',
+    game: 'Star chests open with the Silver (semi-boss) or Gilded (boss) odds and cost nothing. Boss hits spend MP and a win pays pet XP. Adventures cost energy, and arriving first pays a coin bounty.',
   },
   eveGarden: {
     title: 'Eve\'s Garden',
@@ -192,7 +192,7 @@ export const GUIDES = {
       'Pick a companion. Strong here means it really hits harder on this boss.',
       'Walk to the monster with the direction pad to start the fight.',
       'Choose a move each turn; today\'s charges boost them.',
-      'On stage 7, the boss, come in together for a bigger payout.',
+      'Every try at stage 7, the boss, asks if you are going in together for a bigger payout.',
     ],
     game: 'Clearing a stage pays pet XP, and the first clear pays coins. Together on the boss: +50% pet XP, 2× coins and a purse.',
   },
