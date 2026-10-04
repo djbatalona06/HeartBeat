@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ACTION_FOR_MOVE, COMPANION_KITS, FALLBACK_KIT_ID, MOVE_KEYS, POTENCY_AT_MAX,
   fireSkill, kitFor, moveKeyFor, moveNamesFor, potencyAt, resolveModifiers, skillForMove, skillsOf,
-  withinHours, type CompanionKit, type TurnContext,
+  favoursWeakness, withinHours, type CompanionKit, type TurnContext,
 } from './companionSkills';
 import { MASCOT_ROSTER } from '../../features/pet/mascots/roster';
 
@@ -252,5 +252,28 @@ describe('skillForMove', () => {
   it('finds the skill on a move, and nothing on a move with none', () => {
     expect(skillForMove(kit('kitty'), 'mend')!.name).toBe("Starry Night's Watch");
     expect(skillForMove(kit('kitty'), 'physical')).toBeUndefined();
+  });
+});
+
+describe('favoursWeakness', () => {
+  // The gate marks a pedestal "strong here" only when that kit really hits
+  // harder on this boss -- a badge with no number behind it would be a lie.
+  it('is true only for a kit carrying `favours` for that element', () => {
+    for (const kit of COMPANION_KITS) {
+      const favoured = [kit.signature, kit.support, kit.passive]
+        .map((skill) => skill.modifiers.favours)
+        .filter((e) => e !== undefined);
+      for (const element of ['Mood', 'Movement', 'Nourishment', 'Focus', 'Rest', 'Bond', 'Balance'] as const) {
+        expect(favoursWeakness(kit, element), `${kit.themeId} vs ${element}`).toBe(favoured.includes(element));
+      }
+    }
+  });
+
+  it('is false with no weakness known', () => {
+    for (const kit of COMPANION_KITS) expect(favoursWeakness(kit, undefined)).toBe(false);
+  });
+
+  it('marks at least one kit today, or the badge is dead code', () => {
+    expect(COMPANION_KITS.some((kit) => favoursWeakness(kit, 'Mood'))).toBe(true);
   });
 });

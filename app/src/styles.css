@@ -6893,6 +6893,15 @@ div.gear-slot:active { transform: none; }
 
 .raid-gate-card-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); }
 .raid-gate-name { font-weight: 600; font-size: var(--text-sm); }
+.raid-gate-strong {
+  align-self: flex-start;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-accent);
+  border-radius: 999px;
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
 
 /* A companion's upgrades, as rings. The fill is a custom property set per
    bubble (0-1), drawn as a conic gradient in the pack's accent over the muted
