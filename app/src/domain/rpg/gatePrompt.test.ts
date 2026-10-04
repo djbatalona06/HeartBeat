@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  nextPrompt, promptApplies, togetherRewardLines,
+  guardView, nextPrompt, promptApplies, togetherRewardLines,
   type PromptAction, type PromptStep,
 } from './gatePrompt';
 import { STAGES_PER_ISLAND } from './world';
@@ -56,5 +56,40 @@ describe('when the prompt is asked', () => {
 
   it('names the three things going in together adds', () => {
     expect(togetherRewardLines()).toEqual(['+50% pet XP', '2× coins', 'A coin purse']);
+  });
+});
+
+describe('what the guard shows', () => {
+  const BOSS = STAGES_PER_ISLAND;
+  const ready = { loading: false, hasPartner: true, stage: 1, mode: null, opened: null } as const;
+
+  it('waits while settings, members or the world are loading', () => {
+    expect(guardView({ ...ready, loading: true })).toEqual({ view: 'loading' });
+  });
+
+  it('opens the garden at once on stages 1-6, and with no partner', () => {
+    expect(guardView(ready)).toEqual({ view: 'garden', party: true });
+    expect(guardView({ ...ready, hasPartner: false, stage: BOSS })).toEqual({ view: 'garden', party: true });
+  });
+
+  it('asks on the boss stage until answered, then keeps the answer', () => {
+    expect(guardView({ ...ready, stage: BOSS })).toEqual({ view: 'prompt' });
+    expect(guardView({ ...ready, stage: BOSS, mode: 'solo' })).toEqual({ view: 'garden', party: false });
+  });
+
+  // The bug this replaced: the guard re-read the stage live, so beating stage 6
+  // inside the garden flipped it to the prompt and unmounted the fight, victory
+  // banner and all. Once the garden has been shown, nothing takes it away.
+  it('never swaps an open garden for the prompt', () => {
+    for (const stage of [1, BOSS - 1, BOSS]) {
+      for (const hasPartner of [true, false]) {
+        expect(guardView({ ...ready, stage, hasPartner, opened: true })).toEqual({ view: 'garden', party: true });
+        expect(guardView({ ...ready, stage, hasPartner, opened: false })).toEqual({ view: 'garden', party: false });
+      }
+    }
+  });
+
+  it('keeps an open garden through a reload of settings or the world', () => {
+    expect(guardView({ ...ready, loading: true, opened: true })).toEqual({ view: 'garden', party: true });
   });
 });

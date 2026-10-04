@@ -1,4 +1,5 @@
-import { loadSettings, saveSettings } from '../database';
+import { db, loadSettings, saveSettings } from '../database';
+import { now } from './shared';
 import { gateCards, withAffinity, type GateCard, type GateVerdict, gateDecision } from '../../domain/rpg/raidGate';
 import { kitFor, type CompanionKit } from '../../domain/rpg/companionSkills';
 
@@ -59,9 +60,20 @@ export async function openRaidGate(
  * Marks the device as having been through the gate at the same moment, so the
  * greeting changes on the next visit rather than on the next launch. Both in
  * one write, because they are one event.
+ *
+ * Then copies the pick onto this member's avatar, which syncs, so the
+ * partner's garden can stand it on the second pedestal. Skipped when it has
+ * not changed, so re-entering with the same pet is not a sync round trip.
  */
 export async function chooseRaidCompanion(themeId: string): Promise<void> {
   await saveSettings({ raidCompanionId: themeId, raidGateVisited: true });
+  const { memberId } = await loadSettings();
+  if (!memberId) return;
+  await db.transaction('rw', db.avatars, async () => {
+    const avatar = await db.avatars.get(memberId);
+    if (!avatar || avatar.raidCompanion === themeId) return;
+    await db.avatars.put({ ...avatar, raidCompanion: themeId, updatedAt: now() });
+  });
 }
 
 /**

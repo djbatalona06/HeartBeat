@@ -1,6 +1,11 @@
 /// <reference lib="webworker" />
+import { CacheableResponsePlugin } from 'workbox-cacheable-response';
+import { ExpirationPlugin } from 'workbox-expiration';
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { CacheFirst } from 'workbox-strategies';
 import { notificationTarget } from '../domain/notify/target';
+import { HEAVY_CACHE, HEAVY_MAX_AGE_SECONDS, HEAVY_MAX_ENTRIES, isHeavyAsset } from './heavyAssets';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -70,6 +75,31 @@ self.addEventListener('fetch', (event) => {
     }),
   );
 });
+
+/**
+ * Phaser, the game worker, the 3D mascots and the .NET runtime, cache-first
+ * once fetched. See `heavyAssets.ts` for why they are not precached and why
+ * the matcher leaves the two routes above alone.
+ *
+ * Every name carries a content hash, so a hit is never stale. Old deploys'
+ * files are not deleted on sight as the gear art's are: fifteen files can
+ * change independently, so they age out by count and by date instead, and a
+ * full disk gives the space back rather than failing the write.
+ */
+registerRoute(
+  ({ url }) => isHeavyAsset(url, self.registration.scope),
+  new CacheFirst({
+    cacheName: HEAVY_CACHE,
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [200] }),
+      new ExpirationPlugin({
+        maxEntries: HEAVY_MAX_ENTRIES,
+        maxAgeSeconds: HEAVY_MAX_AGE_SECONDS,
+        purgeOnQuotaError: true,
+      }),
+    ],
+  }),
+);
 
 interface PushBody {
   title?: string;

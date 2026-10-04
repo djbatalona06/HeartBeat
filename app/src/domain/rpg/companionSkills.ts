@@ -550,3 +550,14 @@ export function potencyAt(petLevel: number, maxLevel = 50): number {
   const climbed = Math.min(1, Math.max(0, (petLevel - 1) / Math.max(1, maxLevel - 1)));
   return 1 + climbed * (POTENCY_AT_MAX - 1);
 }
+
+/**
+ * Whether this kit really hits harder on a boss weak to `weakness` -- some
+ * skill or the passive carries `favours` for it (×1.3, `resolveModifiers`).
+ * The gate's "strong here" mark reads this, so it can never promise a bonus
+ * the fight does not pay.
+ */
+export function favoursWeakness(kit: CompanionKit, weakness: Element | undefined): boolean {
+  if (!weakness) return false;
+  return [kit.signature, kit.support, kit.passive].some((skill) => skill.modifiers.favours === weakness);
+}

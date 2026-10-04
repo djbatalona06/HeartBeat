@@ -3,6 +3,8 @@ import {
   canEnter, gateGreeting, type GateCard, type GateVerdict,
 } from '../../../domain/rpg/raidGate';
 import { standingIsland, type WorldProgress } from '../../../domain/rpg/world';
+import { bossOf } from '../../../domain/rpg/islands';
+import { favoursWeakness } from '../../../domain/rpg/companionSkills';
 import { GateBackdrop } from './GateBackdrop';
 import { GateBoss } from './GateBoss';
 import { GatePedestal } from './GatePedestal';
@@ -56,6 +58,7 @@ export function RaidGate({
   cards, verdict, hour, dark, resonance, world, together, onEnter, onCancel,
 }: RaidGateProps) {
   const island = standingIsland(world);
+  const weakness = bossOf(island).weakness;
   const [chosen, setChosen] = useState<string | undefined>(verdict.preselected);
   const [refused, setRefused] = useState<string | null>(null);
 
@@ -106,6 +109,7 @@ export function RaidGate({
             key={card.themeId}
             card={card}
             selected={card.themeId === chosen}
+            strongHere={favoursWeakness(card.kit, weakness) ? weakness : undefined}
             onSelect={choose}
           />
         ))}

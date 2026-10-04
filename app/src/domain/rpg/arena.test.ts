@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ARENA_HEIGHT, ARENA_WIDTH, ISLAND_1_ARENAS, arenaFor, isAdjacentToMonster,
+  ARENA_HEIGHT, ARENA_WIDTH, ISLAND_1_ARENAS, allyTile, arenaFor, isAdjacentToMonster,
   isWalkable, tileGrid, tileKindAt,
 } from './arena';
 import { TILE_KINDS } from './zones';
@@ -140,5 +140,38 @@ describe('reading the ground', () => {
     expect(isAdjacentToMonster(arena, monster.x, monster.y)).toBe(false);
     expect(isAdjacentToMonster(arena, monster.x - 1, monster.y - 1)).toBe(false);
     expect(isAdjacentToMonster(arena, monster.x - 2, monster.y)).toBe(false);
+  });
+});
+
+describe('allyTile', () => {
+  // Where the partner's pet stands on its pedestal: beside yours, on ground,
+  // and never where it would crowd the monster or sit on your own tile.
+  it.each(ISLAND_1_ARENAS.map((arena, i) => [i + 1, arena] as const))(
+    'stage %i has a pedestal beside the spawn', (_stage, arena) => {
+      const tile = allyTile(arena);
+      expect(tile).toBeDefined();
+      if (!tile) return;
+      expect(isWalkable(arena, tile.x, tile.y)).toBe(true);
+      expect(tile).not.toEqual(arena.spawn);
+      expect(tile).not.toEqual(arena.monster);
+      expect(isAdjacentToMonster(arena, tile.x, tile.y)).toBe(false);
+      expect(Math.max(Math.abs(tile.x - arena.spawn.x), Math.abs(tile.y - arena.spawn.y))).toBe(1);
+    },
+  );
+
+  // Side by side, both facing the boss, reads as two pedestals; one behind the
+  // other put the partner's pet in the arena's frame.
+  it('prefers standing beside you, above or below', () => {
+    for (const arena of ISLAND_1_ARENAS) {
+      const { spawn } = arena;
+      const beside = [{ x: spawn.x, y: spawn.y - 1 }, { x: spawn.x, y: spawn.y + 1 }]
+        .find((t) => isWalkable(arena, t.x, t.y) && !isAdjacentToMonster(arena, t.x, t.y));
+      if (beside) expect(allyTile(arena)).toEqual(beside);
+    }
+  });
+
+  it('is undefined when the spawn is boxed in', () => {
+    const boxed = { rows: ['###', '#.#', '###'], spawn: { x: 1, y: 1 }, monster: { x: 9, y: 9 } };
+    expect(allyTile(boxed)).toBeUndefined();
   });
 });

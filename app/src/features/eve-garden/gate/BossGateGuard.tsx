@@ -1,12 +1,12 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, loadSettings } from '../../../db/database';
-import { loadWorldProgress } from '../../../db/repository';
+import { loadWorldProgress, stampGatePresence } from '../../../db/repository';
 import { currentStage } from '../../../domain/rpg/world';
-import { partnerAtGate } from '../../../domain/rpg/raidGate';
+import { PRESENCE_REFRESH_MS, partnerAtGate } from '../../../domain/rpg/raidGate';
 import {
-  nextPrompt, promptApplies, togetherRewardLines, type PromptAction, type PromptStep,
+  guardView, nextPrompt, togetherRewardLines, type PromptAction, type PromptStep,
 } from '../../../domain/rpg/gatePrompt';
 import { partnerOf } from '../../pairing/namingGate';
 import { PrimaryAction } from '../../../ui/PrimaryAction';
@@ -26,6 +26,14 @@ import { Sheet } from '../../../ui/Sheet';
  * are asynchronous and must not mention anybody, so for those it renders its
  * children at once. Declining party mode takes two taps -- the rule lives in
  * `domain/rpg/gatePrompt.ts` -- and Escape or the scrim never complete it.
+ *
+ * The question is asked on the way in and never again for the same visit:
+ * once the garden has been shown it stays (`guardView`), so a stage that turns
+ * into the boss stage mid-visit cannot unmount a fight that was just won.
+ *
+ * While the popup is up this phone says it is standing at the gate
+ * (`stampGatePresence`), which is what lets two phones on the popup see each
+ * other through sync rather than each waiting on the other to go first.
  *
  * It asks on every visit, deliberately: like the Raid Gate behind it, the gate
  * is a ritual that opens fresh each time, and a remembered "solo" would quietly
@@ -57,16 +65,41 @@ export function BossGateGuard({ children }: BossGateGuardProps) {
 
   const [step, setStep] = useState<PromptStep>('ask');
   const [mode, setMode] = useState<'party' | 'solo' | null>(null);
+  const [opened, setOpened] = useState<boolean | null>(null);
 
-  if (settings === undefined || members === undefined) return <p className="section-sub">Opening the gate…</p>;
-  const partner = partnerOf(members, { coupleId, memberId });
-  if (!partner) return <>{children(true)}</>;
-  if (!worldRead || worldRead.for !== coupleId) return <p className="section-sub">Opening the gate…</p>;
+  const partner = members ? partnerOf(members, { coupleId, memberId }) : undefined;
+  const loading = settings === undefined || members === undefined
+    || (partner !== undefined && (!worldRead || worldRead.for !== coupleId));
+  const view = guardView({
+    loading,
+    hasPartner: partner !== undefined,
+    stage: worldRead ? currentStage(worldRead.world) : 1,
+    mode,
+    opened,
+  });
+  const garden = view.view === 'garden' ? view.party : null;
+  const prompting = view.view === 'prompt';
+
+  // Latch the first answer, so nothing the stage or the partner does later can
+  // put the prompt back over the garden.
+  useEffect(() => {
+    if (garden !== null && opened === null) setOpened(garden);
+  }, [garden, opened]);
+
+  useEffect(() => {
+    if (!prompting || !coupleId || !memberId) return undefined;
+    void stampGatePresence(coupleId, memberId).catch(() => {});
+    const timer = setInterval(() => {
+      void stampGatePresence(coupleId, memberId).catch(() => {});
+    }, PRESENCE_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [prompting, coupleId, memberId]);
+
+  if (view.view === 'loading') return <p className="section-sub">Opening the gate…</p>;
+  if (view.view === 'garden') return <>{children(view.party)}</>;
+  if (!partner || !worldRead) return null;
 
   const { world } = worldRead;
-  if (mode) return <>{children(mode === 'party')}</>;
-  if (!promptApplies(currentStage(world), true)) return <>{children(true)}</>;
-
   const name = partner.displayName?.trim() || 'your partner';
   const present = partnerAtGate(world.gate, partner.id, Date.now());
 

@@ -357,7 +357,7 @@ function RaidSection({ ctx }: { ctx: ShopContext }) {
   return (
     <>
       {/* First, because the sheet below is what you bring to the gate. */}
-      <Tile to="/eve-garden" title="Boss Gate" icon="sword" value="Enter" hint="The islands and the boss. Better together." />
+      <Tile to="/eve-garden" title="Eve's Garden" icon="sword" value="Enter" hint="The islands and the boss. Better together." />
       <RaidSheet
         avatar={avatar}
         owned={owned}

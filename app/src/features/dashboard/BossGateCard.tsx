@@ -8,7 +8,7 @@ import { Tile } from '../../components/Tile';
 import { partnerOf } from '../pairing/namingGate';
 
 /**
- * The way to the Boss Gate from Home.
+ * The way into Eve's Garden from Home.
  *
  * The gate used to be reachable only through Menu > The app, which is why it
  * could not be found. This is a tile on the screen the app opens on. It says
@@ -42,6 +42,6 @@ export function BossGateCard({ coupleId, memberId }: {
       : 'The boss is next. It pays more with two.';
 
   return (
-    <Tile to="/eve-garden" title="Boss Gate" icon="sword" value={boss ? 'The boss' : 'Enter'} hint={hint} />
+    <Tile to="/eve-garden" title="Eve's Garden" icon="sword" value={boss ? 'The boss' : 'Enter'} hint={hint} />
   );
 }

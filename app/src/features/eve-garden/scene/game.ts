@@ -27,6 +27,11 @@ export interface StartOptions {
   monsterSprite: string;
   /** The mascot that came through the Raid Gate, from `spriteKeyForTheme`. */
   petSprite: string;
+  /**
+   * The partner's last pick, from `spriteKeyForTheme`, or undefined to draw
+   * one pet: unpaired, or this visit was answered "solo" at the Boss Gate.
+   */
+  allySprite?: string;
   /** Local hour, 0-23. Decides where the light is. */
   hour: number;
   /** True when the island is wearing its dark face. */
@@ -43,7 +48,7 @@ export function startGarden(
   const scale = 3;
   const scene = new BattleGardenScene(
     options.island, options.stage, options.monsterSprite, options.petSprite,
-    options.hour, options.dark, options.calm, hooks,
+    options.hour, options.dark, options.calm, hooks, options.allySprite,
   );
 
   const game = new Phaser.Game({

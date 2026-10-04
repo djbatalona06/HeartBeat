@@ -166,6 +166,12 @@ export function EveGardenPage({ party = true }: { party?: boolean } = {}) {
     [coupleId],
   );
   const partner = partnerOf(members, { coupleId, memberId });
+  // The partner's avatar carries their last garden pick (`raidCompanion`) and,
+  // before they have made one, the mascot their app draws.
+  const partnerAvatar = useLiveQuery(
+    () => (partner ? db.avatars.get(partner.id) : undefined),
+    [partner?.id],
+  );
 
   const world: WorldProgress = stored ?? newWorldProgress(coupleId ?? 'unpaired', Date.now());
   const theme: DioramaTheme = momentum ? variantFor(momentum) : 'Light';
@@ -286,6 +292,15 @@ export function EveGardenPage({ party = true }: { party?: boolean } = {}) {
   const petLevel = levelForXp(petXp);
   const kit = useMemo(() => kitFor(companion ?? undefined), [companion]);
   const petSprite = spriteKeyForTheme(companion ?? undefined);
+  /** The second pedestal. None when solo was chosen, or before the partner's row arrives. */
+  const allyTheme = party && partner ? partnerAvatar?.raidCompanion ?? partnerAvatar?.mascot : undefined;
+  const allySprite = allyTheme ? spriteKeyForTheme(allyTheme) : undefined;
+  // Read when the scene starts, not a dep of it: the partner picking a new pet
+  // mid-fight would otherwise tear down a running Phaser game.
+  const allyRef = useRef(allySprite);
+  useEffect(() => {
+    allyRef.current = allySprite;
+  });
 
   /**
    * How full the tether is.
@@ -473,6 +488,7 @@ export function EveGardenPage({ party = true }: { party?: boolean } = {}) {
             stage: sceneStage,
             monsterSprite: sceneSprite,
             petSprite,
+            allySprite: allyRef.current,
             hour: new Date().getHours(),
             dark: sceneDark,
             calm: calmRef.current,

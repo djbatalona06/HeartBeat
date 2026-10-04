@@ -200,6 +200,14 @@ export interface Avatar {
    */
   mascot?: string;
   /**
+   * The companion this member last took into Eve's Garden -- a `Theme.id`,
+   * like `mascot`. The pick itself lives on `settings`, which is local, so it
+   * is copied here for the partner's phone: their garden draws this pet on
+   * the second pedestal. Optional, so no migration; absent until that member
+   * has been through the gate once since it was added, and `mascot` stands in.
+   */
+  raidCompanion?: string;
+  /**
    * Draws since the last payout, per chest — the counters behind the pity
    * floors in `chests.ts`. One per chest rather than one shared, because a bad
    * run on the cheap chest is not insurance you have paid for on the dear one.

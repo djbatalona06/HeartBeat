@@ -196,3 +196,29 @@ export function isAdjacentToMonster(arena: Arena, x: number, y: number): boolean
   const dy = Math.abs(y - arena.monster.y);
   return dx + dy === 1;
 }
+
+/**
+ * Where the partner's pet stands, on its own pedestal beside yours.
+ *
+ * Beside you first (above, then below), so the two stand side by side facing
+ * the boss; then behind you, then the diagonals: a walkable tile one step from the spawn that is neither the
+ * monster's nor next to it. The ally is drawn there and nothing else -- it
+ * holds no tile, so it can never wall off the walk to the fight. Undefined
+ * only when every neighbour is solid, and then the garden draws one pet.
+ */
+export function allyTile(arena: Arena): { x: number; y: number } | undefined {
+  const { spawn, monster } = arena;
+  const back = Math.sign(spawn.x - monster.x) || -1;
+  const order = [
+    [0, -1], [0, 1], [back, 0], [back, -1], [back, 1], [-back, -1], [-back, 1], [-back, 0],
+  ];
+  for (const [dx, dy] of order) {
+    const x = spawn.x + dx;
+    const y = spawn.y + dy;
+    if (!isWalkable(arena, x, y)) continue;
+    if (x === monster.x && y === monster.y) continue;
+    if (isAdjacentToMonster(arena, x, y)) continue;
+    return { x, y };
+  }
+  return undefined;
+}
