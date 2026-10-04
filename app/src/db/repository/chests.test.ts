@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../database';
-import { chestPityFor, getOrCreateAvatar, openChestFor } from './index';
+import { chestPityFor, getOrCreateAvatar, openChestFor, openStarChest } from './index';
+import { newWorldProgress } from '../../domain/rpg/world';
 import {
   CHESTS, PRIZES_PER_CHEST, PRIZE_KINDS, candidatesFor, chestById, poolOf,
 } from '../../domain/rpg/chests';
@@ -392,5 +393,35 @@ describe('nothing a chest can hand over is nameless or worthless', () => {
     const flora = FLORA.find((f) => floraTier(f) === 'rare')!;
     expect(priceOf('flora', flora.id)).toBe(flora.price);
     expect(nameOf('flora', flora.id)).toBe(flora.name);
+  });
+});
+
+describe('star chests', () => {
+  const BOSS = 'i1s7-sedentary-sentinel';
+
+  beforeEach(async () => { await db.worldProgress.clear(); });
+
+  it('refuses a boss the couple has not cleared', async () => {
+    const result = await openStarChest(HER, COUPLE, BOSS, rolls());
+    expect(result.ok).toBe(false);
+  });
+
+  it('opens once, free, with the gilded odds, and never again for the same member', async () => {
+    await db.worldProgress.put({ ...newWorldProgress(COUPLE, 0), cleared: [BOSS] });
+    const before = (await getOrCreateAvatar(HER, COUPLE)).coins;
+
+    const first = await openStarChest(HER, COUPLE, BOSS, rolls());
+    expect(first.ok && first.chestId).toBe('gilded');
+    const after = await getOrCreateAvatar(HER, COUPLE);
+    // Free: the only coins that move are refunds for duplicates, never a charge.
+    expect(after.coins).toBeGreaterThanOrEqual(before);
+    expect(after.starChests).toEqual([BOSS]);
+
+    expect((await openStarChest(HER, COUPLE, BOSS, rolls())).ok).toBe(false);
+  });
+
+  it('is not a star chest unless it is a semi-boss or a boss', async () => {
+    await db.worldProgress.put({ ...newWorldProgress(COUPLE, 0), cleared: ['i1s1-sloth-sprout'] });
+    expect((await openStarChest(HER, COUPLE, 'i1s1-sloth-sprout', rolls())).ok).toBe(false);
   });
 });

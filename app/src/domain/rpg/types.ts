@@ -257,6 +257,8 @@ export interface Avatar {
    * a stage your partner beat first still pays you your own first clear.
    */
   gardenBested?: string[];
+  /** Star chests this member has opened, by milestone monster id (`starChests.ts`). */
+  starChests?: string[];
   /** Claims made in the current seven-day login cycle, 0 to 6. */
   loginClaims?: number;
   /** The day (member's own zone) the last login award was claimed. */

@@ -2,8 +2,10 @@ import { db } from '../database';
 import type { CoupleId, MemberId } from '../../domain/types';
 import {
   candidatesFor, chestById, openChest, pickPrizeId,
-  type ChestId, type ChestRolls, type PrizeKind,
+  type Chest, type ChestId, type ChestRolls, type PrizeKind,
 } from '../../domain/rpg/chests';
+import { starMilestone } from '../../domain/rpg/starChests';
+import type { Avatar } from '../../domain/rpg/types';
 import { gearById } from '../../domain/rpg/gear';
 import { petKindById } from '../../domain/rpg/pets';
 import { furnitureById } from '../../domain/rpg/furniture';
@@ -125,144 +127,189 @@ export async function openChestFor(
   if (!chest) return { ok: false, reason: 'No such chest.' };
   if (rolls.length === 0) return { ok: false, reason: 'Nothing to roll.' };
 
-  return db.transaction('rw', db.avatars, db.inventory, db.pets, async () => {
-    const avatar = await getOrCreateAvatar(memberId, coupleId);
-    const check = canAfford(avatar.coins, chest.price);
-    if (!check.ok) return { ok: false, reason: check.reason };
+  return db.transaction('rw', db.avatars, db.inventory, db.pets, () => grantChest(
+    memberId, coupleId, chest, rolls, (avatar) => {
+      const check = canAfford(avatar.coins, chest.price);
+      if (!check.ok) return check.reason;
+      return spend(avatar, { coins: chest.price }, now()) ?? 'Not enough coins.';
+    },
+  ));
+}
 
-    const paid = spend(avatar, { coins: chest.price }, now());
-    if (!paid) return { ok: false, reason: 'Not enough coins.' };
+/**
+ * Open a star chest: free, once per member per milestone, and only once the
+ * couple's world row has that semi-boss or boss cleared. Same odds, luck, pity
+ * and per-item never-nothing rule as the chest it is named for -- see
+ * `domain/rpg/starChests.ts`.
+ */
+export async function openStarChest(
+  memberId: MemberId,
+  coupleId: CoupleId,
+  monsterId: string,
+  rolls: readonly ChestRolls[],
+): Promise<ChestOutcome> {
+  const milestone = starMilestone(monsterId);
+  const chest = milestone && chestById(milestone.chestId);
+  if (!chest) return { ok: false, reason: 'No such star chest.' };
+  if (rolls.length === 0) return { ok: false, reason: 'Nothing to roll.' };
 
-    // Luck nudges rarity and nothing else, exactly as it does for an egg.
-    const luck = statsFor(paid.xp).luck;
-    const pity = paid.chestPity?.[chest.id] ?? 0;
-    const opening = openChest(chest, rolls, luck, pity);
+  return db.transaction('rw', db.avatars, db.inventory, db.pets, db.worldProgress, async () => {
+    const world = await db.worldProgress.get(coupleId);
+    if (!world?.cleared.includes(monsterId)) return { ok: false, reason: 'Beat that boss first.' };
+    return grantChest(memberId, coupleId, chest, rolls, (avatar) => {
+      const opened = avatar.starChests ?? [];
+      if (opened.includes(monsterId)) return 'Already opened.';
+      return { ...avatar, starChests: [...opened, monsterId], updatedAt: now() };
+    });
+  });
+}
 
-    const [owned, myPets] = await Promise.all([
-      db.inventory.where('memberId').equals(memberId).toArray(),
-      db.pets.where('memberId').equals(memberId).toArray(),
-    ]);
-    // Mutable, and written to inside the loop -- see the note above.
-    const heldItems = new Map(owned.map((row) => [row.itemId, row]));
-    const heldPets = new Map(myPets.map((pet) => [pet.kindId, pet]));
+/**
+ * The part of an opening after the price: roll, grant, refund, step the pity.
+ * `settle` takes the avatar and returns it ready to open (paid for, or the
+ * star claimed), or the reason it cannot be. Runs inside the caller's
+ * transaction.
+ */
+async function grantChest(
+  memberId: MemberId,
+  coupleId: CoupleId,
+  chest: Chest,
+  rolls: readonly ChestRolls[],
+  settle: (avatar: Avatar) => Avatar | string,
+): Promise<ChestOutcome> {
+  const avatar = await getOrCreateAvatar(memberId, coupleId);
+  const paid = settle(avatar);
+  if (typeof paid === 'string') return { ok: false, reason: paid };
 
-    // Floored, not rounded. 260 over three items rounds to 87 each and 261 in
-    // total, which is one coin more than the chest cost -- a cap that can be
-    // exceeded by rounding is not a cap. Rounding down means an opening where
-    // everything was a duplicate refunds a coin or two short of the price,
-    // which is the right direction for the house to err.
-    const share = Math.floor(chest.price / opening.prizes.length);
-    const prizes: ChestPrizeOutcome[] = [];
-    let refunded = 0;
+  // Luck nudges rarity and nothing else, exactly as it does for an egg.
+  const luck = statsFor(paid.xp).luck;
+  const pity = paid.chestPity?.[chest.id] ?? 0;
+  const opening = openChest(chest, rolls, luck, pity);
 
-    for (const prize of opening.prizes) {
-      // Both of these are structurally unreachable while gear and companions
-      // run the whole ladder, and both are handled rather than assumed,
-      // because "impossible" is a sentence about today's catalogue. Refunding
-      // the share is what keeps the never-nothing guarantee per item without
-      // voiding the other two.
-      if (!prize.kind) { refunded += share; continue; }
-      const held = prize.kind === 'companion' ? heldPets : heldItems;
-      const unowned = candidatesFor(prize.kind, prize.tier)
-        .filter((candidate) => !held.has(candidate));
-      const itemId = pickPrizeId(prize.kind, prize.tier, prize.pickRoll, unowned);
-      if (!itemId) { refunded += share; continue; }
+  const [owned, myPets] = await Promise.all([
+    db.inventory.where('memberId').equals(memberId).toArray(),
+    db.pets.where('memberId').equals(memberId).toArray(),
+  ]);
+  // Mutable, and written to inside the loop -- see the note above.
+  const heldItems = new Map(owned.map((row) => [row.itemId, row]));
+  const heldPets = new Map(myPets.map((pet) => [pet.kindId, pet]));
 
-      const base = {
-        kind: prize.kind,
-        itemId,
-        name: nameOf(prize.kind, itemId) ?? 'Something',
-        tier: prize.tier,
-      };
+  // Floored, not rounded. 260 over three items rounds to 87 each and 261 in
+  // total, which is one coin more than the chest cost -- a cap that can be
+  // exceeded by rounding is not a cap. Rounding down means an opening where
+  // everything was a duplicate refunds a coin or two short of the price,
+  // which is the right direction for the house to err.
+  const share = Math.floor(chest.price / opening.prizes.length);
+  const prizes: ChestPrizeOutcome[] = [];
+  let refunded = 0;
 
-      if (prize.kind === 'companion') {
-        const existing = heldPets.get(itemId);
-        if (existing) {
-          const deeper = {
-            ...existing,
-            bond: existing.bond + DUPLICATE_PET_BOND,
-            updatedAt: now(),
-          };
-          // react-doctor-disable-next-line async-await-in-loop -- the owned sets are updated inside the loop so one chest cannot hand over the same new item twice; order is the point
-          await db.pets.put(deeper);
-          heldPets.set(itemId, deeper);
-          prizes.push({ ...base, duplicate: true, bonded: DUPLICATE_PET_BOND });
-        } else {
-          const hatched = {
-            id: id(),
-            coupleId,
-            memberId,
-            kindId: itemId,
-            bond: 0,
-            mp: 0,
-            hatchedAt: now(),
-            updatedAt: now(),
-          };
-          await db.pets.put(hatched);
-          heldPets.set(itemId, hatched);
-          prizes.push({ ...base, duplicate: false });
-        }
-        continue;
-      }
+  for (const prize of opening.prizes) {
+    // Both of these are structurally unreachable while gear and companions
+    // run the whole ladder, and both are handled rather than assumed,
+    // because "impossible" is a sentence about today's catalogue. Refunding
+    // the share is what keeps the never-nothing guarantee per item without
+    // voiding the other two.
+    if (!prize.kind) { refunded += share; continue; }
+    const held = prize.kind === 'companion' ? heldPets : heldItems;
+    const unowned = candidatesFor(prize.kind, prize.tier)
+      .filter((candidate) => !held.has(candidate));
+    const itemId = pickPrizeId(prize.kind, prize.tier, prize.pickRoll, unowned);
+    if (!itemId) { refunded += share; continue; }
 
-      const existing = heldItems.get(itemId);
-      if (!existing) {
-        const row = {
+    const base = {
+      kind: prize.kind,
+      itemId,
+      name: nameOf(prize.kind, itemId) ?? 'Something',
+      tier: prize.tier,
+    };
+
+    if (prize.kind === 'companion') {
+      const existing = heldPets.get(itemId);
+      if (existing) {
+        const deeper = {
+          ...existing,
+          bond: existing.bond + DUPLICATE_PET_BOND,
+          updatedAt: now(),
+        };
+        // react-doctor-disable-next-line async-await-in-loop -- the owned sets are updated inside the loop so one chest cannot hand over the same new item twice; order is the point
+        await db.pets.put(deeper);
+        heldPets.set(itemId, deeper);
+        prizes.push({ ...base, duplicate: true, bonded: DUPLICATE_PET_BOND });
+      } else {
+        const hatched = {
           id: id(),
           coupleId,
           memberId,
-          itemId,
-          refine: 0,
-          acquiredAt: now(),
+          kindId: itemId,
+          bond: 0,
+          mp: 0,
+          hatchedAt: now(),
           updatedAt: now(),
         };
-        await db.inventory.put(row);
-        heldItems.set(itemId, row);
+        await db.pets.put(hatched);
+        heldPets.set(itemId, hatched);
         prizes.push({ ...base, duplicate: false });
-        continue;
       }
-
-      if (prize.kind === 'gear' && existing.refine < REFINE_MAX) {
-        const refine = existing.refine + 1;
-        const row = { ...existing, refine, updatedAt: now() };
-        await db.inventory.put(row);
-        heldItems.set(itemId, row);
-        prizes.push({ ...base, duplicate: true, refined: refine });
-        continue;
-      }
-
-      // Nothing left to deepen: hand the coins back rather than the shrug,
-      // and never more than this item's share of what the chest cost.
-      //
-      // The cap is not bookkeeping. Every furniture piece is priced 120 or
-      // 180, which `tierForPrice` puts at `rare`, and the wooden chest costs
-      // **90** and rolls rare decor -- so a couple who owned the furniture set
-      // could buy a 90-coin chest and be refunded 120 for it. That was already
-      // true of a one-item chest and three items would have made it a sixfold
-      // return. "A wasted draw is never a wasted purchase" means you get your
-      // money back, not that you profit from owning things.
-      const listed = prize.kind === 'gear' ? share : priceOf(prize.kind, itemId);
-      const back = Math.min(share, listed);
-      refunded += back;
-      prizes.push({ ...base, duplicate: true, refunded: back });
+      continue;
     }
 
-    await db.avatars.put({
-      ...paid,
-      coins: paid.coins + refunded,
-      chestPity: { ...(paid.chestPity ?? {}), [chest.id]: opening.pity },
-    });
+    const existing = heldItems.get(itemId);
+    if (!existing) {
+      const row = {
+        id: id(),
+        coupleId,
+        memberId,
+        itemId,
+        refine: 0,
+        acquiredAt: now(),
+        updatedAt: now(),
+      };
+      await db.inventory.put(row);
+      heldItems.set(itemId, row);
+      prizes.push({ ...base, duplicate: false });
+      continue;
+    }
 
-    return {
-      ok: true,
-      chestId: chest.id,
-      prizes,
-      pity: opening.pity,
-      floor: opening.floor,
-      lifted: opening.lifted,
-      refunded,
-    };
+    if (prize.kind === 'gear' && existing.refine < REFINE_MAX) {
+      const refine = existing.refine + 1;
+      const row = { ...existing, refine, updatedAt: now() };
+      await db.inventory.put(row);
+      heldItems.set(itemId, row);
+      prizes.push({ ...base, duplicate: true, refined: refine });
+      continue;
+    }
+
+    // Nothing left to deepen: hand the coins back rather than the shrug,
+    // and never more than this item's share of what the chest cost.
+    //
+    // The cap is not bookkeeping. Every furniture piece is priced 120 or
+    // 180, which `tierForPrice` puts at `rare`, and the wooden chest costs
+    // **90** and rolls rare decor -- so a couple who owned the furniture set
+    // could buy a 90-coin chest and be refunded 120 for it. That was already
+    // true of a one-item chest and three items would have made it a sixfold
+    // return. "A wasted draw is never a wasted purchase" means you get your
+    // money back, not that you profit from owning things.
+    const listed = prize.kind === 'gear' ? share : priceOf(prize.kind, itemId);
+    const back = Math.min(share, listed);
+    refunded += back;
+    prizes.push({ ...base, duplicate: true, refunded: back });
+  }
+
+  await db.avatars.put({
+    ...paid,
+    coins: paid.coins + refunded,
+    chestPity: { ...(paid.chestPity ?? {}), [chest.id]: opening.pity },
   });
+
+  return {
+    ok: true,
+    chestId: chest.id,
+    prizes,
+    pity: opening.pity,
+    floor: opening.floor,
+    lifted: opening.lifted,
+    refunded,
+  };
 }
 
 /** This member's counter for one chest. Zero when they have never opened it. */
