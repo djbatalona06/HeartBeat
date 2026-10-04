@@ -122,6 +122,30 @@ if (manifest.length === 0) {
   check('no .wasm is precached', wasm.length === 0, `${wasm.length} found`);
 }
 
+// ---- the heavy-asset runtime cache ------------------------------------------
+/**
+ * What the precache leaves out, the runtime cache in `sw.ts` keeps, up to
+ * `HEAVY_MAX_ENTRIES`. A deploy that renames every heavy file leaves the old
+ * set beside the new until it ages out, so a cap near the file count evicts
+ * the set being used and Eve's Garden stops working offline. Nothing about
+ * that fails in a browser on the day it lands. It shows up later, offline,
+ * which is why this compares the cap against the files actually built.
+ *
+ * The matcher is imported from the source, not copied, so this counts exactly
+ * what the service worker will cache. Node 22.18+ strips the types itself.
+ */
+{
+  const { HEAVY_FILE, HEAVY_MAX_ENTRIES } = await import('../src/pwa/heavyAssets.ts');
+  const heavy = (await readdir(join(DIST, 'assets'))).filter((f) => HEAVY_FILE.test(f));
+  const floor = Math.ceil(1.5 * heavy.length);
+  console.log(`\n  heavy assets: ${heavy.length} files, runtime cache cap ${HEAVY_MAX_ENTRIES}`);
+  check('the build has heavy files for the runtime cache to keep', heavy.length > 0,
+    'none matched HEAVY_FILE — the chunk names or the matcher changed');
+  check(`the runtime cache cap is at least 1.5 × the heavy files (${floor})`,
+    HEAVY_MAX_ENTRIES >= floor,
+    `${HEAVY_MAX_ENTRIES} < ${floor} — raise HEAVY_MAX_ENTRIES in app/src/pwa/heavyAssets.ts`);
+}
+
 // ---- lighthouse -------------------------------------------------------------
 /**
  * `vite preview`, and the two things the first CI run got wrong about it.
