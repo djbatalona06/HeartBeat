@@ -15,6 +15,8 @@ import {
 import {
   DEFAULT_TIMEZONE, type DayKey, type ExerciseEntry, type MinuteOfDay, type WorkEvent,
 } from '../../domain/types';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * The shared calendar.
@@ -137,7 +139,7 @@ export function WorkPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Work</h1>
+        <PageTitle guide={GUIDES.work}>Work</PageTitle>
         <p className="page-sub">A calendar you both can see.</p>
       </header>
 

@@ -13,6 +13,8 @@ import { DAILY_CARD_CAP } from '../../domain/study/payout';
 import { useElapsed } from '../../pwa/useElapsed';
 import { SecondaryAction } from '../../ui/SecondaryAction';
 import { PrimaryAction } from '../../ui/PrimaryAction';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * The study screen, and the only component in the app that is mounted twice:
@@ -89,7 +91,7 @@ export function StudyPage({ store, timeZone, subtitle }: StudyPageProps) {
     return (
       <div className="page">
         <header className="page-head">
-          <h1 className="page-title">Study</h1>
+          <PageTitle guide={GUIDES.study}>Study</PageTitle>
           <p className="page-sub">{subtitle ?? capLine(paid)}</p>
         </header>
         <DeckPicker
@@ -105,7 +107,7 @@ export function StudyPage({ store, timeZone, subtitle }: StudyPageProps) {
     return (
       <div className="page">
         <header className="page-head">
-          <h1 className="page-title">{stage.deck.title}</h1>
+          <PageTitle guide={GUIDES.study}>{stage.deck.title}</PageTitle>
           <p className="page-sub">That is the sitting done.</p>
         </header>
         <Summary
@@ -265,7 +267,7 @@ function SessionHead({ deck, index, total, onQuit }: {
   return (
     <header className="page-head">
       <div className="session-head">
-        <h1 className="page-title">{deck.title}</h1>
+        <PageTitle guide={GUIDES.study}>{deck.title}</PageTitle>
         <button type="button" className="session-quit" onClick={onQuit}>Stop</button>
       </div>
       <div

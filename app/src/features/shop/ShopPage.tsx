@@ -66,6 +66,8 @@ import { ChestReveal } from '../chest/ChestReveal';
 import { openingLine } from '../chest/receipt';
 import { SecondaryAction } from '../../ui/SecondaryAction';
 import { Tile } from '../../components/Tile';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * How brightly a companion's card is lit, by how rare it is.
@@ -215,7 +217,10 @@ export function ShopPage({ only = ['shop'], title = 'Shop' }: {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">{title}</h1>
+        {/* One page behind three routes; the guide follows the sections shown. */}
+        <PageTitle guide={only.includes('raid') ? GUIDES.raid : only.includes('companions') ? GUIDES.birb : GUIDES.shop}>
+          {title}
+        </PageTitle>
         <p className="page-sub">
           <Link className="sheet-party" to="/tasks">← Tasks</Link>
         </p>

@@ -1,6 +1,8 @@
 import type { Charge, Element } from './engine/types';
 import { CHARGE_COPY, CHARGE_ELEMENT, LOGGABLE, chargeOnWeakness } from '../../domain/rpg/charges';
 import { Icon } from '../../components/icons';
+import { InfoBubble } from '../../ui/InfoBubble';
+import { GUIDES } from '../guide/guides';
 
 /**
  * Today's charges, as a meter beside the move pad.
@@ -67,6 +69,7 @@ export function ChargeMeter({ charges, weakness }: ChargeMeterProps) {
   return (
     <aside className="garden-meter" aria-label="Today's charges">
       <p className="garden-meter-head">
+        <InfoBubble guide={GUIDES.charges} />
         <span>Charge</span>
         <span className="garden-meter-count">{logged}/{LOGGABLE.length}</span>
       </p>

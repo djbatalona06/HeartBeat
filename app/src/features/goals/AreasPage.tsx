@@ -6,6 +6,7 @@ import { AREAS, areaProgress } from '../../domain/rpg/selfCare';
 import { SCHEDULED_TYPES, type Task } from '../../domain/rpg/types';
 import { Icon } from '../../components/icons';
 import { Screen } from '../../ui/layout/Screen';
+import { GUIDES } from '../guide/guides';
 
 /**
  * Six areas of a life, and how much of each one today has had.
@@ -35,7 +36,7 @@ export function AreasPage() {
   );
 
   return (
-    <Screen title="Self-care areas" sub="Where your goals are pointed, and where they are not.">
+    <Screen guide={GUIDES.areas} title="Self-care areas" sub="Where your goals are pointed, and where they are not.">
       {/* Above the grid, not below it. Trailing prose on this screen ran
           underneath the floating chat pill, which is fixed over the foot of
           every page — and an instruction for tapping a tile reads better

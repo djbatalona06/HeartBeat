@@ -6,6 +6,8 @@ import { todayKey } from '../../domain/day';
 import { LANE_NAMES, lanesFor } from '../../domain/support/lanes';
 import { ideasForDay } from '../../domain/support/ideas';
 import { quoteForDay } from '../../domain/support/quotes';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * What might help today, for whichever of you is reading it.
@@ -56,7 +58,7 @@ export function SupportPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Might help</h1>
+        <PageTitle guide={GUIDES.support}>Might help</PageTitle>
         <p className="page-sub">Suggestions for today. Nothing here is counted.</p>
       </header>
 

@@ -15,6 +15,8 @@ import {
 } from './workout';
 import { SecondaryAction } from '../../ui/SecondaryAction';
 import { postMoveNudge } from '../../pwa/api';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * The Move screen: what you did, in your own words, with proof.
@@ -134,7 +136,7 @@ export function ExercisePage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Move</h1>
+        <PageTitle guide={GUIDES.exercise}>Move</PageTitle>
         <p className="page-sub">What you did today, and what it looked like.</p>
       </header>
 

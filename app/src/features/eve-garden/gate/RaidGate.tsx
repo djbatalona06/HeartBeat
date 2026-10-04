@@ -10,6 +10,8 @@ import { GateBoss } from './GateBoss';
 import { GatePedestal } from './GatePedestal';
 import { TogetherTether } from './TogetherTether';
 import { Icon } from '../../../components/icons';
+import { InfoBubble } from '../../../ui/InfoBubble';
+import { GUIDES } from '../../guide/guides';
 
 /**
  * The Raid Gate.
@@ -115,9 +117,12 @@ export function RaidGate({
 
       <div className="raid-gate-foot-bar">
         <div className="raid-gate-words">
-          <h1 className="raid-gate-title">
-            {verdict.reason === 'asked' ? 'Change companion' : "Eve's Garden"}
-          </h1>
+          <div className="page-title-row">
+            <InfoBubble guide={GUIDES.eveGarden} />
+            <h1 className="raid-gate-title">
+              {verdict.reason === 'asked' ? 'Change companion' : "Eve's Garden"}
+            </h1>
+          </div>
           <p className="raid-gate-greeting">{greeting}</p>
           {refused && <p className="raid-gate-refused" role="alert">{refused}</p>}
         </div>

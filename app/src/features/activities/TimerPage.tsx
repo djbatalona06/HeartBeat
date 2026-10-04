@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { clock, useElapsed } from './useElapsed';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /** The lengths worth one tap. Anything else is what the +1 button is for. */
 const PRESETS = [1, 3, 5, 10, 20, 25];
@@ -42,7 +44,7 @@ export function TimerPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Timer</h1>
+        <PageTitle guide={GUIDES.timer}>Timer</PageTitle>
         <p className="page-sub">For a rest, a task, or a pot of something.</p>
       </header>
 

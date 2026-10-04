@@ -10,6 +10,8 @@ import {
 } from '../../domain/selfcare/breathing';
 import { useTheme } from '../../themes/ThemeProvider';
 import { PrimaryAction } from '../../ui/PrimaryAction';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * Breathing, counted.
@@ -72,7 +74,7 @@ export function BreathePage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">Breathing</h1>
+        <PageTitle guide={GUIDES.breathe}>Breathing</PageTitle>
         <p className="page-sub">{pattern.blurb}</p>
       </header>
 

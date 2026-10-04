@@ -6,6 +6,7 @@ import { todayKey } from '../../domain/day';
 import { QuestBoard } from './QuestBoard';
 import { AchievementShelf } from '../achievements/AchievementShelf';
 import { Screen } from '../../ui/layout/Screen';
+import { GUIDES } from '../guide/guides';
 
 /**
  * The two things that pay for showing up over time, on one screen.
@@ -35,7 +36,7 @@ export function QuestsPage() {
   const coupleId = settings?.coupleId ?? identity?.coupleId;
 
   return (
-    <Screen title="Quests" sub="Extra ways to earn, and what they added up to.">
+    <Screen guide={GUIDES.quests} title="Quests" sub="Extra ways to earn, and what they added up to.">
       {coupleId ? (
         <>
           <QuestBoard coupleId={coupleId} day={todayKey(timeZone)} timeZone={timeZone} />

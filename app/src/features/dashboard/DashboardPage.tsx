@@ -32,6 +32,7 @@ import { EmptyState } from '../../ui/EmptyState';
 import { LogStrip } from './LogStrip';
 import { CostumeLayer } from '../party/art/costumes';
 import { BossGateCard } from './BossGateCard';
+import { GUIDES } from '../guide/guides';
 
 /**
  * Home. What the pet is doing, and what is left to do today.
@@ -97,7 +98,7 @@ export function DashboardPage() {
   }
 
   return (
-    <Screen title="HeartBeat" sub={<>{paired ? 'Paired' : 'Just you so far'} · {day}</>}>
+    <Screen guide={GUIDES.home} title="HeartBeat" sub={<>{paired ? 'Paired' : 'Just you so far'} · {day}</>}>
       <PetStage
         aura={isUnlocked('shared-aura', unlockState)}
         framed={isUnlocked('evergreen-frame', unlockState)}

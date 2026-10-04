@@ -6,6 +6,8 @@ import { addReflection, ensureIdentity } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { QUIZZES, answeredCount, summarise, type Quiz } from '../../domain/selfcare/quizzes';
 import { PrimaryAction } from '../../ui/PrimaryAction';
+import { PageTitle } from '../../ui/layout/PageTitle';
+import { GUIDES } from '../guide/guides';
 
 /**
  * Short reflective sets that end up in the journal.
@@ -60,7 +62,7 @@ export function QuizzesPage() {
     return (
       <div className="page">
         <header className="page-head">
-          <h1 className="page-title">Quizzes</h1>
+          <PageTitle guide={GUIDES.quizzes}>Quizzes</PageTitle>
           <p className="page-sub">A few questions. Nothing is scored.</p>
         </header>
 
@@ -88,7 +90,7 @@ export function QuizzesPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1 className="page-title">{quiz.name}</h1>
+        <PageTitle guide={GUIDES.quizzes}>{quiz.name}</PageTitle>
         <p className="page-sub">{answered} of {quiz.questions.length} answered</p>
       </header>
 
