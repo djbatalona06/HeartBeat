@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db, loadSettings } from '../database';
+import { db, loadSettings, saveSettings } from '../database';
+import { newAvatar } from '../../domain/rpg/types';
 import {
   activeKit, chooseRaidCompanion, clearRaidCompanion, loadGateCards, loadRaidChoice,
   openRaidGate, recordRaidRounds,
@@ -148,5 +149,36 @@ describe('the kit in force', () => {
   it('falls back for a theme that no longer exists', async () => {
     await chooseRaidCompanion('a-theme-that-was-removed');
     expect((await activeKit()).themeId).toBe('kitty');
+  });
+});
+
+describe('the pick, as the partner sees it', () => {
+  beforeEach(async () => {
+    await db.avatars.clear();
+  });
+
+  // The partner's phone draws this pet on the second pedestal. Settings are
+  // local by design, so the pick also rides on the synced avatar row.
+  it("lands on this member's avatar, with a newer updatedAt so it syncs", async () => {
+    await saveSettings({ memberId: 'me', coupleId: 'c1' });
+    await db.avatars.put(newAvatar('me', 'c1', 1));
+    await chooseRaidCompanion('shinobi');
+    const avatar = await db.avatars.get('me');
+    expect(avatar?.raidCompanion).toBe('shinobi');
+    expect(avatar?.updatedAt).toBeGreaterThan(1);
+  });
+
+  it('does not rewrite the avatar when the pick has not changed', async () => {
+    await saveSettings({ memberId: 'me', coupleId: 'c1' });
+    await db.avatars.put({ ...newAvatar('me', 'c1', 1), raidCompanion: 'pony' });
+    await chooseRaidCompanion('pony');
+    expect((await db.avatars.get('me'))?.updatedAt).toBe(1);
+  });
+
+  it('still saves the pick on a phone with no avatar yet', async () => {
+    await saveSettings({ memberId: 'me', coupleId: 'c1' });
+    await chooseRaidCompanion('kitty');
+    expect((await loadRaidChoice()).companionId).toBe('kitty');
+    expect(await db.avatars.get('me')).toBeUndefined();
   });
 });

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SPRITE_SIZE } from '../../../domain/rpg/sprites';
 import {
-  ARENA_HEIGHT, ARENA_WIDTH, arenaFor, isAdjacentToMonster, isWalkable, tileKindAt,
+  ARENA_HEIGHT, ARENA_WIDTH, allyTile, arenaFor, isAdjacentToMonster, isWalkable, tileKindAt,
   type Arena,
 } from '../../../domain/rpg/arena';
 import { lightingAt } from '../../../domain/rpg/diorama';
@@ -73,6 +73,12 @@ export class BattleGardenScene extends Phaser.Scene {
    * anybody could see.
    */
   private petSprite: string;
+  /**
+   * The partner's last pick, standing on its own pedestal beside yours. Drawn
+   * and lit, never moved and never struck: it is company, not a combatant, so
+   * every fight stays exactly as winnable alone (`IslandTests`).
+   */
+  private allySprite: string | undefined;
   private hour: number;
   private dark: boolean;
   /** Every fight beat's length; all zero under calm (`domain/scene/strikePlan.ts`). */
@@ -93,6 +99,9 @@ export class BattleGardenScene extends Phaser.Scene {
   private foe!: Phaser.GameObjects.Image;
   private petShadow!: Phaser.GameObjects.Ellipse;
   private foeShadow!: Phaser.GameObjects.Ellipse;
+  private ally?: Phaser.GameObjects.Image;
+  private allyShadow?: Phaser.GameObjects.Ellipse;
+  private allyAt?: { x: number; y: number };
   private sparks!: Phaser.Physics.Arcade.Group;
   /**
    * The pet's idle bob. Kept so a step can stop it: it tweens `y`, and so does
@@ -118,11 +127,13 @@ export class BattleGardenScene extends Phaser.Scene {
     dark: boolean,
     calm: boolean,
     hooks: SceneHooks,
+    allySprite?: string,
   ) {
     super(BattleGardenScene.KEY);
     this.arena = arenaFor(island, stage);
     this.monsterSprite = monsterSprite;
     this.petSprite = petSprite;
+    this.allySprite = allySprite;
     this.hour = hour;
     this.dark = dark;
     this.timing = strikePlan({ calm });
@@ -180,8 +191,15 @@ export class BattleGardenScene extends Phaser.Scene {
       }
     }
 
+    // Your pedestal at the spawn, and the partner's beside it. Yours stays put
+    // when your pet walks off it to the fight.
+    this.addPedestal(this.arena.spawn.x, this.arena.spawn.y);
+    this.allyAt = this.allySprite ? allyTile(this.arena) : undefined;
+    if (this.allyAt) this.addPedestal(this.allyAt.x, this.allyAt.y);
+
     this.foeShadow = this.addShadow(this.arena.monster.x, this.arena.monster.y);
     this.petShadow = this.addShadow(this.arena.spawn.x, this.arena.spawn.y);
+    if (this.allyAt) this.allyShadow = this.addShadow(this.allyAt.x, this.allyAt.y);
 
     this.foe = this.add
       .image(this.arena.monster.x * size, this.arena.monster.y * size, this.monsterSprite)
@@ -194,6 +212,15 @@ export class BattleGardenScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setDepth(depthForRow(this.tile.y, ARENA_HEIGHT));
 
+    if (this.allyAt && this.allySprite) {
+      this.ally = this.add
+        .image(this.allyAt.x * size, this.allyAt.y * size, this.allySprite)
+        .setOrigin(0, 0)
+        .setFlipX(this.allyAt.x > this.arena.monster.x)
+        .setDepth(depthForRow(this.allyAt.y, ARENA_HEIGHT));
+      this.idle(this.ally, 450);
+    }
+
     // A short, permanent idle bob on both sides. It is the cheapest thing that
     // stops a turn-based screen looking frozen between turns.
     this.petBob = this.idle(this.pet);
@@ -205,6 +232,21 @@ export class BattleGardenScene extends Phaser.Scene {
 
     this.input.keyboard?.on('keydown', this.onKey, this);
     this.input.on('pointerdown', this.onPointer, this);
+  }
+
+  /**
+   * A low stone plinth with a rim of the pack's accent, the same ring of light
+   * the Raid Gate draws under a chosen pet. Under the shadows (depth 7), so a
+   * pet standing on it still casts onto it.
+   */
+  private addPedestal(tx: number, ty: number): void {
+    const size = this.size;
+    const cx = tx * size + size / 2;
+    const top = ty * size + size - size * 0.12;
+    this.add.rectangle(cx, top + size * 0.07, size * 0.74, size * 0.14, 0x000000, 0.22).setDepth(7);
+    this.add.ellipse(cx, top, size * 0.78, size * 0.22, 0x000000, 0.18)
+      .setStrokeStyle(Math.max(1, this.zoom - 1), this.accent, 0.7)
+      .setDepth(7);
   }
 
   private addShadow(tx: number, ty: number): Phaser.GameObjects.Ellipse {
@@ -238,12 +280,14 @@ export class BattleGardenScene extends Phaser.Scene {
     const light = lightingAt(this.hour, 1);
     const tint = this.dark ? 0x7a7f96 : light.isNight ? 0xa8b0cc : 0xffffff;
 
-    for (const target of [this.pet, this.foe]) target?.setTint(tint);
+    for (const target of [this.pet, this.foe, this.ally]) target?.setTint(tint);
 
     for (const [shadow, at] of [
       [this.petShadow, this.tile],
       [this.foeShadow, this.arena.monster],
+      [this.allyShadow, this.allyAt],
     ] as const) {
+      if (!at) continue;
       if (!shadow) continue;
       const size = this.size;
       shadow.setScale(0.5 + light.shadowLength, 1);
