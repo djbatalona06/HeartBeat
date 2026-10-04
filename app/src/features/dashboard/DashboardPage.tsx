@@ -137,8 +137,7 @@ export function DashboardPage() {
           after the ring came out; this is what it was for. */}
       {!paired ? <PairInvite /> : null}
 
-      {/* The way to the Boss Gate. It was only in the menu, behind two taps and
-          a screen called Eve's Garden. */}
+      {/* The way into Eve's Garden. It was only in the menu, behind two taps. */}
       <BossGateCard coupleId={coupleId} memberId={memberId} />
 
       <TodaySection
