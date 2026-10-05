@@ -33,10 +33,21 @@ import { isAscendant } from './unlocks';
 /** The shared pet's own level, as points. The headline number's contribution. */
 export const PET_LEVEL_STAT_STEP = 2;
 
-/** What a companion's rank multiplies its contribution by, per rank above 1.
- *  Five ranks, so a maxed companion is worth 60% more than a fresh one — a
- *  real climb, and short of the gap between two adjacent tiers. */
-export const COMPANION_RANK_LIFT = 0.15;
+/** A companion counts for half of a gear item on the same rung: company that
+ *  helps, never the thing that carries the sheet. */
+export const COMPANION_IMPACT = 0.5;
+
+/** The most bond can ever add, as a fraction. Approached, never reached. */
+export const COMPANION_RANK_LIFT = 0.6;
+
+/**
+ * What bond rank adds, on a flattening curve: each rank adds half of what the
+ * one before it did, so the first ranks are the ones that matter (rank 2 is
+ * +30%, rank 5 +56%) and a maxed companion still sits under the cap.
+ */
+export function companionRankLift(rank: number): number {
+  return COMPANION_RANK_LIFT * (1 - 0.5 ** Math.max(0, rank - 1));
+}
 
 /**
  * The couple's pet, as a source.
@@ -145,7 +156,7 @@ export function dyeSource(dyeId: string | undefined): StatSource | undefined {
   };
 }
 
-/** The companion at your side, lifted by the rank its bond has earned. */
+/** The companion at your side, at half a gear item's weight, lifted by the rank its bond has earned. */
 export function companionSource(pet: PetInstance | undefined): StatSource | undefined {
   if (!pet) return undefined;
   const kind = petKindById(pet.kindId);
@@ -156,7 +167,7 @@ export function companionSource(pet: PetInstance | undefined): StatSource | unde
     id: kind.id,
     label: kind.name,
     tier: kind.rarity,
-    statLevel: Math.round(base * (1 + COMPANION_RANK_LIFT * (rank - 1))),
+    statLevel: Math.max(1, Math.round(base * COMPANION_IMPACT * (1 + companionRankLift(rank)))),
     order: SPECIES_RAID_ORDER[kind.species],
   };
 }
