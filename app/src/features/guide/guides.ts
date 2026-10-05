@@ -172,10 +172,10 @@ export const GUIDES = {
     title: 'Birb',
     steps: [
       'Hatch an egg for 120 coins, or choose a companion.',
-      'Buy and wear colours, and wear costumes.',
+      'Buy and wear colours.',
       'Plant in the garden plots; the room furnishes itself.',
     ],
-    game: 'Companions, colours, furniture and plants all add raid stats; costumes are only for looks. Plots open as your pet levels up.',
+    game: 'Companions, colours, furniture and plants all add raid stats. Plots open as your pet levels up.',
   },
   raid: {
     title: 'Raid',
