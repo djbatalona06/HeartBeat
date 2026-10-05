@@ -1846,10 +1846,14 @@ button.statchip { cursor: pointer; min-height: var(--tap); }
    lit as one room rather than piece by piece, so no two pieces disagree about
    where the window is. A rarer thing catches the light harder -- the tier the
    tile already carries, not a sixth rung. */
-.gear-art, .pet-art, .chest-art, .house-scene, .decor-art svg { filter: url(#hb-toon); }
+.chest-art, .house-scene, .decor-art svg { filter: url(#hb-toon); }
+/* Gear and companions also cast a soft shadow down and right, away from the
+   light, so each one stands on the card rather than being printed on it. */
+.gear-art, .pet-art { filter: url(#hb-toon-cast); overflow: visible; }
 [data-tier='legendary'] :is(.gear-art, .pet-art),
-[data-tier='mythic'] :is(.gear-art, .pet-art),
+[data-tier='mythic'] :is(.gear-art, .pet-art) { filter: url(#hb-toon-gloss-cast); }
 .chest-art[data-chest='gilded'] { filter: url(#hb-toon-gloss); }
+.gear-art-pending { filter: none; }
 
 .slot { margin-top: var(--space-4); }
 .slot-name { font-size: var(--text-xs); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; }

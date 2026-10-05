@@ -22,15 +22,29 @@
 /** `rig.ts`'s LIGHT: near-white, because nothing in this app paints #fff. */
 const LIGHT = '#fdfcfb';
 
-function Toon({ id, shine, exponent, bands }: {
+function Toon({ id, shine, exponent, bands, cast = false }: {
   id: string;
   shine: number;
   exponent: number;
   /** Alpha steps for the highlight: discrete, so it lands as a band. */
   bands: string;
+  /**
+   * A soft shadow thrown down and to the right, away from the key light, so
+   * the thing sits on the ground instead of floating on the card. Gear and
+   * companions only: a whole room casting a shadow on its own card reads as a
+   * sticker.
+   */
+  cast?: boolean;
 }) {
   return (
-    <filter id={id} x="-4%" y="-4%" width="108%" height="108%" colorInterpolationFilters="sRGB">
+    <filter
+      id={id}
+      x={cast ? '-8%' : '-4%'}
+      y={cast ? '-8%' : '-4%'}
+      width={cast ? '122%' : '108%'}
+      height={cast ? '126%' : '108%'}
+      colorInterpolationFilters="sRGB"
+    >
       {/* The shape as a soft height map: its edges fall away, its middle is a dome. */}
       <feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="dome" />
       {/* Azimuth 225° is up and to the left in SVG's y-down space. */}
@@ -50,9 +64,21 @@ function Toon({ id, shine, exponent, bands }: {
       <feComposite in="SourceAlpha" in2="nudged" operator="out" result="rim" />
       {/* The theme's own shadow colour, already mode-corrected (themes/tokens.ts).
           A style rather than an attribute: presentation attributes take no var(). */}
-      <feFlood style={{ floodColor: 'var(--shadow-color)', floodOpacity: 0.6 }} />
+      <feFlood style={{ floodColor: 'var(--shadow-color)', floodOpacity: 0.7 }} />
       <feComposite in2="rim" operator="in" result="shade" />
+      {cast && (
+        <>
+          <feOffset in="SourceAlpha" dx="3" dy="6" result="dropped" />
+          <feGaussianBlur in="dropped" stdDeviation="2" result="soft" />
+          {/* Not `--shadow-color`: in light mode that token is 10% alpha
+              already and the cast vanished. The ink `LIGHT_SHADOW_COLOR` is
+              made of, at a fixed strength, reads on every card. */}
+          <feFlood floodColor="rgb(24, 20, 34)" floodOpacity={0.3} />
+          <feComposite in2="soft" operator="in" result="cast" />
+        </>
+      )}
       <feMerge>
+        {cast && <feMergeNode in="cast" />}
         <feMergeNode in="SourceGraphic" />
         <feMergeNode in="shade" />
         <feMergeNode in="lit" />
@@ -69,6 +95,9 @@ export function ToonDefs() {
         <Toon id="hb-toon" shine={0.9} exponent={16} bands="0 0 0.28 0.42" />
         {/* Legendary, mythic and the gilded chest: a tighter, brighter catch. */}
         <Toon id="hb-toon-gloss" shine={1.3} exponent={28} bands="0 0.2 0.45 0.62" />
+        {/* The same two lights with a cast shadow, for gear and companions. */}
+        <Toon id="hb-toon-cast" shine={1} exponent={16} bands="0 0.1 0.3 0.46" cast />
+        <Toon id="hb-toon-gloss-cast" shine={1.3} exponent={28} bands="0 0.2 0.45 0.62" cast />
       </defs>
     </svg>
   );
