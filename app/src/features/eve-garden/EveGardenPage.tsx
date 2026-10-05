@@ -44,7 +44,7 @@ import { GardenBackdrop } from './GardenBackdrop';
 import { GardenHabitat } from './GardenHabitat';
 import { RaidGate } from './gate/RaidGate';
 import { BossGatePrompt } from './gate/BossGatePrompt';
-import { promptApplies } from '../../domain/rpg/gatePrompt';
+import { REGATE_DELAY_MS, backToTheGate, promptApplies } from '../../domain/rpg/gatePrompt';
 import { starMilestone } from '../../domain/rpg/starChests';
 import { REDRIVE_DELAY_MS, settle, shouldRedriveMonster } from './round';
 import { Compass } from './Compass';
@@ -297,15 +297,21 @@ export function EveGardenPage() {
   const petLevel = levelForXp(petXp);
   const kit = useMemo(() => kitFor(companion ?? undefined), [companion]);
   const petSprite = spriteKeyForTheme(companion ?? undefined);
-  /** The second pedestal. None when solo was chosen, or before the partner's row arrives. */
-  const allyTheme = party && partner ? partnerAvatar?.raidCompanion ?? partnerAvatar?.mascot : undefined;
-  const allySprite = allyTheme ? spriteKeyForTheme(allyTheme) : undefined;
-  // Read when the scene starts, not a dep of it: the partner picking a new pet
-  // mid-fight would otherwise tear down a running Phaser game.
+  /**
+   * The second pedestal: the partner's last pick, else their mascot, else the
+   * default bird -- a partner whose app has not written either yet still
+   * stands beside you. None after a "solo" answer, or with no partner.
+   */
+  const allySprite = party && partner
+    ? spriteKeyForTheme(partnerAvatar?.raidCompanion ?? partnerAvatar?.mascot)
+    : undefined;
+  // Not a dep of the scene: a new pick mid-fight would tear down a running
+  // Phaser game. Handed over live instead, and read when a scene starts.
   const allyRef = useRef(allySprite);
   useEffect(() => {
     allyRef.current = allySprite;
-  });
+    scene.current?.setAlly(allySprite);
+  }, [allySprite]);
 
   /**
    * How full the tether is.
@@ -543,12 +549,32 @@ export function EveGardenPage() {
    */
   useEffect(() => {
     const onVisibility = () => {
-      if (document.hidden) scene.current?.pause();
-      else scene.current?.resume();
+      if (document.hidden) { scene.current?.pause(); return; }
+      scene.current?.resume();
+      // Back from a locked phone or another app, standing on the boss: the
+      // attempt starts again at the pedestals, as a fresh visit would.
+      const now = resumeState.current;
+      if (now.companion && backToTheGate('resumed', now.stage, now.fighting)) setRegate(true);
     };
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, []);
+
+  /** Set when the next thing on screen should be the Raid Gate's pedestals again. */
+  const [regate, setRegate] = useState(false);
+  const resumeState = useRef({ companion, stage, fighting: false });
+  resumeState.current = { companion, stage, fighting: battle?.outcome === 'Fighting' };
+  useEffect(() => {
+    if (!regate) return undefined;
+    // A beat to read how the fight ended, then the gate, with this companion
+    // ringed and "Not yet" to step straight back into the garden.
+    const timer = window.setTimeout(() => {
+      setRegate(false);
+      cameFrom.current = resumeState.current.companion;
+      openGate(false);
+    }, battle ? REGATE_DELAY_MS : 0);
+    return () => window.clearTimeout(timer);
+  }, [regate, battle, openGate]);
 
   /* ---- a round ---- */
 
@@ -572,6 +598,8 @@ export function EveGardenPage() {
 
     if (ended.outcome !== 'Won') {
       scene.current?.withdraw();
+      // A boss attempt that did not land goes back through the pedestals.
+      if (backToTheGate(ended.outcome, stageOfMonster(ended.monsterId) ?? stage, false)) setRegate(true);
       return;
     }
 

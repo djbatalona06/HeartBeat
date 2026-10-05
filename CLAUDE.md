@@ -288,7 +288,12 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   Garden and opens on **every** walk into a boss — first try, retry after a
   loss or a flight, a boss stage reached mid-visit — never as a route guard
   that asks once. Backing out calls `scene.withdraw()` so the next walk asks
-  again; the together bonus is decided per attempt.
+  again; the together bonus is decided per attempt. A boss fight that is lost
+  or fled, and coming back to the app while standing on the boss stage, send
+  you back to the Raid Gate's pedestals (`backToTheGate` in `gatePrompt.ts`).
+  The partner's pet on the second pedestal is handed to the scene live
+  (`SceneHandle.setAlly`), never as a start dependency, and falls back to the
+  default bird when their pick and mascot have not synced yet.
 - **A fight can open on the monster's turn.** `Battle.Begin` hands the first
   move to the monster when the player is slower and a seeded flip says so;
   `shouldRedriveMonster` (`eve-garden/round.ts`) is what plays it. Every scene
@@ -375,6 +380,12 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   boss clear done together, and boss replay loot (three drops a day per member).
   Garden coins are **per member** (`Avatar.gardenBested`), not read off the
   couple's world row, so a stage your partner beat first still pays you yours.
+- **Companions count for half.** `companionSource` weighs a companion at
+  `COMPANION_IMPACT` (0.5) of a same-rung item, and bond adds on a flattening
+  curve (`companionRankLift`, capped under `COMPANION_RANK_LIFT`).
+- **Costumes are hidden, not removed.** `/birb` no longer lists the
+  `costumes` section; a costume already worn still draws. Bring it back by
+  adding `'costumes'` to that route's `only` list.
 - **Costumes and dyes are two different things and must stay two.** A dye sets
   `--color-text` / `--color-accent` / `--color-text-muted` on the bird's wrapper;
   a costume is a drawing laid over it in `--costume-main` / `--costume-trim` and

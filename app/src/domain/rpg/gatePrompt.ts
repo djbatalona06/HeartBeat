@@ -60,3 +60,23 @@ export function togetherRewardLines(): string[] {
     TOGETHER_PURSES === 1 ? 'A coin purse' : `${TOGETHER_PURSES} coin purses`,
   ];
 }
+
+/** How long a lost or fled boss fight stays on screen before the pedestals come back. */
+export const REGATE_DELAY_MS = 2500;
+
+/**
+ * Whether the garden should send you back through the Raid Gate's pedestals.
+ *
+ * Every attempt at a boss is a fresh walk to the gate, like a first visit: after
+ * a boss fight that was lost or fled, and on coming back to the app (a phone
+ * locked, the app switched away from) while standing on a boss stage. Never
+ * mid-fight, and never on stages 1-6, which are asynchronous and keep walking.
+ */
+export function backToTheGate(
+  why: 'Down' | 'Fled' | 'Won' | 'Fighting' | 'resumed',
+  stage: number,
+  fighting: boolean,
+): boolean {
+  if (fighting || why === 'Won' || why === 'Fighting') return false;
+  return partnerGateApplies(stage);
+}
