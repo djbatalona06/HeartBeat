@@ -12,7 +12,9 @@ import {
   ensureIdentity,
   getOrCreateAvatar,
   markLoreSeen,
+  loadWorldProgress,
   openChestFor,
+  openStarChest,
   setCompanion,
   spendMp,
   spendPetMp,
@@ -60,12 +62,12 @@ import { Merchant } from '../party/Merchant';
 import { RaidSheet } from '../party/RaidSheet';
 import { Boss } from '../party/Boss';
 import { GearDiff } from '../party/GearDiff';
+import { IslandPath } from '../party/IslandPath';
 import { PRIZES_PER_CHEST } from '../../domain/rpg/chests';
 import type { ChestOutcome } from '../../db/repository/chests';
 import { ChestReveal } from '../chest/ChestReveal';
 import { openingLine } from '../chest/receipt';
 import { SecondaryAction } from '../../ui/SecondaryAction';
-import { Tile } from '../../components/Tile';
 import { PageTitle } from '../../ui/layout/PageTitle';
 import { GUIDES } from '../guide/guides';
 
@@ -231,7 +233,7 @@ export function ShopPage({ only = ['shop'], title = 'Shop' }: {
           {only.includes('companions') ? <CompanionsSection ctx={ctx} /> : null}
           {only.includes('colours') ? <ColoursSection ctx={ctx} /> : null}
           {only.includes('costumes') ? <CostumesSection ctx={ctx} /> : null}
-          {only.includes('raid') ? <RaidSection ctx={ctx} /> : null}
+          {only.includes('raid') ? <RaidSection ctx={ctx} onRevealed={setRevealed} /> : null}
           {only.includes('house') ? (
             <Birbhouse house={(ctx.pet?.house ?? {}) as House} avatar={ctx.avatar} />
           ) : null}
@@ -336,6 +338,14 @@ function ColoursSection({ ctx }: { ctx: ShopContext }) {
   );
 }
 
+/** One roll set per item, drawn here and handed in, so the domain and the
+ *  repository both stay deterministic given their inputs. */
+function freshRolls() {
+  return Array.from({ length: PRIZES_PER_CHEST }, () => ({
+    tier: Math.random(), kind: Math.random(), stat: Math.random(), pick: Math.random(),
+  }));
+}
+
 /**
  * -- the raid ------------------------------------------------------------
  * One section, three panels, in the order the question is asked: what you
@@ -349,53 +359,84 @@ function ColoursSection({ ctx }: { ctx: ShopContext }) {
  * by the Bag, which is the wardrobe. One implementation, two callers, the same
  * argument `ChestAlcove`'s header makes about published odds.
  */
-function RaidSection({ ctx }: { ctx: ShopContext }) {
+function RaidSection({ ctx, onRevealed }: {
+  ctx: ShopContext;
+  onRevealed: (outcome: Extract<ChestOutcome, { ok: true }>) => void;
+}) {
   const { avatar, identity, pets, owned, pet, settings, say } = ctx;
   const petXp = pet?.xp ?? 0;
   const house = (pet?.house ?? {}) as House;
   const companion = pets.find((p) => p.id === avatar.companionId);
+  const world = useLiveQuery(() => loadWorldProgress(identity.coupleId), [identity.coupleId]);
+  /** One star chest at a time, for the same reason the Shop opens one chest at a time. */
+  const [opening, setOpening] = useState(false);
+
+  const openStar = async (monsterId: string) => {
+    if (opening) return;
+    setOpening(true);
+    try {
+      const result = await openStarChest(identity.memberId, identity.coupleId, monsterId, freshRolls());
+      if (!result.ok) { say(result.reason, 'error'); return; }
+      onRevealed(result);
+    } finally {
+      setOpening(false);
+    }
+  };
+
   return (
     <>
-      {/* First, because the sheet below is what you bring to the gate. */}
-      <Tile to="/eve-garden" title="Eve's Garden" icon="sword" value="Enter" hint="The islands and the boss. Better together." />
-      <RaidSheet
-        avatar={avatar}
-        owned={owned}
-        petXp={petXp}
-        house={house}
-        garden={pet?.plots as Garden | undefined}
-        companion={companion}
-      />
-      {/* Directly under the sheet, because it is the rest of the same
-          sentence: the sheet says what every number is and where it came
-          from, and this says what one different piece would make of it. */}
-      <GearDiff avatar={avatar} owned={owned} petXp={petXp} house={house} companion={companion} />
-      <Boss
-        avatar={avatar}
-        pets={pets}
-        owned={owned}
-        workerUrl={settings?.workerUrl}
-        token={settings?.workerSecret}
-        onSpendMp={(amount) => spendMp(identity.memberId, identity.coupleId, amount)}
-        onSpendPetMp={spendPetMp}
-        onMessage={(text) => say(text)}
-      />
-      <Adventures
-        avatar={avatar}
-        owned={owned}
-        onGo={async (placeId) => {
-          // The roll is drawn here and handed in, so the repository and the
-          // domain both stay deterministic given their inputs.
-          const result = await startAdventure(
-            identity.memberId, identity.coupleId, placeId, Math.random(),
-          );
-          if (!result.ok) say(result.reason ?? null, 'error');
-          else say(
-            `${result.place}: came back with ${result.found}.`
-            + (result.bounty ? ` +${result.bounty} coins for getting there first.` : ''),
-          );
-        }}
-      />
+      {/* The map first: where the couple are, what is next, and the stars. The
+          panels after it are the detail, folded so the page stays one scroll. */}
+      {world && (
+        <IslandPath
+          world={world}
+          opened={avatar.starChests ?? []}
+          busy={opening}
+          onOpenStar={(id) => { void openStar(id); }}
+        />
+      )}
+      <Merchant title="Your raid sheet" sub="Every stat, where it comes from, and what one swap would change.">
+        <RaidSheet
+          avatar={avatar}
+          owned={owned}
+          petXp={petXp}
+          house={house}
+          garden={pet?.plots as Garden | undefined}
+          companion={companion}
+        />
+        {/* Directly under the sheet, because it is the rest of the same
+            sentence: the sheet says what every number is and where it came
+            from, and this says what one different piece would make of it. */}
+        <GearDiff avatar={avatar} owned={owned} petXp={petXp} house={house} companion={companion} />
+      </Merchant>
+      <Merchant title="Boss and adventures" sub="The weekly boss, and short trips that bring something back.">
+        <Boss
+          avatar={avatar}
+          pets={pets}
+          owned={owned}
+          workerUrl={settings?.workerUrl}
+          token={settings?.workerSecret}
+          onSpendMp={(amount) => spendMp(identity.memberId, identity.coupleId, amount)}
+          onSpendPetMp={spendPetMp}
+          onMessage={(text) => say(text)}
+        />
+        <Adventures
+          avatar={avatar}
+          owned={owned}
+          onGo={async (placeId) => {
+            // The roll is drawn here and handed in, so the repository and the
+            // domain both stay deterministic given their inputs.
+            const result = await startAdventure(
+              identity.memberId, identity.coupleId, placeId, Math.random(),
+            );
+            if (!result.ok) say(result.reason ?? null, 'error');
+            else say(
+              `${result.place}: came back with ${result.found}.`
+              + (result.bounty ? ` +${result.bounty} coins for getting there first.` : ''),
+            );
+          }}
+        />
+      </Merchant>
     </>
   );
 }
@@ -423,12 +464,7 @@ function ShopSectionView({ ctx, onRevealed }: {
         // One roll set per item, drawn here and handed in, so the domain and
         // the repository both stay deterministic given their inputs -- the
         // same arrangement `buyEgg` has.
-        Array.from({ length: PRIZES_PER_CHEST }, () => ({
-          tier: Math.random(),
-          kind: Math.random(),
-          stat: Math.random(),
-          pick: Math.random(),
-        })),
+        freshRolls(),
       );
       if (!result.ok) { say(result.reason, 'error'); return; }
       onRevealed(result);

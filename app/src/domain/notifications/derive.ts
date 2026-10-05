@@ -59,7 +59,7 @@ export type BadgeKey = (typeof BADGE_KEYS)[number];
  * below skips it rather than inventing one.
  */
 export const BADGE_ROUTES: Partial<Record<BadgeKey, string>> = {
-  cheers: '/friends',
+  cheers: '/partner',
   quests: '/quests',
 };
 

@@ -178,7 +178,7 @@ describe('byRoute', () => {
       cheers: [cheer()],
       quests: [quest({ progress: 3, target: 3 })],
     }));
-    expect(byRoute(badges)).toEqual({ '/friends': 1, '/quests': 1 });
+    expect(byRoute(badges)).toEqual({ '/partner': 1, '/quests': 1 });
   });
 
   it('leaves messages out, because the thread is not a route', () => {

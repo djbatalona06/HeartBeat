@@ -25,7 +25,6 @@ import { NotificationHeader } from './features/notifications/NotificationHeader'
 import { LoginPopup } from './features/dashboard/LoginPopup';
 import { MascotSync } from './features/pet/MascotSync';
 import { useWarmGearArt } from './features/party/art/gear/GearIcon';
-import { BossGateGuard } from './features/eve-garden/gate/BossGateGuard';
 import { ToastHost } from './ui/Toast';
 import { SceneBackdrop } from './features/home/SceneBackdrop';
 import { WelcomePage } from './features/onboarding/WelcomePage';
@@ -183,7 +182,9 @@ export function App() {
                         <Route path="/activities/first-aid" element={<FirstAidPage />} />
                         <Route path="/activities" element={<ActivitiesPage />} />
                         <Route path="/shop" element={<ShopPage />} />
-                        <Route path="/friends" element={<FriendsPage />} />
+                        <Route path="/partner" element={<FriendsPage />} />
+                        {/* The tab shipped as Friends; the old route stays for links. */}
+                        <Route path="/friends" element={<Navigate to="/partner" replace />} />
                         {/* No /bag of its own: `main` grew AssetsPage, which is the
                             same idea done properly, so the Bag tab points there.
                             Colours and companions sit on Birb, next to the house;
@@ -198,17 +199,12 @@ export function App() {
                             home of its own. Kept as a redirect, like /cycle, for
                             the links and home screens that still carry it. */}
                         <Route path="/party" element={<Navigate to="/shop" replace />} />
-                        {/* Through the Boss Gate's front door, so every way in meets
-                            the party-mode question on a boss stage -- and the
-                            garden stays unmounted until it is answered. */}
+                        {/* Its own page again. The Boss Gate is a popup inside
+                            the garden, asked on every attempt at a boss. */}
                         <Route path="/eve-garden" element={(
-                          <BossGateGuard>
-                            {(party) => (
-                              <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>
-                                <EveGardenPage party={party} />
-                              </Suspense>
-                            )}
-                          </BossGateGuard>
+                          <Suspense fallback={<p className="section-sub">Opening the garden…</p>}>
+                            <EveGardenPage />
+                          </Suspense>
                         )}
                         />
                         <Route path="/overworld" element={(

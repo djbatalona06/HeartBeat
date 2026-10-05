@@ -21,9 +21,16 @@ export interface MerchantProps {
   /** Rendered only once the drawer is open — the shelf's live
    *  queries have no business running for a drawer nobody has opened. */
   children: ReactNode;
+  /** The same drawer under another name -- the Raid page folds its panels in it. */
+  title?: string;
+  sub?: string;
 }
 
-export function Merchant({ children }: MerchantProps) {
+export function Merchant({
+  children,
+  title = 'Merchant',
+  sub = 'Today’s deals, a little cheaper than anywhere else, and new each day.',
+}: MerchantProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -35,10 +42,8 @@ export function Merchant({ children }: MerchantProps) {
         onClick={() => setOpen(!open)}
       >
         <span className="purchases-head">
-          <span className="section-title">Merchant</span>
-          <span className="section-sub">
-            Today’s deals, a little cheaper than anywhere else, and new each day.
-          </span>
+          <span className="section-title">{title}</span>
+          <span className="section-sub">{sub}</span>
         </span>
         <span className="purchases-chevron" aria-hidden="true" />
       </button>

@@ -261,6 +261,15 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M12 7.4v9" />
     </>
   ),
+  // A round speech bubble's cousin: a circle, a dot, a stem. The (i) that
+  // opens every page's guide, drawn instead of typed so it matches its set.
+  info: (
+    <>
+      <circle cx="12" cy="12" r="8.8" className="body" />
+      <path d="M12 7.9h.01" strokeWidth={2.8} />
+      <path d="M12 11.2v5.2" />
+    </>
+  ),
 };
 
 const TURNS = { up: 0, right: 90, down: 180, left: 270 } as const;

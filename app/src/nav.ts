@@ -55,6 +55,7 @@ export const ICON_NAMES = [
   'coin',
   'arrow',
   'shield',
+  'info',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
@@ -86,7 +87,7 @@ export interface MenuGroup {
  * adds up to. Its route keeps the name it shipped under; only the tab label is
  * Finch's.
  *
- * Friends is the partner, not a network. This app is for two people, so Tree
+ * Partner (it shipped as Friends) is one person, not a network. This app is for two people, so Tree
  * Town has one other house in it — that is a smaller feature than Finch's and
  * an honest one, rather than a social graph with nobody in it.
  */
@@ -94,7 +95,7 @@ export const PRIMARY_TABS: Tab[] = [
   { to: '/', label: 'Home', icon: 'house', hint: 'Your birb, and what today still wants' },
   { to: '/quests', label: 'Quests', icon: 'sparkle', hint: 'Extra ways to earn, and the shelf' },
   { to: '/shop', label: 'Shop', icon: 'shop', hint: 'Gear, eggs, and what coins are for' },
-  { to: '/friends', label: 'Friends', icon: 'friends', hint: 'Their birb, and something kind to send' },
+  { to: '/partner', label: 'Partner', icon: 'friends', hint: 'Their birb, and something kind to send' },
   { to: '/assets', label: 'Bag', icon: 'bag', hint: 'Gear and your stat sheet' },
   { to: '/birb', label: 'Birb', icon: 'bird', hint: 'Your companions, colours, costumes, and room' },
 ];
@@ -165,6 +166,8 @@ export const ALIASES: Tab[] = [
   // The Boss Gate is the pop-up in front of the boss stage, not the screen, but
   // the menu went by that name for a release, so the word still finds it.
   { to: '/eve-garden', label: 'Boss Gate', icon: 'sword', hint: "The boss's pop-up, in Eve's Garden" },
+  // The Partner tab shipped as Friends, and `/friends` still redirects to it.
+  { to: '/partner', label: 'Friends', icon: 'friends', hint: 'Now Partner' },
   // `/party` was the everything view until its sections each had a screen. The
   // route redirects to the shop, and the word still finds it.
   { to: '/shop', label: 'Party', icon: 'shop', hint: 'Now the Shop, with Birb and Bag beside it' },

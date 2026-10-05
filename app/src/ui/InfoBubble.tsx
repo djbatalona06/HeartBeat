@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Sheet } from './Sheet';
 import { PrimaryAction } from './PrimaryAction';
+import { Icon } from '../components/icons';
 
 export interface GuideCopy {
   /** The page or panel's name, as its heading says it. */
@@ -96,7 +97,7 @@ export function InfoBubble({ guide }: { guide: GuideCopy }) {
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
-        <span aria-hidden="true">i</span>
+        <Icon name="info" size="1.75rem" />
       </button>
       {createPortal(guideSheet, document.body)}
     </>

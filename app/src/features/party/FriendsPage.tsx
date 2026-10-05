@@ -100,7 +100,7 @@ export function FriendsPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <PageTitle guide={GUIDES.friends}>Friends</PageTitle>
+        <PageTitle guide={GUIDES.friends}>Partner</PageTitle>
         <p className="page-sub">Tree Town has two houses.</p>
       </header>
 

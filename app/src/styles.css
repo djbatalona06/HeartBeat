@@ -286,20 +286,7 @@ body {
   color: var(--color-accent);
   cursor: pointer;
 }
-.info-bubble > span {
-  display: grid;
-  place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 999px;
-  border: var(--border-width) solid currentColor;
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 700;
-  font-size: var(--text-sm);
-  line-height: 1;
-}
-.info-bubble[aria-expanded='true'] > span { background: var(--color-accent); color: var(--color-base); }
+.info-bubble[aria-expanded='true'] .icon .body { fill-opacity: 0.4; }
 .info-guide-toggle {
   display: flex;
   align-items: center;
@@ -7995,3 +7982,82 @@ a, button, input, select, textarea, summary, label, [role='button'] {
    place in the tab order and its aria-label says what it is. */
 .costume-button[data-owned='false'] .costume-art { filter: grayscale(1) brightness(0.55); opacity: 0.6; }
 .costume-button[data-owned='false']:disabled { opacity: 1; }
+
+/* -- the island path (Raid) ---------------------------------------------------
+ * Ten islands on one dashed line. The couple's island is open with its seven
+ * stages; star chests glow when ready. CSS only, no canvas. */
+.island-path { display: grid; gap: var(--space-3); }
+.island-path-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
+.island-path-stars { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; color: var(--color-accent); }
+.island-path-where { font-size: var(--text-sm); color: var(--color-text-muted); }
+.island-path-enter { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); text-decoration: none; }
+.island-path-list, .island-path-stages { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.island-path-list { position: relative; }
+.island-path-list::before {
+  content: ''; position: absolute; top: 1rem; bottom: 1rem; left: 1rem;
+  border-left: 2px dashed var(--color-border);
+}
+.island-path-island { position: relative; }
+/* A gentle wind: every other island steps in, so the path reads as a path. */
+.island-path-island:nth-child(even) .island-path-row { margin-left: var(--space-4); }
+.island-path-row { display: flex; align-items: center; gap: var(--space-3); min-height: var(--tap); }
+.island-path-num {
+  flex: 0 0 auto; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 999px;
+  background: var(--color-surface); border: var(--border-width) solid var(--color-border);
+  font-weight: 700; position: relative; z-index: 1;
+}
+.island-path-island[data-state='done'] .island-path-num { background: var(--color-success); color: var(--color-base); border-color: transparent; }
+.island-path-island[data-state='current'] .island-path-num { background: var(--color-accent); color: var(--color-base); border-color: transparent; }
+.island-path-island[data-state='locked'] { opacity: 0.55; }
+.island-path-name { flex: 1 1 auto; display: grid; min-width: 0; }
+.island-path-title { font-weight: 600; }
+.island-path-sub { display: block; font-size: var(--text-xs); color: var(--color-text-muted); }
+.island-path-stars-row { display: flex; gap: var(--space-1); }
+
+.island-path-stages {
+  margin: var(--space-2) 0 var(--space-2) var(--space-5);
+  padding: var(--space-3); border-radius: var(--radius-large);
+  background: var(--color-surface-muted);
+}
+.island-path-stage { display: flex; align-items: center; gap: var(--space-3); }
+.island-path-dot {
+  flex: 0 0 auto; display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 999px;
+  border: var(--border-width) solid var(--color-border); font-size: var(--text-sm);
+}
+.island-path-stage[data-type='SemiBoss'] .island-path-dot,
+.island-path-stage[data-type='Boss'] .island-path-dot { border-radius: var(--radius); }
+.island-path-stage[data-state='cleared'] .island-path-dot { background: var(--color-success); color: var(--color-base); border-color: transparent; }
+.island-path-stage[data-state='here'] .island-path-dot {
+  background: var(--color-accent); color: var(--color-base); border-color: transparent;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+.island-path-stage[data-state='ahead'] { color: var(--color-text-muted); }
+.island-path-stage-name { flex: 1 1 auto; min-width: 0; }
+.island-path-here {
+  flex: 0 0 auto; padding: 2px var(--space-2); border-radius: 999px;
+  background: var(--color-accent); color: var(--color-base); font-size: var(--text-xs); font-weight: 700;
+}
+.island-path-star-slot { display: flex; justify-content: center; }
+
+.star-chest {
+  position: relative; display: grid; place-items: center; width: 3rem; height: 2.6rem; padding: 0;
+  border: none; background: none; color: inherit; cursor: pointer;
+}
+.island-path-star-slot .star-chest { width: 4rem; height: 3.4rem; }
+.star-chest .chest-art { width: 100%; height: 100%; }
+.star-chest-badge {
+  position: absolute; top: -2px; right: -2px; font-size: 0.9rem; line-height: 1;
+  color: var(--color-accent);
+}
+.star-chest[data-state='locked'] { opacity: 0.35; filter: grayscale(1); cursor: default; }
+.star-chest[data-state='opened'] { opacity: 0.5; cursor: default; }
+.star-chest[data-state='opened'] .star-chest-badge { color: var(--color-text-muted); }
+.star-chest[data-state='ready'] { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-accent) 70%, transparent)); animation: star-chest-glow 1.6s ease-in-out infinite alternate; }
+.star-chest-cta {
+  position: absolute; bottom: -0.5rem; padding: 0 var(--space-1); border-radius: 999px;
+  background: var(--color-accent); color: var(--color-base); font-size: 0.65rem; font-weight: 700;
+}
+.star-chest:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: var(--radius); }
+@keyframes star-chest-glow { to { transform: translateY(-2px) scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .star-chest[data-state='ready'] { animation: none; } }
+:root[data-calm='true'] .star-chest[data-state='ready'] { animation: none; }

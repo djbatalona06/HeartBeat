@@ -284,6 +284,11 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   row is a union of cleared stages, not last-write-wins. No stage 1–6 screen may
   render a partner-waiting message. `BOSS_REQUIRES_PARTNER` is false: the gate
   is an invitation with a better payout, not a lock.
+  The party-mode popup (`gate/BossGatePrompt.tsx`) lives *inside* Eve's
+  Garden and opens on **every** walk into a boss — first try, retry after a
+  loss or a flight, a boss stage reached mid-visit — never as a route guard
+  that asks once. Backing out calls `scene.withdraw()` so the next walk asks
+  again; the together bonus is decided per attempt.
 - **A fight can open on the monster's turn.** `Battle.Begin` hands the first
   move to the monster when the player is slower and a seeded flip says so;
   `shouldRedriveMonster` (`eve-garden/round.ts`) is what plays it. Every scene
@@ -376,6 +381,14 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   worn through `Avatar.costume`. `art.test.ts` reads the costume drawings and
   fails if one paints in a dye's property. Costumes are cosmetic only and stay
   out of the loadout.
+- **Star chests are free milestones, never sold.** `domain/rpg/starChests.ts`
+  derives one per `SemiBoss` (silver odds) and `Boss` (gilded odds) from
+  `ISLANDS`. **Ready reads the couple's world row** (`cleared` is a union, so a
+  boss your partner beat first is still your star); **opened is per member** on
+  `Avatar.starChests` (optional, no migration). `openStarChest` shares
+  `grantChest` with `openChestFor` — same luck, pity and per-item refund cap —
+  and the Raid page's Island Path opens them through the Shop page's one
+  `ChestReveal`.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)
