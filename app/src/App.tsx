@@ -194,7 +194,7 @@ export function App() {
                             are one subject and now have one screen, so /birb is
                             the bird and the room it lives in. */}
                         {/* Costumes are hidden for now: no picker, but one already worn still shows. */}
-                        <Route path="/birb" element={<ShopPage only={['colours', 'house', 'companions']} title="Birb" />} />
+                        <Route path="/birb" element={<ShopPage only={['birb']} title="Birb" />} />
                         <Route path="/raid" element={<ShopPage only={['raid']} title="Raid" />} />
                         {/* The everything view went when each of its sections had a
                             home of its own. Kept as a redirect, like /cycle, for

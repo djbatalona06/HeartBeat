@@ -171,11 +171,11 @@ export const GUIDES = {
   birb: {
     title: 'Birb',
     steps: [
-      'Hatch an egg for 120 coins, or choose a companion.',
-      'Buy and wear colours.',
-      'The birbhouse furnishes itself; plant its yard as plots open.',
+      'Hatch an egg for 120 coins, then pick who walks with you. Doing your own list charges their MP.',
+      'Swipe or tap the tabs: Companions, Look (colours) and Room & yard.',
+      'The birbhouse furnishes itself from the best piece either of you owns; plant its yard as plots open.',
     ],
-    game: 'Companions, colours, furniture and plants all add raid stats. Plots open as your pet levels up.',
+    game: 'Companions, colours, furniture and plants all add raid stats. A kind you already have folds into the one you own instead of queueing a second. Plots open as your pet levels up.',
   },
   raid: {
     title: 'Raid',
