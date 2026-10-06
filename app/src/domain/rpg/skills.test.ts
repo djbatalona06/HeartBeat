@@ -73,13 +73,13 @@ describe('casting', () => {
   const ember = skillById('ember-strike')!;
 
   it('needs both the level and the MP', () => {
-    expect(canCast(ember, 3, 8)).toBe(true);
-    expect(canCast(ember, 2, 99)).toBe(false);
+    expect(canCast(ember, 2, 8)).toBe(true);
+    expect(canCast(ember, 1, 99)).toBe(false);
     expect(canCast(ember, 9, 7)).toBe(false);
   });
 
   it('says which of the two is missing', () => {
-    expect(castBlockedBecause(ember, 2, 99)).toContain('level 3');
+    expect(castBlockedBecause(ember, 1, 99)).toContain('level 2');
     expect(castBlockedBecause(ember, 9, 7)).toContain('8 MP');
     expect(castBlockedBecause(ember, 9, 8)).toBeNull();
   });

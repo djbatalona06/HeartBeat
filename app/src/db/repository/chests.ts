@@ -9,7 +9,6 @@ import type { Avatar } from '../../domain/rpg/types';
 import { gearById } from '../../domain/rpg/gear';
 import { petKindById } from '../../domain/rpg/pets';
 import { furnitureById } from '../../domain/rpg/furniture';
-import { floraById } from '../../domain/rpg/plots';
 import { dyeById } from '../../domain/rpg/dyes';
 import { DUPLICATE_PET_BOND, REFINE_MAX, canAfford } from '../../domain/rpg/shop';
 import { spend, statsFor } from '../../domain/rpg/avatar';
@@ -67,8 +66,6 @@ export function nameOf(kind: PrizeKind, itemId: string): string | undefined {
     case 'companion': return petKindById(itemId)?.name;
     case 'decor': return furnitureById(itemId)?.name;
     case 'dye': return dyeById(itemId)?.name;
-    // Missing until now: a flora prize was revealed as "Something".
-    case 'flora': return floraById(itemId)?.name;
     default: return undefined;
   }
 }
@@ -78,9 +75,6 @@ export function nameOf(kind: PrizeKind, itemId: string): string | undefined {
 export function priceOf(kind: PrizeKind, itemId: string): number {
   if (kind === 'decor') return furnitureById(itemId)?.price ?? 0;
   if (kind === 'dye') return dyeById(itemId)?.price ?? 0;
-  // Missing until now, which made a duplicate plant refund 0 coins: the one
-  // outcome a paid chest is never allowed to have.
-  if (kind === 'flora') return floraById(itemId)?.price ?? 0;
   return 0;
 }
 

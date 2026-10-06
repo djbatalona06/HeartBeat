@@ -105,13 +105,13 @@ describe('tethers', () => {
 describe('the companion\'s kit', () => {
   it('opens the passive before the support skill', () => {
     expect(skillUnlocked(1, 'passive')).toBe(false);
-    expect(skillUnlocked(3, 'passive')).toBe(true);
-    expect(skillUnlocked(3, 'support')).toBe(false);
-    expect(skillUnlocked(6, 'support')).toBe(true);
+    expect(skillUnlocked(2, 'passive')).toBe(true);
+    expect(skillUnlocked(2, 'support')).toBe(false);
+    expect(skillUnlocked(3, 'support')).toBe(true);
   });
 
   it('never closes again', () => {
-    for (let level = 6; level <= MAX_LEVEL; level += 1) {
+    for (let level = 3; level <= MAX_LEVEL; level += 1) {
       expect(skillUnlocked(level, 'support'), `level ${level}`).toBe(true);
     }
   });
@@ -120,7 +120,7 @@ describe('the companion\'s kit', () => {
 describe('stat grants', () => {
   it('gives nothing before the first one is earned', () => {
     expect(milestoneStats(1)).toEqual({});
-    expect(milestoneStats(9)).toEqual({});
+    expect(milestoneStats(4)).toEqual({});
   });
 
   it('adds up, and only ever upward', () => {
@@ -155,8 +155,9 @@ describe('stat grants', () => {
 
 describe('looking ahead and behind', () => {
   it('lists what a level handed over', () => {
-    expect(milestonesAt(2)).toHaveLength(1);
-    expect(milestonesAt(7)).toEqual([]);
+    expect(milestonesAt(4)).toHaveLength(1);
+    expect(milestonesAt(2)).toHaveLength(2);
+    expect(milestonesAt(11)).toEqual([]);
   });
 
   it('points at the next thing, and at nothing past the top', () => {

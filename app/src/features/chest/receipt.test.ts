@@ -57,7 +57,7 @@ describe('one item, in a line', () => {
     expect(prizeLine(prize())).toBe('In the bag.');
     expect(prizeLine(prize({ kind: 'companion' }))).toBe('Hatched.');
     expect(prizeLine(prize({ kind: 'decor' }))).toBe('In the birbhouse.');
-    for (const kind of ['gear', 'companion', 'decor', 'dye', 'flora'] as const) {
+    for (const kind of ['gear', 'companion', 'decor', 'dye'] as const) {
       const line = prizeLine(prize({ kind }));
       expect(line, kind).not.toBe(prizeKindLine(prize({ kind })));
     }

@@ -173,7 +173,7 @@ export const GUIDES = {
     steps: [
       'Hatch an egg for 120 coins, or choose a companion.',
       'Buy and wear colours.',
-      'Plant in the garden plots; the room furnishes itself.',
+      'The birbhouse furnishes itself; plant its yard as plots open.',
     ],
     game: 'Companions, colours, furniture and plants all add raid stats. Plots open as your pet levels up.',
   },

@@ -184,14 +184,14 @@ describe('the whole sheet', () => {
     const helmet = GEAR.find((g) => g.slot === 'helmet' && g.rarity === 'common')!;
     const rug = FURNITURE.find((f) => f.slot === 'floor')!;
     const sheet = loadoutSheet({
-      petLevel: 12,
+      petLevel: 10,
       memberLevel: 30,
       equipped: { helmet: helmet.id },
       house: { floor: rug.id },
       dyeId: DYES[1].id,
       companion: pet(PET_KINDS[0].id),
     });
-    // Level 12 has crossed the level-10 milestone, so the curve's own grant is
+    // Level 10 has crossed the level-5 milestone, so the curve's own grant is
     // a source too — it appears on the sheet's provenance list like everything
     // else rather than being quietly added to the totals.
     expect(sheet.sources.map((s) => s.id)).toEqual([
@@ -265,8 +265,8 @@ describe('gearLift', () => {
 
 describe('an Ascendant pet', () => {
   it('adds its own source only once it is Ascendant', () => {
-    const before = loadoutSheet({ petLevel: 20, memberLevel: 10 });
-    const after = loadoutSheet({ petLevel: 21, memberLevel: 10 });
+    const before = loadoutSheet({ petLevel: 10, memberLevel: 10 });
+    const after = loadoutSheet({ petLevel: 11, memberLevel: 10 });
     expect(before.sources.some((s) => s.id === 'ascendant')).toBe(false);
     expect(after.sources.some((s) => s.id === 'ascendant')).toBe(true);
   });

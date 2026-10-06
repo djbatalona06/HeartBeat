@@ -178,7 +178,7 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   from the new row. Depth follows the row (`domain/scene/walk.ts`), inside the
   9–10 band so effects at 11+ stay on top.
 - **Unlocks read lifetime totals only, and are never stored.** `domain/rpg/unlocks.ts`
-  (Shared Aura at Rooted, Ascendant at pet level 21, Evergreen Frame at
+  (Shared Aura at Rooted, Ascendant at pet level 11, Evergreen Frame at
   Evergreen) derives every goal from together points and the pet's level each
   time it is asked; `unlocks.test.ts` holds progress clamped and monotonic.
   Ascendant is **level alone** on purpose: the shared pet's Elder stage
@@ -244,8 +244,8 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   is mythic — the top rung should be something you won, and `KIND_TIERS` in
   `chests.ts` reads the catalogue to work that out for itself.
 - **A move is not a log, and a log is not a move.** The move bar is the
-  companion's physical / defensive / magic moves (plus Mend at 4 and Together
-  at 10), named per kit in `companionSkills.ts` and priced in C#. Logging a
+  companion's physical / defensive / magic moves (plus Mend at 2 and Together
+  at 5), named per kit in `companionSkills.ts` and priced in C#. Logging a
   workout, a study session or a mood lights a **charge** for the day
   (`domain/rpg/charges.ts` decides which, `Charges.cs` what each is worth); a
   charge on the monster's weakness makes every hit land at 1.5×. **The garden

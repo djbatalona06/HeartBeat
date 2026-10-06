@@ -117,6 +117,22 @@ describe('planting', () => {
   });
 });
 
+describe('one plant, one plot', () => {
+  it('moves a plant that is already in the ground instead of copying it', () => {
+    const [first, second] = PLOTS.map((p) => p.id);
+    const rose = FLORA[0].id;
+    const planted = plantIn({}, MAX_LEVEL, first, rose);
+    expect(plantIn(planted, MAX_LEVEL, second, rose)).toEqual({ [second]: rose });
+  });
+
+  it('leaves other plants where they are', () => {
+    const [first, second, third] = PLOTS.map((p) => p.id);
+    const [rose, post] = FLORA.map((f) => f.id);
+    const garden = { [first]: rose, [second]: post };
+    expect(plantIn(garden, MAX_LEVEL, third, rose)).toEqual({ [second]: post, [third]: rose });
+  });
+});
+
 describe('normalising', () => {
   const plot = PLOTS[0].id;
   const later = PLOTS[PLOTS.length - 1].id;
