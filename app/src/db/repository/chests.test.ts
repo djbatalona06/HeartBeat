@@ -6,7 +6,6 @@ import { newWorldProgress } from '../../domain/rpg/world';
 import {
   CHESTS, PRIZES_PER_CHEST, PRIZE_KINDS, candidatesFor, chestById, poolOf,
 } from '../../domain/rpg/chests';
-import { FLORA, floraTier } from '../../domain/rpg/plots';
 import { nameOf, priceOf, type ChestOutcome } from './chests';
 import { gearById } from '../../domain/rpg/gear';
 import { REFINE_MAX } from '../../domain/rpg/shop';
@@ -374,7 +373,7 @@ describe('nothing a chest can hand over is nameless or worthless', () => {
   });
 
   it('refunds something real for every cosmetic prize, so a repeat is never worth nothing', () => {
-    for (const kind of ['decor', 'dye', 'flora'] as const) {
+    for (const kind of ['decor', 'dye'] as const) {
       for (const tier of TIERS) {
         for (const itemId of candidatesFor(kind, tier)) {
           expect(priceOf(kind, itemId), `${kind} ${itemId}`).toBeGreaterThan(0);
@@ -389,10 +388,8 @@ describe('nothing a chest can hand over is nameless or worthless', () => {
     }
   });
 
-  it('refunds a duplicate plant at its share of the price instead of nothing', async () => {
-    const flora = FLORA.find((f) => floraTier(f) === 'rare')!;
-    expect(priceOf('flora', flora.id)).toBe(flora.price);
-    expect(nameOf('flora', flora.id)).toBe(flora.name);
+  it('never hands over something to plant', () => {
+    expect(PRIZE_KINDS as readonly string[]).not.toContain('flora');
   });
 });
 

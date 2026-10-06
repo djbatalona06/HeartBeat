@@ -33,6 +33,10 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Same group as deploy.yml's migrate job: one migration run at a time.
+    concurrency:
+      group: d1-production
+      cancel-in-progress: false
     defaults:
       run:
         working-directory: worker

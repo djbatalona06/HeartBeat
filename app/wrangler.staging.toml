@@ -1,0 +1,25 @@
+# Bindings for the staging Pages project, heartbeat-app-staging. CI copies this
+# over app/wrangler.toml before `wrangler pages deploy`, because a Pages project
+# reads only wrangler.toml and Pages has no named environments beyond
+# production and preview. Staging's production branch is `staging`, so these
+# top-level bindings are the ones it uses.
+#
+# Its own database and bucket: a change on staging can rewrite rows, run a
+# migration or open a chest without touching the couple's real data.
+# scripts/check-config-sync.mjs fails if this database_id ever equals
+# production's or preview's, or disagrees with worker/wrangler.toml [env.staging].
+name = "heartbeat-staging"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-12-30"
+
+[ai]
+binding = "AI"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "heartbeat-staging"
+database_id = "1e88d3ae-f302-4d77-977f-a78a0aa5f267"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "heartbeat-staging"

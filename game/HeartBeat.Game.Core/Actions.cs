@@ -47,7 +47,7 @@ public static class Actions
         Power: 30,
         Style: Style.Mend,
         Type: ActionType.Heal,
-        UnlockLevel: 4);
+        UnlockLevel: 2);
 
     /// <summary>The couple's move. Hits hardest, and Resonance is what feeds it.</summary>
     public static readonly PlayerAction Together = new(
@@ -56,7 +56,7 @@ public static class Actions
         Power: 28,
         Style: Style.Together,
         Type: ActionType.Attack,
-        UnlockLevel: 10);
+        UnlockLevel: 5);
 
     public static readonly IReadOnlyList<PlayerAction> All =
         [Strike, Guard, Spell, Mend, Together];

@@ -10,7 +10,7 @@ describe('unlocks', () => {
   it('reads its thresholds off the together ladder', () => {
     expect(AURA_POINTS).toBe(TOGETHER_TIERS.find((t) => t.name === 'Rooted')!.at);
     expect(FRAME_POINTS).toBe(TOGETHER_TIERS.find((t) => t.name === 'Evergreen')!.at);
-    expect([AURA_POINTS, FRAME_POINTS, ASCENDANT_LEVEL]).toEqual([1200, 2600, 21]);
+    expect([AURA_POINTS, FRAME_POINTS, ASCENDANT_LEVEL]).toEqual([1200, 2600, 11]);
   });
 
   it('shows a real number from the first day', () => {
@@ -57,10 +57,10 @@ describe('unlocks', () => {
   // Level alone: Elder reads the current streak and can step back down, and an
   // unlock that could be lost is the one thing this module may not have.
   it('opens Ascendant on the pet level alone', () => {
-    expect(isUnlocked('ascendant', { togetherPoints: 0, petLevel: 20 })).toBe(false);
-    expect(isUnlocked('ascendant', { togetherPoints: 0, petLevel: 21 })).toBe(true);
-    expect(isAscendant(21)).toBe(true);
-    expect(isAscendant(20)).toBe(false);
+    expect(isUnlocked('ascendant', { togetherPoints: 0, petLevel: 10 })).toBe(false);
+    expect(isUnlocked('ascendant', { togetherPoints: 0, petLevel: 11 })).toBe(true);
+    expect(isAscendant(11)).toBe(true);
+    expect(isAscendant(10)).toBe(false);
   });
 
   it('opens the aura at Rooted and the frame at Evergreen', () => {

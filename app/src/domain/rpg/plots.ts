@@ -139,8 +139,8 @@ export const FLORA_PREFIX = 'flora-';
  * Priced against the gear ladder in `shop.ts`, which is what gives each its
  * rung: 90 is rare, 220 epic, 500 legendary. Nothing here is mythic, and that
  * is not an oversight — the top rung should be something you won, not something
- * you saved up for, and `KIND_TIERS` in `chests.ts` reads this catalogue to
- * work out that a gilded chest cannot hand you a mythic rose.
+ * you saved up for. Chests no longer hand out flora at all: a plant is bought
+ * for a plot you can already see, in the Birbhouse's yard.
  */
 export const FLORA: readonly Flora[] = [
   {
@@ -218,7 +218,13 @@ export function normalizeGarden(garden: Garden | undefined, petLevel: number): G
   return out;
 }
 
-/** Plant something, or clear a plot by passing `undefined`. Pure. */
+/**
+ * Plant something, or clear a plot by passing `undefined`. Pure.
+ *
+ * One plant, one plot. A rose bed already in another plot *moves* here rather
+ * than being copied: buying is one-per-person, and without this one purchase
+ * filled all seven plots and counted seven times on the raid sheet.
+ */
 export function plantIn(
   garden: Garden | undefined,
   petLevel: number,
@@ -233,6 +239,9 @@ export function plantIn(
     return next;
   }
   if (!floraById(floraId)) return next;
+  for (const [other, planted] of Object.entries(next)) {
+    if (planted === floraId && other !== plotId) delete next[other];
+  }
   next[plotId] = floraId;
   return next;
 }

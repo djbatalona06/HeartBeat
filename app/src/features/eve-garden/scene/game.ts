@@ -88,7 +88,11 @@ export function startGarden(
     skill: (vfx: string) => live()?.skill(vfx) ?? Promise.resolve(),
     defeat: () => live()?.defeat() ?? Promise.resolve(),
     withdraw: () => live()?.withdraw(),
-    setAlly: (sprite) => live()?.setAlly(sprite),
+    // Straight to the scene, not through `live()`: `setAlly` before `create()`
+    // only records the sprite, and `create()` draws what was recorded. Gated on
+    // `isActive()` like the rest, a partner whose row landed during boot was
+    // dropped, and the pedestal stayed empty until their pick changed again.
+    setAlly: (sprite) => scene.setAlly(sprite),
     step: (dx, dy) => live()?.step(dx, dy) ?? 'busy',
     setCalm: (calm) => live()?.setCalm(calm),
     relight: (hour, dark) => live()?.relight(hour, dark),

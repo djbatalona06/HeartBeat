@@ -34,7 +34,7 @@ export const SKILLS: Skill[] = [
     name: 'Ember Strike',
     blurb: 'One coal, kept alive all night, put exactly where it will catch.',
     mpCost: 8,
-    minLevel: 3,
+    minLevel: 2,
     effect: { damage: 1.8 },
   },
   {
@@ -42,7 +42,7 @@ export const SKILLS: Skill[] = [
     name: "Stargazer's Ward",
     blurb: 'Look up long enough and the thing in front of you gets smaller.',
     mpCost: 10,
-    minLevel: 6,
+    minLevel: 3,
     effect: { shield: 18 },
   },
   {
@@ -50,7 +50,7 @@ export const SKILLS: Skill[] = [
     name: 'Lily Bloom',
     blurb: 'Opens on its own schedule, and always for both of you at once.',
     mpCost: 12,
-    minLevel: 9,
+    minLevel: 5,
     effect: { heal: 22 },
   },
   {
@@ -58,7 +58,7 @@ export const SKILLS: Skill[] = [
     name: 'Second Wind',
     blurb: 'Not extra strength. The ordinary amount, arriving later than expected.',
     mpCost: 14,
-    minLevel: 12,
+    minLevel: 6,
     effect: { energy: 12 },
   },
 ];

@@ -24,7 +24,7 @@ export const STAGES: Stage[] = [
   {
     id: 'hatchling',
     name: 'Hatchling',
-    minLevel: 3,
+    minLevel: 2,
     energyCost: 10,
     adventureHours: 6,
     baseMaxEnergy: 40,
@@ -33,7 +33,7 @@ export const STAGES: Stage[] = [
   {
     id: 'fledgling',
     name: 'Fledgling',
-    minLevel: 6,
+    minLevel: 3,
     energyCost: 15,
     adventureHours: 5,
     baseMaxEnergy: 55,
@@ -42,7 +42,7 @@ export const STAGES: Stage[] = [
   {
     id: 'youngling',
     name: 'Youngling',
-    minLevel: 10,
+    minLevel: 5,
     energyCost: 20,
     adventureHours: 4,
     baseMaxEnergy: 70,
@@ -51,7 +51,7 @@ export const STAGES: Stage[] = [
   {
     id: 'companion',
     name: 'Companion',
-    minLevel: 15,
+    minLevel: 8,
     energyCost: 25,
     adventureHours: 3,
     baseMaxEnergy: 85,
@@ -60,7 +60,7 @@ export const STAGES: Stage[] = [
   {
     id: 'guardian',
     name: 'Guardian',
-    minLevel: 21,
+    minLevel: 11,
     energyCost: 30,
     adventureHours: 2,
     baseMaxEnergy: 100,

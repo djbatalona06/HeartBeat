@@ -281,7 +281,7 @@ describe('equip', () => {
   it('says why rather than silently refusing', () => {
     const result = equip({}, 'head-aurora-veil', 2);
     expect(result.ok).toBe(false);
-    expect(!result.ok && result.reason).toContain('level 16');
+    expect(!result.ok && result.reason).toContain('level 9');
   });
 
   it('rejects an id that is not gear', () => {
@@ -295,8 +295,8 @@ describe('equip', () => {
 
   it('agrees with canEquip', () => {
     const veil = gearById('head-aurora-veil')!;
-    expect(canEquip(veil, 15)).toBe(false);
-    expect(canEquip(veil, 16)).toBe(true);
+    expect(canEquip(veil, 8)).toBe(false);
+    expect(canEquip(veil, 9)).toBe(true);
   });
 });
 

@@ -19,7 +19,7 @@ import { chargeOnWeakness, gardenAwardId, payingActivities } from '../../domain/
 import { bossOf, faceOf } from '../../domain/rpg/islands';
 import { fireSkill, kitFor, moveKeyFor, moveNamesFor } from '../../domain/rpg/companionSkills';
 import {
-  NO_BONUS, PRESENCE_REFRESH_MS, bossEntryBlockedBecause, partnerAtGate, partnerGateApplies,
+  NO_BONUS, PRESENCE_REFRESH_MS, allyThemeId, bossEntryBlockedBecause, partnerAtGate, partnerGateApplies,
   togetherBonus, togetherXp, type GateCard, type GateVerdict, type TogetherBonus,
 } from '../../domain/rpg/raidGate';
 import { partnerOf } from '../pairing/namingGate';
@@ -303,7 +303,7 @@ export function EveGardenPage() {
    * stands beside you. None after a "solo" answer, or with no partner.
    */
   const allySprite = party && partner
-    ? spriteKeyForTheme(partnerAvatar?.raidCompanion ?? partnerAvatar?.mascot)
+    ? spriteKeyForTheme(allyThemeId(partnerAvatar))
     : undefined;
   // Not a dep of the scene: a new pick mid-fight would tear down a running
   // Phaser game. Handed over live instead, and read when a scene starts.
@@ -903,6 +903,13 @@ export function EveGardenPage() {
         dark={dark}
         resonance={resonance}
         world={world}
+        partner={partner
+          ? {
+            name: partner.displayName?.trim() || 'Your partner',
+            themeId: allyThemeId(partnerAvatar),
+            dye: partnerAvatar?.dye,
+          }
+          : undefined}
         together={bossStage && party && partner
           ? {
             partnerName: partner.displayName?.trim() || 'your partner',

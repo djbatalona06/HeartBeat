@@ -131,7 +131,7 @@ const RARITY_INTENSITY: Record<Rarity, number> = {
  * redirects here for the links that still carry it. Wearing gear lives on the
  * Bag's slot grid now, and the achievement shelf on Tasks.
  */
-export type ShopSection = 'companions' | 'colours' | 'costumes' | 'house' | 'plots' | 'raid' | 'shop';
+export type ShopSection = 'companions' | 'colours' | 'costumes' | 'house' | 'raid' | 'shop';
 
 /**
  * The shop: what coins are for. Birb and Raid are this page asked for other
@@ -235,17 +235,19 @@ export function ShopPage({ only = ['shop'], title = 'Shop' }: {
           {only.includes('costumes') ? <CostumesSection ctx={ctx} /> : null}
           {only.includes('raid') ? <RaidSection ctx={ctx} onRevealed={setRevealed} /> : null}
           {only.includes('house') ? (
-            <Birbhouse house={(ctx.pet?.house ?? {}) as House} avatar={ctx.avatar} />
-          ) : null}
-          {only.includes('plots') ? (
-            <GardenPlots
-              memberId={ctx.identity.memberId}
-              coupleId={ctx.identity.coupleId}
-              garden={(ctx.pet?.plots ?? {}) as Garden}
-              petXp={ctx.pet?.xp ?? 0}
-              coins={ctx.avatar.coins}
-              say={ctx.say}
-            />
+            <Birbhouse house={(ctx.pet?.house ?? {}) as House} avatar={ctx.avatar}>
+              {/* The yard is the Birbhouse's outside, not a page of its own:
+                  the room and the ground are the two things you arrange for
+                  the pet, and one panel is one place to look. */}
+              <GardenPlots
+                memberId={ctx.identity.memberId}
+                coupleId={ctx.identity.coupleId}
+                garden={(ctx.pet?.plots ?? {}) as Garden}
+                petXp={ctx.pet?.xp ?? 0}
+                coins={ctx.avatar.coins}
+                say={ctx.say}
+              />
+            </Birbhouse>
           ) : null}
           {only.includes('shop') ? <ShopSectionView ctx={ctx} onRevealed={setRevealed} /> : null}
         </>
@@ -732,9 +734,11 @@ function Adventures({ avatar, owned, onGo }: {
  * the chips were: the point of losing the controls is not losing the
  * information.
  */
-function Birbhouse({ house, avatar }: {
+function Birbhouse({ house, avatar, children }: {
   house: House;
   avatar: Avatar;
+  /** The yard, drawn under the room. */
+  children?: React.ReactNode;
 }) {
   const { theme } = useTheme();
   const mascot = getMascot(theme.id);
@@ -791,6 +795,7 @@ function Birbhouse({ house, avatar }: {
             : `Still bare: ${bare.map((slot) => HOUSE_SLOT_NAMES[slot].toLowerCase()).join(', ')}.`}
         </p>
       ) : null}
+      {children}
     </section>
   );
 }

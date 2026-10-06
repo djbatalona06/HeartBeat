@@ -128,6 +128,11 @@ code remains the only way into a couple either way. See §8 of `docs/DEPLOY.md`.
 
 The deploy step runs from `app/` so wrangler reads `app/wrangler.toml` for D1/Workers AI bindings. Deploying from the repo root would leave functions unbound and every `/api` call would 500.
 
+**Staging** is `staging` → `staging-deploy.yml` → its own Pages project, Worker
+(`--env staging`) and D1 (`heartbeat-staging`). Changes go feature branch → PR
+→ `staging` (try it on two phones) → PR to `main`. `deploy.yml` now applies D1
+migrations before the Pages deploy. See §6b of `docs/DEPLOY.md`.
+
 Full deploy walkthrough: `docs/DEPLOY.md`
 
 ## Known patterns and pitfalls
@@ -173,7 +178,7 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   from the new row. Depth follows the row (`domain/scene/walk.ts`), inside the
   9–10 band so effects at 11+ stay on top.
 - **Unlocks read lifetime totals only, and are never stored.** `domain/rpg/unlocks.ts`
-  (Shared Aura at Rooted, Ascendant at pet level 21, Evergreen Frame at
+  (Shared Aura at Rooted, Ascendant at pet level 11, Evergreen Frame at
   Evergreen) derives every goal from together points and the pet's level each
   time it is asked; `unlocks.test.ts` holds progress clamped and monotonic.
   Ascendant is **level alone** on purpose: the shared pet's Elder stage
@@ -239,8 +244,8 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   is mythic — the top rung should be something you won, and `KIND_TIERS` in
   `chests.ts` reads the catalogue to work that out for itself.
 - **A move is not a log, and a log is not a move.** The move bar is the
-  companion's physical / defensive / magic moves (plus Mend at 4 and Together
-  at 10), named per kit in `companionSkills.ts` and priced in C#. Logging a
+  companion's physical / defensive / magic moves (plus Mend at 2 and Together
+  at 5), named per kit in `companionSkills.ts` and priced in C#. Logging a
   workout, a study session or a mood lights a **charge** for the day
   (`domain/rpg/charges.ts` decides which, `Charges.cs` what each is worth); a
   charge on the monster's weakness makes every hit land at 1.5×. **The garden
@@ -400,6 +405,15 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   `grantChest` with `openChestFor` — same luck, pity and per-item refund cap —
   and the Raid page's Island Path opens them through the Shop page's one
   `ChestReveal`.
+- **Both pulls page by `seq`, never by `updated_at`.** `updated_at` is the
+  writing phone's clock and only decides last-write-wins. `seq` is MAX+1 per
+  couple, assigned inside the upsert (`UPSERT_SQL`, `ENTRY_UPSERT_SQL`), so a
+  row made offline and pushed hours later still lands above every cursor
+  already handed out — the stamp cursor skipped it forever, which is how a
+  partner's pet went missing. Clients keep `entriesSeq` / `holdingsSeq`; a
+  missing one pulls from 0 once. A migration that rebuilds either table must
+  carry `seq` and its index (see `0019_sync_seq.sql`). The push watermark only
+  steps past pulled rows that are `mine`.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)

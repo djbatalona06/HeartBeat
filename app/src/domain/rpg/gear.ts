@@ -83,10 +83,10 @@ export const RARITY_BUDGET: Record<Rarity, number[]> = {
 
 export const RARITY_MIN_LEVEL: Record<Rarity, number> = {
   common: 1,
-  rare: 4,
-  epic: 9,
-  legendary: 16,
-  mythic: 25,
+  rare: 2,
+  epic: 5,
+  legendary: 9,
+  mythic: 14,
 };
 
 /**

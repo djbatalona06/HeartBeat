@@ -345,7 +345,7 @@ describe('gear', () => {
 
     const blocked = await equipItem(HER, COUPLE, 'head-aurora-veil');
     expect(blocked.ok).toBe(false);
-    expect(blocked.reason).toContain('16');
+    expect(blocked.reason).toContain('level 9');
   });
 
   it('lands on the sheet and comes off in one tap', async () => {

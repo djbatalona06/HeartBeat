@@ -27,7 +27,6 @@ const LANDED: Record<PrizeKind, string> = {
   companion: 'Hatched.',
   decor: 'In the birbhouse.',
   dye: 'Ready to wear.',
-  flora: 'Ready to plant.',
 };
 
 /** One item, in a line. */
