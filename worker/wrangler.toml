@@ -50,3 +50,30 @@ VAPID_SUBJECT = "mailto:batalona06@gmail.com"
 [[r2_buckets]]
 binding = "MEDIA"
 bucket_name = "heartbeat"
+
+# Staging: the whole stack on its own data. `staging` is where a change is
+# walked on two real phones before it is promoted to main, so it must never
+# touch the couple's production rows. Deployed by
+# .github/workflows/staging-deploy.yml with `wrangler deploy --env staging`.
+# vars, D1 and R2 are not inherited by an environment, so each is repeated.
+# Keep this block BELOW the production [[d1_databases]]: check-config-sync.mjs
+# reads the first database_id in this file as production's.
+[env.staging]
+name = "heartbeat-api-staging"
+
+[env.staging.triggers]
+crons = ["* * * * *"]
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "heartbeat-staging"
+# Created with: wrangler d1 create heartbeat-staging
+database_id = "1e88d3ae-f302-4d77-977f-a78a0aa5f267"
+
+[[env.staging.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "heartbeat-staging"
+
+[env.staging.vars]
+ALLOWED_ORIGIN = "https://heartbeat-app-staging.pages.dev,https://*.heartbeat-app-staging.pages.dev"
+VAPID_SUBJECT = "mailto:batalona06@gmail.com"
