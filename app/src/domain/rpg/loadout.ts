@@ -301,7 +301,7 @@ export function milestoneSource(petLevel: number): StatSource | undefined {
 export function loadoutSheet(loadout: Loadout): RaidSheet {
   const sources: StatSource[] = [
     petSource(loadout.petLevel),
-    ...gearSources(loadout.equipped, loadout.memberLevel, loadout.refineByItemId),
+    ...gearSources(loadout.equipped, Math.max(loadout.memberLevel, loadout.petLevel), loadout.refineByItemId),
     ...furnitureSources(loadout.house),
     ...floraSources(loadout.garden, loadout.petLevel),
   ];

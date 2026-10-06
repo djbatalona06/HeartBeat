@@ -263,6 +263,17 @@ describe('gearLift', () => {
   });
 });
 
+describe('gear gate', () => {
+  it('opens at the pet\'s level when the member is behind', () => {
+    const mythic = GEAR.find((g) => g.rarity === 'mythic')!;
+    const sheet = (petLevel: number) => loadoutSheet({
+      petLevel, memberLevel: 1, equipped: { [mythic.slot]: mythic.id },
+    }).sources.some((s) => s.id === mythic.id);
+    expect(sheet(mythic.minLevel - 1)).toBe(false);
+    expect(sheet(mythic.minLevel)).toBe(true);
+  });
+});
+
 describe('an Ascendant pet', () => {
   it('adds its own source only once it is Ascendant', () => {
     const before = loadoutSheet({ petLevel: 10, memberLevel: 10 });

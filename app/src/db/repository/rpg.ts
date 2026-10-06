@@ -15,7 +15,7 @@ import {
   type TaskType,
 } from '../../domain/rpg/types';
 import { complete, newTask, pressDown, settleMissed, toneFor } from '../../domain/rpg/task';
-import { applyPayout, levelOf, sheetFor, spend } from '../../domain/rpg/avatar';
+import { applyPayout, gearLevelOf, levelOf, sheetFor, spend } from '../../domain/rpg/avatar';
 import { adventureCost } from '../../domain/rpg/stage';
 import { canTravel, findAt, isNewTo, placeById, travelCost } from '../../domain/rpg/locations';
 import { GOOD_VIBES_SENDER_GRANT, checkGrant, grantFor } from '../../domain/rpg/lifeEvents';
@@ -399,7 +399,8 @@ export async function equipItem(
   if (!owned) return { ok: false, reason: 'Not owned yet — buy it from the shop first.' };
 
   const avatar = await getOrCreateAvatar(memberId, coupleId);
-  const result = equip(avatar.gear, itemId, levelOf(avatar));
+  const pet = await db.pet.get(coupleId);
+  const result = equip(avatar.gear, itemId, gearLevelOf(avatar, pet?.xp ?? 0));
   if (!result.ok) return { ok: false, reason: result.reason };
   await db.avatars.put({ ...avatar, gear: result.equipped, updatedAt: now() });
   return { ok: true };

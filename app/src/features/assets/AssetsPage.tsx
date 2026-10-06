@@ -7,7 +7,7 @@ import { SecondaryAction } from '../../ui/SecondaryAction';
 import {
   ensureIdentity, equipItem, getOrCreateAvatar, holdingsOf, unequipSlot,
 } from '../../db/repository';
-import { levelOf } from '../../domain/rpg/avatar';
+import { gearLevelOf } from '../../domain/rpg/avatar';
 import { levelForXp } from '../../domain/xp';
 import {
   AMULET_UNLOCK_LEVEL, RARITY_NAMES, SLOT_NAMES, slotOpen, type GearItem,
@@ -81,8 +81,8 @@ export function AssetsPage() {
     );
   }
 
-  const level = levelOf(avatar);
   const petLevel = levelForXp(holdings.pet?.xp ?? 0);
+  const level = gearLevelOf(avatar, holdings.pet?.xp ?? 0);
   const refine = refineByItemId(holdings.gear);
   const shelves = gearShelves(holdings.gear, avatar.gear, level);
   const totals = summarize(shelves, [], [], []);
@@ -353,7 +353,7 @@ function ItemFace({ entry, worth }: { entry: OwnedGear; worth: Worth }) {
           {/* Above its level an item gives nothing, and `gearSources` says so
               by leaving it out — the sheet counts it as nothing, and so does
               this line. */}
-          {source ? worthLine(source) : `Gives nothing until your level ${item.minLevel}`}
+          {source ? worthLine(source) : `Gives nothing until level ${item.minLevel}`}
         </span>
       </span>
     </div>
