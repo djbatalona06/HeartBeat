@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MAX_PANES, MAX_VIEWPORTS, clampPaneIndex, exceedsPaneLimit, exceedsScrollLimit,
-  overBudgetWarning, paneAfterKey,
+  MAX_PANES, MAX_VIEWPORTS, TARGET_VIEWPORTS, clampPaneIndex, exceedsPaneLimit,
+  exceedsScrollLimit, exceedsScrollTarget, overBudgetWarning, paneAfterKey,
 } from './contract';
 
 describe('the pane ceiling', () => {
@@ -92,10 +92,29 @@ describe('paneAfterKey', () => {
   });
 });
 
+describe('the one-scroll target', () => {
+  it('sits between one screen and the ceiling', () => {
+    expect(TARGET_VIEWPORTS).toBeGreaterThan(1);
+    expect(TARGET_VIEWPORTS).toBeLessThan(MAX_VIEWPORTS);
+  });
+
+  it('is crossed past a screen and a quarter, and guards a zero viewport', () => {
+    expect(exceedsScrollTarget(750, 600)).toBe(false);
+    expect(exceedsScrollTarget(751, 600)).toBe(true);
+    expect(exceedsScrollTarget(5000, 0)).toBe(false);
+  });
+
+  it('warns softly between the target and the ceiling, pointing at the plan', () => {
+    const warning = overBudgetWarning('Birb', { scrollHeight: 1200, viewportHeight: 600 });
+    expect(warning).toContain('2.00 viewports');
+    expect(warning).toMatch(/ONE-SCROLL/);
+  });
+});
+
 describe('overBudgetWarning', () => {
   it('says nothing about a screen within its budget', () => {
     expect(overBudgetWarning('MoodPage', { panes: 2 })).toBeNull();
-    expect(overBudgetWarning('MoodPage', { scrollHeight: 1200, viewportHeight: 600 })).toBeNull();
+    expect(overBudgetWarning('MoodPage', { scrollHeight: 700, viewportHeight: 600 })).toBeNull();
     expect(overBudgetWarning('MoodPage', {})).toBeNull();
   });
 

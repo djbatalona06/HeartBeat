@@ -36,6 +36,8 @@ const WRANGLER = join(ROOT, 'node_modules', '.bin', 'wrangler');
 const argv = process.argv.slice(2);
 const shotsAt = argv.indexOf('--shots');
 const SHOTS = shotsAt >= 0 ? argv[shotsAt + 1] : join(ROOT, '.shots', 'pair-live');
+/** `--pages`: also screenshot every measured page into SHOTS. */
+const SHOTS_PAGES = argv.includes('--pages');
 
 /** How long the phone that started may take to notice its partner, unprompted. */
 const DISCOVERY_MS = 20000;
@@ -378,6 +380,53 @@ await scenario('a freed seat can be refilled with a new code', async (open) => {
     throw new Error('A never found out the new person joined');
   });
 });
+
+// ---- page heights (docs/ONE-SCROLL.md) ---------------------------------------
+// Measured here rather than in visual.mjs because nearly every page sits behind
+// PairGate, and this is the one harness with a phone that is actually linked.
+// Printed, never failed on, until ONE-SCROLL's P4 gate makes it a check. A
+// fresh couple has no data, so these are floors, not a typical day.
+
+const MEASURE = [
+  '#/', '#/shop', '#/birb', '#/raid', '#/partner', '#/assets',
+  '#/tasks', '#/mood', '#/exercise', '#/work', '#/settings',
+];
+
+/**
+ * How many viewports tall the page is. Some screens scroll inside a container
+ * rather than the document, so the tallest scroller above `.page` counts.
+ */
+function measureScreens() {
+  const page = document.querySelector('.page');
+  let tallest = document.scrollingElement?.scrollHeight ?? 0;
+  for (let el = page; el; el = el.parentElement) {
+    const overflow = getComputedStyle(el).overflowY;
+    if (overflow === 'auto' || overflow === 'scroll') tallest = Math.max(tallest, el.scrollHeight);
+  }
+  return tallest / window.innerHeight;
+}
+
+const heights = [];
+await scenario('every page can be measured on a linked phone', async (open) => {
+  const { a } = await linked(open);
+  for (const hash of MEASURE) {
+    await a.goto(`${base}/${hash}`, { waitUntil: 'load' });
+    await a.waitForTimeout(600);
+    // The daily login popup is an overlay: it changes no height, but it would
+    // cover every screenshot.
+    const later = a.getByRole('button', { name: 'Later', exact: true });
+    if (await later.isVisible().catch(() => false)) await later.click();
+    heights.push({ route: hash, screens: await a.evaluate(measureScreens) });
+    if (SHOTS_PAGES) {
+      mkdirSync(SHOTS, { recursive: true });
+      await a.screenshot({ path: join(SHOTS, `page${hash.replace(/\W+/g, '-')}.png`), fullPage: true });
+    }
+  }
+});
+console.log('\n  page heights at 390x844, in screens (target 1.25, see docs/ONE-SCROLL.md)');
+for (const { route, screens } of heights) {
+  console.log(`    ${route.padEnd(12)} ${screens.toFixed(2)}${screens > 1.25 ? '  over' : ''}`);
+}
 
 // ---- done -------------------------------------------------------------------
 
