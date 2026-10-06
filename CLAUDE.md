@@ -249,7 +249,7 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   workout, a study session or a mood lights a **charge** for the day
   (`domain/rpg/charges.ts` decides which, `Charges.cs` what each is worth); a
   charge on the monster's weakness makes every hit land at 1.5×. **The garden
-  has no logging controls** — `ChargeMeter` beside the move pad only shows what
+  has no logging controls** — `ChargeMeter` beside the move pad (a heart vial of sand, one colour per log in `domain/rpg/vial.ts`) only shows what
   other pages wrote. Rest, Gratitude and Nourish are the optional `rested` /
   `grateful` / `ateWell` flags on a `MoodEntry`, ticked on the mood check-in;
   they sync with the mood row, so a partner's flag lights both gardens. The
