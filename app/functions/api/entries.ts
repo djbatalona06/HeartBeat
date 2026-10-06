@@ -76,6 +76,7 @@ interface Row {
   day: string;
   payload: string;
   updated_at: number;
+  seq: number;
 }
 
 /** Why one entry in a batch was not written. Reported, never thrown. */
@@ -86,12 +87,33 @@ interface Rejection {
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * Last write wins by the row's own `updated_at`; `seq` records when the server
+ * saw it, which is what the pull pages by (0019_sync_seq.sql). MAX+1 per
+ * couple, which D1 serialises, so a seq is never handed out twice.
+ */
+export const ENTRY_UPSERT_SQL =
+  `INSERT INTO entries (id, couple_id, member_id, kind, day, payload, updated_at, seq)
+   VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7,
+     (SELECT IFNULL(MAX(seq), 0) + 1 FROM entries WHERE couple_id = ?2))
+   ON CONFLICT(member_id, kind, day) DO UPDATE SET
+     payload = excluded.payload, updated_at = excluded.updated_at,
+     seq = (SELECT IFNULL(MAX(seq), 0) + 1 FROM entries WHERE couple_id = ?2)
+     WHERE excluded.updated_at > entries.updated_at`;
+
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const caller = await authenticate(request, env);
   if (!caller) return json({ error: 'unauthorized' }, 401);
 
-  const raw = Number(new URL(request.url).searchParams.get('since') ?? 0);
+  // `after` pages by `seq`, the server's own write order; `since` by the
+  // writing phone's stamp, which skipped a row that reached the server after
+  // the reader's cursor had passed its stamp. `since` stays for an old cached
+  // app. See 0019_sync_seq.sql.
+  const params = new URL(request.url).searchParams;
+  const bySeq = params.has('after');
+  const raw = Number(params.get(bySeq ? 'after' : 'since') ?? 0);
   const since = Number.isFinite(raw) && raw > 0 ? raw : 0;
+  const key = bySeq ? 'seq' : 'updated_at';
 
   // Both members, because the point of the couple is that each can see the
   // other's day. Scoped to the couple, which is the only scope there is.
@@ -100,8 +122,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   // order; without it SQLite is free to return rows sharing an `updated_at` in
   // different orders, and the sizes measured in the first pass would belong to
   // different rows than the second pass returns.
-  const ordered = `FROM entries WHERE couple_id = ? AND updated_at > ?
-                    ORDER BY updated_at ASC, id ASC`;
+  const ordered = `FROM entries WHERE couple_id = ? AND ${key} > ?
+                    ORDER BY ${key} ASC, id ASC`;
 
   // The page is sized before it is fetched. Trimming an already-loaded result
   // set bounds only the response: `LIMIT 500` on a table holding photographs is
@@ -111,10 +133,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   // `CAST(payload AS BLOB)` is what makes `length` count bytes rather than
   // characters — the same UTF-8 bytes the write path measures.
   const sized = await env.DB.prepare(
-    `SELECT updated_at, length(CAST(payload AS BLOB)) AS bytes ${ordered} LIMIT ?`,
+    `SELECT ${key} AS at, length(CAST(payload AS BLOB)) AS bytes ${ordered} LIMIT ?`,
   )
     .bind(caller.coupleId, since, MAX_ROWS)
-    .all<{ updated_at: number; bytes: number }>();
+    .all<{ at: number; bytes: number }>();
 
   const sizes = sized.results ?? [];
 
@@ -140,7 +162,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   // here, and going a little over is recoverable where losing a day is not.
   // Mirrors `pageWithinBudget` in `src/domain/media/budget.ts`, which is where
   // the rule is tested.
-  while (take && take < sizes.length && sizes[take].updated_at === sizes[take - 1].updated_at) {
+  while (take && take < sizes.length && sizes[take].at === sizes[take - 1].at) {
     bytes += sizes[take].bytes;
     take += 1;
   }
@@ -148,7 +170,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const page = take
     ? ((
         await env.DB.prepare(
-          `SELECT id, member_id, kind, day, payload, updated_at ${ordered} LIMIT ?`,
+          `SELECT id, member_id, kind, day, payload, updated_at, seq ${ordered} LIMIT ?`,
         )
           .bind(caller.coupleId, since, take)
           .all<Row>()
@@ -169,7 +191,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     entries,
     // The client's next cursor. Taken from the rows rather than from the clock,
     // so a device whose clock is off does not skip the rows it just missed.
-    cursor: entries.length ? entries[entries.length - 1].updatedAt : since,
+    cursor: page.length ? page[page.length - 1][bySeq ? 'seq' : 'updated_at'] : since,
     // More is now either bound: a full page by count, or a page cut short
     // because the next row would not fit in the byte budget.
     more: sizes.length === MAX_ROWS || take < sizes.length,
@@ -233,11 +255,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, waitUnti
     await env.DB.batch(
       rows.map((r) =>
         env.DB.prepare(
-          `INSERT INTO entries (id, couple_id, member_id, kind, day, payload, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
-           ON CONFLICT(member_id, kind, day) DO UPDATE SET
-             payload = excluded.payload, updated_at = excluded.updated_at
-             WHERE excluded.updated_at > entries.updated_at`,
+          ENTRY_UPSERT_SQL,
         ).bind(r.id, caller.coupleId, caller.memberId, r.kind, r.day, r.payload, r.updatedAt),
       ),
     );

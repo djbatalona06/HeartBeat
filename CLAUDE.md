@@ -405,6 +405,15 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   `grantChest` with `openChestFor` — same luck, pity and per-item refund cap —
   and the Raid page's Island Path opens them through the Shop page's one
   `ChestReveal`.
+- **Both pulls page by `seq`, never by `updated_at`.** `updated_at` is the
+  writing phone's clock and only decides last-write-wins. `seq` is MAX+1 per
+  couple, assigned inside the upsert (`UPSERT_SQL`, `ENTRY_UPSERT_SQL`), so a
+  row made offline and pushed hours later still lands above every cursor
+  already handed out — the stamp cursor skipped it forever, which is how a
+  partner's pet went missing. Clients keep `entriesSeq` / `holdingsSeq`; a
+  missing one pulls from 0 once. A migration that rebuilds either table must
+  carry `seq` and its index (see `0019_sync_seq.sql`). The push watermark only
+  steps past pulled rows that are `mine`.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
 ## Ponytail (sister repo)

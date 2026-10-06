@@ -522,6 +522,15 @@ export interface Settings {
    */
   holdingsPushedAt?: number;
   holdingsPulledAt?: number;
+  /**
+   * The pull cursors since 0019_sync_seq.sql: the server's own write order
+   * (`seq`), not a phone's stamp. Undefined on a phone that has only ever
+   * pulled by stamp, which then pulls from 0 once — idempotent, and the way
+   * rows the stamp cursor had skipped are recovered. `syncPulledAt` and
+   * `holdingsPulledAt` are no longer read.
+   */
+  entriesSeq?: number;
+  holdingsSeq?: number;
   /** Set when the cycle page is locked; see features/cycle/lock.ts. */
   cyclePinSalt?: string;
   cyclePinHash?: string;

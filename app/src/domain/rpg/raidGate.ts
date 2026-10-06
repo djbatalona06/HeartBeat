@@ -389,3 +389,15 @@ export function bossEntryBlockedBecause(
 }
 
 export { kitFor };
+
+/**
+ * Which companion the partner walks in with: their last garden pick, else the
+ * mascot their app draws, else undefined (the caller's own fallback -- the
+ * default sprite, or the default mascot). One reading for the gate's partner
+ * pedestal and the garden's ally, so the two can never show different pets.
+ */
+export function allyThemeId(
+  avatar: { raidCompanion?: string; mascot?: string } | undefined,
+): string | undefined {
+  return avatar?.raidCompanion ?? avatar?.mascot;
+}

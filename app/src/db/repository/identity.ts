@@ -68,8 +68,11 @@ export async function rekeyIdentity(from: Identity, to: Identity): Promise<numbe
   // them behind and a phone that has just re-paired — or recovered through
   // GitHub onto a new device — pushes its whole day log to the new couple and
   // none of its gear, companions or coins, silently.
+  // The seq cursors too: they count the *couple's* rows on the server, so the
+  // old couple's cursor would skip the start of the new couple's feed.
   await saveSettings({
     syncPushedAt: 0, syncPulledAt: 0, holdingsPushedAt: 0, holdingsPulledAt: 0,
+    entriesSeq: 0, holdingsSeq: 0,
   });
 
   // A planned table the schema does not have yet — one arriving with a later

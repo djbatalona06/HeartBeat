@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { KINDS, PARTNER_WRITABLE, UPSERT_SQL } from '../../app/functions/api/holdings';
+import { KINDS, PARTNER_WRITABLE, PULL_BY_SEQ_SQL, UPSERT_SQL } from '../../app/functions/api/holdings';
 import {
   HOLDING_KINDS, PARTNER_WRITABLE_KINDS,
 } from '../../app/src/domain/sync/holdings';
@@ -224,5 +224,57 @@ describe('the four copies of the kind list', () => {
     const inSql = clause![1].split(',').map((part) => part.trim().replaceAll("'", ''));
     expect(inSql).toEqual([...PARTNER_WRITABLE_KINDS]);
     expect(inSql).toEqual([...PARTNER_WRITABLE]);
+  });
+});
+
+/**
+ * The partner-rendering bug. A row is stamped when it is made and reaches the
+ * server when its phone next syncs; paging by that stamp skipped it on every
+ * phone whose cursor had already passed it, forever.
+ */
+describe('the holdings pull', () => {
+  let db: SqliteDb;
+  beforeEach(() => { db = fresh(); });
+
+  const write = (caller: string, id: string, updatedAt: number) =>
+    db.prepare(UPSERT_SQL).run(id, 'avatar', 'c1', caller, '{}', updatedAt);
+  const pull = (after: number) =>
+    db.prepare(PULL_BY_SEQ_SQL).all('c1', after, 100) as Array<{ id: string; seq: number }>;
+
+  it('still serves a row pushed late with an older stamp than the cursor', () => {
+    // Her phone writes and pulls; its cursor is now past NOW.
+    write('her', 'her-avatar', NOW + 60_000);
+    const first = pull(0);
+    const cursor = first[first.length - 1].seq;
+
+    // His row was made a minute earlier, offline, and only now arrives.
+    write('him', 'him-avatar', NOW);
+
+    expect(pull(cursor).map((r) => r.id)).toEqual(['him-avatar']);
+  });
+
+  it('moves an updated row to the end, so the next pull sees the change', () => {
+    write('him', 'him-avatar', NOW);
+    write('her', 'her-avatar', NOW + 1);
+    const cursor = pull(0).at(-1)!.seq;
+    write('him', 'him-avatar', NOW + 2);
+    expect(pull(cursor).map((r) => r.id)).toEqual(['him-avatar']);
+  });
+
+  it('does not move a row when the write was refused', () => {
+    write('her', 'her-avatar', NOW + 10);
+    const cursor = pull(0).at(-1)!.seq;
+    write('her', 'her-avatar', NOW); // older: refused by last-write-wins
+    expect(pull(cursor)).toEqual([]);
+  });
+
+  it('numbers each couple on its own', () => {
+    db.prepare('INSERT INTO couples (id, created_at) VALUES (?, ?)').run('c2', NOW);
+    db.prepare(
+      'INSERT INTO members (id, couple_id, token_hash, created_at, updated_at) VALUES (?,?,?,?,?)',
+    ).run('other', 'c2', 'hash-other', NOW, NOW);
+    db.prepare(UPSERT_SQL).run('x', 'avatar', 'c2', 'other', '{}', NOW);
+    write('her', 'her-avatar', NOW);
+    expect(pull(0).map((r) => r.seq)).toEqual([1]);
   });
 });

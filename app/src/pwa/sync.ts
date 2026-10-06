@@ -374,12 +374,13 @@ async function pushChunk(token: string, entries: WireEntry[]): Promise<ChunkResu
   };
 }
 
-async function pull(token: string, since: number): Promise<{
+async function pull(token: string, after: number): Promise<{
   entries: PulledEntry[];
   cursor: number;
   more: boolean;
 }> {
-  const res = await fetch(`/api/entries?since=${encodeURIComponent(String(since))}`, {
+  // By `seq`, the server's write order — see the same call in holdingsSync.ts.
+  const res = await fetch(`/api/entries?after=${encodeURIComponent(String(after))}`, {
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(`sync pull failed: ${res.status}`);
@@ -388,7 +389,7 @@ async function pull(token: string, since: number): Promise<{
     cursor?: number;
     more?: boolean;
   };
-  return { entries: body.entries ?? [], cursor: body.cursor ?? since, more: !!body.more };
+  return { entries: body.entries ?? [], cursor: body.cursor ?? after, more: !!body.more };
 }
 
 /**
@@ -445,10 +446,10 @@ export async function sync(): Promise<SyncResult | null> {
     refused += result.refused.length;
   }
 
-  const { entries, cursor, more } = await pull(token, settings.syncPulledAt ?? 0);
+  const { entries, cursor, more } = await pull(token, settings.entriesSeq ?? 0);
   const applied = await applyPulled(entries);
 
-  // Rows that arrived from the server are, by definition, already on it. Moving
+  // Our rows that arrived from the server are, by definition, already on it. Moving
   // the push watermark past them is what stops the next round sending them
   // straight back.
   //
@@ -460,10 +461,12 @@ export async function sync(): Promise<SyncResult | null> {
   const highWater = Math.max(
     pushedAt,
     ...pending.map((e) => e.updatedAt),
-    ...entries.map((e) => e.updatedAt),
+    // Ours only: a partner's stamp is their clock, and one running ahead
+    // would carry this mark past edits made here that have not been sent.
+    ...entries.filter((e) => e.mine).map((e) => e.updatedAt),
   );
 
-  await saveSettings({ syncPushedAt: highWater, syncPulledAt: cursor });
+  await saveSettings({ syncPushedAt: highWater, entriesSeq: cursor });
   return {
     pushed: pending.length - refused,
     pulled: entries.length,
