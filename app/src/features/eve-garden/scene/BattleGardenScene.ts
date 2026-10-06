@@ -194,12 +194,9 @@ export class BattleGardenScene extends Phaser.Scene {
     // Your pedestal at the spawn, and the partner's beside it. Yours stays put
     // when your pet walks off it to the fight.
     this.addPedestal(this.arena.spawn.x, this.arena.spawn.y);
-    this.allyAt = this.allySprite ? allyTile(this.arena) : undefined;
-    if (this.allyAt) this.addPedestal(this.allyAt.x, this.allyAt.y);
 
     this.foeShadow = this.addShadow(this.arena.monster.x, this.arena.monster.y);
     this.petShadow = this.addShadow(this.arena.spawn.x, this.arena.spawn.y);
-    if (this.allyAt) this.allyShadow = this.addShadow(this.allyAt.x, this.allyAt.y);
 
     this.foe = this.add
       .image(this.arena.monster.x * size, this.arena.monster.y * size, this.monsterSprite)
@@ -212,14 +209,7 @@ export class BattleGardenScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setDepth(depthForRow(this.tile.y, ARENA_HEIGHT));
 
-    if (this.allyAt && this.allySprite) {
-      this.ally = this.add
-        .image(this.allyAt.x * size, this.allyAt.y * size, this.allySprite)
-        .setOrigin(0, 0)
-        .setFlipX(this.allyAt.x > this.arena.monster.x)
-        .setDepth(depthForRow(this.allyAt.y, ARENA_HEIGHT));
-      this.idle(this.ally, 450);
-    }
+    this.setAlly(this.allySprite);
 
     // A short, permanent idle bob on both sides. It is the cheapest thing that
     // stops a turn-based screen looking frozen between turns.
@@ -232,6 +222,38 @@ export class BattleGardenScene extends Phaser.Scene {
 
     this.input.keyboard?.on('keydown', this.onKey, this);
     this.input.on('pointerdown', this.onPointer, this);
+  }
+
+  /**
+   * Stand the partner's pet on its pedestal, swap it, or hide it.
+   *
+   * Live rather than read once: the partner's row can land after the scene
+   * started, and a pick they make mid-visit should show without tearing down
+   * the garden. Before `create` it only records the sprite, which `create`
+   * then draws.
+   */
+  setAlly(sprite: string | undefined): void {
+    this.allySprite = sprite;
+    if (!this.pet) return;
+    if (this.ally) {
+      this.ally.setVisible(Boolean(sprite));
+      this.allyShadow?.setVisible(Boolean(sprite));
+      if (sprite) this.ally.setTexture(sprite);
+      return;
+    }
+    if (!sprite) return;
+    this.allyAt = allyTile(this.arena);
+    if (!this.allyAt) return;
+    const size = this.size;
+    this.addPedestal(this.allyAt.x, this.allyAt.y);
+    this.allyShadow = this.addShadow(this.allyAt.x, this.allyAt.y);
+    this.ally = this.add
+      .image(this.allyAt.x * size, this.allyAt.y * size, sprite)
+      .setOrigin(0, 0)
+      .setFlipX(this.allyAt.x > this.arena.monster.x)
+      .setDepth(depthForRow(this.allyAt.y, ARENA_HEIGHT));
+    this.idle(this.ally, 450);
+    this.applyLighting();
   }
 
   /**

@@ -64,6 +64,8 @@ export interface SceneHandle {
   defeat(): Promise<void>;
   /** The fight ended without a win. Walk the pet back to its spawn tile. */
   withdraw(): void;
+  /** The partner's pet on its pedestal: drawn, swapped, or hidden (undefined). */
+  setAlly(sprite: string | undefined): void;
   /** Walk one tile — the on-screen pad's way in, beside the keys and the tap. */
   step(dx: number, dy: number): StepResult;
   /**

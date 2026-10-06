@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  nextPrompt, promptApplies, togetherRewardLines,
+  backToTheGate, nextPrompt, promptApplies, togetherRewardLines,
   type PromptAction, type PromptStep,
 } from './gatePrompt';
 import { STAGES_PER_ISLAND } from './world';
@@ -56,5 +56,19 @@ describe('when the prompt is asked', () => {
 
   it('names the three things going in together adds', () => {
     expect(togetherRewardLines()).toEqual(['+50% pet XP', '2× coins', 'A coin purse']);
+  });
+});
+
+describe('going back through the gate', () => {
+  const BOSS = STAGES_PER_ISLAND;
+  it('reopens after a boss fight that was lost or fled, and on coming back to the app', () => {
+    expect(backToTheGate('Down', BOSS, false)).toBe(true);
+    expect(backToTheGate('Fled', BOSS, false)).toBe(true);
+    expect(backToTheGate('resumed', BOSS, false)).toBe(true);
+  });
+  it('never after a win, never mid-fight, never before the boss stage', () => {
+    expect(backToTheGate('Won', BOSS, false)).toBe(false);
+    expect(backToTheGate('resumed', BOSS, true)).toBe(false);
+    for (let stage = 1; stage < BOSS; stage += 1) expect(backToTheGate('Down', stage, false)).toBe(false);
   });
 });

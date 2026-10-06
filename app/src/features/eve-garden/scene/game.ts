@@ -88,6 +88,7 @@ export function startGarden(
     skill: (vfx: string) => live()?.skill(vfx) ?? Promise.resolve(),
     defeat: () => live()?.defeat() ?? Promise.resolve(),
     withdraw: () => live()?.withdraw(),
+    setAlly: (sprite) => live()?.setAlly(sprite),
     step: (dx, dy) => live()?.step(dx, dy) ?? 'busy',
     setCalm: (calm) => live()?.setCalm(calm),
     relight: (hour, dark) => live()?.relight(hour, dark),
