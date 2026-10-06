@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AFFINITY_RANKS, MASCOT_ELEMENTS, MASCOT_RAID_ORDER, MAX_AFFINITY_RANK,
+  AFFINITY_RANKS, allyThemeId, MASCOT_ELEMENTS, MASCOT_RAID_ORDER, MAX_AFFINITY_RANK,
   CLOCK_SKEW_MS, NO_BONUS, PRESENCE_WINDOW_MS, bossEntryBlockedBecause, partnerAtGate,
   partnerGateApplies, togetherBonus, togetherXp,
   affinityRank, canEnter, gateCards, gateDecision, gateGreeting, mostFavoured,
@@ -310,5 +310,14 @@ describe('the partner gate', () => {
     expect(bossEntryBlockedBecause(STAGES_PER_ISLAND, true, true, true)).toBeNull();
     expect(bossEntryBlockedBecause(3, true, false, true)).toBeNull();
     expect(bossEntryBlockedBecause(STAGES_PER_ISLAND, false, false, true)).toBeNull();
+  });
+});
+
+describe('allyThemeId', () => {
+  it('prefers the last garden pick, then the mascot, then nothing', () => {
+    expect(allyThemeId({ raidCompanion: 'pony', mascot: 'kitty' })).toBe('pony');
+    expect(allyThemeId({ mascot: 'kitty' })).toBe('kitty');
+    expect(allyThemeId({})).toBeUndefined();
+    expect(allyThemeId(undefined)).toBeUndefined();
   });
 });

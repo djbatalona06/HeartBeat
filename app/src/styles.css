@@ -8065,3 +8065,31 @@ a, button, input, select, textarea, summary, label, [role='button'] {
 @keyframes star-chest-glow { to { transform: translateY(-2px) scale(1.04); } }
 @media (prefers-reduced-motion: reduce) { .star-chest[data-state='ready'] { animation: none; } }
 :root[data-calm='true'] .star-chest[data-state='ready'] { animation: none; }
+
+/* ---- the partner's companion at the Raid Gate -----------------------------
+   Their pick on a small pedestal in the scene's near corner, opposite the boss.
+   Absolutely placed so it never pushes the boss card or the roster around. */
+.raid-gate-partner {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  width: clamp(3.5rem, 16vw, 5rem);
+}
+.raid-gate-partner-figure { position: relative; display: block; width: 100%; aspect-ratio: 1; }
+.raid-gate-partner-figure svg { width: 100%; height: 100%; display: block; }
+.raid-gate-partner-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+}

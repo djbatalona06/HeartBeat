@@ -8,7 +8,7 @@ import { todayKey } from '../../domain/day';
 import { levelOf, sheetFor } from '../../domain/rpg/avatar';
 import { dyeStyle } from '../../domain/rpg/dyes';
 import { costumeById } from '../../domain/rpg/costumes';
-import { MASCOT_ROSTER, getMascot } from '../pet/mascots';
+import { FALLBACK_MASCOT_ID, MASCOT_ROSTER, getMascot } from '../pet/mascots';
 import { CostumeLayer } from './art/costumes';
 import { GOOD_VIBES_PER_SENDER_PER_DAY } from '../../domain/rpg/lifeEvents';
 import { petArt } from './art/pets';
@@ -148,8 +148,12 @@ interface PartnerHouseProps {
 function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouseProps) {
   const name = partner.displayName || 'Them';
   const known = avatar?.mascot && avatar.mascot in MASCOT_ROSTER ? avatar.mascot : undefined;
-  const mascot = known ? getMascot(known) : undefined;
-  const CompanionArt = !mascot && companionId ? petArt(companionId) : undefined;
+  const CompanionArt = !known && companionId ? petArt(companionId) : undefined;
+  // Neither has reached this phone yet -- a fresh pairing, or their app has
+  // not synced since. The default mascot stands in rather than an empty box,
+  // and the line under it says why it may not be theirs.
+  const waiting = !known && !CompanionArt;
+  const mascot = known ? getMascot(known) : waiting ? getMascot(FALLBACK_MASCOT_ID) : undefined;
   const costume = costumeById(avatar?.costume);
 
   return (
@@ -164,7 +168,7 @@ function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouse
           aria-label={mascot ? `${name}'s ${mascot.name}, ${mascot.species}` : `${name}'s birb`}
         >
           {mascot ? <mascot.Art mood="content" /> : null}
-          {mascot ? <CostumeLayer id={avatar?.costume} mascot={known} /> : null}
+          {known ? <CostumeLayer id={avatar?.costume} mascot={known} /> : null}
           {CompanionArt ? <CompanionArt /> : null}
         </div>
         <dl className="friend-facts">
@@ -183,7 +187,7 @@ function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouse
         </dl>
       </div>
       <p className="section-sub friend-companion">
-        {mascot ? `${mascot.name} the ${mascot.species}.` : ''}
+        {waiting ? `Still syncing ${name}'s birb.` : mascot ? `${mascot.name} the ${mascot.species}.` : ''}
         {costume ? ` Wearing the ${costume.name.toLowerCase()}.` : ''}
       </p>
     </section>

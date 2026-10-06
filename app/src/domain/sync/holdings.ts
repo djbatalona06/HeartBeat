@@ -251,8 +251,8 @@ export function pendingSince(
 /**
  * The high-water mark to remember after a round trip.
  *
- * Rows that arrived from the server are, by definition, already on it, so the
- * push watermark steps past them too — otherwise the next sync would send them
+ * Our own rows that arrived from the server are, by definition, already on it,
+ * so the push watermark steps past them too — otherwise the next sync would send them
  * straight back. Refused rows are included for the same reason `sync.ts`
  * includes them: leaving the mark behind a row the server will never accept
  * offers it first on every sync forever, and queues everything edited after it
@@ -265,6 +265,9 @@ export function highWaterAfter(
 ): number {
   let mark = previous;
   for (const row of pushed) mark = Math.max(mark, row.updatedAt);
-  for (const row of pulled) mark = Math.max(mark, row.updatedAt);
+  // Only our own rows. A partner's row carries *their* clock, and a phone
+  // running ahead would carry this mark into the future, past edits made here
+  // that have not been sent yet — which would then never be.
+  for (const row of pulled) if (row.mine) mark = Math.max(mark, row.updatedAt);
   return mark;
 }

@@ -8,6 +8,7 @@ import { favoursWeakness } from '../../../domain/rpg/companionSkills';
 import { GateBackdrop } from './GateBackdrop';
 import { GateBoss } from './GateBoss';
 import { GatePedestal } from './GatePedestal';
+import { GatePartner, type GatePartnerProps } from './GatePartner';
 import { TogetherTether } from './TogetherTether';
 import { Icon } from '../../../components/icons';
 import { InfoBubble } from '../../../ui/InfoBubble';
@@ -49,13 +50,15 @@ export interface RaidGateProps {
    * asynchronous and the gate does not mention the other half of the couple.
    */
   together?: { partnerName: string; present: boolean; blockedReason: string | null };
+  /** The partner's companion, on every stage, whenever a partner is linked. */
+  partner?: GatePartnerProps;
   onEnter(themeId: string): void;
   /** Absent on a first visit — there is nothing to go back to yet. */
   onCancel?: () => void;
 }
 
 export function RaidGate({
-  cards, verdict, hour, dark, resonance, world, together, onEnter, onCancel,
+  cards, verdict, hour, dark, resonance, world, together, partner, onEnter, onCancel,
 }: RaidGateProps) {
   const island = standingIsland(world);
   const weakness = bossOf(island).weakness;
@@ -97,6 +100,7 @@ export function RaidGate({
       <div className="raid-gate-scene">
         <GateBackdrop hour={hour} dark={dark} resonance={resonance} />
         <GateBoss island={island} dark={dark} />
+        {partner ? <GatePartner {...partner} /> : null}
       </div>
 
       {together ? (
