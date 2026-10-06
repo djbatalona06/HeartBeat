@@ -46,3 +46,38 @@ if (previewAt >= 0) {
   }
   console.log(`preview deploys use their own database (${previewId})`);
 }
+
+// Staging (.github/workflows/staging-deploy.yml) is the whole stack on its own
+// data: the Pages project reads app/wrangler.staging.toml, the Worker reads
+// worker/wrangler.toml's [env.staging]. Those two must name the same database,
+// and it must be neither production's nor preview's — staging pointed at the
+// couple's rows would make "try it on staging first" a lie.
+const stagingPath = join(ROOT, 'app/wrangler.staging.toml');
+const workerToml = readFileSync(join(ROOT, 'worker/wrangler.toml'), 'utf8');
+const workerStagingAt = workerToml.search(/^\[\[env\.staging\.d1_databases\]\]/m);
+let stagingAppId = null;
+try {
+  stagingAppId = readDatabaseId(stagingPath);
+} catch {
+  // No staging config: nothing to check.
+}
+if (stagingAppId || workerStagingAt >= 0) {
+  const workerStagingId =
+    workerStagingAt >= 0 ? workerToml.slice(workerStagingAt).match(/database_id\s*=\s*"([^"]+)"/)?.[1] : undefined;
+  const previewId =
+    previewAt >= 0 ? appToml.slice(previewAt).match(/database_id\s*=\s*"([^"]+)"/)?.[1] : undefined;
+  const fail = (why) => {
+    console.error(`::error::${why} See "Staging" in docs/DEPLOY.md.`);
+    process.exit(1);
+  };
+  if (!stagingAppId || !workerStagingId) {
+    fail('Staging is half-configured: app/wrangler.staging.toml and worker/wrangler.toml [env.staging] must both bind a D1 database.');
+  }
+  if (stagingAppId !== workerStagingId) {
+    fail(`Staging D1 mismatch: app/wrangler.staging.toml has "${stagingAppId}", worker [env.staging] has "${workerStagingId}".`);
+  }
+  if (stagingAppId === appId || stagingAppId === previewId) {
+    fail(`Staging must have its own database, not production's or preview's (${stagingAppId}).`);
+  }
+  console.log(`staging uses its own database (${stagingAppId}), shared by its Pages project and Worker`);
+}

@@ -128,6 +128,11 @@ code remains the only way into a couple either way. See §8 of `docs/DEPLOY.md`.
 
 The deploy step runs from `app/` so wrangler reads `app/wrangler.toml` for D1/Workers AI bindings. Deploying from the repo root would leave functions unbound and every `/api` call would 500.
 
+**Staging** is `staging` → `staging-deploy.yml` → its own Pages project, Worker
+(`--env staging`) and D1 (`heartbeat-staging`). Changes go feature branch → PR
+→ `staging` (try it on two phones) → PR to `main`. `deploy.yml` now applies D1
+migrations before the Pages deploy. See §6b of `docs/DEPLOY.md`.
+
 Full deploy walkthrough: `docs/DEPLOY.md`
 
 ## Known patterns and pitfalls

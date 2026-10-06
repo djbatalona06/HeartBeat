@@ -40,7 +40,7 @@ forking the project for a different couple.)
 Apply the schema:
 
 ```bash
-npm run db:remote     # from worker/ — applies worker/migrations/0001..0004 to the remote D1
+npm run db:remote     # from worker/ — applies every pending worker/migrations/*.sql to the remote D1
 ```
 
 `app/` has no migrations of its own — its Pages Functions bind the same `DB`,
@@ -221,6 +221,60 @@ Pages secrets are per environment, so push notifications on a preview need
 `VAPID_PUBLIC_KEY` added to the Pages project's **Preview** environment as
 well (Cloudflare dashboard → the Pages project → Settings → Variables and
 Secrets); pairing does not need it.
+
+## 6b. Staging (the whole stack, before it reaches the couple)
+
+A PR preview (§6) is one branch's Pages build on a database every PR shares,
+still talking to the **production** Worker. Staging is the full stack on its own
+data, so a change to the schema, the Worker, the boss cron or a chest can be
+tried for days without touching anything real.
+
+| Piece | Production | Staging |
+|---|---|---|
+| Branch | `main` | `staging` |
+| Pages project | `heartbeat-app` | `heartbeat-app-staging` (created by the workflow) |
+| Worker | `heartbeat-api` | `heartbeat-api-staging` (`[env.staging]` in `worker/wrangler.toml`) |
+| D1 | `heartbeat` | `heartbeat-staging` |
+| R2 | `heartbeat` | `heartbeat-staging` |
+| Pages bindings | `app/wrangler.toml` | `app/wrangler.staging.toml` (copied over in CI) |
+| Workflow | `deploy.yml` + `worker-deploy.yml` | `staging-deploy.yml` |
+
+**The flow:** feature branch → PR (CI + preview) → merge into `staging` →
+walk it on two phones at the staging URL → PR `staging` → `main` → production.
+Every push to `staging` runs the Worker tests, migrates `heartbeat-staging`,
+deploys the staging Worker, then the staging site.
+
+**One-time setup** (the database and bucket already exist):
+
+```bash
+# Push keys for the staging Worker — the same pair as production is fine,
+# or generate a separate one.
+cd worker
+npx wrangler secret put VAPID_PUBLIC_KEY  --env staging
+npx wrangler secret put VAPID_PRIVATE_KEY --env staging
+```
+
+After the first staging run creates the Pages project, set on it (dashboard →
+`heartbeat-app-staging` → Settings → Variables and Secrets):
+`VAPID_PUBLIC_KEY` (same as the staging Worker's), and optionally
+`POSTHOG_ENV=staging`. GitHub/Google sign-in stay off unless you add their
+secrets — that is a supported configuration.
+
+On a staging phone, point **Settings → Worker URL** at
+`https://heartbeat-api-staging.<your-workers-subdomain>.workers.dev`, never at the
+production Worker.
+
+If the run warns that the staging site's subdomain is not in
+`ALLOWED_ORIGIN`, Pages gave the project a suffixed name; copy the URL it
+printed into `[env.staging.vars] ALLOWED_ORIGIN` in `worker/wrangler.toml`.
+
+`npm run check:config` fails if staging's database is production's or
+preview's, or if the Pages and Worker halves of staging disagree.
+
+**Production now migrates first, too.** `deploy.yml` applies pending D1
+migrations before the Pages deploy, so a Pages Function never ships ahead of a
+column it reads. It shares a concurrency group with `worker-deploy.yml`, so the
+two never apply the same migration at once.
 
 ## What CI (`ci.yml`) does *not* do
 
