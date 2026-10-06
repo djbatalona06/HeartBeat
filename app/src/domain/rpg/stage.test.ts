@@ -58,10 +58,10 @@ describe('the growth stages', () => {
 describe('stageForLevel', () => {
   it('holds a stage until the next threshold is reached', () => {
     expect(stageForLevel(1).id).toBe('egg');
-    expect(stageForLevel(2).id).toBe('egg');
-    expect(stageForLevel(3).id).toBe('hatchling');
-    expect(stageForLevel(5).id).toBe('hatchling');
-    expect(stageForLevel(6).id).toBe('fledgling');
+    expect(stageForLevel(2).id).toBe('hatchling');
+    expect(stageForLevel(3).id).toBe('fledgling');
+    expect(stageForLevel(4).id).toBe('fledgling');
+    expect(stageForLevel(5).id).toBe('youngling');
   });
 
   it('never regresses as the level climbs', () => {
@@ -79,18 +79,18 @@ describe('stageForLevel', () => {
   });
 
   it('looks a stage up by id', () => {
-    expect(stageById('companion').minLevel).toBe(15);
+    expect(stageById('companion').minLevel).toBe(8);
   });
 });
 
 describe('the next stage', () => {
   it('names the level it arrives at', () => {
-    expect(nextStageLevel(1)).toBe(3);
+    expect(nextStageLevel(1)).toBe(2);
     expect(nextStage(1)?.id).toBe('hatchling');
   });
 
   it('is null once the last stage is reached', () => {
-    expect(nextStageLevel(21)).toBeNull();
+    expect(nextStageLevel(11)).toBeNull();
     expect(nextStage(50)).toBeNull();
   });
 });

@@ -22,7 +22,7 @@ describe('levelUpSince', () => {
 describe('isBigLevelUp', () => {
   it('is true landing on a level that opens a garden plot', () => {
     expect(isBigLevelUp(1, 2)).toBe(true);
-    expect(isBigLevelUp(27, 28)).toBe(true);
+    expect(isBigLevelUp(13, 14)).toBe(true);
   });
 
   /** A jump that passes a plot level without landing on it still opened one. */
@@ -31,8 +31,8 @@ describe('isBigLevelUp', () => {
   });
 
   it('is false for levels that open no plot', () => {
-    expect(isBigLevelUp(2, 3)).toBe(false);
-    expect(isBigLevelUp(5, 7)).toBe(false);
+    expect(isBigLevelUp(4, 5)).toBe(false);
+    expect(isBigLevelUp(6, 8)).toBe(false);
   });
 
   it('does not count the level you started on', () => {

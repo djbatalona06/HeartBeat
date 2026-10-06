@@ -55,7 +55,7 @@ export const PLACES: readonly Place[] = [
     id: 'place-canal',
     name: 'The canal',
     blurb: 'Slow water, and things floating in it that are worth a look.',
-    unlockLevel: 3,
+    unlockLevel: 2,
     surcharge: 2,
     bounty: 20,
     finds: [
@@ -69,7 +69,7 @@ export const PLACES: readonly Place[] = [
     id: 'place-night-market',
     name: 'The night market',
     blurb: 'Loud, warm, and full of dropped food.',
-    unlockLevel: 5,
+    unlockLevel: 3,
     surcharge: 4,
     bounty: 35,
     finds: [
@@ -83,7 +83,7 @@ export const PLACES: readonly Place[] = [
     id: 'place-pine-ridge',
     name: 'Pine ridge',
     blurb: 'Up where the air goes thin and the view goes wide.',
-    unlockLevel: 8,
+    unlockLevel: 4,
     surcharge: 6,
     bounty: 55,
     finds: [
@@ -97,7 +97,7 @@ export const PLACES: readonly Place[] = [
     id: 'place-lighthouse',
     name: 'The lighthouse',
     blurb: 'A long way out, and the light is on for somebody.',
-    unlockLevel: 12,
+    unlockLevel: 6,
     surcharge: 9,
     bounty: 80,
     finds: [
@@ -111,7 +111,7 @@ export const PLACES: readonly Place[] = [
     id: 'place-observatory',
     name: 'The observatory',
     blurb: 'Somebody left the dome open. The bird took this as an invitation.',
-    unlockLevel: 16,
+    unlockLevel: 8,
     surcharge: 12,
     bounty: 120,
     finds: [

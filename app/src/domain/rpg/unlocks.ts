@@ -63,7 +63,7 @@ export const FRAME_POINTS = tierAt('Evergreen');
  * down when one breaks, so an Ascendant that also asked for Elder could be
  * lost — the one thing no unlock here may do. The pet's level never falls.
  */
-export const ASCENDANT_LEVEL = 21;
+export const ASCENDANT_LEVEL = 11;
 
 /** Whether the shared pet at this level is Ascendant. `loadout.ts` asks this. */
 export function isAscendant(petLevel: number): boolean {

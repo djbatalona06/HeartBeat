@@ -8,7 +8,7 @@ import { buyFlora, ownedFlora as ownedFloraOf, plantFlora } from '../../db/repos
 import type { useToast } from '../../ui/Toast';
 
 /**
- * The garden's plots, on the Birb page.
+ * The Birbhouse's yard: the garden's plots, under the room on the Birb page.
  *
  * They used to sit in a drawer under the fight, beside a second copy of the
  * chest alcove. The fight page is for the fight, so both left it: the alcove
@@ -42,9 +42,16 @@ export function GardenPlots({ memberId, coupleId, garden, petXp, coins, say }: G
     const result = await plantFlora(memberId, coupleId, plotId, floraId);
     if (!result.ok) say(result.reason ?? null, 'error');
   };
-  const onBuyFlora = async (floraId: string) => {
-    const result = await buyFlora(memberId, coupleId, floraId);
-    if (!result.ok) say(result.reason ?? null, 'error');
+  // Choosing a plant you do not own yet buys it *and* plants it. It used to
+  // only buy, and the plot closed bare, so you had to open it again and pick
+  // the same plant a second time.
+  const onBuyAndPlant = async (plotId: string, floraId: string) => {
+    const bought = await buyFlora(memberId, coupleId, floraId);
+    if (!bought.ok) {
+      say(bought.reason ?? null, 'error');
+      return;
+    }
+    await onPlant(plotId, floraId);
   };
   const [chosen, setChosen] = useState<string | null>(null);
   const reached = plotsAt(petLevel);
@@ -52,11 +59,11 @@ export function GardenPlots({ memberId, coupleId, garden, petXp, coins, say }: G
   const next = nextMilestone(petLevel);
 
   return (
-    <div className="panel garden-plots">
-      <h2 className="section-title">The plots</h2>
+    <div className="garden-plots">
+      <h3 className="section-title">The yard</h3>
       <p className="section-sub">
-        Ground opens as the two of you level. Everything planted counts towards
-        the raid sheet.
+        Ground opens as the two of you level. Each plant goes in one plot, and
+        counts towards the raid sheet.
       </p>
 
       {reached.length === 0 ? (
@@ -91,13 +98,15 @@ export function GardenPlots({ memberId, coupleId, garden, petXp, coins, say }: G
                           onClick={() => { void onPlant(plot.id, undefined); setChosen(null); }}
                         >
                           <span className="plot-choice-name">Dig it up</span>
-                          <span className="plot-choice-note">Back in the bag, not lost</span>
+                          <span className="plot-choice-note">Yours to plant elsewhere</span>
                         </button>
                       </li>
                     )}
                     {FLORA.map((flora) => {
                       const have = owned.has(flora.id);
                       const here = planted?.id === flora.id;
+                      const elsewhere = !here
+                        && Object.values(garden).some((id) => id === flora.id);
                       const afford = coins >= flora.price;
                       return (
                         <li key={flora.id}>
@@ -109,7 +118,7 @@ export function GardenPlots({ memberId, coupleId, garden, petXp, coins, say }: G
                             title={flora.blurb}
                             onClick={() => {
                               if (have) void onPlant(plot.id, flora.id);
-                              else void onBuyFlora(flora.id);
+                              else void onBuyAndPlant(plot.id, flora.id);
                               setChosen(null);
                             }}
                           >
@@ -117,9 +126,11 @@ export function GardenPlots({ memberId, coupleId, garden, petXp, coins, say }: G
                             <span className="plot-choice-note">
                               {here
                                 ? 'Already here'
-                                : have
-                                  ? `Plant · ${TIER_NAMES[floraTier(flora)]}`
-                                  : `${flora.price} coins`}
+                                : elsewhere
+                                  ? 'Move here'
+                                  : have
+                                    ? `Plant · ${TIER_NAMES[floraTier(flora)]}`
+                                    : `Buy & plant · ${flora.price}`}
                             </span>
                           </button>
                         </li>

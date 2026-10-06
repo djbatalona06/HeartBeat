@@ -2,7 +2,6 @@ import { GEAR } from './gear';
 import { LUCK_PER_POINT, MAX_LUCK_LIFT, PET_KINDS, applyFloor } from './pets';
 import { FURNITURE } from './furniture';
 import { DYES } from './dyes';
-import { FLORA, floraTier } from './plots';
 import { tierForPrice } from './raidStats';
 import {
   TIERS, TIER_NAMES, compareTiers, tierRank, tiersAtOrAbove, type Tier,
@@ -43,17 +42,23 @@ export type ChestId = 'wooden' | 'silver' | 'gilded';
 
 export const CHEST_IDS: readonly ChestId[] = ['wooden', 'silver', 'gilded'];
 
-/** What can come out of a chest. Every one of these is a real catalogue. */
-export type PrizeKind = 'gear' | 'companion' | 'decor' | 'dye' | 'flora';
+/**
+ * What can come out of a chest. Every one of these is a real catalogue.
+ *
+ * Not flora. "Something to plant" used to be a prize, and it could land on a
+ * pet too young to have any ground, with the receipt saying "Ready to plant."
+ * about a plant nobody could put anywhere. Plants are bought for a plot you can
+ * see, in the Birbhouse's yard; a chest is for the things you wear and keep.
+ */
+export type PrizeKind = 'gear' | 'companion' | 'decor' | 'dye';
 
-export const PRIZE_KINDS: readonly PrizeKind[] = ['gear', 'companion', 'decor', 'dye', 'flora'];
+export const PRIZE_KINDS: readonly PrizeKind[] = ['gear', 'companion', 'decor', 'dye'];
 
 export const PRIZE_KIND_NAMES: Record<PrizeKind, string> = {
   gear: 'Gear',
   companion: 'Companion',
   decor: 'Furniture',
   dye: 'Colourway',
-  flora: 'Something to plant',
 };
 
 export interface Chest {
@@ -85,7 +90,7 @@ export const CHESTS: readonly Chest[] = [
     weights: { common: 0.8, rare: 0.2 },
     pityAt: 6,
     pityTier: 'rare',
-    kindWeights: { gear: 0.4, decor: 0.2, dye: 0.15, flora: 0.15, companion: 0.1 },
+    kindWeights: { gear: 0.45, decor: 0.25, dye: 0.18, companion: 0.12 },
   },
   {
     id: 'silver',
@@ -95,7 +100,7 @@ export const CHESTS: readonly Chest[] = [
     weights: { rare: 0.82, epic: 0.18 },
     pityAt: 9,
     pityTier: 'epic',
-    kindWeights: { gear: 0.4, companion: 0.22, decor: 0.18, flora: 0.15, dye: 0.05 },
+    kindWeights: { gear: 0.45, companion: 0.27, decor: 0.22, dye: 0.06 },
   },
   {
     id: 'gilded',
@@ -105,7 +110,7 @@ export const CHESTS: readonly Chest[] = [
     weights: { epic: 0.8, legendary: 0.17, mythic: 0.03 },
     pityAt: 12,
     pityTier: 'legendary',
-    kindWeights: { companion: 0.42, gear: 0.42, flora: 0.11, decor: 0.04, dye: 0.01 },
+    kindWeights: { companion: 0.48, gear: 0.47, decor: 0.04, dye: 0.01 },
   },
 ];
 
@@ -136,7 +141,6 @@ export const KIND_TIERS: Record<PrizeKind, ReadonlySet<Tier>> = {
   companion: new Set(PET_KINDS.map((kind) => kind.rarity)),
   decor: new Set(FURNITURE.map((piece) => tierForPrice(piece.price))),
   dye: new Set(DYES.map((dye) => tierForPrice(dye.price))),
-  flora: new Set(FLORA.map(floraTier)),
 };
 
 /**
@@ -421,8 +425,6 @@ export function candidatesFor(kind: PrizeKind, tier: Tier): string[] {
       // so as a prize it was an item worth nothing, and a repeat of it refunded
       // nothing either. `tierForPrice(0)` is `common`, which is how it got in.
       return DYES.filter((d) => d.price > 0 && tierForPrice(d.price) === tier).map((d) => d.id);
-    case 'flora':
-      return FLORA.filter((f) => floraTier(f) === tier).map((f) => f.id);
     default:
       return [];
   }

@@ -72,112 +72,113 @@ export interface Milestone {
  * the wrong thing unlock first.
  */
 export const MILESTONES: readonly Milestone[] = [
-  // -- days ------------------------------------------------------------------
+  // -- the first days ----------------------------------------------------------
+  // Roughly half the levels they used to sit at: early walls were the part of
+  // the game people bounced off. The prestige rungs at 40 and 50 stay where
+  // they were -- they are meant to take a long time.
   {
     level: 2, kind: 'plot', plot: 'plot-doorstep',
     name: 'The doorstep',
     blurb: 'A patch by the door. Small, and the first thing either of you sees.',
   },
   {
-    level: 3, kind: 'skill', skill: 'passive',
+    level: 2, kind: 'skill', skill: 'passive',
     name: 'Your companion settles in',
     blurb: 'Its passive starts counting. It was always there; now it does something.',
   },
   {
-    level: 4, kind: 'plot', plot: 'plot-pondside',
+    level: 3, kind: 'plot', plot: 'plot-pondside',
     name: 'Pondside',
     blurb: 'The soft ground by the water, which will grow almost anything.',
   },
   {
-    level: 5, kind: 'tether', tether: 'tether-plain',
-    name: 'A thread you can see',
-    blurb: 'The tether stops being a rumour and starts being a line on the ground.',
-  },
-  {
-    level: 6, kind: 'skill', skill: 'support',
+    level: 3, kind: 'skill', skill: 'support',
     name: 'Your companion learns its second move',
     blurb: 'The support skill opens. Every companion has one, and none of them share it.',
   },
   {
-    level: 8, kind: 'plot', plot: 'plot-the-verge',
+    level: 3, kind: 'tether', tether: 'tether-plain',
+    name: 'A thread you can see',
+    blurb: 'The tether stops being a rumour and starts being a line on the ground.',
+  },
+  {
+    level: 4, kind: 'plot', plot: 'plot-the-verge',
     name: 'The verge',
     blurb: 'Along the path in. Nothing important grows here, which is the charm of it.',
   },
   {
-    level: 10, kind: 'stat', stat: { key: 'resilience', points: 3 },
-    name: 'Ten',
-    blurb: 'The two of you can take a little more than you could a fortnight ago.',
+    level: 5, kind: 'stat', stat: { key: 'resilience', points: 3 },
+    name: 'Five',
+    blurb: 'The two of you can take a little more than you could last week.',
   },
-
-  // -- weeks -----------------------------------------------------------------
   {
-    level: 12, kind: 'plot', plot: 'plot-under-the-trees',
+    level: 6, kind: 'plot', plot: 'plot-under-the-trees',
     name: 'Under the trees',
     blurb: 'Shade most of the day. Fussy, and worth the fuss.',
   },
   {
-    level: 14, kind: 'tether', tether: 'tether-braided',
+    level: 7, kind: 'tether', tether: 'tether-braided',
     name: 'Braided',
     blurb: 'Two threads wound together, which is a better description than one was.',
   },
   {
-    level: 15, kind: 'stat', stat: { key: 'resonance', points: 3 },
-    name: 'Fifteen',
+    level: 8, kind: 'stat', stat: { key: 'resonance', points: 3 },
+    name: 'Eight',
     blurb: 'The tether charges faster. You have got better at noticing each other.',
   },
   {
-    level: 18, kind: 'plot', plot: 'plot-the-far-corner',
+    level: 9, kind: 'plot', plot: 'plot-the-far-corner',
     name: 'The far corner',
     blurb: 'Out of sight of the gate. Something ought to be down there.',
   },
   {
-    level: 20, kind: 'stat', stat: { key: 'recovery', points: 4 },
-    name: 'Twenty',
+    level: 10, kind: 'stat', stat: { key: 'recovery', points: 4 },
+    name: 'Ten',
     blurb: 'Rest is worth more. You have both finally worked out how to take it.',
   },
 
-  // -- months ----------------------------------------------------------------
+  // -- weeks -----------------------------------------------------------------
   {
-    level: 23, kind: 'plot', plot: 'plot-the-old-bed',
+    level: 12, kind: 'plot', plot: 'plot-the-old-bed',
     name: 'The old bed',
     blurb: 'Somebody planted here once. Whatever it was, it is long gone.',
   },
   {
-    level: 25, kind: 'stat', stat: { key: 'fortify', points: 4 },
-    name: 'Twenty-five',
-    blurb: 'A shielded turn holds more. Half a year of practice at holding.',
+    level: 13, kind: 'stat', stat: { key: 'fortify', points: 4 },
+    name: 'Thirteen',
+    blurb: 'A shielded turn holds more. Months of practice at holding.',
   },
   {
-    level: 27, kind: 'tether', tether: 'tether-woven',
-    name: 'Woven',
-    blurb: 'No longer two threads. You would have to cut it to find the join.',
-  },
-  {
-    level: 28, kind: 'plot', plot: 'plot-the-long-border',
+    level: 14, kind: 'plot', plot: 'plot-the-long-border',
     name: 'The long border',
     blurb: 'The whole south edge. The last of the ground, and the best of it.',
   },
   {
-    level: 30, kind: 'stat', stat: { key: 'burden', points: 5 },
-    name: 'Thirty',
+    level: 14, kind: 'tether', tether: 'tether-woven',
+    name: 'Woven',
+    blurb: 'No longer two threads. You would have to cut it to find the join.',
+  },
+  {
+    level: 15, kind: 'stat', stat: { key: 'burden', points: 5 },
+    name: 'Fifteen',
     blurb: 'What you carry lands harder on the things that put it there.',
+  },
+  {
+    level: 18, kind: 'stat', stat: { key: 'energy', points: 4 },
+    name: 'Eighteen',
+    blurb: 'More turns in a day than the day strictly gave you.',
+  },
+  {
+    level: 23, kind: 'stat', stat: { key: 'reveal', points: 5 },
+    name: 'Twenty-three',
+    blurb: 'Very little about a bad week surprises either of you now.',
   },
 
   // -- a long time -----------------------------------------------------------
   {
-    level: 35, kind: 'stat', stat: { key: 'energy', points: 4 },
-    name: 'Thirty-five',
-    blurb: 'More turns in a day than the day strictly gave you.',
-  },
-  {
     level: 40, kind: 'prestige', tether: 'tether-gold',
     name: 'Forty',
     blurb: 'The tether goes gold. Nothing about it works differently.',
-  },
-  {
-    level: 45, kind: 'stat', stat: { key: 'reveal', points: 5 },
-    name: 'Forty-five',
-    blurb: 'Very little about a bad week surprises either of you now.',
   },
   {
     level: MAX_LEVEL, kind: 'prestige', tether: 'tether-daylight',
