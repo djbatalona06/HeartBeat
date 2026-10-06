@@ -15,7 +15,7 @@ Reuse these. Nothing new needs to be invented.
 
 | Piece | Where | Used by today |
 |---|---|---|
-| `Screen` + `SwipePane` (≤3 panes, scroll-snap, dots, keyboard) | `app/src/ui/layout/` | Home, Quests, Goals, Areas, Activities |
+| `Screen` + `SwipePane` (≤3 panes, scroll-snap, dots or `tabs`, keyboard) | `app/src/ui/layout/` | `Screen` on most pages; `SwipePane` only on Birb (it had no users before) |
 | `Sheet` (a bottom sheet for secondary content) | `app/src/ui/Sheet.tsx` | popups, Boss Gate |
 | Collapsibles (`aria-expanded` button + chevron) | the Merchant, `InfoBubble` | Shop |
 | `InfoBubble` guides | `app/src/ui/InfoBubble.tsx`, `features/guide/guides.ts` | every page title |
@@ -49,18 +49,54 @@ Reuse these. Nothing new needs to be invented.
 | You (Settings) | grouped rows: Theme, Calm, Cycle, The two of you, You | each row opens a Sheet |
 | Eve's Garden | already a fixed-height game screen | — |
 
+## Measured
+
+`npm run pair:live` measures every page on a linked phone at 390×844 and prints
+the table. It is the only harness with a paired phone, and nearly every page
+sits behind PairGate, so `visual.mjs` would only ever measure the pairing
+screen. A fresh couple has no data, so these numbers are floors, not a typical
+day.
+
+| Page | Screens (2026-10-06) | Status |
+|---|---|---|
+| Home | 4.27 | next |
+| Settings | 4.01 | |
+| Tasks | 3.48 | |
+| Mood | 2.57 | |
+| Move | 2.49 | |
+| Raid | 2.00 | Island Path shipped; still over |
+| Shop | 1.79 | |
+| Bag | 1.49 | |
+| Work | 1.27 | |
+| **Birb** | **1.00** (Look 1.24, Room & yard 1.07) | **done** |
+| Partner | 1.00 | done |
+
+### Birb, as shipped
+
+- Hero: the birbhouse room with your bird in it, who it walks with, coins, and
+  the one primary action (Hatch an egg), with Adventure beside it.
+- `SwipePane` with `tabs`: **Companions** (three compact rows; "See all" opens a
+  `Sheet` with the full cards; egg odds in a collapsed drawer) · **Look** (the
+  colours, three across) · **Room & yard** (what furnished itself, then the
+  plots).
+- The explanations moved behind the (i).
+
+Two `SwipePane` fixes came with it. Panes you are not on are `inert`, because
+`aria-hidden` alone left their buttons in the tab order. The track also takes
+the height of the pane you are on, where before a short pane inherited the
+tallest one's height and the page scrolled into blank space.
+
 ## Phases
 
 Each phase is its own PR, so one long page never blocks the rest.
 
-- **P0 · Measure.** Make `app/tools/visual.mjs` log `scrollHeight / innerHeight`
-  per route at 390×844. It already walks every route, so this is a few lines.
-  The numbers decide which page goes first.
-- **P1 · Contract.** Add `TARGET_VIEWPORTS = 1.25` beside `MAX_VIEWPORTS` in
-  `contract.ts`, with a test, and warn above it in dev.
-- **P2 · Primary tabs.** Home, Quests, Shop, Partner, Bag, Birb.
+- **P0 · Measure.** ✅ Done, in `pair-live.mjs` rather than `visual.mjs` (see
+  above).
+- **P1 · Contract.** ✅ `TARGET_VIEWPORTS = 1.25` in `contract.ts`, tested, and
+  warned about in dev.
+- **P2 · Primary tabs.** Home, Quests, Shop, Partner, Bag, Birb (Birb done).
 - **P3 · Menu pages.** Tasks, Mood, Move, Work, Study, You.
-- **P4 · Gate.** `visual.mjs` fails any route over 1.5 viewports. Pages that are
+- **P4 · Gate.** `pair-live.mjs` fails any route over 1.5 viewports. Pages that are
   not done yet sit on an allowlist, and that list is only allowed to shrink.
 
 ## Things to watch

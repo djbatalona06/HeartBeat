@@ -67,7 +67,10 @@ import { PRIZES_PER_CHEST } from '../../domain/rpg/chests';
 import type { ChestOutcome } from '../../db/repository/chests';
 import { ChestReveal } from '../chest/ChestReveal';
 import { openingLine } from '../chest/receipt';
+import { PrimaryAction } from '../../ui/PrimaryAction';
 import { SecondaryAction } from '../../ui/SecondaryAction';
+import { Sheet } from '../../ui/Sheet';
+import { SwipePane } from '../../ui/layout/SwipePane';
 import { PageTitle } from '../../ui/layout/PageTitle';
 import { GUIDES } from '../guide/guides';
 
@@ -131,7 +134,7 @@ const RARITY_INTENSITY: Record<Rarity, number> = {
  * redirects here for the links that still carry it. Wearing gear lives on the
  * Bag's slot grid now, and the achievement shelf on Tasks.
  */
-export type ShopSection = 'companions' | 'colours' | 'costumes' | 'house' | 'raid' | 'shop';
+export type ShopSection = 'birb' | 'costumes' | 'raid' | 'shop';
 
 /**
  * The shop: what coins are for. Birb and Raid are this page asked for other
@@ -220,35 +223,23 @@ export function ShopPage({ only = ['shop'], title = 'Shop' }: {
     <div className="page">
       <header className="page-head">
         {/* One page behind three routes; the guide follows the sections shown. */}
-        <PageTitle guide={only.includes('raid') ? GUIDES.raid : only.includes('companions') ? GUIDES.birb : GUIDES.shop}>
+        <PageTitle guide={only.includes('raid') ? GUIDES.raid : only.includes('birb') ? GUIDES.birb : GUIDES.shop}>
           {title}
         </PageTitle>
-        <p className="page-sub">
-          <Link className="sheet-party" to="/tasks">← Tasks</Link>
-        </p>
+        {/* Not on Birb: it is a tab of its own, and a back link on a tab is a
+            way out of a place nobody arrived at from Tasks. */}
+        {only.includes('birb') ? null : (
+          <p className="page-sub">
+            <Link className="sheet-party" to="/tasks">← Tasks</Link>
+          </p>
+        )}
       </header>
 
       {ctx ? (
         <>
-          {only.includes('companions') ? <CompanionsSection ctx={ctx} /> : null}
-          {only.includes('colours') ? <ColoursSection ctx={ctx} /> : null}
+          {only.includes('birb') ? <BirbView ctx={ctx} /> : null}
           {only.includes('costumes') ? <CostumesSection ctx={ctx} /> : null}
           {only.includes('raid') ? <RaidSection ctx={ctx} onRevealed={setRevealed} /> : null}
-          {only.includes('house') ? (
-            <Birbhouse house={(ctx.pet?.house ?? {}) as House} avatar={ctx.avatar}>
-              {/* The yard is the Birbhouse's outside, not a page of its own:
-                  the room and the ground are the two things you arrange for
-                  the pet, and one panel is one place to look. */}
-              <GardenPlots
-                memberId={ctx.identity.memberId}
-                coupleId={ctx.identity.coupleId}
-                garden={(ctx.pet?.plots ?? {}) as Garden}
-                petXp={ctx.pet?.xp ?? 0}
-                coins={ctx.avatar.coins}
-                say={ctx.say}
-              />
-            </Birbhouse>
-          ) : null}
           {only.includes('shop') ? <ShopSectionView ctx={ctx} onRevealed={setRevealed} /> : null}
         </>
       ) : null}
@@ -266,45 +257,127 @@ export function ShopPage({ only = ['shop'], title = 'Shop' }: {
   );
 }
 
-function CompanionsSection({ ctx }: { ctx: ShopContext }) {
-  const { avatar, identity, pets, owned, say } = ctx;
+/**
+ * What the companions can be asked to do. A hook rather than a section now that
+ * the Birb page splits them: hatching is the page's one primary action and
+ * sits in the hero, while choosing and reading lore live in the Companions pane.
+ */
+function useCompanionActions(ctx: ShopContext) {
+  const { avatar, identity, owned, say } = ctx;
+  return {
+    onChoose: (petId: string | undefined) => setCompanion(identity.memberId, identity.coupleId, petId),
+    onSeeLore: (petId: string) => markLoreSeen(petId),
+    onHatch: async () => {
+      const level = levelOf(avatar);
+      const bonus = gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned));
+      const luck = sheetFor(avatar, bonus).stats.luck;
+      const result = await buyEgg(
+        identity.coupleId,
+        identity.memberId,
+        { rarity: Math.random(), species: Math.random(), costume: Math.random() },
+        luck,
+      );
+      if (!result.ok) { say(result.reason ?? null, 'error'); return; }
+      const name = petKindById(result.pet!.kindId)!.name;
+      const hatched = result.merged ? `Another ${name}. Two of the same found each other.` : `${name} hatched.`;
+      const costume = result.costume;
+      const brought = !costume ? ''
+        : costume.duplicate
+          ? ` Already had the ${costume.name.toLowerCase()}: ${costume.refunded ?? 0} coins back.`
+          : ` It brought a ${TIER_NAMES[costume.tier].toLowerCase()} costume: ${costume.name}.`;
+      say(`${hatched}${brought}`);
+    },
+    /* Stays on Birb now that Adventures has moved to /raid, because it is not
+       the same action: this sends the companion out for a stretch of hours
+       with no destination, while Adventures' `onGo` travels to a named place.
+       The first is about the animal and belongs on its tab. */
+    onAdventure: async () => {
+      const result = await startAdventure(identity.memberId, identity.coupleId);
+      say(result.ok ? `Gone for ${result.hours} hours.` : result.reason ?? null);
+    },
+  };
+}
+
+/**
+ * The Birb page, in about one screen (docs/ONE-SCROLL.md).
+ *
+ * Above the fold: the room with your bird in it, who it walks with, and the
+ * page's one primary action, hatching. Everything else is a labelled pane --
+ * companions, the look, the room and its yard -- instead of four tall panels
+ * stacked under a title, which is what made this page feel like a list.
+ */
+function BirbView({ ctx }: { ctx: ShopContext }) {
+  const { avatar, pets, owned, identity } = ctx;
+  const actions = useCompanionActions(ctx);
+  const house = (ctx.pet?.house ?? {}) as House;
+  const walking = pets.find((pet) => pet.id === avatar.companionId);
+  const walkingName = walking ? petKindById(walking.kindId)?.name : undefined;
+  const WalkingArt = walking ? petArt(walking.kindId) : undefined;
+  const level = levelOf(avatar);
+  const sheet = sheetFor(avatar, gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned)));
+  const cost = adventureCost(level, sheet.energy);
+
   return (
-    <Companions
-      avatar={avatar}
-      pets={pets}
-      owned={owned}
-      onChoose={(petId) => setCompanion(identity.memberId, identity.coupleId, petId)}
-      onSeeLore={(petId) => markLoreSeen(petId)}
-      onHatch={async () => {
-        const level = levelOf(avatar);
-        const bonus = gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned));
-        const luck = sheetFor(avatar, bonus).stats.luck;
-        const result = await buyEgg(
-          identity.coupleId,
-          identity.memberId,
-          { rarity: Math.random(), species: Math.random(), costume: Math.random() },
-          luck,
-        );
-        if (!result.ok) { say(result.reason ?? null, 'error'); return; }
-        const name = petKindById(result.pet!.kindId)!.name;
-        const hatched = result.merged ? `Another ${name}. Two of the same found each other.` : `${name} hatched.`;
-        const costume = result.costume;
-        const brought = !costume ? ''
-          : costume.duplicate
-            ? ` Already had the ${costume.name.toLowerCase()}: ${costume.refunded ?? 0} coins back.`
-            : ` It brought a ${TIER_NAMES[costume.tier].toLowerCase()} costume: ${costume.name}.`;
-        say(`${hatched}${brought}`);
-      }}
-      /* Stays here now that Adventures has moved to /raid, because it
-         is not the same action: this sends the companion out for a
-         stretch of hours with no destination, while Adventures' `onGo`
-         travels to a named place. The first is about the animal and
-         belongs on its tab; only the second is a raid concern. */
-      onAdventure={async () => {
-        const result = await startAdventure(identity.memberId, identity.coupleId);
-        say(result.ok ? `Gone for ${result.hours} hours.` : result.reason ?? null);
-      }}
-    />
+    <>
+      <section className="panel birb-hero" aria-label="Your birb">
+        <HouseScene house={house} avatar={avatar} />
+        <div className="birb-hero-side">
+          <div className="birb-hero-walk">
+            {WalkingArt ? <span className="birb-hero-pet"><WalkingArt /></span> : null}
+            <span className="birb-hero-walk-text">
+              {walkingName ? `Walking with ${walkingName}` : 'Nobody walking with you yet'}
+            </span>
+          </div>
+          <span className="birb-hero-coins">{avatar.coins} coins</span>
+          <PrimaryAction disabled={avatar.coins < EGG_PRICE} onClick={actions.onHatch}>
+            {avatar.coins < EGG_PRICE
+              ? `${EGG_PRICE - avatar.coins} more for an egg`
+              : `Hatch an egg · ${EGG_PRICE}`}
+          </PrimaryAction>
+          <SecondaryAction onClick={actions.onAdventure}>{cost.shortBy > 0
+            ? `${cost.shortBy} more energy to adventure`
+            : `Adventure · ${cost.energy} energy, ${cost.hours}h`}</SecondaryAction>
+        </div>
+      </section>
+
+      <SwipePane
+        label="Birb"
+        tabs
+        panes={[
+          {
+            id: 'companions',
+            label: 'Companions',
+            content: (
+              <Companions
+                avatar={avatar}
+                pets={pets}
+                owned={owned}
+                onChoose={actions.onChoose}
+                onSeeLore={actions.onSeeLore}
+              />
+            ),
+          },
+          { id: 'look', label: 'Look', content: <ColoursSection ctx={ctx} /> },
+          {
+            id: 'home',
+            label: 'Room & yard',
+            content: (
+              <section className="panel">
+                <HouseInventory house={house} />
+                <GardenPlots
+                  memberId={identity.memberId}
+                  coupleId={identity.coupleId}
+                  garden={(ctx.pet?.plots ?? {}) as Garden}
+                  petXp={ctx.pet?.xp ?? 0}
+                  coins={avatar.coins}
+                  say={ctx.say}
+                />
+              </section>
+            ),
+          },
+        ]}
+      />
+    </>
   );
 }
 
@@ -521,105 +594,139 @@ function ShopSectionView({ ctx, onRevealed }: {
 }
 
 
-function Companions({ avatar, pets, owned, onChoose, onSeeLore, onHatch, onAdventure }: {
+/** How many companion cards the pane shows before "See all" (ONE-SCROLL rule 3). */
+const COMPANIONS_SHOWN = 3;
+
+function Companions({ avatar, pets, owned, onChoose, onSeeLore }: {
   avatar: Avatar;
   pets: PetInstance[];
   owned: InventoryItem[];
   onChoose: (petId: string | undefined) => void;
   onSeeLore: (petId: string) => void;
-  onHatch: () => void;
-  onAdventure: () => void;
 }) {
+  const [all, setAll] = useState(false);
   const level = levelOf(avatar);
   const sheet = sheetFor(avatar, gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned)));
-  const cost = adventureCost(level, sheet.energy);
+  // The one you walk with first, so it is never the card behind "See all".
+  const ordered = [...pets].sort((a, b) =>
+    Number(b.id === avatar.companionId) - Number(a.id === avatar.companionId));
+  const shown = ordered.slice(0, COMPANIONS_SHOWN);
+  const card = (pet: PetInstance, compact = false) => (
+    <PetCard
+      key={pet.id}
+      pet={pet}
+      chosen={avatar.companionId === pet.id}
+      compact={compact}
+      onChoose={onChoose}
+      onSeeLore={onSeeLore}
+    />
+  );
 
   return (
     <section className="panel">
-      <h2 className="section-title">Companions</h2>
-      <p className="section-sub">
-        Doing your own list charges their bar. That is the reason to have chosen one.
-      </p>
-
       {pets.length === 0 ? (
-        <p className="section-sub">No eggs hatched yet.</p>
+        <div className="birb-empty">
+          <span className="birb-empty-egg" aria-hidden="true">
+            <svg viewBox="0 0 40 48"><ellipse cx="20" cy="27" rx="15" ry="19" fill="var(--color-surface-muted)" stroke="var(--color-text-muted)" strokeWidth="1.5" /><path d="M9 26l5-4 5 5 5-5 5 4 3-2" fill="none" stroke="var(--color-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </span>
+          <p className="section-sub">No eggs hatched yet. The first one is above, at the top of the page.</p>
+        </div>
       ) : (
-        <ul className="pet-list">
-          {pets.map((pet) => {
-            const view = petSheet(pet);
-            const chosen = avatar.companionId === pet.id;
-            const Art = petArt(pet.kindId);
-            // A rarer companion is lit more brightly, and the one you have
-            // actually chosen is the only one whose ring drifts on its own.
-            return (
-              <li key={pet.id}>
-                <BorderGlow
-                  className={`pet ${chosen ? 'pet-chosen' : ''}`}
-                  colors={RARITY_GLOW[view.kind.rarity]}
-                  intensity={RARITY_INTENSITY[view.kind.rarity]}
-                  animated={chosen}
-                >
-                {Art ? <div className="pet-portrait" data-tier={view.kind.rarity}><Art /></div> : null}
-                <div className="pet-head">
-                  <span className="pet-name">{view.kind.name}</span>
-                  <span className="pet-rarity">{RARITY_NAMES[view.kind.rarity]} · rank {view.rank}</span>
-                </div>
-
-                <div className="bar-row">
-                  <span className="bar-label">MP</span>
-                  <div className="bar">
-                    <div
-                      className="bar-fill bar-fill-accent"
-                      style={{ width: `${(view.mp / Math.max(1, view.maxMp)) * 100}%` }}
-                    />
-                  </div>
-                  <span className="bar-value">{view.mp}/{view.maxMp}</span>
-                </div>
-
-                <div className="pet-skill">
-                  <strong>{view.kind.skill.name}</strong> · {view.kind.skill.mpCost} MP
-                  <div className="task-line">{view.kind.skill.blurb}</div>
-                </div>
-
-                {/* The lore is a reveal, not a label: it exists only once the
-                    egg is open, which is the whole of why an egg is worth having. */}
-                {pet.loreSeenAt ? (
-                  <p className="pet-lore">{view.kind.lore}</p>
-                ) : (
-                  <SecondaryAction onClick={() => onSeeLore(pet.id)}>Read who this is</SecondaryAction>
-                )}
-
-                <button
-                  type="button"
-                  className={chosen ? 'quiet' : 'primary'}
-                  onClick={() => onChoose(chosen ? undefined : pet.id)}
-                >
-                  {chosen ? 'Walking with you' : 'Walk with this one'}
-                </button>
-                </BorderGlow>
-              </li>
-            );
-          })}
-        </ul>
+        <ul className="pet-list pet-list-compact">{shown.map((pet) => card(pet, true))}</ul>
       )}
 
-      <Odds luck={sheet.stats.luck} pity={avatar.pity ?? 0} />
+      {pets.length > 0 ? (
+        <SecondaryAction onClick={() => setAll(true)}>
+          {pets.length > COMPANIONS_SHOWN ? `See all ${pets.length}` : 'Skills and lore'}
+        </SecondaryAction>
+      ) : null}
 
-      <div className="row">
-        <button type="button" className="primary" disabled={avatar.coins < EGG_PRICE} onClick={onHatch}>
-          {avatar.coins < EGG_PRICE
-            ? `${EGG_PRICE - avatar.coins} more coins for an egg`
-            : `Hatch an egg · ${EGG_PRICE} coins`}
-        </button>
-        <SecondaryAction onClick={onAdventure}>{cost.shortBy > 0
-            ? `${cost.shortBy} more energy`
-            : `Adventure · ${cost.energy} energy, ${cost.hours}h`}</SecondaryAction>
-      </div>
-      <p className="section-sub">
-        A kind you already have does not queue a second — it folds into the
-        one you have, the same way a duplicate item refines rather than stacks.
-      </p>
+      <Sheet
+        open={all}
+        onClose={() => setAll(false)}
+        label="All companions"
+        scrimClassName="menu-scrim"
+        panelClassName="menu-panel birb-sheet"
+      >
+        <div className="birb-sheet-head">
+          <h2 className="section-title">All companions</h2>
+          <SecondaryAction onClick={() => setAll(false)}>Done</SecondaryAction>
+        </div>
+        <ul className="pet-list">{ordered.map((pet) => card(pet))}</ul>
+      </Sheet>
+
+      <Merchant title="Egg odds" sub="What the next egg could be, with your luck folded in.">
+        <Odds luck={sheet.stats.luck} pity={avatar.pity ?? 0} />
+      </Merchant>
     </section>
+  );
+}
+
+/**
+ * One companion. Shared by the pane and the "See all" sheet: the pane shows
+ * it `compact` -- portrait, name, rank and the walk button -- and the sheet
+ * shows the MP, the skill and the lore, so three companions fit in a screen.
+ */
+function PetCard({ pet, chosen, compact = false, onChoose, onSeeLore }: {
+  pet: PetInstance;
+  chosen: boolean;
+  compact?: boolean;
+  onChoose: (petId: string | undefined) => void;
+  onSeeLore: (petId: string) => void;
+}) {
+  const view = petSheet(pet);
+  const Art = petArt(pet.kindId);
+  // A rarer companion is lit more brightly, and the one you have actually
+  // chosen is the only one whose ring drifts on its own.
+  return (
+    <li>
+      <BorderGlow
+        className={`pet ${chosen ? 'pet-chosen' : ''}`}
+        colors={RARITY_GLOW[view.kind.rarity]}
+        intensity={RARITY_INTENSITY[view.kind.rarity]}
+        animated={chosen}
+      >
+        {Art ? <div className="pet-portrait" data-tier={view.kind.rarity}><Art /></div> : null}
+        <div className="pet-head">
+          <span className="pet-name">{view.kind.name}</span>
+          <span className="pet-rarity">{RARITY_NAMES[view.kind.rarity]} · rank {view.rank}</span>
+        </div>
+
+        {compact ? null : (<>
+        <div className="bar-row">
+          <span className="bar-label">MP</span>
+          <div className="bar">
+            <div
+              className="bar-fill bar-fill-accent"
+              style={{ width: `${(view.mp / Math.max(1, view.maxMp)) * 100}%` }}
+            />
+          </div>
+          <span className="bar-value">{view.mp}/{view.maxMp}</span>
+        </div>
+
+        <div className="pet-skill">
+          <strong>{view.kind.skill.name}</strong> · {view.kind.skill.mpCost} MP
+          <div className="task-line">{view.kind.skill.blurb}</div>
+        </div>
+
+        {/* The lore is a reveal, not a label: it exists only once the egg is
+            open, which is the whole of why an egg is worth having. */}
+        {pet.loreSeenAt ? (
+          <p className="pet-lore">{view.kind.lore}</p>
+        ) : (
+          <SecondaryAction onClick={() => onSeeLore(pet.id)}>Read who this is</SecondaryAction>
+        )}
+        </>)}
+
+        <button
+          type="button"
+          className={chosen ? 'quiet' : 'primary'}
+          onClick={() => onChoose(chosen ? undefined : pet.id)}
+        >
+          {chosen ? 'Walking with you' : 'Walk with this one'}
+        </button>
+      </BorderGlow>
+    </li>
   );
 }
 
@@ -708,74 +815,48 @@ function Adventures({ avatar, owned, onGo }: {
  * would have meant a rug that is always painted over the feet standing on it.
  */
 /**
- * The room, which furnishes itself.
+ * The birbhouse room with your bird standing in it: the Birb page's hero.
  *
- * ## What came out, and why
- *
- * Twelve controls: four slots, each with a Bare chip and two pieces, plus copy
- * explaining that rearranging it changed what you both saw. Eight pieces
- * exist. A configuration screen for four either-or decisions is a lot of
- * surface for a question nobody was really asking, and the answer was almost
- * always "the better one" — so that is what it does now. Buying a piece places
- * it; see `refurnishHouse`.
- *
- * ## What auto-placement can decide
- *
- * *Which* piece stands in each slot, and never *where*. Every drawing in
- * `art/house/` uses absolute coordinates in this one shared 100×100 space —
- * the rainy window is at x=58, y=18 and can be nowhere else — so position is
- * not a thing there is a choice about. Making it one would mean rewriting all
- * eight to be position-agnostic inside a `<g transform>`.
- *
- * ## What is still shown
- *
- * The room, and a line naming what is in it with the empty slots said plainly.
- * A room that changed on its own with no account of why would be worse than
- * the chips were: the point of losing the controls is not losing the
- * information.
+ * Yours together. It furnishes itself from what the two of you own, so there
+ * is nothing to place -- see `refurnishHouse`. The bird is laid over the room
+ * rather than drawn inside its SVG, because the mascot may be a canvas, and a
+ * canvas cannot live in an SVG.
  */
-function Birbhouse({ house, avatar, children }: {
-  house: House;
-  avatar: Avatar;
-  /** The yard, drawn under the room. */
-  children?: React.ReactNode;
-}) {
+function HouseScene({ house, avatar }: { house: House; avatar: Avatar }) {
   const { theme } = useTheme();
   const mascot = getMascot(theme.id);
   const placed = normalizeHouse(house);
-  const bare = HOUSE_SLOTS.filter((slot) => !placed[slot]);
-
   return (
-    <section className="panel">
-      <h2 className="section-title">Birbhouse</h2>
-      <p className="section-sub">
-        Yours together. It furnishes itself from what the two of you own — buy a
-        better piece and it moves in.
-      </p>
-
-      <div className="house" role="img" aria-label="The birbhouse">
-        <svg viewBox="0 0 100 100" aria-hidden="true" className="house-scene">
-          <rect x="4" y="8" width="92" height="80" rx="6" fill="var(--color-surface-muted)" />
-          <path d="M4 76h92" stroke="var(--color-text-muted)" strokeWidth="1.2" opacity="0.5" />
-          {/* The whole room, then the bird on top of it. Nothing is drawn in
-              front of the character — see the note on HOUSE_SLOTS. */}
-          {HOUSE_SLOTS.map((slot) => {
-            const Art = houseArt(placed[slot]);
-            return Art ? <Art key={slot} /> : null;
-          })}
-        </svg>
-        {/* Over the room rather than inside its SVG, at the box the old
-            `translate(28 40) scale(0.44)` gave it: the mascot may be a canvas,
-            and a canvas cannot live in an SVG. */}
-        <div className="house-birb" style={dyeStyle(avatar.dye) as React.CSSProperties}>
-          <mascot.Art mood="content" />
-          <CostumeLayer id={avatar.costume} />
-        </div>
+    <div className="house" role="img" aria-label={`${mascot.name} in the birbhouse`}>
+      <svg viewBox="0 0 100 100" aria-hidden="true" className="house-scene">
+        <rect x="4" y="8" width="92" height="80" rx="6" fill="var(--color-surface-muted)" />
+        <path d="M4 76h92" stroke="var(--color-text-muted)" strokeWidth="1.2" opacity="0.5" />
+        {/* The whole room, then the bird on top of it. Nothing is drawn in
+            front of the character -- see the note on HOUSE_SLOTS. */}
+        {HOUSE_SLOTS.map((slot) => {
+          const Art = houseArt(placed[slot]);
+          return Art ? <Art key={slot} /> : null;
+        })}
+      </svg>
+      <div className="house-birb" style={dyeStyle(avatar.dye) as React.CSSProperties}>
+        <mascot.Art mood="content" />
+        <CostumeLayer id={avatar.costume} />
       </div>
+    </div>
+  );
+}
 
-      {/* An inventory of the room rather than a control for it. Each line is
-          the piece that won its slot, so the drawing is never a change nobody
-          can account for. */}
+/**
+ * What is in the room, as a list. An inventory rather than a control: each
+ * line is the piece that won its slot, so the drawing is never a change
+ * nobody can account for.
+ */
+function HouseInventory({ house }: { house: House }) {
+  const placed = normalizeHouse(house);
+  const bare = HOUSE_SLOTS.filter((slot) => !placed[slot]);
+  return (
+    <>
+      <h3 className="section-title">The room</h3>
       <ul className="house-list">
         {HOUSE_SLOTS.filter((slot) => placed[slot]).map((slot) => {
           const item = furnitureById(placed[slot]);
@@ -787,16 +868,14 @@ function Birbhouse({ house, avatar, children }: {
           ) : null;
         })}
       </ul>
-
       {bare.length > 0 ? (
         <p className="section-sub">
           {bare.length === HOUSE_SLOTS.length
-            ? 'Nothing in it yet. The merchant stocks furniture most days.'
+            ? 'Nothing in it yet. The merchant stocks furniture most days; the best piece either of you owns moves in.'
             : `Still bare: ${bare.map((slot) => HOUSE_SLOT_NAMES[slot].toLowerCase()).join(', ')}.`}
         </p>
       ) : null}
-      {children}
-    </section>
+    </>
   );
 }
 

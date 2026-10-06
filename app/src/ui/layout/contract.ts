@@ -34,6 +34,19 @@ export const MAX_PANES = 3;
 /** The most viewport-heights a single screen may scroll. */
 export const MAX_VIEWPORTS = 3;
 
+/**
+ * Where a screen should land: one phone screen plus a short scroll. The
+ * ceiling above is what is tolerated; this is what docs/ONE-SCROLL.md aims
+ * every page at, and past it the dev console says so (softly, and once).
+ */
+export const TARGET_VIEWPORTS = 1.25;
+
+/** True when a screen is taller than the one-scroll target. Same zero guard. */
+export function exceedsScrollTarget(scrollHeight: number, viewportHeight: number): boolean {
+  if (!(viewportHeight > 0)) return false;
+  return scrollHeight / viewportHeight > TARGET_VIEWPORTS;
+}
+
 /** True when a pane count is over the ceiling. */
 export function exceedsPaneLimit(count: number): boolean {
   return count > MAX_PANES;
@@ -107,6 +120,14 @@ export function overBudgetWarning(
   ) {
     const tall = (scrollHeight / viewportHeight).toFixed(1);
     return `${name} is ${tall} viewports tall; the ceiling is ${MAX_VIEWPORTS}. Something near the bottom is not being read.`;
+  }
+  if (
+    scrollHeight !== undefined
+    && viewportHeight !== undefined
+    && exceedsScrollTarget(scrollHeight, viewportHeight)
+  ) {
+    const tall = (scrollHeight / viewportHeight).toFixed(2);
+    return `${name} is ${tall} viewports tall; the one-scroll target is ${TARGET_VIEWPORTS}. See docs/ONE-SCROLL.md.`;
   }
   return null;
 }
