@@ -6513,41 +6513,71 @@ div.gear-slot:active { transform: none; }
   color: var(--color-text-muted);
 }
 .garden-meter-count { color: var(--color-text); }
-.garden-meter-list { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
-.garden-meter-earned { margin-top: var(--space-1); padding-top: var(--space-1); border-top: 1px dashed var(--color-border); }
-.garden-meter-seg {
-  position: relative;
-  display: flex;
-  align-items: center;
-  min-height: 1.35rem;
-  padding: 0 var(--space-2);
-  border-radius: var(--radius);
-  background: var(--color-surface-muted);
-  overflow: hidden;
-  font-size: var(--text-xs);
-}
-.garden-meter-fill {
-  position: absolute;
-  inset: 0;
-  transform: scaleX(0);
-  transform-origin: left center;
-  background: var(--color-accent);
-  transition: transform var(--motion-medium) var(--ease-soft);
-}
-.garden-meter-seg[data-on] .garden-meter-fill { transform: scaleX(1); }
-.garden-meter-seg[data-on] { color: var(--color-accent-text); font-weight: 600; }
-.garden-meter-label { position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.garden-meter-seg[data-answer] { outline: 1px solid var(--color-success); }
-.garden-meter-seg[data-answer][data-on] { color: var(--color-base); }
-.garden-meter-seg[data-answer][data-on] .garden-meter-fill {
-  background: var(--color-success);
-  animation: garden-meter-pulse 2.4s ease-in-out infinite;
-}
-@keyframes garden-meter-pulse { 0%, 100% { filter: none; } 50% { filter: brightness(1.12); } }
 .garden-meter-note { font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-tight); }
-:root[data-calm='true'] .garden-meter-seg .garden-meter-fill { animation: none; transition: none; }
+
+/* ---- the heart vial ---------------------------------------------------------
+   Today's charges as sand in a heart. Each band is its charge's own hue
+   (`domain/rpg/vial.ts`, 3:1 or better on light and dark alike) leaned 15%
+   towards the pack's accent, so the vial still belongs to the theme it is in.
+   The legend names every band in words; colour is never the only signal. */
+/* Three things in a column a little over 6.5rem wide: let them sit closer and
+   wrap rather than push the count out of the box. */
+.garden-vial .garden-meter-head { align-items: center; gap: var(--space-1); flex-wrap: wrap; letter-spacing: 0.02em; }
+.garden-vial-art { display: block; width: 100%; max-width: 7rem; height: auto; margin: 0 auto; }
+.garden-vial-band { --sand-lean: color-mix(in srgb, var(--sand) 85%, var(--color-accent)); }
+.garden-vial-glass-fill { fill: color-mix(in srgb, var(--color-surface-muted) 70%, transparent); }
+.garden-vial-glass { fill: none; stroke: var(--color-text-muted); stroke-width: 2; stroke-linejoin: round; }
+.garden-vial-shine { fill: none; stroke: var(--color-surface); stroke-width: 2.4; stroke-linecap: round; opacity: 0.8; }
+.garden-vial-neck { fill: color-mix(in srgb, var(--color-surface-muted) 70%, transparent); stroke: var(--color-text-muted); stroke-width: 1.6; }
+.garden-vial-cork { fill: color-mix(in srgb, var(--color-text-muted) 45%, var(--color-surface)); stroke: var(--color-text-muted); stroke-width: 1.2; }
+.garden-vial-cork[data-on] { fill: var(--color-accent); filter: drop-shadow(0 0 3px var(--color-accent)); }
+.garden-vial-star { fill: var(--color-surface); stroke: var(--color-text); stroke-width: 0.8; }
+.garden-vial-glint path { fill: var(--color-surface); stroke: var(--color-accent); stroke-width: 0.8; }
+
+/* A new band pours in from above and settles. Staggered by its place in the
+   stack so a day's sand lands bottom first. */
+.garden-vial-band {
+  animation: garden-vial-pour 0.7s var(--ease-soft) both;
+  animation-delay: calc(var(--pour) * 80ms);
+}
+@keyframes garden-vial-pour { from { transform: translateY(-14px); opacity: 0; } to { transform: none; opacity: 1; } }
+.garden-vial-art[data-full] .garden-vial-glass { stroke: var(--color-accent); }
+
+.garden-vial-legend {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.garden-vial-legend li { display: flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.garden-vial-legend li[data-on] { color: var(--color-text); font-weight: 600; }
+.garden-vial-dot {
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--sand);
+  opacity: 0.35;
+}
+.garden-vial-legend li[data-on] .garden-vial-dot { opacity: 1; }
+.garden-vial-earned {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.garden-vial-earned span { padding: 0 var(--space-1); border: 1px dashed var(--color-border); border-radius: 999px; }
+.garden-vial-earned span[data-on] { border-style: solid; border-color: var(--color-accent); color: var(--color-text); font-weight: 600; }
+.garden-vial-legend .icon, .garden-vial-earned .icon { width: 0.75em; height: 0.75em; margin-left: 2px; }
+
+:root[data-calm='true'] .garden-vial-band { animation: none; }
 @media (prefers-reduced-motion: reduce) {
-  .garden-meter-seg .garden-meter-fill { animation: none; transition: none; }
+  .garden-vial-band { animation: none; }
 }
 .garden-action.is-locked { opacity: 0.4; }
 
@@ -7241,9 +7271,8 @@ div.gear-slot:active { transform: none; }
 }
 .garden-action-name { justify-content: flex-start; }
 .garden-action-name .icon, .raid-gate-enter .icon { flex-shrink: 0; }
-.garden-meter-label .icon {
+.garden-vial-legend .icon, .garden-vial-earned .icon {
   display: inline-block;
-  margin-left: 2px;
   vertical-align: -0.125em;
 }
 
