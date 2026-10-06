@@ -48,7 +48,7 @@ if (!existsSync(join(DIST, 'index.html'))) {
  * in the failure message is a number somebody has to think about.
  */
 const PRECACHE_CEILING_ENTRIES = 24;
-// Raised twice, each time for shipped content rather than for a chunk that
+// Raised three times, each for shipped content rather than for a chunk that
 // slipped into the precache (the four guards below that catch that — phaser,
 // the game worker, the 3D mascots and the gear art — are unchanged):
 //   1200 -> 1220  islands 8-10, costume art, coin sources and the partner gate.
@@ -61,10 +61,15 @@ const PRECACHE_CEILING_ENTRIES = 24;
 //                 gzip, headroom 5 -> 24 KiB. The gzip barely moves, which is
 //                 the honest size of what a phone downloads; raw is the number
 //                 this ceiling is written in.
+//   1235 -> 1260  the partner pedestal and server-ordered sync (#133, CI
+//                 measured 1236), the one-screen Birb (#135, 1240) and the
+//                 heart vial (#136). Shipped screens, not a stray chunk: the
+//                 four guards below still pass. Together about 1246, which
+//                 keeps the headroom every raise has kept.
 // Headroom was about 14 KiB each time it was raised, which is what it was at
 // 1200. Costume (9 KB source), house (4.5 KB) and companion (17 KB) art can
 // leave the same way if it is needed again.
-const PRECACHE_CEILING_KIB = 1235;
+const PRECACHE_CEILING_KIB = 1260;
 
 const sw = await readFile(join(DIST, 'sw.js'), 'utf8');
 const manifest = [...sw.matchAll(/"revision":\s*(?:"[^"]*"|null),\s*"url":\s*"([^"]+)"/g)]
