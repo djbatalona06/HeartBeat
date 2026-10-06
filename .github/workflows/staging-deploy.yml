@@ -1,0 +1,131 @@
+name: Deploy Staging
+
+# The whole stack on its own data: a Pages project (heartbeat-app-staging), a
+# Worker (heartbeat-api-staging) and a D1 database (heartbeat-staging), all
+# separate from production. Merge a change into `staging`, walk it on two real
+# phones, then open staging -> main to ship it. See "Staging" in docs/DEPLOY.md.
+#
+# Different from preview.yml: a PR preview is one branch's Pages build on a
+# database every PR shares, talking to the production Worker. Staging also runs
+# its own Worker (push, the boss cron) and its own migrations, so a change that
+# touches the schema or the Worker can be tried before it reaches the couple.
+#
+# Same two repository secrets as deploy.yml and worker-deploy.yml.
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run at a time and never cancelled: each starts with a migration.
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
+
+env:
+  PAGES_PROJECT: heartbeat-app-staging
+  STAGING_DB: heartbeat-staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install the wasm workload
+        run: dotnet workload install wasm-tools
+
+      - name: Install
+        run: npm ci
+
+      - name: Config agrees with itself
+        # Fails if staging's database is production's, or the Pages and Worker
+        # halves of staging name different databases.
+        run: node scripts/check-config-sync.mjs
+
+      - name: Test the Worker
+        working-directory: worker
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          APP_BASE: /
+
+      - name: Apply D1 migrations to staging
+        # Schema before code, exactly as production does it.
+        working-directory: worker
+        run: npx wrangler d1 migrations apply "$STAGING_DB" --remote --env staging
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy the staging Worker
+        working-directory: worker
+        run: npx wrangler deploy --env staging
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Ensure the staging Pages project exists
+        # Asked for by name, as deploy.yml does. Created on first run with
+        # `staging` as its production branch, so a deploy of `staging` reads the
+        # top-level bindings in app/wrangler.staging.toml.
+        run: |
+          set -euo pipefail
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          auth="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          code=$(curl -sS -o project.json -w '%{http_code}' -H "$auth" "$api/pages/projects/$PAGES_PROJECT")
+          case "$code" in
+            200) echo "Pages project '$PAGES_PROJECT' exists." ;;
+            404)
+              echo "Creating Pages project '$PAGES_PROJECT'."
+              npx wrangler pages project create "$PAGES_PROJECT" --production-branch=staging
+              curl -sS -o project.json -H "$auth" "$api/pages/projects/$PAGES_PROJECT"
+              ;;
+            *) echo "::error::Cloudflare answered $code for the staging Pages project."; cat project.json; exit 1 ;;
+          esac
+          # The Worker only answers origins it was told about. Pages appends a
+          # suffix when a subdomain is taken, so say so here rather than as a
+          # CORS error on a phone.
+          sub=$(jq -r '.result.subdomain // empty' project.json)
+          if [ -n "$sub" ] && ! grep -q "https://$sub" worker/wrangler.toml; then
+            echo "::warning::The staging site is https://$sub but worker/wrangler.toml [env.staging] ALLOWED_ORIGIN does not list it. Pairing and push from staging will be refused until it does."
+          fi
+          rm -f project.json
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy the staging site
+        # A Pages project reads only wrangler.toml, so staging's bindings are
+        # swapped in for this runner's copy. Nothing is committed.
+        working-directory: app
+        run: |
+          set -euo pipefail
+          cp wrangler.staging.toml wrangler.toml
+          npx wrangler pages deploy --project-name="$PAGES_PROJECT" --branch=staging 2>&1 | tee deploy.log
+          url=$(grep -oE 'https://[a-zA-Z0-9.-]+\.pages\.dev' deploy.log | tail -1 || true)
+          {
+            echo "### Staging"
+            echo
+            if [ -n "$url" ]; then echo "**$url**"; else echo "Deployed; the URL is in the step log above."; fi
+            echo
+            echo "Own database, bucket and Worker — nothing here touches production."
+            echo "Walk it on two phones, then open a pull request from staging to main."
+          } >> "$GITHUB_STEP_SUMMARY"
+          rm -f deploy.log
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

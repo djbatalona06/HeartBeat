@@ -73,11 +73,15 @@ const PAGE = 300;
  * nothing about what the database does.
  */
 export const UPSERT_SQL =
-  `INSERT INTO holdings (id, kind, couple_id, member_id, payload, updated_at)
-   VALUES (?, ?, ?, ?, ?, ?)
+  `INSERT INTO holdings (id, kind, couple_id, member_id, payload, updated_at, seq)
+   VALUES (?1, ?2, ?3, ?4, ?5, ?6,
+     (SELECT IFNULL(MAX(seq), 0) + 1 FROM holdings WHERE couple_id = ?3))
    ON CONFLICT(kind, id) DO UPDATE SET
      payload    = excluded.payload,
      updated_at = excluded.updated_at,
+     -- When the server saw it, not when the phone made it: this is what the
+     -- pull pages by. See 0019_sync_seq.sql.
+     seq        = (SELECT IFNULL(MAX(seq), 0) + 1 FROM holdings WHERE couple_id = ?3),
      -- The writer of record moves with the write, which only ever matters for
      -- a shared kind; for the rest it is already the same member every time.
      member_id  = excluded.member_id
@@ -98,24 +102,43 @@ function utf8Bytes(text: string): number {
   return new TextEncoder().encode(text).length;
 }
 
+/**
+ * The pull, paged by the server's own write order. Exported so the worker test
+ * runs this exact string against real SQLite.
+ *
+ * `seq` rather than `updated_at`: a row is stamped by the phone that made it
+ * and may reach the server hours later, and paging by that stamp skipped it on
+ * every phone whose cursor had already passed it. See 0019_sync_seq.sql.
+ */
+export const PULL_BY_SEQ_SQL =
+  `SELECT id, kind, member_id, payload, updated_at, seq
+     FROM holdings
+    WHERE couple_id = ? AND seq > ?
+    ORDER BY seq ASC
+    LIMIT ?`;
+
+/** The pull clients sent before `seq` existed. Kept so an old cached app keeps syncing. */
+const PULL_BY_STAMP_SQL =
+  `SELECT id, kind, member_id, payload, updated_at, seq
+     FROM holdings
+    WHERE couple_id = ? AND updated_at > ?
+    ORDER BY updated_at ASC, kind ASC, id ASC
+    LIMIT ?`;
+
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const caller = await authenticate(request, env);
   if (!caller) return json({ error: 'unauthorized' }, 401);
 
-  const since = Number(new URL(request.url).searchParams.get('since') ?? 0);
-  const from = Number.isFinite(since) && since > 0 ? since : 0;
+  const params = new URL(request.url).searchParams;
+  const bySeq = params.has('after');
+  const raw = Number(params.get(bySeq ? 'after' : 'since') ?? 0);
+  const from = Number.isFinite(raw) && raw > 0 ? raw : 0;
 
   // One extra row is asked for and never served: it is how "is there more"
   // is answered without a second COUNT over the same range.
-  const { results } = await env.DB.prepare(
-    `SELECT id, kind, member_id, payload, updated_at
-       FROM holdings
-      WHERE couple_id = ? AND updated_at > ?
-      ORDER BY updated_at ASC, kind ASC, id ASC
-      LIMIT ?`,
-  )
+  const { results } = await env.DB.prepare(bySeq ? PULL_BY_SEQ_SQL : PULL_BY_STAMP_SQL)
     .bind(caller.coupleId, from, PAGE + 1)
-    .all<{ id: string; kind: string; member_id: string; payload: string; updated_at: number }>();
+    .all<{ id: string; kind: string; member_id: string; payload: string; updated_at: number; seq: number }>();
 
   const page = (results ?? []).slice(0, PAGE);
   const more = (results ?? []).length > PAGE;
@@ -133,13 +156,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     mine: r.member_id === caller.memberId,
   }));
 
+  const last = page[page.length - 1];
   return json({
     rows,
     // The server's own cursor, echoed back from the rows it served — never a
-    // local clock. A phone running a minute fast would otherwise ask for
-    // changes since a future moment and skip everything in between. Same rule
-    // as /api/entries.
-    cursor: page.length ? page[page.length - 1].updated_at : from,
+    // local clock. With `after` it is the last row's seq; the old `since` form
+    // still answers with a stamp.
+    cursor: last ? (bySeq ? last.seq : last.updated_at) : from,
     more,
   });
 };

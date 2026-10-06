@@ -382,7 +382,7 @@ describe('sync() past a row the server refuses', () => {
       coupleId: 'couple-1',
       workerSecret: 'token',
       syncPushedAt: 0,
-      syncPulledAt: 0,
+      entriesSeq: 0,
     });
   };
 
@@ -408,7 +408,7 @@ describe('sync() past a row the server refuses', () => {
           { status: 200, headers: { 'content-type': 'application/json' } },
         );
       }
-      expect(url).toContain('/api/entries?since=');
+      expect(url).toContain('/api/entries?after=');
       return new Response(JSON.stringify({ entries: [], cursor: 0, more: false }), {
         status: 200, headers: { 'content-type': 'application/json' },
       });

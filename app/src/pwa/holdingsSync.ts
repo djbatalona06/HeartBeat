@@ -121,12 +121,15 @@ async function push(token: string, rows: WireHolding[]): Promise<PushResult> {
   };
 }
 
-async function pull(token: string, since: number): Promise<{
+async function pull(token: string, after: number): Promise<{
   rows: PulledHolding[];
   cursor: number;
   more: boolean;
 }> {
-  const res = await fetch(`/api/holdings?since=${encodeURIComponent(String(since))}`, {
+  // By `seq`, the server's write order, never by a phone's stamp: a partner's
+  // row made offline reaches the server after this phone's stamp cursor has
+  // passed it, and was skipped for good. See worker/migrations/0019_sync_seq.sql.
+  const res = await fetch(`/api/holdings?after=${encodeURIComponent(String(after))}`, {
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(`holdings pull failed: ${res.status}`);
@@ -135,7 +138,7 @@ async function pull(token: string, since: number): Promise<{
     cursor?: number;
     more?: boolean;
   };
-  return { rows: body.rows ?? [], cursor: body.cursor ?? since, more: !!body.more };
+  return { rows: body.rows ?? [], cursor: body.cursor ?? after, more: !!body.more };
 }
 
 /**
@@ -198,12 +201,12 @@ export async function syncHoldings(): Promise<HoldingsSyncResult | null> {
     refused += (await push(token, part)).refused.length;
   }
 
-  const { rows, cursor, more } = await pull(token, settings.holdingsPulledAt ?? 0);
+  const { rows, cursor, more } = await pull(token, settings.holdingsSeq ?? 0);
   const applied = await applyPulled(rows);
 
   await saveSettings({
     holdingsPushedAt: highWaterAfter(pushedAt, pending, rows),
-    holdingsPulledAt: cursor,
+    holdingsSeq: cursor,
   });
 
   return { pushed: pending.length - refused, pulled: rows.length, applied, skipped: refused, more };

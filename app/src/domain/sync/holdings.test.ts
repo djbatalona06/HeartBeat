@@ -272,6 +272,13 @@ describe('highWaterAfter', () => {
     expect(mark).toBe(AT + 9);
   });
 
+  it('ignores a partner\'s stamp, which is their clock and not ours', () => {
+    // Their phone running an hour fast must not carry our mark past edits
+    // made here that have not been sent yet.
+    const mark = highWaterAfter(AT, [], [pulled({ updatedAt: AT + 3_600_000, mine: false })]);
+    expect(mark).toBe(AT);
+  });
+
   it('never goes backwards', () => {
     expect(highWaterAfter(AT, [], [])).toBe(AT);
     expect(highWaterAfter(AT, [toWire('inventory', item({ updatedAt: 5 }))], [])).toBe(AT);
