@@ -1,6 +1,6 @@
 # Calm UI: foundation, retune, `ui/` primitives, Home pilot — design
 
-**Status:** decisions settled 2026-10-07. Not built yet. Pieces A (foundation) and
+**Status:** built 2026-10-07, as four commits on one PR (the session's branch was fixed). Where the build departed from the design below, "As built" at the end says how and why. Pieces A (foundation) and
 B (visual language) of the rebuild mapped in `docs/ui-map.md`, in one spec. Piece C
 (Eve's Garden, Raid Gate, heart vial, habitat) and `gift/` are out of scope.
 
@@ -179,3 +179,40 @@ by hand in Safari's timeline before and after; not a CI gate.
 
 The other 24 pages' one-scroll passes, piece C (engine-adjacent sections), `gift/`,
 Lightning CSS, the film grain, per-pack motion values, accent/text/state colours.
+
+## As built
+
+What changed between the design above and the code, and why.
+
+- **Every partial is in `legacy`, and `legacy` sits above `ui` and `features`.**
+  Splitting sections into different layers by owner would have changed which
+  rule wins, because layer order beats specificity. The 41 partials concatenate
+  back to the old file byte for byte. A section leaves `legacy` when it is
+  restyled, in the same change.
+- **The reset is in the `reset` layer**, moved there before anything entered
+  `ui`: a `*` rule in `legacy` would outrank every class in `ui`.
+- **z-index rule:** a raw value is allowed up to 4 (local stacking); above that,
+  a token. That is checkable from CSS alone, which "inside an `isolation:
+  isolate` parent" is not. A `--z-scrim` step (5) was added for the two
+  page-level scrims that sat at a raw 5; values did not change.
+- **`styles.test.ts` also fails on an empty partial.** The reset was truncated
+  once mid-build and still imported and built cleanly.
+- **Blur:** removed from "today", the menu button and the wallet badge.
+  `ui-map.md`'s line 1524 was the menu scrim, not the badge; the badge and the
+  menu button are drawn as one strip, so both lost it. Scrims keep theirs.
+- **Colour, proportional instead of flat ceilings.** Measured first: the light
+  palettes were already near the ceilings, and every dark palette was 1.5–6×
+  over them, so flat ceilings would have greyed every dark pack's cards on a
+  coloured page. Dark grounds lost 30% of their chroma, hue and lightness kept.
+  Light grounds above 0.02 / 0.04 were clamped under them (3 values). `base` is
+  untouched because `palettes.test.ts` pins it. Dark borders are measured as
+  written, not as painted: at about 22% alpha a painted border is mostly the
+  unchanged page.
+- **`ui/`:** the `(i)` beside every page title is muted too, and lit while its
+  guide is open. ListRow got no container query: a container cannot query
+  itself, and the row has no inner wrapper. `Screen`'s `sub` stayed required:
+  every page passes one, so an optional prop would have had no caller.
+- **Home: 4.27 → 1.94 screens, not 1.25.** The rest is the garden hero, sized
+  on purpose so the first screen is the pet standing in the garden. Shrinking
+  it is the owner's call, not a side effect of this spec. The larger text made
+  every unsplit page 2–8% taller; see the table in `docs/ONE-SCROLL.md`.

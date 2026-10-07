@@ -57,19 +57,25 @@ sits behind PairGate, so `visual.mjs` would only ever measure the pairing
 screen. A fresh couple has no data, so these numbers are floors, not a typical
 day.
 
-| Page | Screens (2026-10-06) | Status |
-|---|---|---|
-| Home | 4.27 | next |
-| Settings | 4.01 | |
-| Tasks | 3.48 | |
-| Mood | 2.57 | |
-| Move | 2.49 | |
-| Raid | 2.00 | Island Path shipped; still over |
-| Shop | 1.79 | |
-| Bag | 1.49 | |
-| Work | 1.27 | |
-| **Birb** | **1.00** (Look 1.24, Room & yard 1.07) | **done** |
-| Partner | 1.00 | done |
+The 2026-10-07 column is after the calm retune
+(`docs/superpowers/specs/2026-10-07-calm-ui-foundation-design.md`): body text
+went from 15.5px to 17px and the gap between cards from 18px to 24px, which
+made every page that was not split 2–8% taller. That is the cost the retune
+was meant to be paid for by splitting pages, one at a time, as Home was.
+
+| Page | Screens (2026-10-06) | Screens (2026-10-07) | Status |
+|---|---|---|---|
+| Home | 4.27 | **1.94** | Today · Us · Adventure panes. The rest of the Today pane is the garden hero (`.home-mascot-standalone`, "the first screen is the pet standing in the garden"), kept on purpose |
+| Settings | 4.01 | 4.30 | next |
+| Tasks | 3.48 | 3.76 | |
+| Mood | 2.57 | 2.67 | |
+| Move | 2.49 | 2.62 | |
+| Raid | 2.00 | 2.06 | Island Path shipped; still over |
+| Shop | 1.79 | 1.84 | |
+| Bag | 1.49 | 1.58 | |
+| Work | 1.27 | 1.28 | |
+| **Birb** | **1.00** (Look 1.24, Room & yard 1.07) | 1.01 | **done** |
+| Partner | 1.00 | 1.00 | done |
 
 ### Birb, as shipped
 
