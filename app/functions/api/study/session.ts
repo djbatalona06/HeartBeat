@@ -35,6 +35,7 @@ const STUDY_XP: Record<string, number> = {
   weekly: 35,
   match: 10,
   anatomy: 15,
+  typing: 15,
 };
 
 const STUDY_DAILY_CAP = 120;

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   STUDY_DAILY_CAP,
   STUDY_KINDS,
+  STUDY_XP,
   allowedGain,
   isStudyKind,
   isUsableSessionId,
@@ -88,5 +89,17 @@ describe('allowedGain', () => {
   it('gives nothing once the day is full', () => {
     expect(allowedGain(STUDY_DAILY_CAP, 25)).toBe(0);
     expect(allowedGain(STUDY_DAILY_CAP + 50, 25)).toBe(0);
+  });
+});
+
+describe('the Pages Function copy of the table', () => {
+  // tsconfig.functions.json includes only functions/, so the route cannot import
+  // award.ts and restates the table. Nothing else holds the two together.
+  it('pays exactly what this module says, for every kind', async () => {
+    const { readFileSync } = await import('node:fs');
+    const source = readFileSync(new URL('../../../functions/api/study/session.ts', import.meta.url), 'utf8');
+    const block = /const STUDY_XP: Record<string, number> = \{([^}]*)\}/.exec(source)?.[1] ?? '';
+    const restated = Object.fromEntries([...block.matchAll(/(\w+):\s*(\d+)/g)].map((m) => [m[1], Number(m[2])]));
+    expect(restated).toEqual(STUDY_XP);
   });
 });
