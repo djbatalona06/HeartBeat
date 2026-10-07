@@ -27,23 +27,27 @@ export const SHARED_TOKENS: Record<string, string> = {
 
   // Big, friendly, and fluid. The floor matters more than the ceiling: nothing
   // that carries meaning is allowed below 12px.
-  '--text-xs': '12px',
-  '--text-sm': '13.5px',
-  '--text-base': '15.5px',
-  '--text-lg': 'clamp(17px, 4.4vw, 19px)',
+  '--text-xs': '13px',
+  '--text-sm': '15px',
+  '--text-base': '17px',
+  '--text-lg': 'clamp(19px, 5vw, 21px)',
   '--text-xl': 'clamp(21px, 5.4vw, 25px)',
   '--text-2xl': 'clamp(26px, 7vw, 34px)',
   '--text-3xl': 'clamp(32px, 9vw, 44px)',
   '--line-tight': '1.15',
-  '--line-body': '1.55',
+  '--line-body': '1.5',
 
   // 48px, above Apple's 44pt floor. A one-handed tap on a phone in bed is the
   // posture this app is actually used in.
   '--tap': '48px',
 
-  // One soft curve, used by everything that moves. Overshoot on purpose: it is
-  // what makes a bar filling read as a reward rather than a progress report.
-  '--ease-soft': 'cubic-bezier(0.34, 1.4, 0.5, 1)',
+  // Everyday motion settles with barely any overshoot: a calm screen does not
+  // bounce every time a chip is pressed.
+  '--ease-soft': 'cubic-bezier(0.34, 1.1, 0.5, 1)',
+  // The overshoot is kept for the moments that are earned (a bar filling, the
+  // day's hello, a charge pouring in), where it is what makes the fill read as
+  // a reward rather than a progress report.
+  '--ease-reward': 'cubic-bezier(0.34, 1.4, 0.5, 1)',
   '--motion-slow': '520ms',
 
   // The shell's own measurements, as tokens rather than numbers buried in one
@@ -51,7 +55,7 @@ export const SHARED_TOKENS: Record<string, string> = {
   // screen places its ring inside whatever is left — should be able to read it
   // instead of copying `92px` and drifting the next time this changes.
   '--shell-max': '560px',
-  '--shell-gutter': '18px',
+  '--shell-gutter': '20px',
   '--shell-top': 'var(--space-5)',
   '--shell-bottom': 'var(--space-5)',
   /** The tab bar's own height, before the phone's safe area is added under it.
@@ -65,7 +69,10 @@ export const SHARED_TOKENS: Record<string, string> = {
 
   // The gap between stacked cards. Finch's breathing room is mostly this one
   // number, and it is the first thing to raise when a screen feels crowded.
-  '--stack': '18px',
+  '--stack': '24px',
+  /** Between groups of content on one page: wider than `--stack`, so a page
+      reads as a few groups rather than one long run of cards. */
+  '--section-gap': 'var(--space-6)',
 
   /**
    * Depth, as one scale rather than a number per rule.

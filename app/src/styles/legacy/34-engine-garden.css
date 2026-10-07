@@ -339,7 +339,7 @@
 /* A new band pours in from above and settles. Staggered by its place in the
    stack so a day's sand lands bottom first. */
 .garden-vial-band {
-  animation: garden-vial-pour 0.7s var(--ease-soft) both;
+  animation: garden-vial-pour 0.7s var(--ease-reward) both;
   animation-delay: calc(var(--pour) * 80ms);
 }
 @keyframes garden-vial-pour { from { transform: translateY(-14px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -1093,7 +1093,7 @@
   font-size: var(--text-sm);
   font-weight: 600;
   pointer-events: none;
-  animation: garden-flourish var(--motion-slow) var(--ease-soft) forwards;
+  animation: garden-flourish var(--motion-slow) var(--ease-reward) forwards;
 }
 
 @keyframes garden-flourish {

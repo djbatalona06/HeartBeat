@@ -204,7 +204,7 @@ body {
 }
 
 :root[data-calm='true'] .home-pet-fill {
-  transition: width var(--motion-slow) var(--ease-soft);
+  transition: width var(--motion-slow) var(--ease-reward);
 }
 
 /* ---- film grain -----------------------------------------------------------

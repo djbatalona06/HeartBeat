@@ -31,7 +31,7 @@
 .bar-boss { height: 16px; margin-top: var(--space-3); }
 /* The overshoot is the point: a bar filling should read as a reward, not as a
    progress report. */
-.bar-fill { height: 100%; border-radius: 999px; transition: width var(--motion-slow) var(--ease-soft); }
+.bar-fill { height: 100%; border-radius: 999px; transition: width var(--motion-slow) var(--ease-reward); }
 .bar-fill-accent { background: var(--color-accent-live); }
 .bar-fill-success { background: var(--color-success); }
 .bar-fill-danger { background: var(--color-danger); }

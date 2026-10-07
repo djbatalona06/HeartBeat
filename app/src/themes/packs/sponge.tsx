@@ -62,7 +62,7 @@ export const spongeTheme: Theme = {
   name: 'SpongeBob',
   blurb: 'Gold on deep navy, bubbles rising.',
   isLight: false,
-  opaqueSurface: '#121e38',
+  opaqueSurface: '#161f31',
   colors: {
     // Black & Gold Elegance, mapped whole: near-black is the page, Prussian
     // blue the raised surface, gold the one thing that asks to be pressed.
@@ -74,9 +74,9 @@ export const spongeTheme: Theme = {
     // 4.5:1 that would make this a readability question. What it buys is a
     // page that has somewhere darker to go and ink that is not a hole.
     base: '#0B0B12',
-    surface: 'rgba(20, 33, 61, 0.92)',
-    surfaceMuted: 'rgba(30, 46, 82, 0.7)',
-    border: 'rgba(252, 163, 17, 0.22)',
+    surface: 'rgba(24, 34, 53, 0.92)',
+    surfaceMuted: 'rgba(35, 47, 72, 0.7)',
+    border: 'rgba(233, 172, 97, 0.22)',
     text: '#F7F7FA',
     textMuted: 'rgba(229, 229, 229, 0.62)',
     accent: '#fca311',

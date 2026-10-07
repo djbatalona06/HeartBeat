@@ -138,12 +138,12 @@
   font-size: var(--text-lg);
   line-height: 1;
   transition: background-color var(--motion-fast) var(--motion-easing),
-              transform var(--motion-medium) var(--ease-soft);
+              transform var(--motion-medium) var(--ease-reward);
 }
 .tabbar-tab.active { color: var(--color-accent); }
 .tabbar-tab.active .tabbar-glyph {
   background: color-mix(in srgb, var(--color-accent) 16%, transparent);
-  /* The overshoot in --ease-soft is the whole effect: the glyph passes its
+  /* The overshoot in --ease-reward is the whole effect: the glyph passes its
      resting size and settles back. Damped under calm and reduced-motion. */
   transform: scale(1.06);
 }
@@ -197,8 +197,7 @@
   padding: 0;
   font-size: var(--text-lg);
   color: var(--color-text);
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
-  backdrop-filter: blur(14px);
+  background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-large);
   box-shadow: var(--shadow);
@@ -208,7 +207,7 @@
 
 /* ---- the wallet badge -----------------------------------------------------
    Top-right, mirroring the menu button across the shell: same fixed band, same
-   surface, same blur, so the two read as one strip of chrome rather than two
+   solid surface, so the two read as one strip of chrome rather than two
    floating widgets. `.shell` already clears `--tap` at the top for the menu
    button, which is exactly the room this needs too.
 
@@ -229,8 +228,7 @@
   font-variant-numeric: tabular-nums;
   color: var(--color-text);
   text-decoration: none;
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
-  backdrop-filter: blur(14px);
+  background: var(--color-surface);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-large);
   box-shadow: var(--shadow);

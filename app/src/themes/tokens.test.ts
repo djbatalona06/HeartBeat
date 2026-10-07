@@ -291,3 +291,14 @@ describe('the shared shape layer', () => {
     }
   });
 });
+
+describe('the type scale', () => {
+  it('puts nothing below 13px, at any width', () => {
+    // The smallest size a `clamp()` can reach is its first argument.
+    for (const [key, value] of Object.entries(SHARED_TOKENS)) {
+      if (!key.startsWith('--text-')) continue;
+      const floor = Number.parseFloat(value.replace(/^clamp\(/, ''));
+      expect(floor, key).toBeGreaterThanOrEqual(13);
+    }
+  });
+});

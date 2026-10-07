@@ -80,16 +80,16 @@ export const ponyTheme: Theme = {
   name: 'My Little Pony',
   blurb: 'Petal frost and periwinkle, a scatter of sparkles.',
   isLight: false,
-  opaqueSurface: '#252145',
+  opaqueSurface: '#25233c',
   colors: {
     // Soft Pastels is five light tints and no dark, so the two dark values
     // here are the only ones in this file the palette did not supply: a
     // periwinkle taken most of the way to black for the page, and one step up
     // from it for the cards. Everything with a hue is the palette's own.
     base: '#191634',
-    surface: 'rgba(38, 34, 70, 0.92)',
-    surfaceMuted: 'rgba(52, 46, 92, 0.7)',
-    border: 'rgba(200, 182, 255, 0.26)',
+    surface: 'rgba(38, 36, 61, 0.92)',
+    surfaceMuted: 'rgba(52, 49, 81, 0.7)',
+    border: 'rgba(198, 186, 237, 0.26)',
     text: '#f6f1ff',
     textMuted: 'rgba(211, 199, 245, 0.68)',
     accent: '#c8b6ff',
@@ -108,7 +108,7 @@ export const ponyTheme: Theme = {
     colors: {
       base: '#fbf7ff',
       surface: 'rgba(253, 252, 251, 0.95)',
-      surfaceMuted: 'rgba(231, 198, 255, 0.5)',
+      surfaceMuted: 'rgba(227, 202, 245, 0.5)',
       border: 'rgba(98, 82, 158, 0.22)',
       text: '#2a2450',
       textMuted: '#5c5590',

@@ -159,10 +159,10 @@
   transform: translateX(-50%) rotate(45deg);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .home-mascot-standalone[data-greet='wave'] { animation: greet-wave 0.8s var(--ease-soft, ease) 0.2s 1; }
-  .home-mascot-standalone[data-greet='hop'] { animation: greet-hop 0.7s var(--ease-soft, ease) 0.2s 1; }
-  .home-mascot-standalone[data-greet='peek'] { animation: greet-peek 0.9s var(--ease-soft, ease) 0.2s 1 backwards; }
-  .home-mascot-standalone[data-greet='wiggle'] { animation: greet-wiggle 0.8s var(--ease-soft, ease) 0.2s 1; }
+  .home-mascot-standalone[data-greet='wave'] { animation: greet-wave 0.8s var(--ease-reward, ease) 0.2s 1; }
+  .home-mascot-standalone[data-greet='hop'] { animation: greet-hop 0.7s var(--ease-reward, ease) 0.2s 1; }
+  .home-mascot-standalone[data-greet='peek'] { animation: greet-peek 0.9s var(--ease-reward, ease) 0.2s 1 backwards; }
+  .home-mascot-standalone[data-greet='wiggle'] { animation: greet-wiggle 0.8s var(--ease-reward, ease) 0.2s 1; }
 }
 @keyframes greet-wave {
   0%, 100% { transform: rotate(0); }
@@ -216,11 +216,12 @@
 .home-today {
   margin-top: var(--stack);
   padding: var(--space-4);
-  background: var(--glass);
+  /* Solid, as reduced transparency has always drawn it: one blur fewer on
+     Home, and the card reads as a card rather than a pane of frosted glass. */
+  background: var(--color-surface);
   border: var(--border-width) solid var(--hairline);
   border-radius: var(--radius-large);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(6px);
 }
 
 .home-today-list { list-style: none; margin-top: var(--space-3); }
@@ -386,8 +387,8 @@
   height: 100%;
   border-radius: 999px;
   background: var(--color-accent-live);
-  transition: width var(--motion-slow) var(--ease-soft),
-              background-color var(--motion-slow) var(--ease-soft);
+  transition: width var(--motion-slow) var(--ease-reward),
+              background-color var(--motion-slow) var(--ease-reward);
 }
 
 /* ---- the Together panel ---------------------------------------------------
@@ -456,7 +457,7 @@
   height: 100%;
   border-radius: 999px;
   background: var(--color-accent);
-  transition: width var(--motion-slow) var(--ease-soft);
+  transition: width var(--motion-slow) var(--ease-reward);
 }
 .vitals-bar-fill[data-attribute='vitality'] {
   background: color-mix(in srgb, var(--color-accent) 70%, var(--color-success));
