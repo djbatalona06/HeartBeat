@@ -1,0 +1,393 @@
+/* ---- exercise --------------------------------------------------------------
+   The day stepper, the set grid and the two proof slots.
+
+   The one rule doing real work here is `max-width: 100%` on the shot. A phone
+   photograph is a couple of thousand pixels wide, and without it the image sets
+   the width of the whole document rather than the width of its card — the page
+   scrolls sideways and every other screen inherits the damage. */
+
+.ex-days {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.ex-day {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  letter-spacing: var(--font-display-tracking);
+  min-width: 9ch;
+  text-align: center;
+}
+
+.ex-day-step {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: var(--text-base);
+}
+
+.ex-day-step:disabled { opacity: 0.4; }
+
+/* ---- the week thread -------------------------------------------------------
+
+   Seven day bubbles under the Move heading. Three independent states, each on
+   its own data attribute rather than a class permutation: selected, today, and
+   trained. `.cal-day` in the two month grids is the same shape and the same
+   reasoning -- see features/exercise/WeekThread.tsx.
+
+   `flex` with a `--tap` floor rather than `repeat(7, 1fr)`: at 320px seven
+   equal columns give each bubble 40px, under the tap floor the rest of the app
+   holds. Overflowing to a scroll is the honest answer on the narrowest phones,
+   and at every ordinary width all seven fit with room over. */
+.week-thread {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  /* Only bites below roughly 360px, where seven tap targets genuinely do not
+     fit. Padding so a focus ring on the last bubble is not clipped. */
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.week-thread::-webkit-scrollbar { display: none; }
+
+.week-day {
+  position: relative;
+  flex: 1 0 var(--tap);
+  min-width: var(--tap);
+  min-height: var(--tap);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: var(--space-2) 0;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  transition:
+    background var(--motion-fast) var(--ease-soft),
+    transform var(--motion-fast) var(--ease-soft);
+}
+.week-day:active { transform: scale(0.96); }
+.week-day:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+.week-day:disabled { opacity: 0.4; }
+
+.week-day-initial {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1;
+}
+.week-day-num {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Trained. The mark is the bubble's own fill rather than a dot, because a dot
+   plus an initial plus a number in a 48px circle is three things too many.
+   12%, which is where the calendar's load tint starts and for the same
+   contrast reason. */
+.week-day[data-done='true'] {
+  background: color-mix(in srgb, var(--color-success) 16%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-success) 40%, var(--color-surface));
+}
+
+/* Today is a ring, so it survives also being selected or trained -- the same
+   trick `.cal-day[data-today]` uses. */
+.week-day[data-today='true'] {
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-accent);
+}
+
+/* Selected wins the fill outright: it is the one thing the rest of the screen
+   is about, and a trained day that is also selected must not read as merely
+   trained. */
+.week-day[data-on='true'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+.week-day[data-on='true'] .week-day-initial { color: var(--color-accent-text); }
+
+/* ---- the sets ---- */
+
+.set-list {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.set-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'name remove' 'numbers numbers';
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface-muted);
+}
+
+.set-name { grid-area: name; }
+
+.set-remove {
+  grid-area: remove;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+.set-remove:hover, .set-remove:focus-visible { color: var(--color-danger); }
+
+.set-numbers {
+  grid-area: numbers;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.set-num { display: block; }
+
+.set-num-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.set-total {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.ex-caption { margin-top: var(--space-2); resize: vertical; line-height: var(--line-body); }
+
+/* The way through to the month. An underlined text link rather than a button:
+   it is a sideways move to another screen, not the action this one is for --
+   the primary button below it is. */
+.ex-calendar-link {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ex-calendar-link:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+
+
+/* ---- the week's wager ------------------------------------------------------
+
+   A shared target, not a scoreboard. The styling carries that: the two rows
+   are identical, in source order, with no rank and no bar comparing them --
+   the only difference between them is a tick once somebody arrives. See
+   features/exercise/WagerPanel.tsx for why. */
+.wager-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.wager-standings {
+  list-style: none;
+  margin: var(--space-3) 0 var(--space-3);
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.wager-standing {
+  display: grid;
+  grid-template-columns: 1fr auto var(--space-4);
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-muted);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+}
+
+/* Arrived. The same success tint the week strip and the calendar use for a
+   trained day, so one colour means one thing across all three. */
+.wager-standing[data-met='true'] {
+  background: color-mix(in srgb, var(--color-success) 16%, var(--color-surface));
+}
+
+.wager-count { font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
+.wager-standing[data-met='true'] .wager-count { color: var(--color-text); }
+.wager-mark { color: var(--color-success); text-align: right; }
+
+/* ---- the photo wall --------------------------------------------------------
+
+   A week of both members' proofs. auto-fill rather than a fixed column count,
+   so it is two columns on a narrow phone and five on a tablet without a media
+   query per breakpoint. The minimum is generous enough that a photograph is
+   still worth looking at rather than a thumbnail of a thumbnail. */
+.wall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--space-2);
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+}
+
+.wall-cell {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--color-surface-muted);
+}
+
+.wall-shot {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.wall-slot {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+.wall-slot-text { font-size: var(--text-sm); }
+
+/* Whose it is and which day, over the corner of the shot. A caption below each
+   cell would double the grid's height for two words, and the label has to stay
+   legible over an arbitrary photograph -- hence a scrim behind it rather than a
+   colour picked to work against most pictures.
+
+   `--scrim` is mixed from the theme's own base, so the text over it is
+   `--color-text`, which is the one colour every pack guarantees contrasts with
+   base. `--color-base` here would be base-on-base and invisible in both modes. */
+.wall-who,
+.wall-when {
+  position: absolute;
+  bottom: 0;
+  padding: 2px var(--space-2);
+  background: var(--scrim);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+.wall-who { left: 0; border-top-right-radius: var(--radius); }
+.wall-when { right: 0; border-top-left-radius: var(--radius); font-variant-numeric: tabular-nums; }
+
+/* Your own shots carry the accent, so a week of two people reads at a glance.
+   Opaque, and paired with `--color-accent-text`: every pack defines that as
+   the colour that survives being drawn on its accent, and a translucent accent
+   over an unknown photograph guarantees neither. */
+.wall-who[data-mine='true'] {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+/* ---- the proof ---- */
+
+.proof-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.proof { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+
+.proof-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* Without this the photograph, not the card, decides how wide the page is. */
+.proof-shot {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.proof-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius);
+  border: var(--border-width) dashed var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--space-2);
+}
+
+.proof-plus { font-size: var(--text-2xl); line-height: 1; }
+.proof-slot-text { font-size: var(--text-xs); }
+
+/* The native control is never shown; the slot and the actions stand in for it. */
+.proof-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Wraps, because there are three of these now and `.proof-grid` gives each
+   proof half a phone's width. Three buttons sharing 180px would each be a
+   truncated word above the tap-target floor in height and below it in sense. */
+.proof-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+.proof-action {
+  /* Grow to share a row, but never shrink below something readable — the
+     basis is what decides how many fit before the rest wrap. */
+  flex: 1 1 84px;
+  min-height: var(--tap);
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+}
+
+.proof-action:disabled { opacity: 0.5; }
+
+.proof-size { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+.proof-error {
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+  line-height: var(--line-tight);
+}
+
+.proof[data-busy='true'] { opacity: 0.7; }
+

@@ -144,7 +144,7 @@ export default defineConfig({
           // would then preload it on every boot, as happened to `mascot3d`.
           'assets/gear-art-*.js',
           // The per-pack headline faces, ~160 KiB together. Cached on first
-          // use by `pwa/sw.ts` instead; see the @font-face note in styles.css.
+          // use by `pwa/sw.ts` instead; see the @font-face note in styles/legacy/01-base.css.
           'fonts/display/**',
         ],
       },

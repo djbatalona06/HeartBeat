@@ -1,0 +1,14 @@
+/* The reset, in the lowest layer. It has to be: layer order beats
+   specificity, so this `*` rule left in `legacy` (declared after `ui`) would
+   outrank `.tilecard` and strip the padding off every component in `ui`. */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root { height: 100%; }
+
+body {
+  background: var(--color-base, #2a0f1c);
+  color: var(--color-text, #fff3f7);
+  font-family: var(--font-body, system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}

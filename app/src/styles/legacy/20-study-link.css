@@ -1,0 +1,157 @@
+/* ---- the study app link --------------------------------------------------- */
+/* Sits under notifications in Settings and borrows its rhythm, so the two read
+   as one column rather than as two designs that happen to be stacked. */
+.study { margin-top: var(--space-6); }
+
+.study-title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  letter-spacing: var(--font-display-tracking);
+  line-height: var(--line-tight);
+  color: var(--color-text);
+}
+
+.study-note {
+  margin: 0;
+  line-height: var(--line-body);
+  color: var(--color-text-muted);
+}
+
+.study-note-bad { color: var(--color-danger); }
+
+/* The code, shown once. Monospace and selectable, because copy-to-clipboard is
+   unavailable on an insecure origin and refused without a gesture — reading it
+   off the screen has to stay a real option. */
+.study-code {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+
+.study-code-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  word-break: break-all;
+  user-select: all;
+  color: var(--color-text);
+}
+
+.study-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-3); }
+
+.study-button {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 var(--space-5);
+  min-height: var(--tap);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.study-button-quiet {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.study-button[disabled] { opacity: 0.55; cursor: default; }
+.study-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+
+/* ---- saying something sweet ----------------------------------------------- */
+.sweet { margin-top: var(--space-6); }
+
+.sweet-title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  letter-spacing: var(--font-display-tracking);
+  line-height: var(--line-tight);
+  color: var(--color-text);
+}
+
+/* What has been said, both ways. Showing only what you received makes a thing
+   between two people feel one-sided. */
+.sweet-inbox { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); }
+
+.sweet-note {
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sweet-note[data-mine] { background: var(--color-surface-muted); }
+.sweet-note-body { color: var(--color-text); line-height: var(--line-body); }
+.sweet-note-who { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+.sweet-draft {
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  line-height: var(--line-body);
+  resize: vertical;
+}
+
+.sweet-draft:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.sweet-count { margin: var(--space-1) 0 0; font-size: var(--text-xs); color: var(--color-text-muted); }
+
+.sweet-ideas { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-3); }
+
+/* A suggestion is a button that fills the field above, never one that sends.
+   Nothing generated leaves this screen without a person having edited or at
+   least re-read it. */
+.sweet-idea {
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  line-height: var(--line-body);
+  cursor: pointer;
+}
+
+.sweet-idea:hover, .sweet-idea:focus-visible { border-color: var(--color-accent); outline: none; }
+
+.sweet-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-3); }
+
+.sweet-button {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 var(--space-5);
+  min-height: var(--tap);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.sweet-button-quiet {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.sweet-button[disabled] { opacity: 0.55; cursor: default; }
+.sweet-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+.sweet-note-line { margin-top: var(--space-3); color: var(--color-text-muted); line-height: var(--line-body); }
+

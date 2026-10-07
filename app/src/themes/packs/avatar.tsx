@@ -62,15 +62,15 @@ export const avatarTheme: Theme = {
   name: 'The Last Airbender',
   blurb: 'Ink black water, four slow currents.',
   isLight: false,
-  opaqueSurface: '#003254',
+  opaqueSurface: '#153249',
   colors: {
     // Deep Sea, taken in its own order: ink black at the bottom, deep space
     // blue for anything raised off it, and the two brighter blues kept back
     // for the things that are meant to be looked at.
     base: '#00171f',
-    surface: 'rgba(0, 52, 89, 0.92)',
-    surfaceMuted: 'rgba(0, 70, 116, 0.7)',
-    border: 'rgba(0, 168, 232, 0.24)',
+    surface: 'rgba(23, 52, 78, 0.92)',
+    surfaceMuted: 'rgba(32, 70, 102, 0.7)',
+    border: 'rgba(85, 165, 210, 0.24)',
     text: '#F4FAFC',
     textMuted: 'rgba(186, 222, 238, 0.68)',
     accent: '#00a8e8',

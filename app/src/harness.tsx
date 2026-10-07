@@ -17,7 +17,7 @@ import { THEMES, applyTheme } from './themes';
 import { ZONES } from './domain/rpg/zones';
 import type { OverworldHandle } from './features/rpg/overworld/game';
 import type { ThemeMode } from './themes/types';
-import './styles.css';
+import './styles/index.css';
 
 function Harness() {
   const host = useRef<HTMLDivElement | null>(null);

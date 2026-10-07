@@ -1,0 +1,8 @@
+/* ---- Home, in panes -----------------------------------------------------------
+   The first page out of `legacy`. Its older rules are still in
+   `legacy/02-home.css` and still win where they say something (legacy is the
+   later layer); this partial only holds what the pane split added.
+
+   Each pane stacks its cards on the same rhythm `.page` gives a page, because a
+   pane is a page one swipe over. */
+.home-pane > * + * { margin-top: var(--stack); }

@@ -1,0 +1,311 @@
+/* One global stylesheet. Every colour, radius and duration comes from a CSS
+   custom property written by the theme engine, so a component never imports a
+   theme object and switching theme repaints without re-rendering anything. */
+
+/* Outfit is the body face of all five theme packs, and the fallback behind every
+   headline face below. One variable file per unicode-range covers weights
+   300-600, which is the full range the packs ask for. font-display: swap so a
+   cold start paints text immediately rather than holding a blank screen for a
+   typeface. It is precached; the headline faces are not (see below). */
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 300 600;
+  font-display: swap;
+  src: url('/fonts/outfit-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+                 U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+                 U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 300 600;
+  font-display: swap;
+  src: url('/fonts/outfit-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+                 U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+                 U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Headline faces, one per theme pack (see `typography.display` in each pack).
+   Latin only and variable over 300-800. They are kept OUT of the precache —
+   together they are ~160 KiB against the ~55 KiB of headroom under the
+   ceiling in tools/lighthouse.mjs — and the service worker caches each on
+   first use instead (`pwa/sw.ts`). A browser only fetches a face some text
+   actually uses, so an inactive pack costs nothing; offline before a pack's
+   first use, its headlines fall back to Outfit, which is what they were. */
+@font-face {
+  font-family: 'Shantell Sans';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('/fonts/display/shantell-sans.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+                 U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+                 U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('/fonts/display/bricolage-grotesque.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+                 U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+                 U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('/fonts/display/fraunces.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+                 U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+                 U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Handjet';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('/fonts/display/handjet.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+                 U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+                 U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ---- shell ---------------------------------------------------------------- */
+.shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100%;
+  /* Bottom rather than left: the tab bar is docked along the bottom edge at
+     every width, so that is the side that always has to be cleared. The top
+     clears the menu button for the same reason. */
+  padding:
+    calc(env(safe-area-inset-top) + var(--shell-top) + var(--tap))
+    calc(env(safe-area-inset-right) + var(--shell-gutter))
+    calc(env(safe-area-inset-bottom) + var(--shell-bottom-clear))
+    calc(env(safe-area-inset-left) + var(--shell-gutter));
+  max-width: var(--shell-max);
+  margin: 0 auto;
+}
+
+/* ---- depth ----------------------------------------------------------------
+   The flat read was never the missing grain. It was that every card is a
+   border and a radius sitting at exactly the same height as every other card,
+   so the eye has nothing to order them with.
+
+   Four numbers and two shadows fix that, and all of them are built on
+   `--shadow-color`, which the theme engine already emits mode-corrected — a
+   shadow tuned for a dark ground is a smudge on a white one. Nothing here is
+   `rgba(0, 0, 0, …)`: no pure black anywhere is a rule this overhaul set in
+   its first step, and a hand-rolled black shadow would be the first exception
+   to it.
+
+   `--press` is how far a pressed thing travels. It is one number so that a
+   press feels like the same gesture everywhere, which is the half of this that
+   `scale()` never gave — scaling reads as the button shrinking away from the
+   finger, travel reads as the finger pushing it in. */
+:root {
+  --lift-1: 1px;
+  --lift-2: 2px;
+  --lift-3: 4px;
+  --press: 2px;
+
+  /* Tight and close. What says an object is resting *on* something rather
+     than floating over it, and the one that carries the 2.5D read. */
+  --shadow-contact: 0 var(--lift-1) var(--lift-2) var(--shadow-color);
+
+  /* Raised. The contact shadow plus a wider, softer pool under it. */
+  --shadow-lift:
+    0 var(--lift-1) var(--lift-2) var(--shadow-color),
+    0 var(--lift-3) 12px var(--shadow-color);
+
+  /* The rarity ladder as light, in the order `domain/rpg/tiers.ts` ascends.
+     One hue — the theme's own accent — at five strengths, rather than five
+     hard-coded colours. A gold legendary and a purple epic would be a sixth
+     palette that no theme voted for, and it would collide with whichever pack
+     is showing: shinobi's accent is not gold's friend.
+
+     Common is transparent on purpose. The bottom rung of a ladder is not a
+     reward, and giving it a ring would say it was. */
+  --tier-ring-common: transparent;
+  --tier-ring-rare: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  --tier-ring-epic: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  --tier-ring-legendary: color-mix(in srgb, var(--color-accent) 62%, transparent);
+  --tier-ring-mythic: var(--color-accent);
+
+  /* What a ring resolves to when nothing has named a rung. */
+  --tier-ring: var(--tier-ring-common);
+}
+
+/* ---- the accent, alive -----------------------------------------------------
+   The app already knows how the pet is doing: `domain/pet/mood.ts` derives it
+   from the hour and the couple's glow, and Home has been drawing a mascot with
+   it since it shipped. It was one drawing's private business. This is that same
+   signal spent on the accent, so the whole app leans with it.
+
+   The mix lives here rather than in the theme engine on purpose. `applyTheme`
+   writes tokens as inline styles, so an accent computed in TypeScript would go
+   stale the moment the theme or the palette changed and would have to be
+   re-sent by whoever happened to know the mood. A `color-mix` over `var()`
+   re-resolves against whatever palette is showing, for free, forever. The only
+   JavaScript is one attribute — see `applyMood`.
+
+   Both poles come out of the palette that is already showing, so each pack
+   leans its own way and none of them is overruled by a colour it never chose.
+   The strengths are `--mood-warm` and `--mood-dim`, emitted from the constants
+   `tokens.test.ts` measures — see the long note above them in tokens.ts for
+   why this is a lean and not a hue rotation.
+
+   `content` is deliberately absent: with no mood set, and with the mood that
+   the pet spends most of its time in, this is the pack's accent untouched. */
+:root { --color-accent-live: var(--color-accent); }
+
+:root[data-mood='happy'] {
+  --color-accent-live: color-mix(in srgb, var(--color-accent) var(--mood-warm), var(--color-success));
+}
+
+:root[data-mood='sleepy'] {
+  --color-accent-live: color-mix(in srgb, var(--color-accent) var(--mood-dim), var(--color-base));
+}
+
+/* Calm keeps the leaned colour and drops only the journey to it.
+
+   The mood is information — an app that is quieter at night is the whole point
+   — so what goes is the fade, not the tint. Written out as the transition
+   *without* `background-color` rather than as `transition: none`, because
+   these two elements already had transitions before the mood did: `.primary`
+   carries the press, which is feedback rather than decoration and which calm
+   has never taken away, and `.home-pet-fill` carries the bar filling. Blanking
+   the shorthand would quietly cancel both. Same split as `.mood-meters`. */
+:root[data-calm='true'] .primary {
+  transition: transform var(--motion-fast) var(--ease-soft),
+              box-shadow var(--motion-fast) var(--ease-soft);
+}
+
+:root[data-calm='true'] .home-pet-fill {
+  transition: width var(--motion-slow) var(--ease-reward);
+}
+
+/* ---- film grain -----------------------------------------------------------
+   One fractal-noise tile, inlined as a data URI, drawn over the whole viewport.
+
+   ## Why it hangs off `.shell` and not off `body`
+
+   The obvious home is a `body::after` at some z-index above the content. There
+   is no such z-index. `.shell` is `z-index: 1` and the tab bar is a *fixed
+   sibling* at `z-index: 2`, so a body-level grain has to be either under the
+   page or over the chrome, and there is no integer in between.
+
+   Hanging it off `.shell` sidesteps the question instead of renumbering
+   twenty-two rules to answer it. `.shell` is positioned with a z-index, so it
+   is a stacking context, and everything painted inside it — this included —
+   stays below every fixed sibling outside it. `position: fixed` still measures
+   against the viewport rather than the shell's 560px column, so the grain is
+   full-bleed while the chrome above it stays clean.
+
+   Four, not three: a handful of in-page rules already sit at `z-index: 3`
+   (`.cal-event`, `.support-kind`), and a tie would be settled by DOM order
+   rather than by intent. It stays well under the two overlays that live
+   *inside* the shell — `.garden-map-backdrop` at 40 and `.garden-map` at 45 —
+   because a dialog is something you are reading, not something to texture.
+
+   ## Static, and no blend mode
+
+   Both are load-bearing. Animated grain is a full-viewport repaint every frame
+   on a phone, and it would make a screenshot baseline flake forever. And the
+   usual `mix-blend-mode: overlay` changes luminance per pixel — the exact axis
+   `themes/veil.test.ts` guards — so it would drag text under AA without any
+   test noticing. See the note on `--grain-opacity` in themes/tokens.ts. */
+.shell::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* The app's own quiet switch turns it off, the way the pack backdrops have
+   always honoured it. Grain is texture, and `calm` is the setting that says
+   you want less of everything. */
+:root[data-calm='true'] .shell::after { display: none; }
+
+/* The rhythm between stacked cards, set once here rather than as a margin each
+   section remembers for itself. */
+.page > * + * { margin-top: var(--stack); }
+
+/* Groups of content get more room than the cards inside a group, so a page
+   reads as a few groups rather than one long run of cards. */
+.page > section + section { margin-top: var(--section-gap); }
+
+.page-head { margin-bottom: var(--space-5); }
+
+.page-title {
+  font-family: var(--font-display);
+  font-weight: var(--font-display-weight, 400);
+  letter-spacing: var(--font-display-tracking, 0);
+  text-transform: var(--font-display-transform, none);
+  font-size: var(--text-2xl);
+  line-height: var(--line-tight);
+}
+
+/* The (i) for a page's guide sits left of its title (ui/layout/PageTitle.tsx).
+   A full --tap target, with a smaller drawn circle, so it reads as a hint
+   beside the heading and is still easy to hit. The negative margin lines the
+   circle, not the hit area, up with the page's left edge. */
+.page-title-row, .section-title-row { display: flex; align-items: center; gap: var(--space-1); }
+:is(.page-title-row, .section-title-row) .info-bubble { margin-left: calc((var(--tap) - 1.75rem) / -2); }
+.info-bubble {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: none;
+  background: none;
+  /* Muted: it sits beside every page title, and the accent is kept for the
+     one thing on a screen that should be pressed. Lit while its guide is open. */
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.info-bubble[aria-expanded='true'] { color: var(--color-accent); }
+.info-bubble[aria-expanded='true'] .icon .body { fill-opacity: 0.4; }
+.info-guide-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0;
+  border: none;
+  border-top: var(--border-width) solid var(--color-border);
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.info-guide-steps { margin: 0 0 var(--space-2); padding-left: var(--space-5); line-height: var(--line-body); }
+.info-guide-steps li + li { margin-top: var(--space-1); }
+.info-guide-game { margin: 0 0 var(--space-2); }
+.info-guide-toggle[aria-expanded='true'] .purchases-chevron { transform: rotate(-135deg); }
+
+.page-sub {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+

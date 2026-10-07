@@ -1,0 +1,46 @@
+/* ---- Manage pairing, and the invite's actions ------------------------------ */
+
+/* A sheet, docked at the bottom where the thumb already is. It arrives on a
+   critically damped curve -- no overshoot, because nothing was flicked to make
+   it -- and stays out of the tab bar's way by covering it, as a modal should. */
+.pair-sheet {
+  position: fixed;
+  z-index: var(--z-sheet);
+  left: max(env(safe-area-inset-left), var(--space-2));
+  right: max(env(safe-area-inset-right), var(--space-2));
+  bottom: calc(env(safe-area-inset-bottom) + var(--space-2));
+  max-width: var(--shell-max);
+  margin-inline: auto;
+  max-height: calc(100dvh - env(safe-area-inset-top) - var(--space-7));
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+  transform-origin: bottom center;
+  animation: pair-sheet-in var(--motion-medium) cubic-bezier(0.32, 0.72, 0, 1);
+}
+@keyframes pair-sheet-in {
+  from { opacity: 0; transform: translateY(var(--space-4)); }
+  to { opacity: 1; transform: translateY(0); }
+}
+:root[data-calm='true'] .pair-sheet { animation: none; }
+
+.pair-sheet-grip {
+  display: block;
+  width: 36px;
+  height: 4px;
+  margin: 0 auto var(--space-3);
+  border-radius: 2px;
+  background: var(--color-border);
+}
+.pair-sheet-rows { display: grid; gap: var(--space-2); margin: var(--space-3) 0; }
+
+.invite-actions { display: flex; justify-content: center; gap: var(--space-2); }
+.invite-actions .quiet { width: auto; padding-inline: var(--space-5); }
+
+/* The Connections group: one heading, then the blocks it gathers, spaced the
+   way the page spaces its own children. */
+.connections { display: grid; gap: var(--stack); }
+

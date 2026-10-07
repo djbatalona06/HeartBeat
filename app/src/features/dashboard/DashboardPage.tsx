@@ -26,6 +26,9 @@ import { greetingFor } from '../../domain/pet/greeting';
 import { FeedPanel } from '../party/FeedPanel';
 import { GearIcon } from '../party/art/gear/GearIcon';
 import { Screen } from '../../ui/layout/Screen';
+import { SwipePane } from '../../ui/layout/SwipePane';
+import { Sheet } from '../../ui/Sheet';
+import { SecondaryAction } from '../../ui/SecondaryAction';
 import { isPaired } from '../../domain/identity/rekey';
 import { Tile } from '../../components/Tile';
 import { EmptyState } from '../../ui/EmptyState';
@@ -99,60 +102,92 @@ export function DashboardPage() {
 
   return (
     <Screen guide={GUIDES.home} title="HeartBeat" sub={<>{paired ? 'Paired' : 'Just you so far'} · {day}</>}>
-      <PetStage
-        aura={isUnlocked('shared-aura', unlockState)}
-        framed={isUnlocked('evergreen-frame', unlockState)}
-        mascot={mascot}
-        petMood={petMood}
-        calm={calm}
-        greetPose={greetPose}
-        greetingLine={greeting.line}
-        dye={avatar?.dye}
-        costume={avatar?.costume}
-        radiance={vitals ? glowOf(vitals) : 1}
-        progress={progress}
-        mascotRef={mascotRef}
-        fillRef={fillRef}
-      />
+      {/* Three panes, so the first screen holds only what Home is for: the
+          pet, the log row, and what today still wants (docs/ONE-SCROLL.md).
+          Nothing left the page; it moved one swipe over. The pane order keeps
+          the old reading order: pet, then what logging added up to, then
+          where to go next and what has been happening. */}
+      <SwipePane
+        label="Home"
+        tabs
+        panes={[
+          {
+            id: 'today',
+            label: 'Today',
+            content: (
+              <div className="home-pane">
+                <PetStage
+                  aura={isUnlocked('shared-aura', unlockState)}
+                  framed={isUnlocked('evergreen-frame', unlockState)}
+                  mascot={mascot}
+                  petMood={petMood}
+                  calm={calm}
+                  greetPose={greetPose}
+                  greetingLine={greeting.line}
+                  dye={avatar?.dye}
+                  costume={avatar?.costume}
+                  radiance={vitals ? glowOf(vitals) : 1}
+                  progress={progress}
+                  mascotRef={mascotRef}
+                  fillRef={fillRef}
+                />
 
-      {/* Logging is what feeds everything below it, so it comes straight
-          after the pet and before what logging has added up to. */}
-      <LogStrip day={day} />
+                {/* Logging is what feeds everything else, so it comes straight
+                    after the pet. */}
+                <LogStrip day={day} />
 
-      {/* Directly under the pet, because it is the rest of the same sentence:
-          the bar above is what the two of you have been *given* — quests, boss
-          victories, tasks — and this is what you have *done*. */}
-      <VitalsPanel vitals={vitals} />
+                {/* The one thing a lone phone is actually missing, said once and
+                    near the top rather than as empty panels further over. */}
+                {!paired ? <PairInvite /> : null}
 
-      {/* Only with two of you. It reads both halves of the couple against each
-          other, and on a lone phone that is a comparison with nobody. */}
-      {paired && settings?.coupleId
-        ? <TogetherPanel coupleId={settings.coupleId} day={day} />
-        : null}
+                <TodaySection
+                  open={open}
+                  loaded={dailiesLoaded}
+                  equippedIds={equippedIds}
+                  onComplete={onComplete}
+                />
+              </div>
+            ),
+          },
+          {
+            id: 'us',
+            label: 'Us',
+            content: (
+              <div className="home-pane">
+                {/* What you have *done*, against the bar on the first pane,
+                    which is what the two of you have been *given*. */}
+                <VitalsPanel vitals={vitals} />
 
-      <GoalsCard state={unlockState} />
+                {/* Only with two of you. It reads both halves of the couple
+                    against each other, and on a lone phone that is a
+                    comparison with nobody. */}
+                {paired && settings?.coupleId
+                  ? <TogetherPanel coupleId={settings.coupleId} day={day} />
+                  : null}
 
-      {/* The one thing a lone phone is actually missing, said once and near the
-          top rather than as four empty panels further down. `Tile` has been in
-          the tree since the dashboard was a grid and had no call sites left
-          after the ring came out; this is what it was for. */}
-      {!paired ? <PairInvite /> : null}
+                <GoalsCard state={unlockState} />
+              </div>
+            ),
+          },
+          {
+            id: 'adventure',
+            label: 'Adventure',
+            content: (
+              <div className="home-pane">
+                {/* The way into Eve's Garden. It was only in the menu, behind
+                    two taps. */}
+                <BossGateCard coupleId={coupleId} memberId={memberId} />
 
-      {/* The way into Eve's Garden. It was only in the menu, behind two taps. */}
-      <BossGateCard coupleId={coupleId} memberId={memberId} />
-
-      <TodaySection
-        open={open}
-        loaded={dailiesLoaded}
-        equippedIds={equippedIds}
-        onComplete={onComplete}
-      />
-
-      <HomeFooter
-        coupleId={coupleId}
-        memberId={memberId}
-        day={day}
-        settings={settings}
+                <HomeFooter
+                  coupleId={coupleId}
+                  memberId={memberId}
+                  day={day}
+                  settings={settings}
+                />
+              </div>
+            ),
+          },
+        ]}
       />
     </Screen>
   );
@@ -336,32 +371,53 @@ interface TodaySectionProps {
   onComplete: (task: Task) => void | Promise<void>;
 }
 
+/** How many of today's tasks Home lists before "See all" (docs/ONE-SCROLL.md, rule 3). */
+const TODAY_SHOWN = 5;
+
 /** What today still wants, and what the bird is wearing while it waits. */
 function TodaySection({ open, loaded, equippedIds, onComplete }: TodaySectionProps) {
+  const [all, setAll] = useState(false);
+  const row = (task: Task) => (
+    <li className="home-today-row" key={task.id}>
+      <button
+        type="button"
+        className="home-today-tick"
+        onClick={() => onComplete(task)}
+        aria-label={`Complete ${task.title}`}
+      >
+        +
+      </button>
+      <span className="home-today-title">{task.title}</span>
+    </li>
+  );
   return (
     <section className="home-today">
       <h2 className="section-title">Today</h2>
       {open.length ? (
-        <ul className="home-today-list">
-          {open.map((task) => (
-            <li className="home-today-row" key={task.id}>
-              <button
-                type="button"
-                className="home-today-tick"
-                onClick={() => onComplete(task)}
-                aria-label={`Complete ${task.title}`}
-              >
-                +
-              </button>
-              <span className="home-today-title">{task.title}</span>
-            </li>
-          ))}
-        </ul>
+        <ul className="home-today-list">{open.slice(0, TODAY_SHOWN).map(row)}</ul>
       ) : (
         <p className="section-sub">
           {!loaded ? '' : 'Nothing waiting on the list today.'}
         </p>
       )}
+
+      {open.length > TODAY_SHOWN ? (
+        <SecondaryAction onClick={() => setAll(true)}>See all {open.length}</SecondaryAction>
+      ) : null}
+
+      <Sheet
+        open={all}
+        onClose={() => setAll(false)}
+        label="Everything today"
+        scrimClassName="menu-scrim"
+        panelClassName="menu-panel birb-sheet"
+      >
+        <div className="birb-sheet-head">
+          <h2 className="section-title">Today</h2>
+          <SecondaryAction onClick={() => setAll(false)}>Done</SecondaryAction>
+        </div>
+        <ul className="home-today-list">{open.map(row)}</ul>
+      </Sheet>
 
       {equippedIds.length ? (
         <ul className="home-equipped" aria-label="Equipped">

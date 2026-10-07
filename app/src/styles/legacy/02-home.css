@@ -1,0 +1,569 @@
+/* ---- the home mascot --------------------------------------------------------
+   The front door used to be a ring of six doors around the pet — see the
+   history in nav.ts. Every destination lives on the nav rail now, so this
+   screen answers a different question, and the mascot no longer needs to be
+   measured and placed: it sits still, centred, at its own natural size. */
+
+.home-mascot-standalone {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(56vw, 220px);
+  height: min(56vw, 220px);
+  margin: var(--space-5) auto var(--space-4);
+}
+
+/* It sits in its own soft light rather than on a card. A card would make it an
+   item on a dashboard, and it is the reason for the screen. */
+.home-mascot-standalone::before {
+  content: '';
+  position: absolute;
+  inset: 2%;
+  border-radius: 50%;
+  /* `--pet-radiance` is 0..1, set by Home from the couple's own logging, and
+     the light it drives never goes out: at 0 this is still 6% accent, which is
+     a bird sitting in dimmer light rather than a bird being told off. The pet
+     has no sad state anywhere in the app, on purpose -- see the radiance note
+     in domain/rpg/vitals.ts. */
+  background: radial-gradient(
+    circle at 50% 46%,
+    color-mix(
+      in srgb,
+      var(--color-accent) calc(6% + 20% * var(--pet-radiance, 1)),
+      transparent
+    ),
+    transparent 68%
+  );
+  transition: background var(--motion-slow) var(--ease-soft);
+}
+
+/* Shared Aura (unlocks.ts): a season of the two of you, as a ring around the
+   pet's light. Drawn on the light that is already there rather than a new
+   layer, and still: an aura that pulsed would be the one thing on Home moving
+   for no reason, and calm would have to switch it off. */
+.home-mascot-standalone[data-aura]::before {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-accent) 45%, transparent),
+    0 0 1.5rem 0.4rem color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+/* ---- the ground under the pet ---------------------------------------------
+   The mascots are flat SVGs drawn in theme variables, and that is what lets
+   them follow a palette when it changes — so the way to give them depth is not
+   to redraw five of them with shading that would stop following anything.
+
+   What they were actually missing is **ground**. The pet sat in a radial glow
+   with nothing underneath, which reads as floating no matter how well the
+   figure itself is drawn. One soft ellipse fixes that, and it costs one
+   pseudo-element rather than five files.
+
+   It breathes in *counterpoint* to the pet, not in sync: `home-breathe` lifts
+   the figure at 50%, so the shadow is smallest and faintest at 50%. A shadow
+   that grew with the thing above it would read as the light moving instead of
+   the pet rising — which is the same mistake as travel-without-shadow on a
+   button press, and the same fix.
+
+   `--shadow-color` rather than a black: the theme engine already emits it
+   mode-corrected, and a shadow tuned for a dark ground is a smudge on a pale
+   palette like pony's. */
+.home-mascot-standalone::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 4%;
+  width: 44%;
+  height: 6.5%;
+  border-radius: 50%;
+  background: var(--shadow-color);
+  filter: blur(5px);
+  transform: translateX(-50%);
+  animation: home-mascot-ground 5.5s ease-in-out infinite;
+}
+
+@keyframes home-mascot-ground {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.9; }
+  50% { transform: translateX(-50%) scale(0.9); opacity: 0.62; }
+}
+
+.home-mascot-art {
+  position: relative;
+  /* Above the ground shadow. Both pseudo-elements paint after the content in
+     document order, so without this the shadow would land on the pet's feet
+     rather than under them. */
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform-origin: 50% 88%;
+  animation: home-breathe 5.5s ease-in-out infinite;
+}
+
+/* A 3D mascot stands on its own drawing (see `mascots/Mascot3D.tsx`): the SVG
+   paints first and stays underneath, and the canvas fades in over it once a
+   real frame exists. The drawing's CSS breathing stops then — the 3D pet
+   breathes for itself, and damps itself under calm and reduced motion. */
+.mascot-3d { position: relative; z-index: 1; display: block; width: 100%; height: 100%; }
+.mascot-3d-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+.mascot-3d > svg { transition: opacity 0.35s ease; }
+.mascot-3d[data-ready] > .mascot-3d-canvas { opacity: 1; }
+.mascot-3d[data-ready] > svg { opacity: 0; animation: none; }
+
+/* Calm mode stops it, and so does reduced motion further down. A pet that will
+   not hold still is the opposite of what this screen is for. */
+.home-mascot-standalone[data-calm='true'] .home-mascot-art,
+.home-mascot-standalone[data-calm='true']::after { animation: none; }
+.home-mascot-standalone[data-mood='sleepy'] .home-mascot-art,
+.home-mascot-standalone[data-mood='sleepy']::after { animation-duration: 8.5s; }
+
+@keyframes home-breathe {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.025) translateY(-1.4%); }
+}
+
+/* ---- the day's hello --------------------------------------------------------
+   One line under the pet, and on the first visit of the day one small move.
+   The move is on the wrapper and the breathing is on the drawing inside it,
+   so the two transforms compose rather than fight. Transform only, once
+   through, under a second: nothing here flashes. Calm never sets
+   `data-greet`, and reduced motion never reaches the keyframes. */
+.home-greeting {
+  position: relative;
+  max-width: 22rem;
+  margin: calc(-1 * var(--space-2)) auto var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  text-align: center;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+}
+/* The bubble's tail, pointing up at the pet. */
+.home-greeting::before {
+  content: '';
+  position: absolute;
+  top: -0.4rem;
+  left: 50%;
+  width: 0.7rem;
+  height: 0.7rem;
+  background: inherit;
+  border-top: inherit;
+  border-left: inherit;
+  transform: translateX(-50%) rotate(45deg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .home-mascot-standalone[data-greet='wave'] { animation: greet-wave 0.8s var(--ease-reward, ease) 0.2s 1; }
+  .home-mascot-standalone[data-greet='hop'] { animation: greet-hop 0.7s var(--ease-reward, ease) 0.2s 1; }
+  .home-mascot-standalone[data-greet='peek'] { animation: greet-peek 0.9s var(--ease-reward, ease) 0.2s 1 backwards; }
+  .home-mascot-standalone[data-greet='wiggle'] { animation: greet-wiggle 0.8s var(--ease-reward, ease) 0.2s 1; }
+}
+@keyframes greet-wave {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-5deg); }
+  50% { transform: rotate(4deg); }
+  75% { transform: rotate(-2deg); }
+}
+@keyframes greet-hop {
+  0%, 100% { transform: translateY(0); }
+  35% { transform: translateY(-9%); }
+  60% { transform: translateY(0); }
+  75% { transform: translateY(-3%); }
+}
+@keyframes greet-peek {
+  0% { transform: translateY(8%) scale(0.94); }
+  60% { transform: translateY(-2%) scale(1.02); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes greet-wiggle {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3%); }
+  40% { transform: translateX(3%); }
+  60% { transform: translateX(-2%); }
+  80% { transform: translateX(1%); }
+}
+
+/* ---- today ------------------------------------------------------------------
+   The eight-task starter plan lands here first, and stays here once it has
+   been edited into something else entirely — this is a live view of whatever
+   Tasks currently has due today, not a separate list of its own. */
+
+/* A card now, where it used to be bare text on the page background.
+
+   That was survivable while the background was a pack canvas painting a few
+   motifs at 0.16 alpha. It stops being survivable with the garden behind it:
+   "Today" and every task title on this list sat directly on a sun. `--glass`
+   is the token Phase 0 added for exactly this and had no consumer until now,
+   and `--hairline` gives the card an edge without the flat 1px border the
+   theme audit is trying to get rid of.
+
+   It is also the better design independently — the most important list on the
+   screen had less visual weight than the pet card above it.
+
+   Budget note for the theme audit: this is the fourth blurred surface that can
+   be on screen at once on home, after `.tabbar`, `.menu-button` and
+   `.status-hud`. The other three are chrome-sized; this one is card-sized and
+   sits directly over the garden, which is the case the blur is actually for —
+   at 82% a tree silhouette behind a task title stays a legible shape, and a
+   shape behind words is harder to read than a wash is. Worth re-checking on a
+   real phone before adding a fifth. */
+.home-today {
+  margin-top: var(--stack);
+  padding: var(--space-4);
+  /* Solid, as reduced transparency has always drawn it: one blur fewer on
+     Home, and the card reads as a card rather than a pane of frosted glass. */
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--hairline);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+}
+
+.home-today-list { list-style: none; margin-top: var(--space-3); }
+
+.home-today-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+.home-today-row:last-child { border-bottom: none; }
+
+.home-today-tick {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 999px;
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font-size: var(--text-lg);
+  cursor: pointer;
+}
+.home-today-tick:active { transform: scale(0.93); }
+
+.home-today-title { font-size: var(--text-base); }
+
+/* Whatever is worn, echoed here so it is seen without a trip to Party. */
+.home-equipped {
+  list-style: none;
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--color-border);
+}
+.home-equipped-item { width: 32px; height: 32px; }
+.home-equipped-item .gear-art { width: 100%; height: 100%; }
+
+/* ---- the invitation on a lone phone ----------------------------------------
+
+   Shown only while unpaired. One tile rather than a grid of six: the whole
+   point is that there is one thing worth doing here, and a wall of equal
+   choices is what the old six-door ring got wrong. (There used to be a Move
+   tile too; the log row above now covers it on every phone.) `.tile*` is already in this
+   stylesheet from when the dashboard was a grid. */
+.home-invite {
+  margin-bottom: var(--space-4);
+}
+
+.home-invite-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* ---- the log row ------------------------------------------------------------
+   Under the pet card: the three logs that each light a charge, one tap away.
+   A lit one gets a check in the accent pair `mood.test.ts` proves for
+   contrast; an unlit one is a plain button, never a warning. */
+.home-log {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.home-log-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  color: inherit;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-lift);
+  transition: transform var(--motion-fast) var(--motion-easing);
+}
+.home-log-item:active { transform: translateY(var(--press)); }
+.home-log-item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.home-log-item[data-lit='true'] { border-color: var(--color-accent-live); }
+.home-log-glyph { color: var(--color-accent); font-size: 20px; }
+
+.home-log-done {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  line-height: 1;
+  border-radius: 999px;
+  background: var(--color-accent-live);
+  color: var(--color-accent-text);
+}
+
+/* ---- the home pet card ----------------------------------------------------
+   The pet's name, its level and its bar. The level is always derived from XP
+   rather than read off the row — see `DashboardPage.tsx`. */
+
+.home-pet {
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+}
+
+/* Evergreen Frame (unlocks.ts): most of a year together, as a second border
+   held just outside the first. An outline rather than a thicker border, so the
+   card's contents do not shift the day it opens. Accent leaned toward the
+   border colour, so it reads as a frame and not as a focus ring. */
+.home-pet[data-frame] {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 65%, var(--color-border));
+  outline-offset: 3px;
+}
+
+.home-pet-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.home-pet-name {
+  font-family: var(--font-display);
+  font-weight: var(--font-display-weight, 400);
+  letter-spacing: var(--font-display-tracking, 0);
+  font-size: var(--text-lg);
+  line-height: var(--line-tight);
+}
+
+.home-pet-level {
+  flex: 0 0 auto;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.home-pet-bar {
+  height: 10px;
+  margin: var(--space-3) 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+
+/* The overshoot is the point: a bar filling should read as a reward rather
+   than as a progress report. It only ever runs forwards. */
+.home-pet-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-accent-live);
+  transition: width var(--motion-slow) var(--ease-reward),
+              background-color var(--motion-slow) var(--ease-reward);
+}
+
+/* ---- the Together panel ---------------------------------------------------
+   Under the pet on Home, and the rest of the same sentence: the bar above it is
+   what the couple have been given, this is what they have done. Every number in
+   it is derived from the day log both phones already sync, so there is nothing
+   here that one phone could know and the other not. */
+.vitals {
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+}
+
+.vitals-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* The stage reads as earned rather than as a label: accent on a tinted pill,
+   the only badge on the screen. */
+.vitals-stage {
+  padding: 2px var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  border-radius: 999px;
+}
+
+.vitals-bars {
+  margin: var(--space-4) 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.vitals-bar-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.vitals-bar-value { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.vitals-bar-track {
+  height: 8px;
+  margin: var(--space-1) 0;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+
+/* Three bars, three hues off the one accent, so which bar is which is legible
+   at a glance without any of them leaving the theme. Bond is the accent itself
+   because it is the one the game is actually about. */
+.vitals-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-accent);
+  transition: width var(--motion-slow) var(--ease-reward);
+}
+.vitals-bar-fill[data-attribute='vitality'] {
+  background: color-mix(in srgb, var(--color-accent) 70%, var(--color-success));
+}
+.vitals-bar-fill[data-attribute='serenity'] {
+  background: color-mix(in srgb, var(--color-accent) 55%, var(--color-text-muted));
+}
+
+.vitals-bar-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.vitals-streak {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+/* ---- the duo week and the Together ladder ---------------------------------
+   Seven dots and a rung. Deliberately not a progress bar: a bar reads as a
+   thing you are behind on, and seven separate days read as seven separate
+   days — the ones that happened are filled and the ones that did not are
+   simply not, with no colour anywhere that says "missed". */
+.together {
+  margin-top: var(--stack);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+}
+
+.together-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* The same pill as `.vitals-stage`, because it is the same kind of fact. */
+.together-tier {
+  padding: 2px var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  border-radius: 999px;
+}
+
+.together-week {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+/* Flex rather than seven fixed widths so the row still fits at 320px. */
+.together-day {
+  flex: 1 1 0;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid transparent;
+  transition: background var(--motion-medium) var(--ease-soft);
+}
+
+.together-day[data-duo='true'] {
+  background: var(--color-accent);
+}
+
+/* ---- long goals (GoalsCard.tsx) --------------------------------------------
+   The panel is `.together`'s, because it is the same kind of fact read over a
+   longer span. Each goal is a name, an exact number and a bar; the number is
+   text, so the bar is never the only way to read it. */
+.goals-list { display: grid; gap: var(--space-3); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+.goal-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.goal-name { font-weight: 600; font-size: var(--text-sm); }
+.goal-number { font-size: var(--text-xs); color: var(--color-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.goal-bar {
+  height: 8px;
+  margin: var(--space-1) 0;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+.goal-fill { display: block; height: 100%; background: var(--color-accent); border-radius: inherit; }
+.goal-blurb { margin: 0; font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-body); }
+.goals-reached { margin-top: var(--space-3); }
+
+/* Today is outlined whether or not it is filled, so the row says where you are
+   in the week without needing a caption to. */
+.together-day[data-last='true'] {
+  border-color: var(--color-accent);
+}
+
+.together-line {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.home-pet-blurb {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
+

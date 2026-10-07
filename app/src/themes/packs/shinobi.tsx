@@ -58,15 +58,15 @@ export const shinobiTheme: Theme = {
   name: 'Naruto',
   blurb: 'Wine and ember, leaves on the wind.',
   isLight: false,
-  opaqueSurface: '#5c0e3e',
+  opaqueSurface: '#521f3b',
   colors: {
     // The Fiery palette. Crimson violet is the ground and the surface — one
     // darkened for the page, one at full strength for the cards — so the
     // raise between them is the palette's own step rather than a grey.
     base: '#3a0927',
-    surface: 'rgba(95, 15, 64, 0.92)',
-    surfaceMuted: 'rgba(122, 26, 50, 0.7)',
-    border: 'rgba(251, 139, 36, 0.24)',
+    surface: 'rgba(84, 32, 61, 0.92)',
+    surfaceMuted: 'rgba(108, 45, 56, 0.7)',
+    border: 'rgba(229, 152, 94, 0.24)',
     text: '#fff1e6',
     textMuted: 'rgba(245, 205, 190, 0.66)',
     accent: '#fb8b24',
@@ -88,7 +88,7 @@ export const shinobiTheme: Theme = {
       base: '#fff6f0',
       surface: 'rgba(253, 252, 251, 0.95)',
       surfaceMuted: 'rgba(255, 226, 209, 0.75)',
-      border: 'rgba(154, 3, 30, 0.2)',
+      border: 'rgba(150, 19, 34, 0.2)',
       text: '#3a0927',
       textMuted: '#7a4450',
       accent: '#fb8b24',

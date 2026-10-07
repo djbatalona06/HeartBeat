@@ -1,0 +1,82 @@
+/* ---- tiles ----------------------------------------------------------------
+   The dashboard is a ring now, so nothing renders these today. They stay
+   because `components/Tile.tsx` is still a working component and the next
+   screen that wants a row of doors should not have to redraw one. */
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 120px;
+  padding: 16px;
+  text-decoration: none;
+  color: inherit;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-lift);
+  transition: transform var(--motion-fast) var(--motion-easing),
+              box-shadow var(--motion-fast) var(--motion-easing),
+              border-color var(--motion-fast) var(--motion-easing);
+}
+
+/* Pressed, a tile travels down onto its own shadow and the shadow collapses to
+   the contact one. That pairing is the whole trick: travel alone reads as the
+   card sliding, and a shadow change alone reads as the light moving. Together
+   they read as a finger pushing something into the page.
+
+   `.garden-action:active` further down has done exactly this since the fight
+   screen was built; this is that gesture made shared rather than local. */
+.tile:active {
+  transform: translateY(var(--press));
+  box-shadow: var(--shadow-contact);
+}
+.tile:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.tile-head { display: flex; align-items: center; gap: 8px; }
+.tile-glyph { color: var(--color-accent); font-size: 15px; }
+.tile-title { font-size: 13px; color: var(--color-text-muted); }
+
+.tile-value {
+  margin-top: auto;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 5.4vw, 26px);
+  line-height: 1.15;
+}
+
+.tile-hint { font-size: 11.5px; color: var(--color-text-muted); }
+
+/* ---- meters --------------------------------------------------------------- */
+.meter { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+.meter-track {
+  position: relative;
+  width: 26px;
+  height: 132px;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+
+/* The meter doubling as the slider: a grab cursor, and no page-scroll
+   fighting a vertical drag on touch. */
+.meter-track[data-draggable='true'] { cursor: grab; touch-action: none; }
+.meter-track[data-draggable='true']:active { cursor: grabbing; }
+.meter-track[data-draggable='true']:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.meter-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--color-accent);
+  border-radius: 999px;
+  transition: height var(--motion-medium) var(--motion-easing);
+}
+
+.meter-value { font-family: var(--font-display); font-size: 15px; font-variant-numeric: tabular-nums; }
+.meter-label { font-size: 11px; color: var(--color-text-muted); }
+

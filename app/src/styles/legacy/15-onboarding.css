@@ -1,0 +1,166 @@
+/* ---- pair gate ------------------------------------------------------------
+   The first screen on a fresh install, so it is allowed to be the whole page:
+   one mark, one sentence, one action, and everything after the action quieter
+   than the action. No red, no warning, nothing counted against anyone -- it is
+   a door being pointed at, not a rule being explained. */
+.gate {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 62vh;
+  padding: var(--space-5) 0;
+  text-align: center;
+}
+
+/* Two hearts, the second waiting: the whole of the screen's argument, before a
+   word of it is read. */
+.gate-mark {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  font-size: var(--text-2xl);
+  line-height: 1;
+  color: var(--color-accent);
+}
+.gate-mark span:last-child { opacity: 0.35; }
+
+.gate-title {
+  font-family: var(--font-display);
+  font-weight: var(--font-display-weight, 400);
+  letter-spacing: var(--font-display-tracking, 0);
+  text-transform: var(--font-display-transform, none);
+  font-size: var(--text-2xl);
+  line-height: var(--line-tight);
+}
+
+.gate-body {
+  font-size: var(--text-base);
+  line-height: var(--line-body);
+}
+
+/* .primary is written for a button; as a link it has to centre its own text. */
+.gate-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--space-4);
+  text-decoration: none;
+}
+
+.gate-note {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+
+/* ---- welcome ----------------------------------------------------------------
+   The subpage a browser visitor meets before the app itself. See
+   features/onboarding/WelcomePage.tsx and FirstRunGate.tsx. */
+.welcome-list { list-style: none; display: flex; flex-direction: column; gap: var(--space-3); }
+.welcome-list strong { font-family: var(--font-display); font-weight: var(--font-display-weight, 400); }
+
+.welcome-steps {
+  list-style: decimal;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+.welcome-steps strong { display: block; font-family: var(--font-display); font-size: var(--text-base); }
+
+.welcome-faq { display: flex; flex-direction: column; gap: var(--space-1); }
+.welcome-faq dt { font-family: var(--font-display); font-size: var(--text-base); margin-top: var(--space-3); }
+.welcome-faq dt:first-child { margin-top: 0; }
+.welcome-faq dd { color: var(--color-text-muted); font-size: var(--text-sm); line-height: var(--line-body); }
+
+.welcome-repo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: center;
+  margin-top: var(--space-5);
+  padding: var(--space-3);
+  background: var(--color-surface-muted);
+  border-radius: 999px;
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: var(--text-sm);
+}
+.welcome-repo span { color: var(--color-accent); }
+
+.welcome-guest {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-4);
+  text-align: center;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 14px);
+}
+
+/* ---- onboarding --------------------------------------------------------------
+   Five screens, dots above, Next/Back below. See
+   features/onboarding/OnboardingPage.tsx. */
+.onboarding-dots {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.onboarding-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border);
+}
+.onboarding-dot[data-on='true'] { background: var(--color-accent); }
+
+.onboarding-step { text-align: center; min-height: 40vh; }
+
+.onboarding-pets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.onboarding-pet-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.onboarding-pet-card:active { transform: scale(0.96); }
+.onboarding-pet-art { width: 56px; height: 56px; }
+.onboarding-pet-name { font-family: var(--font-display); font-size: var(--text-sm); }
+.onboarding-pet-theme { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+.onboarding-item { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin: var(--space-4) 0; }
+.onboarding-item-art {
+  width: 88px;
+  height: 88px;
+  animation: home-breathe 3.2s ease-in-out infinite;
+}
+:root[data-calm='true'] .onboarding-item-art { animation: none; }
+.onboarding-item-name { font-family: var(--font-display); font-size: var(--text-lg); }
+
+.onboarding-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-5);
+}
+
+.onboarding-skip {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-top: var(--space-3);
+  color: var(--color-text-muted);
+}
+

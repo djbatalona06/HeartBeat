@@ -1,0 +1,39 @@
+/* ---- settings ------------------------------------------------------------- */
+.set-block { margin-bottom: var(--space-6); }
+
+.whats-on-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.set-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  min-height: var(--tap);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.set-toggle input { width: 20px; height: 20px; accent-color: var(--color-accent); }
+
+.invite {
+  margin: var(--space-3) 0;
+  padding: var(--space-4);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.invite-code {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  /* Read aloud across a room, so the characters need air between them. */
+  letter-spacing: 0.22em;
+  color: var(--color-accent);
+}
+

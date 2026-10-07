@@ -181,7 +181,7 @@ describe('no token is pure black or pure white', () => {
   it('publishes one z-scale, identically, to every pack', () => {
     // Depth is shape, not palette. A pack that could renumber it would be a
     // pack whose sheet renders under the tab bar on one theme only.
-    const Z = ['--z-scene', '--z-content', '--z-chrome', '--z-overlay', '--z-sheet', '--z-toast'];
+    const Z = ['--z-scene', '--z-content', '--z-scrim', '--z-chrome', '--z-overlay', '--z-sheet', '--z-toast'];
     const first = themeToCssVars(THEMES[0]);
     for (const theme of THEMES) {
       const vars = themeToCssVars(theme);
@@ -288,6 +288,17 @@ describe('the shared shape layer', () => {
     expect(new Set(radii).size).toBeGreaterThan(1);
     for (const theme of THEMES) {
       expect(themeToCssVars(theme)['--radius'], theme.id).toBe(theme.shape.radius);
+    }
+  });
+});
+
+describe('the type scale', () => {
+  it('puts nothing below 13px, at any width', () => {
+    // The smallest size a `clamp()` can reach is its first argument.
+    for (const [key, value] of Object.entries(SHARED_TOKENS)) {
+      if (!key.startsWith('--text-')) continue;
+      const floor = Number.parseFloat(value.replace(/^clamp\(/, ''));
+      expect(floor, key).toBeGreaterThanOrEqual(13);
     }
   });
 });

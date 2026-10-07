@@ -1,0 +1,137 @@
+/* ---- mood ------------------------------------------------------------------
+   Two columns of three meters, and one way to fill them in. The columns get the
+   room and the weight; the sliders below them are deliberately the only other
+   thing on the page. Nothing here is coloured as a warning — an unsaved day and
+   an unlogged one are both only sentences not finished yet. */
+
+.mood-summary {
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+}
+
+.mood-day {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.mood-lead {
+  margin-top: var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: var(--line-tight);
+}
+
+.mood-sub {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+  color: var(--color-text-muted);
+}
+
+.mood-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+/* Before pairing there is no second column to fill, so the invitation takes the
+   room rather than an empty set of tracks standing in for a person. */
+.mood-compare[data-paired='false'] { grid-template-columns: auto 1fr; }
+
+.mood-column {
+  padding: var(--space-4) var(--space-3);
+  text-align: center;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+}
+
+/* Mid-edit the column shows a draft rather than what is stored. Marked in the
+   accent rather than a warning colour: unsaved is not a mistake. */
+.mood-column[data-unsaved='true'] { border-color: var(--color-accent); }
+.mood-column[data-unsaved='true'] .mood-state { color: var(--color-accent); }
+
+.mood-who {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  line-height: var(--line-tight);
+}
+
+.mood-meters {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.mood-state {
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.mood-invite {
+  align-self: center;
+  padding: var(--space-4);
+  border: var(--border-width) dashed var(--color-border);
+  border-radius: var(--radius-large);
+}
+
+.mood-invite-lead { font-size: var(--text-sm); line-height: var(--line-tight); }
+
+.mood-invite-sub {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  line-height: var(--line-body);
+  color: var(--color-text-muted);
+}
+
+.mood-invite a { color: var(--color-accent); }
+
+/* The meter is the input now — see components/Meter.tsx — so this section
+   only ever wraps the note field below the two columns. */
+.mood-set { margin-top: var(--space-4); }
+.mood-set-label { display: block; font-size: var(--text-sm); }
+.mood-flags { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+
+.mood-note { margin-top: var(--space-2); resize: vertical; line-height: var(--line-body); }
+
+/* Mood trends: identity is solid-vs-dashed as well as colour, so neither line
+   depends on telling two tokens apart. Grid and axis words stay recessive. */
+.mood-trend-spans { display: flex; gap: var(--space-2); margin: var(--space-2) 0; }
+.mood-trend-legend {
+  display: flex; gap: var(--space-4); margin-top: var(--space-2);
+  font-size: var(--text-sm); color: var(--color-text-muted);
+}
+.mood-trend-legend > span { display: inline-flex; align-items: center; gap: var(--space-1); }
+.mood-trend { margin: var(--space-4) 0 0; }
+.mood-trend-head { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--text-sm); }
+.mood-trend-avg { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.mood-trend-plot { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2); margin-top: var(--space-1); }
+.mood-trend-axis {
+  display: flex; flex-direction: column; justify-content: space-between;
+  font-size: var(--text-xs); color: var(--color-text-muted); text-align: right;
+}
+.mood-trend-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.mood-trend-grid { stroke: var(--color-border); stroke-width: 1; }
+.mood-trend-mine, .mood-trend-theirs {
+  fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.mood-trend-mine { stroke: var(--color-accent); }
+.mood-trend-theirs { stroke: var(--color-text-muted); stroke-dasharray: 5 4; }
+.mood-trend-dot-mine { fill: var(--color-accent); stroke: var(--color-surface); stroke-width: 2; }
+.mood-trend-dot-theirs { fill: var(--color-surface); stroke: var(--color-text-muted); stroke-width: 2; }
+.mood-trend-hit { fill: transparent; }
+.mood-trend-hit:hover { fill: color-mix(in srgb, var(--color-text) 6%, transparent); }
+
+/* Calm mode stills the columns. Reduced motion is already handled globally. */
+:root[data-calm='true'] .mood-meters .meter-fill { transition: none; }
+
