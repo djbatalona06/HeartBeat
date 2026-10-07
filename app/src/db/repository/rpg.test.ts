@@ -348,6 +348,18 @@ describe('gear', () => {
     expect(blocked.reason).toContain('level 9');
   });
 
+  it('opens gear at the shared pet\'s level when it is ahead of the member', async () => {
+    await db.avatars.put({
+      memberId: HER, coupleId: COUPLE, xp: xpForLevel(2),
+      coins: 0, energy: 0, mp: 0, gear: {}, updatedAt: 1,
+    });
+    await own(HER, 'head-aurora-veil');
+    expect((await equipItem(HER, COUPLE, 'head-aurora-veil')).ok).toBe(false);
+
+    await addXp(COUPLE, xpForLevel(9));
+    expect((await equipItem(HER, COUPLE, 'head-aurora-veil')).ok).toBe(true);
+  });
+
   it('lands on the sheet and comes off in one tap', async () => {
     await db.avatars.put({
       memberId: HER, coupleId: COUPLE, xp: xpForLevel(9),

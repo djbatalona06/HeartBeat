@@ -4,6 +4,7 @@ import {
   applyPayout,
   baseStats,
   canSpend,
+  gearLevelOf,
   levelOf,
   maxEnergy,
   maxMp,
@@ -47,6 +48,16 @@ describe('no classes', () => {
     const stats = statsFor(5, { strength: 4 });
     expect(stats.strength).toBe(baseStats(5).strength + 4);
     expect(stats.insight).toBe(baseStats(5).insight);
+  });
+});
+
+describe('gearLevelOf', () => {
+  it('takes the higher of the member and the shared pet, and never less', () => {
+    const member = avatar();
+    expect(gearLevelOf(member, 0)).toBe(levelOf(member));
+    expect(gearLevelOf(member, xpForLevel(12))).toBe(12);
+    expect(gearLevelOf({ xp: xpForLevel(12) }, xpForLevel(3))).toBe(12);
+    expect(gearLevelOf(undefined, xpForLevel(4))).toBe(4);
   });
 });
 

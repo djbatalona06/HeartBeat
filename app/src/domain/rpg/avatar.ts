@@ -23,6 +23,17 @@ export function levelOf(avatar: Pick<Avatar, 'xp'>): number {
   return levelForXp(avatar.xp);
 }
 
+/**
+ * The level gear is gated on: the shared pet's, or the member's own if that is
+ * higher. The header and Home show the pet's level, so gating on the member's
+ * alone left an item locked "until level 9" under a bubble that said 12. Taking
+ * the higher of the two means this can only ever open gear, never lock what a
+ * member could already wear.
+ */
+export function gearLevelOf(avatar: Pick<Avatar, 'xp'> | undefined, petXp: number): number {
+  return Math.max(levelForXp(avatar?.xp ?? 0), levelForXp(petXp));
+}
+
 export function progressOf(avatar: Pick<Avatar, 'xp'>): LevelProgress {
   return levelProgress(avatar.xp);
 }
