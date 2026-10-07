@@ -1,0 +1,63 @@
+/*
+ * The one stylesheet entry. main.tsx, standalone.tsx and harness.tsx import this
+ * file and nothing else, which is what keeps `cssCodeSplit: false` and the two
+ * standalone artefacts (study/, gift/) seeing one sheet.
+ *
+ * Layer order is fixed here, once. A later layer beats an earlier one whatever
+ * the selectors' specificity, so a rule's layer is a decision, not a habit:
+ *
+ *   reset, tokens, base  — what every page stands on
+ *   ui                   — the shared primitives in src/ui/
+ *   features             — one partial per feature
+ *   legacy               — the pre-split sheet, in its original order, shrinking
+ *                          as sections are restyled into the layers above it
+ *   overrides            — the last word; should stay nearly empty
+ *
+ * `legacy` sits *above* ui and features on purpose: while a section still lives
+ * there it keeps winning exactly as it did before the split, so moving one
+ * section out is a visible, reviewable change and moving none is no change.
+ * The partials are numbered so the import order is the original source order.
+ */
+@layer reset, tokens, base, ui, features, legacy, overrides;
+
+@import './legacy/01-base.css' layer(legacy);
+@import './legacy/02-home.css' layer(legacy);
+@import './legacy/03-ui-layout.css' layer(legacy);
+@import './legacy/04-ui-components.css' layer(legacy);
+@import './legacy/05-chrome.css' layer(legacy);
+@import './legacy/06-rpg-shop.css' layer(legacy);
+@import './legacy/07-voice.css' layer(legacy);
+@import './legacy/08-calendar.css' layer(legacy);
+@import './legacy/09-messages.css' layer(legacy);
+@import './legacy/10-settings.css' layer(legacy);
+@import './legacy/11-border-glow.css' layer(legacy);
+@import './legacy/12-cycle.css' layer(legacy);
+@import './legacy/13-mood.css' layer(legacy);
+@import './legacy/14-calendar-import.css' layer(legacy);
+@import './legacy/15-onboarding.css' layer(legacy);
+@import './legacy/16-exercise.css' layer(legacy);
+@import './legacy/17-settings-blocks.css' layer(legacy);
+@import './legacy/18-quests.css' layer(legacy);
+@import './legacy/19-fallbacks.css' layer(legacy);
+@import './legacy/20-study-link.css' layer(legacy);
+@import './legacy/21-deadline.css' layer(legacy);
+@import './legacy/22-command-menu.css' layer(legacy);
+@import './legacy/23-cycle-log.css' layer(legacy);
+@import './legacy/24-activities.css' layer(legacy);
+@import './legacy/25-birb-shop.css' layer(legacy);
+@import './legacy/26-goals.css' layer(legacy);
+@import './legacy/27-motion.css' layer(legacy);
+@import './legacy/28-bag.css' layer(legacy);
+@import './legacy/29-recovery.css' layer(legacy);
+@import './legacy/30-marks.css' layer(legacy);
+@import './legacy/31-feed.css' layer(legacy);
+@import './legacy/32-support.css' layer(legacy);
+@import './legacy/33-overworld.css' layer(legacy);
+@import './legacy/34-engine-garden.css' layer(legacy);
+@import './legacy/35-chest.css' layer(legacy);
+@import './legacy/36-party.css' layer(legacy);
+@import './legacy/37-habitat.css' layer(legacy);
+@import './legacy/38-pairing-sheet.css' layer(legacy);
+@import './legacy/39-popups.css' layer(legacy);
+@import './legacy/40-friends.css' layer(legacy);
+@import './legacy/41-birb-page.css' layer(legacy);

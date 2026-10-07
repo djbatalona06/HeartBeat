@@ -43,7 +43,7 @@ files in `app/public/fonts/display/`, and they are **not precached**: together
 they are ~160 KiB, against a precache ceiling (`tools/lighthouse.mjs`) that had
 ~55 KiB of room. `pwa/sw.ts` caches each one the first time a pack asks for it.
 A browser never requests a face no text uses, so an unused pack costs nothing.
-Adding a face means the `@font-face` block in `styles.css`, the file, and
+Adding a face means the `@font-face` block in `app/src/styles/legacy/01-base.css`, the file, and
 nothing in `vite.config.ts` — the `fonts/display/**` ignore already covers it.
 
 ### Colour
@@ -76,7 +76,7 @@ at rest is the theme exactly as designed.
 
 Three things about it are deliberate and easy to undo by accident:
 
-- **The mix is in `styles.css`, not in `tokens.ts`.** `applyTheme` writes
+- **The mix is in the stylesheet (`styles/legacy/01-base.css`), not in `tokens.ts`.** `applyTheme` writes
   tokens as inline styles, so an accent computed in TypeScript would go stale
   on every theme and mode change. A `color-mix` over `var()` re-resolves
   against whatever palette is showing. The only JavaScript is `applyMood`,

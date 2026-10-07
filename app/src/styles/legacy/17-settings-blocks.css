@@ -1,0 +1,308 @@
+/* ---- settings: pairing, theme picker, the two of you -----------------------
+   The existing settings block above styles the sections; these are the parts
+   that did not exist before — the countdown, the theme swatches, and the two
+   faces. */
+
+.pair-lead {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: var(--line-tight);
+  letter-spacing: var(--font-display-tracking);
+}
+
+.pair-join {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.pair-note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+  color: var(--color-accent);
+}
+
+.invite-left {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ---- theme picker ---- */
+
+/* Light and dark, as three buttons rather than a switch: a two-state toggle
+   has nowhere to put "follow the phone", and following the phone is the
+   default. */
+.mode-row {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+.mode-option {
+  flex: 1 1 0;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.mode-option[data-on='true'] {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  font-weight: 600;
+}
+
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}
+
+.theme-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  text-align: left;
+}
+
+.theme-card[data-on='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-surface);
+}
+
+/* Three stops of the palette, so the picker shows the theme instead of naming it. */
+.theme-swatch {
+  display: flex;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 24px;
+  border-radius: calc(var(--radius) / 2);
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-border);
+}
+
+.theme-swatch > span { flex: 1; }
+
+.theme-name { font-size: var(--text-sm); line-height: var(--line-tight); }
+
+/* ---- the two of you ---- */
+
+.who-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+/* `~` rather than `+`: the hidden file input sits between the two rows in the
+   DOM, so the adjacent-sibling form matches nothing and the divider between
+   you and your partner never draws. */
+.who-row ~ .who-row { border-top: var(--border-width) solid var(--color-border); }
+
+.who-face {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: var(--border-width) solid var(--color-border);
+}
+
+.who-face-blank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+
+.who-fields { flex: 1; min-width: 0; }
+
+.who-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.who-actions { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.who-actions button { flex: 1; }
+
+/* The picker is opened from the buttons above; the control itself never shows. */
+.who-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Prose links inside a settings block follow the theme rather than the browser's
+   default blue, which belongs to no palette here and fails contrast on the
+   darker packs. */
+.set-block a { color: var(--color-accent); }
+
+/* ---- reminders ------------------------------------------------------------
+   The notifications block on Settings. Every state it can be in is a sentence
+   rather than a disabled control: a browser that cannot do push, a permission
+   already refused, and a server that is not answering are three different
+   problems, and one greyed-out switch for all three tells the reader nothing.
+
+   Nothing here is red. Not being able to send reminders is not an error the
+   person made. */
+
+/* The chat pill floats at the bottom right, and Reminders is the last block on
+   Settings — so without room to scroll past, the time control sits underneath
+   it. The padding is the pill's offset plus its own height. */
+.notify {
+  margin-top: var(--space-6);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 14px + var(--tap));
+}
+
+.notify-title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  letter-spacing: var(--font-display-tracking);
+  line-height: var(--line-tight);
+  color: var(--color-text);
+}
+
+.notify-lead,
+.notify-blocked,
+.notify-note {
+  margin: 0;
+  line-height: var(--line-body);
+  color: var(--color-text-muted);
+}
+
+.notify-blocked,
+.notify-note {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+}
+
+.notify-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.notify-state {
+  font-family: var(--font-display);
+  letter-spacing: var(--font-display-tracking);
+  color: var(--color-text);
+}
+
+.notify-switch {
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--color-accent);
+  border-radius: var(--radius);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.notify-switch:disabled { opacity: 0.6; cursor: default; }
+
+/* Stacked rather than a label-and-control row: a select pushed to the right
+   edge is the one thing the floating pill can cover, and a full-width control
+   stays tappable wherever the pill happens to sit. */
+.notify-hour {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.notify-hour select {
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Two switches, because the two pushes are not the same promise — see the
+   note beside them in NotificationsBlock.tsx. Laid out as a list of rows rather
+   than a row of chips: each one needs a line of explanation under it, and a
+   toggle whose meaning takes a sentence is not a chip. */
+.notify-kinds {
+  margin-top: var(--space-4);
+  padding: 0;
+  border: none;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.notify-kinds legend {
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* The checkbox spans both rows so the name and its explanation sit in one
+   column beside it, rather than the second line wrapping under the box. */
+.notify-kind {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: var(--space-1) var(--space-3);
+  min-height: var(--tap);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--hairline);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  cursor: pointer;
+}
+
+.notify-kind input {
+  grid-row: 1 / span 2;
+  width: var(--space-4);
+  height: var(--space-4);
+  margin: 0;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.notify-kind input:disabled { cursor: default; }
+.notify-kind:has(input:disabled) { opacity: 0.6; cursor: default; }
+
+.notify-kind-name { color: var(--color-text); }
+
+.notify-kind-what {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+

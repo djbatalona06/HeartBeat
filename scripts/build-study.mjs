@@ -53,7 +53,7 @@ const js = readFileSync(join(DIST, jsFile), 'utf8');
 const css = cssFile ? readFileSync(join(DIST, cssFile), 'utf8') : '';
 
 // ---- 3. fonts ----------------------------------------------------------------
-// The two woff2 files live in app/public/ and are referenced from styles.css by
+// The two woff2 files live in app/public/ and are referenced from app/src/styles/legacy/01-base.css by
 // absolute URL, so Vite copies them rather than processing them and they are
 // still a network reference at this point. Swap each for a data URI, exactly as
 // gift/build.mjs does for its own typefaces.

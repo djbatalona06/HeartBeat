@@ -1,0 +1,254 @@
+/* ---- ui components ---------------------------------------------------------
+   The library from `app/src/ui/`. `.primary`, `.quiet`, `.chip` and `.empty`
+   are deliberately absent: those rules already exist further down and already
+   look right, and the components wrap them rather than repainting them. Only
+   the genuinely new shapes are here. */
+
+.tilecard {
+  display: block;
+  width: 100%;
+  text-align: start;
+  padding: var(--space-4);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--hairline);
+  box-shadow: var(--shadow);
+  color: inherit;
+  text-decoration: none;
+  /* A card that is a button must not inherit the UA's button font. */
+  font: inherit;
+}
+
+a.tilecard, button.tilecard { cursor: pointer; }
+a.tilecard:focus-visible, button.tilecard:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.tilecard-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.tilecard-glyph { display: grid; place-items: center; color: var(--color-accent); }
+.tilecard-title { margin: 0; font-size: var(--text-base); font-weight: 600; }
+.tilecard-aside { margin-inline-start: auto; color: var(--color-text-muted); font-size: var(--text-sm); }
+.tilecard-body { display: grid; gap: var(--space-2); }
+
+/* The log variant is pressed far more than it is read, so it gets the room. */
+.tilecard-log { min-height: calc(var(--tap) * 1.5); }
+.tilecard-companion { display: grid; justify-items: center; text-align: center; }
+
+/* A secondary action, as a row. The element follows the behaviour — see
+   `ListRow.tsx` — so this styles a link, a button and a div identically. */
+.listrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+}
+
+a.listrow, button.listrow { cursor: pointer; }
+a.listrow:hover, button.listrow:hover { background: color-mix(in srgb, var(--color-text) 6%, transparent); }
+.listrow:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.listrow-inert { cursor: default; }
+.listrow + .listrow { border-top: var(--border-width) solid var(--hairline); border-radius: 0; }
+
+.listrow-glyph { display: grid; place-items: center; color: var(--color-accent); flex: none; }
+.listrow-text { display: grid; gap: 2px; min-width: 0; }
+.listrow-label { font-size: var(--text-base); }
+.listrow-hint { font-size: var(--text-sm); color: var(--color-text-muted); }
+.listrow-value { margin-inline-start: auto; color: var(--color-text-muted); font-size: var(--text-sm); flex: none; }
+
+/* One number, with enough around it to know what it is. No `+`, and nothing
+   to buy — see the note in `StatChip.tsx`. */
+.statchip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 999px;
+  background: var(--glass);
+  border: var(--border-width) solid var(--hairline);
+  color: inherit;
+  font: inherit;
+}
+
+button.statchip { cursor: pointer; min-height: var(--tap); }
+.statchip:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.statchip-value { font-size: var(--text-base); font-weight: 600; }
+.statchip-label { font-size: var(--text-xs); color: var(--color-text-muted); }
+.statchip-trend[data-dir='up'] { color: var(--color-success); }
+/* Not danger. A number going down here is a quiet week, not a failure. */
+.statchip-trend[data-dir='down'] { color: var(--color-text-muted); }
+
+.empty-glyph { font-size: var(--text-2xl); line-height: 1; display: block; margin-bottom: var(--space-2); }
+
+.skeleton-lines { display: grid; gap: var(--space-2); }
+.skeleton-line[data-short='true'] { width: 60%; }
+.skeleton-block { width: 100%; aspect-ratio: 3 / 2; }
+
+/* A hexagon from `clip-path`, and a ring from one conic gradient. No image, so
+   nothing to re-export per theme — see `ProgressHex.tsx`. */
+.progress-hex {
+  position: relative;
+  width: 5.5rem;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+
+.progress-hex-ring,
+.progress-hex-face {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+.progress-hex-ring {
+  background: conic-gradient(
+    var(--color-accent) var(--hex-fill, 0%),
+    color-mix(in srgb, var(--color-text) 14%, transparent) var(--hex-fill, 0%)
+  );
+}
+
+/* Inset, so the ring behind it shows as a border of the same shape — one clip
+   path instead of two that have to agree. */
+.progress-hex-face {
+  inset: 4px;
+  background: var(--color-surface);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--font-display-weight);
+}
+
+/* One host for every receipt. Above the tab bar and below nothing. */
+.toast-host {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-3));
+  z-index: var(--z-toast);
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  /* The region exists while empty so a screen reader is already watching it;
+     an empty fixed box must not eat taps meant for the page under it. */
+  pointer-events: none;
+  width: min(var(--shell-max), calc(100vw - var(--space-5)));
+}
+
+/* ---- tiles ----------------------------------------------------------------
+   The dashboard is a ring now, so nothing renders these today. They stay
+   because `components/Tile.tsx` is still a working component and the next
+   screen that wants a row of doors should not have to redraw one. */
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 120px;
+  padding: 16px;
+  text-decoration: none;
+  color: inherit;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-lift);
+  transition: transform var(--motion-fast) var(--motion-easing),
+              box-shadow var(--motion-fast) var(--motion-easing),
+              border-color var(--motion-fast) var(--motion-easing);
+}
+
+/* Pressed, a tile travels down onto its own shadow and the shadow collapses to
+   the contact one. That pairing is the whole trick: travel alone reads as the
+   card sliding, and a shadow change alone reads as the light moving. Together
+   they read as a finger pushing something into the page.
+
+   `.garden-action:active` further down has done exactly this since the fight
+   screen was built; this is that gesture made shared rather than local. */
+.tile:active {
+  transform: translateY(var(--press));
+  box-shadow: var(--shadow-contact);
+}
+.tile:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+.tile-head { display: flex; align-items: center; gap: 8px; }
+.tile-glyph { color: var(--color-accent); font-size: 15px; }
+.tile-title { font-size: 13px; color: var(--color-text-muted); }
+
+.tile-value {
+  margin-top: auto;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 5.4vw, 26px);
+  line-height: 1.15;
+}
+
+.tile-hint { font-size: 11.5px; color: var(--color-text-muted); }
+
+/* ---- meters --------------------------------------------------------------- */
+.meter { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+.meter-track {
+  position: relative;
+  width: 26px;
+  height: 132px;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+
+/* The meter doubling as the slider: a grab cursor, and no page-scroll
+   fighting a vertical drag on touch. */
+.meter-track[data-draggable='true'] { cursor: grab; touch-action: none; }
+.meter-track[data-draggable='true']:active { cursor: grabbing; }
+.meter-track[data-draggable='true']:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.meter-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--color-accent);
+  border-radius: 999px;
+  transition: height var(--motion-medium) var(--motion-easing);
+}
+
+.meter-value { font-family: var(--font-display); font-size: 15px; font-variant-numeric: tabular-nums; }
+.meter-label { font-size: 11px; color: var(--color-text-muted); }
+
+/* ---- empty states --------------------------------------------------------- */
+.empty {
+  padding: 28px 20px;
+  text-align: center;
+  background: var(--color-surface);
+  border: var(--border-width) dashed var(--color-border);
+  border-radius: var(--radius-large);
+}
+
+.empty p { font-size: 15px; }
+.empty-sub { margin-top: 8px; font-size: 13px; color: var(--color-text-muted); line-height: 1.55; }
+.empty code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.92em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--color-surface-muted);
+}
+

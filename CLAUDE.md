@@ -29,7 +29,7 @@ cd app && npx vitest run src/db/repository/entries.test.ts
 npm run gift:build   # rebuild gift/birthday.html
 npm run gift:verify  # headless browser walk of every screen
 
-# Study page (rebuild LAST, after any change to styles.css or to app source — see pitfalls)
+# Study page (rebuild LAST, after any change to app/src/styles/ or to app source — see pitfalls)
 npm run study:build  # rebuild study/index.html
 
 # Visual walk (needs app/dist, so build first)
@@ -137,6 +137,7 @@ Full deploy walkthrough: `docs/DEPLOY.md`
 
 ## Known patterns and pitfalls
 
+- **The stylesheet is `app/src/styles/`, not one file.** `styles/index.css` is the only entry (main, standalone and harness import it) and declares the layer order once: `reset, tokens, base, ui, features, legacy, overrides`. The old 8,189-line `styles.css` lives on as numbered partials in `styles/legacy/`, imported in their original order into the `legacy` layer, so nothing moved when it was split. **A later layer beats an earlier one whatever the specificity**, and `legacy` sits above `ui` and `features` on purpose: a section restyled into a new layer must leave `legacy` in the same change, or its old rules keep winning. `styles/styles.test.ts` fails on a `var(--x)` nothing defines, a raw `z-index` above 4 (use the `--z-*` scale in `tokens.ts`), a hex colour outside a `var()` fallback, and a partial the entry does not import.
 - **`db/repository/` is a directory, not a file.** It used to be one ~1500-line `repository.ts` that every unit appended to, and three PRs broke `main` conflicting on its last line. Each section is now its own module, re-exported by `repository/index.ts`. **Adding a section means adding a file plus one `export *` line in alphabetical order** — never appending to an existing section. `repository/index.test.ts` fails if a section file is missing from the barrel. Sections import each other directly (`./petXp`), never through `./index`, which would make the graph cyclic. `id()` and `now()` live in `repository/shared.ts`.
 - **`REKEY_TABLES` allowlist**: only `settings` should be in the exemption list — `quests` and `achievements` must be re-keyed on identity change.
 - **Day keys use member timezone**, not UTC — use the member's zone for `noteDays`, `endOfDay`, and any "days" count.
@@ -319,7 +320,7 @@ Full deploy walkthrough: `docs/DEPLOY.md`
 - **`--color-accent-live` is a lean, not a new colour.** The pet's mood moves
   the accent by mixing it toward another token *in the same palette* —
   `success` when happy, `base` when sleepy — so each of the five packs leans
-  its own way and none is overruled. The mix lives in `styles.css` under
+  its own way and none is overruled. The mix lives in `styles/legacy/01-base.css` under
   `:root[data-mood=...]` rather than in `themeToCssVars`, because `applyTheme`
   writes tokens as inline styles and a TS-computed accent would go stale on
   every theme and mode change; the only JavaScript is `applyMood`, one

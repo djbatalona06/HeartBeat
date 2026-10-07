@@ -81,6 +81,8 @@ export const SHARED_TOKENS: Record<string, string> = {
    */
   '--z-scene': '0',
   '--z-content': '1',
+  /** The dim behind the menu and popups: above the tab bar, under the panel. */
+  '--z-scrim': '5',
   '--z-chrome': '6',
   '--z-overlay': '40',
   '--z-sheet': '45',

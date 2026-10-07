@@ -1,0 +1,127 @@
+/* ---- messages ------------------------------------------------------------- */
+/* Not on the bar: the thread is not a destination in the way the six sections
+   are. It floats above the bottom-right corner of the bar and opens into a
+   sheet over whatever screen you were on. Stacked off --tabbar-h rather than a
+   number, because the bar grows at the 640px breakpoint and a hard-coded
+   offset would put the pill through it there. */
+.chat-pill {
+  position: fixed;
+  right: calc(env(safe-area-inset-right) + 14px);
+  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-2));
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  padding: 0 var(--space-4);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  border: none;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--ease-soft);
+}
+.chat-pill:active { transform: scale(0.95); }
+.chat-pill:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+
+/* The dot on the message pill, which is the one place it cannot use its own
+   colours.
+
+   `.badge-dot` paints in `--color-accent` against `--color-surface`, which is
+   right on the tab bar. The pill *is* `--color-accent`, so the default would be
+   an accent dot on an accent ground — invisible but for its own ring. The
+   colours invert here and the positioning goes back to flow, because inside a
+   flex pill the badge is a third child beside the glyph and the label, not
+   something hanging off a corner.
+
+   This replaces `.chat-unread`, which was the same rule attached to a bespoke
+   span. One component, one source of the count, and the context it sits in
+   decides how it looks — which is the arrangement that stops the next surface
+   from growing a fourth copy. */
+.chat-pill .badge-dot {
+  position: static;
+  background: var(--color-base);
+  color: var(--color-text);
+  box-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat {
+  position: fixed;
+  /* Never over the bar: the sections stay reachable mid-conversation. This
+     used to say `left: var(--shell-left)` and clear the rail sideways, which
+     is the same intent read a quarter turn round. */
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-2));
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  max-height: min(70vh, 520px);
+  max-width: 560px;
+  margin: 0 auto;
+  padding: var(--space-4) calc(env(safe-area-inset-left) + 16px) var(--space-4)
+           calc(env(safe-area-inset-right) + 16px);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large) var(--radius-large) 0 0;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+.chat-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.chat-title { flex: 1 1 auto; font-family: var(--font-display); font-size: var(--text-lg); }
+.chat-state { font-size: var(--text-xs); color: var(--color-text-muted); }
+.chat-close {
+  min-width: 36px;
+  min-height: 36px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.chat-thread { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+.chat-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 78%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+  /* Long links and pasted paths must wrap rather than widen the sheet. */
+  overflow-wrap: anywhere;
+}
+.chat-mine {
+  align-self: flex-end;
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+.chat-theirs { align-self: flex-start; background: var(--color-surface-muted); }
+.chat-msg[data-pending='true'] { opacity: 0.6; }
+
+.chat-time { font-size: var(--text-xs); opacity: 0.7; }
+
+.chat-composer { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+.chat-composer .field { flex: 1 1 auto; }
+.chat-send { flex: none; }
+

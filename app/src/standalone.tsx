@@ -5,7 +5,7 @@ import { THEMES } from './themes';
 import { useTheme } from './themes/ThemeProvider';
 import { StudyPage } from './features/study/StudyPage';
 import { exportState, importState, isVolatile, localStudyStore } from './db/localStudyStore';
-import './styles.css';
+import './styles/index.css';
 
 /**
  * The standalone entry.

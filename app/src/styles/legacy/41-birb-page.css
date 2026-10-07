@@ -1,0 +1,92 @@
+/* ---- the Birb page in one screen (docs/ONE-SCROLL.md) ----------------------
+   The room with your bird in it beside who it walks with and the one primary
+   action, then three labelled panes. The room is the hero rather than a third
+   panel down, which is where the bird used to first appear. */
+.birb-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+}
+.birb-hero .house { margin-top: 0; }
+.birb-hero-side { display: grid; gap: var(--space-2); align-content: center; }
+.birb-hero-walk { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
+.birb-hero-pet { flex: none; width: 2.5rem; height: 2.5rem; }
+.birb-hero-pet svg { width: 100%; height: 100%; display: block; }
+.birb-hero-coins { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+/* A SwipePane whose panes are different things, named rather than dotted. */
+.swipe-tabs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-large);
+  background: var(--color-surface-muted);
+}
+.swipe-tab {
+  appearance: none;
+  border: 0;
+  min-height: var(--tap);
+  border-radius: var(--radius-large);
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.swipe-tab[data-on='true'] { background: var(--color-surface); color: var(--color-text); font-weight: 600; }
+.swipe-tab:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+/* Panes keep their own height, and `SwipePane` sizes the track to the one
+   showing; the rest are clipped rather than scrolled to. */
+.swipe-pane { align-self: start; }
+.swipe-track { overflow-y: hidden; align-items: start; }
+
+/* Colours inside a pane: three across and smaller birds, so the eight fit in
+   about half a screen instead of four rows. */
+.swipe-pane .dye-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: var(--space-2); }
+.swipe-pane .dye-button { padding: var(--space-2) var(--space-1); }
+.swipe-pane .dye-art { width: 46px; height: 46px; }
+
+.birb-empty { display: flex; align-items: center; gap: var(--space-3); }
+.birb-empty-egg { flex: none; width: 2.5rem; }
+.birb-empty-egg svg { width: 100%; height: auto; display: block; }
+.birb-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
+/* The pane's companions: one row each, the walk button at the end. */
+.pet-list-compact .pet {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+.pet-list-compact .pet-portrait { width: 2.75rem; height: 2.75rem; margin: 0; }
+.pet-list-compact .pet-head { display: grid; gap: 0; }
+
+/* ---- the partner's companion at the Raid Gate -----------------------------
+   Their pick on a small pedestal in the scene's near corner, opposite the boss.
+   Absolutely placed so it never pushes the boss card or the roster around. */
+.raid-gate-partner {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  width: clamp(3.5rem, 16vw, 5rem);
+}
+.raid-gate-partner-figure { position: relative; display: block; width: 100%; aspect-ratio: 1; }
+.raid-gate-partner-figure svg { width: 100%; height: 100%; display: block; }
+.raid-gate-partner-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+}
