@@ -1,0 +1,187 @@
+/* ---- the ui/ library ----------------------------------------------------------
+   The shared components from `app/src/ui/`, in the `ui` layer. Anything a
+   feature wants to change about them it changes in its own partial, which sits
+   in a later layer and wins without a specificity fight.
+
+   Calm, in three rules (docs/superpowers/specs/2026-10-07-calm-ui-foundation-design.md):
+   - one elevation: a card is the surface and a hairline, with no shadow;
+     shadows are for what floats (sheets, toasts, popups, the menu);
+   - the accent is for the one thing to press and for the current state, so a
+     card's glyph is muted and only its focus ring is lit;
+   - a card lays itself out from its own width, not the viewport's.
+
+   `.primary`, `.quiet` and `.chip` are still in `legacy/06-rpg-shop.css`, where
+   forty partials after it lean on them; they move when those do. */
+
+.tilecard {
+  container-type: inline-size;
+  display: block;
+  width: 100%;
+  text-align: start;
+  padding: var(--space-4);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--hairline);
+  color: inherit;
+  text-decoration: none;
+  /* A card that is a button must not inherit the UA's button font. */
+  font: inherit;
+
+  &:is(a, button) { cursor: pointer; }
+  &:is(a, button):focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+.tilecard-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.tilecard-glyph { display: grid; place-items: center; color: var(--color-text-muted); }
+.tilecard-title { margin: 0; font-size: var(--text-base); font-weight: 600; }
+.tilecard-aside { margin-inline-start: auto; color: var(--color-text-muted); font-size: var(--text-sm); }
+.tilecard-body { display: grid; gap: var(--space-2); }
+
+/* Half a pane wide, the aside drops under the title instead of squeezing it. */
+@container (width < 280px) {
+  .tilecard-aside { flex-basis: 100%; margin-inline-start: 0; }
+}
+
+/* The log variant is pressed far more than it is read, so it gets the room. */
+.tilecard-log { min-height: calc(var(--tap) * 1.5); }
+.tilecard-companion { display: grid; justify-items: center; text-align: center; }
+
+/* A secondary action, as a row. The element follows the behaviour — see
+   `ListRow.tsx` — so this styles a link, a button and a div identically. */
+.listrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+
+  &:is(a, button) { cursor: pointer; }
+  &:is(a, button):hover { background: color-mix(in srgb, var(--color-text) 6%, transparent); }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+  & + & { border-top: var(--border-width) solid var(--hairline); border-radius: 0; }
+}
+
+.listrow-inert { cursor: default; }
+.listrow-glyph { display: grid; place-items: center; color: var(--color-text-muted); flex: none; }
+.listrow-text { display: grid; gap: 2px; min-width: 0; }
+.listrow-label { font-size: var(--text-base); }
+.listrow-hint { font-size: var(--text-sm); color: var(--color-text-muted); }
+.listrow-value { margin-inline-start: auto; color: var(--color-text-muted); font-size: var(--text-sm); flex: none; }
+
+/* One number, with enough around it to know what it is. No `+`, and nothing
+   to buy — see the note in `StatChip.tsx`. */
+.statchip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--hairline);
+  color: inherit;
+  font: inherit;
+
+  &:is(button) { cursor: pointer; min-height: var(--tap); }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+}
+
+.statchip-value { font-size: var(--text-base); font-weight: 600; }
+.statchip-label { font-size: var(--text-xs); color: var(--color-text-muted); }
+.statchip-trend[data-dir='up'] { color: var(--color-success); }
+/* Not danger. A number going down here is a quiet week, not a failure. */
+.statchip-trend[data-dir='down'] { color: var(--color-text-muted); }
+
+.empty {
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+  background: var(--color-surface);
+  border: var(--border-width) dashed var(--color-border);
+  border-radius: var(--radius-large);
+
+  & p { font-size: var(--text-base); }
+  & code {
+    font-family: ui-monospace, monospace;
+    font-size: 0.92em;
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: var(--color-surface-muted);
+  }
+}
+
+.empty-glyph { font-size: var(--text-2xl); line-height: 1; display: block; margin-bottom: var(--space-2); }
+.empty-sub { margin-top: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); line-height: var(--line-body); }
+
+.skeleton-lines { display: grid; gap: var(--space-2); }
+.skeleton-line[data-short='true'] { width: 60%; }
+.skeleton-block { width: 100%; aspect-ratio: 3 / 2; }
+
+/* A hexagon from `clip-path`, and a ring from one conic gradient. No image, so
+   nothing to re-export per theme — see `ProgressHex.tsx`. */
+.progress-hex {
+  position: relative;
+  width: 5.5rem;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+
+.progress-hex-ring,
+.progress-hex-face {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+/* A ring filling is progress, which is state: it keeps the accent. */
+.progress-hex-ring {
+  background: conic-gradient(
+    var(--color-accent) var(--hex-fill, 0%),
+    color-mix(in srgb, var(--color-text) 14%, transparent) var(--hex-fill, 0%)
+  );
+}
+
+/* Inset, so the ring behind it shows as a border of the same shape — one clip
+   path instead of two that have to agree. */
+.progress-hex-face {
+  inset: 4px;
+  background: var(--color-surface);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--font-display-weight);
+}
+
+/* One host for every receipt. Above the tab bar and below nothing. */
+.toast-host {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-3));
+  z-index: var(--z-toast);
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  /* The region exists while empty so a screen reader is already watching it;
+     an empty fixed box must not eat taps meant for the page under it. */
+  pointer-events: none;
+  width: min(var(--shell-max), calc(100vw - var(--space-5)));
+}

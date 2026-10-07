@@ -38,6 +38,15 @@ describe('the stylesheet', () => {
     expect(new Set(imported).size).toBe(imported.length);
   });
 
+  it('has no empty partial', () => {
+    // An empty file imports cleanly and builds cleanly; the rules it was
+    // meant to hold are simply gone. That happened once, to the reset.
+    const empty = sheets
+      .filter(({ path, css }) => path !== 'index.css' && !/\{/.test(uncommented(css)))
+      .map((s) => s.path);
+    expect(empty).toEqual([]);
+  });
+
   it('reads no custom property that nothing defines', () => {
     // Defined three ways: by the theme engine, by a declaration in a sheet, or
     // by a component setting it inline (`style={{ '--sand': … }}`).

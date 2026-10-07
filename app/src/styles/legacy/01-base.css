@@ -80,18 +80,6 @@
                  U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-html, body, #root { height: 100%; }
-
-body {
-  background: var(--color-base, #2a0f1c);
-  color: var(--color-text, #fff3f7);
-  font-family: var(--font-body, system-ui, sans-serif);
-  -webkit-font-smoothing: antialiased;
-  overscroll-behavior-y: none;
-}
-
 /* ---- shell ---------------------------------------------------------------- */
 .shell {
   position: relative;
@@ -257,6 +245,10 @@ body {
    section remembers for itself. */
 .page > * + * { margin-top: var(--stack); }
 
+/* Groups of content get more room than the cards inside a group, so a page
+   reads as a few groups rather than one long run of cards. */
+.page > section + section { margin-top: var(--section-gap); }
+
 .page-head { margin-bottom: var(--space-5); }
 
 .page-title {
@@ -283,9 +275,12 @@ body {
   padding: 0;
   border: none;
   background: none;
-  color: var(--color-accent);
+  /* Muted: it sits beside every page title, and the accent is kept for the
+     one thing on a screen that should be pressed. Lit while its guide is open. */
+  color: var(--color-text-muted);
   cursor: pointer;
 }
+.info-bubble[aria-expanded='true'] { color: var(--color-accent); }
 .info-bubble[aria-expanded='true'] .icon .body { fill-opacity: 0.4; }
 .info-guide-toggle {
   display: flex;

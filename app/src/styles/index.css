@@ -20,6 +20,8 @@
  */
 @layer reset, tokens, base, ui, features, legacy, overrides;
 
+@import './base/reset.css' layer(reset);
+@import './ui/components.css' layer(ui);
 @import './legacy/01-base.css' layer(legacy);
 @import './legacy/02-home.css' layer(legacy);
 @import './legacy/03-ui-layout.css' layer(legacy);
