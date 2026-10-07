@@ -22,7 +22,7 @@
  */
 
 /** The completions the study app can report. Anything else is refused. */
-export const STUDY_KINDS = ['deck', 'quiz', 'match', 'anatomy', 'weekly'] as const;
+export const STUDY_KINDS = ['deck', 'quiz', 'match', 'anatomy', 'weekly', 'typing'] as const;
 export type StudyKind = (typeof STUDY_KINDS)[number];
 
 /**
@@ -37,6 +37,9 @@ export const STUDY_XP: Record<StudyKind, number> = {
   weekly: 35,
   match: 10,
   anatomy: 15,
+  // A typing stage: five rounds of typing answers against the CPU. Between a
+  // match and a deck, because it is a session of cards but a shorter one.
+  typing: 15,
 };
 
 /**

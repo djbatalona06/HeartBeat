@@ -236,7 +236,7 @@ only moment anything server-side can know it.
 
 **`app/functions/api/study/session.ts`** — the study app POSTs a finished
 session. It is the only route in `functions/` that answers a CORS preflight.
-`STUDY_XP = { deck: 20, quiz: 25, weekly: 35, match: 10, anatomy: 15 }`,
+`STUDY_XP = { deck: 20, quiz: 25, weekly: 35, match: 10, anatomy: 15, typing: 15 }`,
 `STUDY_DAILY_CAP = 120` XP per member-day. The award id is `study-<sessionId>`
 and the ledger's primary key does the deduplicating, so the offline queue may
 resend freely. A clock more than 48 hours out is distrusted and the session is
