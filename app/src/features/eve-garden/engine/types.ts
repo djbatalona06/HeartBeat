@@ -15,7 +15,7 @@ import type { MonsterBehavior, Telegraph } from '../../../domain/rpg/behaviours'
  */
 
 export type Element = 'Mood' | 'Movement' | 'Nourishment' | 'Focus' | 'Rest' | 'Bond' | 'Balance';
-export type MonsterType = 'Common' | 'SemiBoss' | 'Elite' | 'Boss';
+export type MonsterType = 'Common' | 'SemiBoss' | 'Elite' | 'Boss' | 'Minion';
 export type ActionKind = 'Attack' | 'Debuff' | 'Heal' | 'Shield';
 export type DioramaTheme = 'Light' | 'Dark';
 export type StatusKind = 'SpeedDown' | 'AttackDown' | 'Drain' | 'Guard';

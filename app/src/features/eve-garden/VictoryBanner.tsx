@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { MonsterDto } from './engine/types';
 
 /**
@@ -19,10 +20,12 @@ export interface VictoryBannerProps {
   islandComplete: boolean;
   nextIslandName: string | null;
   onDismiss(): void;
+  /** Anything extra the win earned, such as the bonus spin after a boss. */
+  children?: ReactNode;
 }
 
 export function VictoryBanner({
-  monster, xp, leveledUp, level, rewardText, lootText, islandComplete, nextIslandName, onDismiss,
+  monster, xp, leveledUp, level, rewardText, lootText, islandComplete, nextIslandName, onDismiss, children,
 }: VictoryBannerProps) {
   return (
     <div className="garden-victory" role="status">
@@ -43,6 +46,8 @@ export function VictoryBanner({
             {nextIslandName ? ` ${nextIslandName} is open.` : ' There is no further to go — yet.'}
           </p>
         )}
+
+        {children}
 
         <button type="button" className="garden-victory-go" onClick={onDismiss}>
           {islandComplete ? 'On, then' : 'Next stage'}

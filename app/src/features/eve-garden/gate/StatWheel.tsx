@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import { RAID_STAT_NAMES } from '../../../domain/rpg/raidStats';
+import { STAT_COLOUR } from '../../../domain/rpg/raidStatColours';
 import { wheelPoints, wheelSpokes, type GateCard } from '../../../domain/rpg/raidGate';
 
 /**
@@ -18,7 +19,10 @@ import { wheelPoints, wheelSpokes, type GateCard } from '../../../domain/rpg/rai
  * nothing to switch off.
  *
  * The shape is never the only signal: it is `role="img"` with the level and
- * the stats it brings said in words.
+ * the stats it brings said in words. Each dot wears its stat's own hue
+ * (`raidStatColours.ts`) and the three stats the pet leans on are named in
+ * chips underneath, lead stat first, so colour is always read with a word. The
+ * chips are `aria-hidden`: the wheel's label already says every name once.
  */
 
 const SIZE = 100;
@@ -28,6 +32,8 @@ const RADIUS = 46;
 export interface StatWheelProps {
   card: Pick<GateCard, 'source' | 'leans' | 'level'>;
 }
+
+const hue = (stat: keyof typeof STAT_COLOUR) => ({ '--stat': STAT_COLOUR[stat] }) as CSSProperties;
 
 const toPath = (points: readonly { x: number; y: number }[]) =>
   `${points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ')} Z`;
@@ -45,29 +51,39 @@ export function StatWheel({ card }: StatWheelProps) {
     .join(', ');
 
   return (
-    <span className="raid-gate-wheel">
-      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={`Level ${card.level}. ${said}.`}>
-        <path className="raid-gate-wheel-rim" d={toPath(tips)} />
-        <path className="raid-gate-wheel-rim raid-gate-wheel-half" d={toPath(halfway)} />
-        {tips.map((tip, i) => (
-          <line key={spokes[i].stat} className="raid-gate-wheel-spoke" x1={CENTRE.x} y1={CENTRE.y} x2={tip.x} y2={tip.y} />
-        ))}
-        <path className="raid-gate-wheel-shape" d={toPath(corners)} />
-        {spokes.map((spoke, i) => (spoke.value > 0 ? (
-          <circle
-            key={spoke.stat}
-            className="raid-gate-wheel-dot"
-            data-leans={spoke.leans || undefined}
-            cx={corners[i].x}
-            cy={corners[i].y}
-            r={spoke.leans ? 3.4 : 2.4}
-          />
-        ) : null))}
-      </svg>
-      <span className="raid-gate-wheel-level" aria-hidden="true">
-        <span className="raid-gate-wheel-lv">LV</span>
-        {card.level}
+    <>
+      <span className="raid-gate-wheel">
+        <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={`Level ${card.level}. ${said}.`}>
+          <path className="raid-gate-wheel-rim" d={toPath(tips)} />
+          <path className="raid-gate-wheel-rim raid-gate-wheel-half" d={toPath(halfway)} />
+          {tips.map((tip, i) => (
+            <line key={spokes[i].stat} className="raid-gate-wheel-spoke" x1={CENTRE.x} y1={CENTRE.y} x2={tip.x} y2={tip.y} />
+          ))}
+          <path className="raid-gate-wheel-shape" d={toPath(corners)} />
+          {spokes.map((spoke, i) => (spoke.value > 0 ? (
+            <circle
+              key={spoke.stat}
+              className="raid-gate-wheel-dot"
+              data-leans={spoke.leans || undefined}
+              style={hue(spoke.stat)}
+              cx={corners[i].x}
+              cy={corners[i].y}
+              r={spoke.leans ? 3.4 : 2.4}
+            />
+          ) : null))}
+        </svg>
+        <span className="raid-gate-wheel-level" aria-hidden="true">
+          <span className="raid-gate-wheel-lv">LV</span>
+          {card.level}
+        </span>
       </span>
-    </span>
+      <span className="raid-gate-stats" aria-hidden="true">
+        {card.leans.map((stat, i) => (
+          <span key={stat} className="raid-gate-stat" data-lead={i === 0 || undefined} style={hue(stat)}>
+            {RAID_STAT_NAMES[stat]}
+          </span>
+        ))}
+      </span>
+    </>
   );
 }

@@ -1,0 +1,47 @@
+/* ---- the reward wheel ------------------------------------------------------
+   Five equal wedges, a pointer at the top, and the chances printed twice: on
+   each wedge and in the list under it. Colour comes from the pack's tokens; the
+   wedges are tints so their printed numbers keep their contrast in every pack.
+   The spin itself is an inline transition that `Wheel` turns off under calm. */
+.wheel { display: grid; gap: var(--space-3); justify-items: center; }
+.wheel-stage { position: relative; width: min(18rem, 78vw); aspect-ratio: 1; }
+.wheel-disc { display: block; width: 100%; height: 100%; }
+.wheel-pointer {
+  position: absolute;
+  top: -0.35rem;
+  left: 50%;
+  z-index: 1;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-inline: 0.6rem solid transparent;
+  border-top: 1rem solid var(--color-text);
+}
+.wheel-wedge {
+  fill: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface));
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+.wheel-wedge[data-alt] { fill: color-mix(in srgb, var(--color-accent) 28%, var(--color-surface)); }
+.wheel-wedge[data-rare] { fill: color-mix(in srgb, var(--color-accent) 40%, var(--color-surface)); }
+.wheel-coins { fill: var(--color-text); font-size: 15px; font-weight: 800; }
+.wheel-chance { fill: var(--color-text); font-size: 10px; font-weight: 600; }
+.wheel-result { min-height: 1.5em; text-align: center; font-weight: 600; }
+.wheel-odds {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+.wheel-odds li {
+  display: grid;
+  grid-template-columns: 1fr auto 3.5ch;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+}
+.wheel-odds li span:last-child { text-align: end; font-variant-numeric: tabular-nums; }
+.wheel-sheet { display: grid; gap: var(--space-2); align-content: start; }
+.wheel-card { display: grid; gap: var(--space-2); justify-items: start; }

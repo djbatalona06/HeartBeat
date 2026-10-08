@@ -21,10 +21,25 @@ import type { MoveKey } from '../../../domain/rpg/companionSkills';
 
 /** What the scene tells the page. */
 export interface SceneHooks {
-  /** The pet walked into the monster. Open the fight. */
-  onEngage(): void;
+  /**
+   * The pet walked into a foe. Open the fight. With no argument it is the
+   * stage's monster; with a number it is the island skirmish standing at that
+   * address (`MinionSpot.stage`).
+   */
+  onEngage(minionStage?: number): void;
   /** The pet moved. Used to hide the hint once someone has worked out the controls. */
   onMove?(): void;
+}
+
+/**
+ * One island skirmish standing on the board (`domain/rpg/minions.ts`): the
+ * address its fight uses, the sprite to draw small, and its tile.
+ */
+export interface MinionSpot {
+  stage: number;
+  sprite: string;
+  x: number;
+  y: number;
 }
 
 /** Which way a hit is going, and how it should look. */

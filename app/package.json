@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "garden:glb": "node tools/garden-glb.mjs",
+    "arena:glb": "node tools/arena-glb.mjs",
     "splash": "node tools/splash.mjs",
     "test": "vitest run",
     "test:watch": "vitest",

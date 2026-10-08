@@ -14,4 +14,9 @@ public enum MonsterType
     SemiBoss,
     Elite,
     Boss,
+    /// <summary>
+    /// A small optional skirmish on islands 5 and up (<see cref="Data.Minions"/>).
+    /// Never a stage: it pays a little XP and never clears anything.
+    /// </summary>
+    Minion,
 }

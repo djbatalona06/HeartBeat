@@ -445,6 +445,44 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   steps past pulled rows that are `mine`.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
+- **Stat colours are TypeScript, and a name always travels with a hue.**
+  `domain/rpg/raidStatColours.ts` gives each of the seven raid stats one fixed
+  colour (0.10–0.30 luminance, 3:1 against white and black, like the vial's sand
+  in `vial.ts`), handed to CSS as `--stat` from the component. Hex never goes in
+  a stylesheet (`styles.test.ts`). The gate's chips print the stat name beside its
+  dot; the wheel's `aria-label` already says every name, so the chips are
+  `aria-hidden`.
+- **The battle pad is docked and the log is a strip.** `.garden-controls` is
+  `position: sticky` above the tab bar, `BattleLog` is one line (name, both bars,
+  the newest log line) above the board, and the whole log opens in a draggable
+  `Sheet` from "Full log". The strip is the page's `aria-live` region; the sheet is
+  not live, or it would read the whole history out every turn. Buzz inside the
+  button's `onClick` before anything async (iOS only ticks inside the tap).
+- **The reward wheel prints the odds it rolls.** `domain/rpg/wheel.ts` has one
+  weight table; `wheelOdds()` (largest remainder, exactly 100) and `rollWheel()`
+  read the same one, and `wheel.test.ts` pins the weights and the average payout.
+  A spin is seeded from `hash(member/source)` and paid as an already-opened
+  `purse-<member>-<source>` row in one transaction, so the row id is both "same on
+  any phone" and "already spun" (`wheel-<day>`, `wheel-boss-<monsterId>`). A boss
+  spin needs the boss in the world row's `cleared` list.
+- **The 3D board floor is drawn once and then the GPU is let go.**
+  `3d/arenaScene.ts` loads `arena.glb` (`npm run arena:glb`), renders one
+  orthographic frame, copies it to a 2D canvas and releases the context *before*
+  Phaser starts, so two WebGL contexts are never alive together. It loads the file
+  before creating a renderer, and `arenaFloor.ts` gives up after 1.5 s. Calm,
+  Save-Data and no WebGL make no request and keep the pixel tiles. The scene
+  replaces only grass and path with it; walls, water, stone, beds and the gate are
+  still drawn, and `isWalkable` is still the one grid. `arena.glb`'s roles
+  (`ARENA_ROLES`) are deliberately separate from `garden.glb`'s `ROLES`.
+- **Island skirmishes are not stages.** Islands 5+ have two small optional foes,
+  derived in `Data/Minions.cs` from the island's stage 1 and 2 commons, addressed as
+  stage `101`/`102`. Their ids start with `m`, never `i<n>s<n>-`, so nothing that
+  reads progress off an id (`world.ts`) can see them, and they never go through
+  `clearStageFor`, star chests or the boss gate. They pay `MINION_XP` once per day
+  per skirmish (`Avatar.minionDay`/`minionsBeaten`). `minions.test.ts` parses the
+  C# to hold the mirror, and `minionSpots` refuses a tile that would wall the
+  monster off (the stage-4 hedge gap is why).
+
 ## Ponytail (sister repo)
 
 `djbatalona06/ponytail` is an AI coding skill/plugin that enforces a minimal-code ladder ("does this need to exist? → reuse? → stdlib? → native? → installed dep? → one line?"). Install in Claude Code with:

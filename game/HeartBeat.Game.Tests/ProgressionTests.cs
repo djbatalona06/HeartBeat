@@ -97,6 +97,7 @@ public class ProgressionTests
         Assert.Equal(expected, Progression.XpFor(activity));
 
     [Theory]
+    [InlineData(MonsterType.Minion, 8)]
     [InlineData(MonsterType.Common, 30)]
     [InlineData(MonsterType.SemiBoss, 75)]
     [InlineData(MonsterType.Boss, 200)]

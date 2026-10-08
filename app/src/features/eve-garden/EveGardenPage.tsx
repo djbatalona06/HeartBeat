@@ -4,7 +4,7 @@ import { db, loadSettings } from '../../db/database';
 import {
   awardPetXp, chooseRaidCompanion, clearStageFor, coupleVitals, ensureIdentity,
   gardenMomentum, loadWorldProgress, openRaidGate,
-  recordRaidRounds, settleGardenClear, stampGatePresence, todaysCharges, travelToIsland,
+  recordMinionWin, recordRaidRounds, settleGardenClear, spinBossWheel, stampGatePresence, todaysCharges, travelToIsland,
 } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { levelForXp } from '../../domain/xp';
@@ -17,6 +17,8 @@ import type { House } from '../../domain/rpg/furniture';
 import { holdingsLoadout, loadoutSheet } from '../../domain/rpg/loadout';
 import { chargeOnWeakness, gardenAwardId, payingActivities } from '../../domain/rpg/charges';
 import { bossOf, faceOf } from '../../domain/rpg/islands';
+import { arenaFor } from '../../domain/rpg/arena';
+import { isMinionId, minionsOnStage } from '../../domain/rpg/minions';
 import { fireSkill, kitFor, moveKeyFor, moveNamesFor } from '../../domain/rpg/companionSkills';
 import {
   NO_BONUS, PRESENCE_REFRESH_MS, allyThemeId, bossEntryBlockedBecause, gateCards, partnerAtGate, partnerGateApplies,
@@ -35,6 +37,7 @@ import type {
 import type { SceneHandle, StepResult } from './scene/events';
 import { DirectionPad } from './DirectionPad';
 import { buzz } from '../../pwa/haptics';
+import { useWakeLock } from '../../pwa/useWakeLock';
 import { useTheme } from '../../themes/ThemeProvider';
 import {
   blocksPlay, faultCopy, faultFrom, needsTextMode, type GardenFault,
@@ -54,6 +57,8 @@ import { BattleLog } from './BattleLog';
 import { ActionBar } from './ActionBar';
 import { ChargeMeter } from './ChargeMeter';
 import { VictoryBanner } from './VictoryBanner';
+import { SpinOffer } from '../wheel/SpinOffer';
+import { loadArenaFloor } from './arenaFloor';
 import { Icon } from '../../components/icons';
 import { InfoBubble } from '../../ui/InfoBubble';
 import { GUIDES } from '../guide/guides';
@@ -184,12 +189,21 @@ export function EveGardenPage() {
   const [allActions, setAllActions] = useState<ActionDto[]>([]);
   const [monster, setMonster] = useState<MonsterDto | null>(null);
   /**
+   * The island skirmish being fought, while one is. It stands in for `monster`
+   * everywhere a fight reads its foe (`opponent` below), and is never a stage:
+   * nothing here clears, counts or pays like one.
+   */
+  const [skirmish, setSkirmish] = useState<{ stage: number; monster: MonsterDto } | null>(null);
+  const opponent = skirmish?.monster ?? monster;
+  /**
    * Log lines (by index; the log is append-only) whose hit landed on the
    * monster's weakness. C# names the move and the damage; whether a charge was
    * on the weakness is decided here by `edgeOf`, so the log learns it here.
    */
   const [weakHits, setWeakHits] = useState<readonly number[]>([]);
   const [battle, setBattle] = useState<BattleDto | null>(null);
+  // A fight is watched as much as touched: don't let the phone dim mid-round.
+  useWakeLock(battle?.outcome === 'Fighting');
   const [busy, setBusy] = useState<Busy>('idle');
   const [mapOpen, setMapOpen] = useState(false);
   const [victory, setVictory] = useState<
@@ -437,23 +451,41 @@ export function EveGardenPage() {
 
   /* ---- the canvas ---- */
 
-  const begin = useCallback(() => {
+  const begin = useCallback((minionStage?: number) => {
     const game = client.current;
     if (!game || !progress || !monster) return;
-    game.beginBattle(island, stage, theme, progress.level, Date.now(), charges, sheet.total)
+    const fight = (at: number) => game
+      .beginBattle(island, at, theme, progress.level, Date.now(), charges, sheet.total)
       .then((next) => {
         setWeakHits([]);
         setBattle(next ? { ...next, moveNames } : next);
-      })
-      // Was silent, which made walking into a monster and having nothing happen
-      // indistinguishable from having missed the tile.
-      .catch((error) => setFault(faultFrom('round', error)));
+      });
+
+    // A skirmish is addressed as a stage number past the island's seven, so the
+    // only difference to a fight is which dto stands in for the foe.
+    let started: Promise<unknown>;
+    if (minionStage === undefined) {
+      setSkirmish(null);
+      started = fight(stage);
+    } else {
+      started = game.stage(island, minionStage, theme).then((dto) => {
+        if (!dto) return undefined;
+        setSkirmish({ stage: minionStage, monster: dto.monster });
+        return fight(minionStage);
+      });
+    }
+    // Was silent, which made walking into a monster and having nothing happen
+    // indistinguishable from having missed the tile.
+    started.catch((error) => setFault(faultFrom('round', error)));
   }, [island, stage, theme, progress, monster, charges, sheet, moveNames]);
 
   // Every walk into a boss is an attempt, and every attempt meets the Boss
   // Gate: first try, a retry after a loss or a flight, or a boss stage reached
   // mid-visit. Stages 1-6 never ask and never mention anybody.
-  const onEngage = useCallback(() => {
+  const onEngage = useCallback((minionStage?: number) => {
+    // A skirmish never meets the gate: it is not the boss and nobody has to be
+    // waited for.
+    if (minionStage !== undefined) { begin(minionStage); return; }
     if (partner && promptApplies(stage, true)) { setAsking(true); return; }
     begin();
   }, [partner, stage, begin]);
@@ -475,6 +507,10 @@ export function EveGardenPage() {
   // closes over state that settles, and rebuilding the whole canvas when it
   // changes would tear the garden down mid-walk. The scene reads it through a
   // ref that the effect below keeps current.
+  // Read when the scene is built and not before: a skirmish beaten mid-visit
+  // fades in the scene and must not rebuild it, so this is a ref and not a dep.
+  const beatenRef = useRef<string[]>([]);
+  beatenRef.current = avatar?.minionDay === day ? avatar.minionsBeaten ?? [] : [];
   const engageRef = useRef(onEngage);
   useEffect(() => {
     engageRef.current = onEngage;
@@ -528,8 +564,11 @@ export function EveGardenPage() {
     if (!sceneSprite || !companion || !host.current) return undefined;
     let live = true;
 
-    import('./scene/game')
-      .then(({ startGarden }) => {
+    // The floor first, and only the floor: it draws one frame and lets go of the
+    // GPU before Phaser asks for it, and it is null (in well under a second) on
+    // calm, Save-Data, no WebGL or no connection, which starts the board as it was.
+    Promise.all([import('./scene/game'), loadArenaFloor(host.current, calmRef.current)])
+      .then(([{ startGarden }, floor]) => {
         if (!live || !host.current) return;
         scene.current = startGarden(
           host.current,
@@ -542,8 +581,11 @@ export function EveGardenPage() {
             hour: new Date().getHours(),
             dark: sceneDark,
             calm: calmRef.current,
+            floor: floor ?? undefined,
+            minions: minionsOnStage(sceneIsland, sceneStage, arenaFor(sceneIsland, sceneStage), beatenRef.current)
+              .map((m) => ({ stage: m.stage, sprite: m.spriteKey, x: m.x, y: m.y })),
           },
-          { onEngage: () => engageRef.current() },
+          { onEngage: (minionStage) => engageRef.current(minionStage) },
         );
       })
       // Not fatal, and that is the point: the engine is fine, so the fight is
@@ -613,6 +655,23 @@ export function EveGardenPage() {
     if (companion && rounds.current > 0) {
       void recordRaidRounds(companion, rounds.current);
       rounds.current = 0;
+    }
+
+    // A skirmish: a little XP, once a day each, and nothing else. No stage is
+    // cleared, no star chest is lit, and the boss gate is not involved.
+    if (isMinionId(ended.monsterId)) {
+      if (ended.outcome !== 'Won') { scene.current?.withdraw(); return; }
+      await scene.current?.defeat();
+      if (coupleId && memberId) {
+        const first = await recordMinionWin(memberId, coupleId, day, ended.monsterId);
+        if (first) await awardPetXp(coupleId, `garden-minion-${day}-${ended.monsterId}`, ended.xpOwed);
+        setNote(first
+          ? `${foe.name} is down. +${ended.xpOwed} XP, to the two of you.`
+          : `${foe.name} is down. It has paid today already.`);
+      }
+      setSkirmish(null);
+      setBattle(null);
+      return;
     }
 
     if (ended.outcome !== 'Won') {
@@ -693,7 +752,7 @@ export function EveGardenPage() {
 
   const playRound = useCallback(async (opening: BattleDto, actionId: string) => {
     const game = client.current;
-    const foe = monster;
+    const foe = opponent;
     if (!game || !foe) return;
 
     setBusy('acting');
@@ -780,7 +839,7 @@ export function EveGardenPage() {
     } finally {
       setBusy('idle');
     }
-  }, [monster, progress, finish, kit, charges, moveNames, edgeOf]);
+  }, [opponent, progress, finish, kit, charges, moveNames, edgeOf]);
 
   /** One tap of the move bar. A move is a move: nothing is logged by it. */
   const onAct = useCallback(async (action: ActionDto) => {
@@ -796,7 +855,7 @@ export function EveGardenPage() {
   const redriving = useRef(false);
   useEffect(() => {
     const game = client.current;
-    const foe = monster;
+    const foe = opponent;
     if (redriving.current || !game || !foe || !battle || !shouldRedriveMonster(battle, busy)) return undefined;
     // Only the timer is cancelled on cleanup. Once the move is asked for, taking
     // `busy` below re-runs this effect, and a cancel there would drop the answer.
@@ -818,7 +877,7 @@ export function EveGardenPage() {
         .finally(() => { redriving.current = false; setBusy('idle'); });
     }, REDRIVE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [battle, busy, monster, finish]);
+  }, [battle, busy, opponent, finish]);
 
   /**
    * Each lit charge pays its XP once a day, the first time the garden sees it.
@@ -1003,6 +1062,10 @@ export function EveGardenPage() {
         </p>
       )}
 
+      {/* The log is a strip above the board and the pad sits under it, so the
+          thumb never has to cross the picture. See `BattleLog`. */}
+      <BattleLog battle={battle} monster={opponent} weakHits={weakHits} />
+
       <div className="garden-stage-wrap">
         {/* Behind the canvas, which is transparent so this shows through — see
             the header of `GardenBackdrop`. */}
@@ -1066,19 +1129,17 @@ export function EveGardenPage() {
           </p>
         )}
 
-
-        <BattleLog battle={battle} monster={monster} weakHits={weakHits} />
       </div>
 
       {/* The controller: the move pad on the left, today's charges on the right,
           side by side on every width. The meter is a picture of the day, never
           a control — logging happens on the pages that own it. */}
-      <div className="garden-controls">
+      <div className="garden-controls" data-no-pull>
         <ActionBar
           actions={progress?.actions ?? []}
           allActions={allActions}
           battle={battle}
-          monster={monster}
+          monster={opponent}
           level={progress?.level ?? 1}
           busy={busy !== 'idle'}
           kit={kit}
@@ -1087,7 +1148,7 @@ export function EveGardenPage() {
           onAct={(action) => { void onAct(action); }}
           onFlee={onFlee}
         />
-        <ChargeMeter charges={charges} weakness={monster?.weakness} />
+        <ChargeMeter charges={charges} weakness={opponent?.weakness} />
       </div>
 
       {mapOpen && (
@@ -1121,7 +1182,16 @@ export function EveGardenPage() {
           islandComplete={isIslandComplete(world, island)}
           nextIslandName={nextIslandName}
           onDismiss={() => { setVictory(null); setBattle(null); }}
-        />
+        >
+          {/* One bonus spin per island boss, on top of the day's own. */}
+          {victory.monster.type === 'Boss' && memberId && coupleId ? (
+            <SpinOffer
+              label="Bonus spin"
+              title="Boss bonus spin"
+              onSpin={() => spinBossWheel(memberId, coupleId, victory.monster.id)}
+            />
+          ) : null}
+        </VictoryBanner>
       )}
 
     </section>

@@ -27,6 +27,7 @@ import { FeedPanel } from '../party/FeedPanel';
 import { GearIcon } from '../party/art/gear/GearIcon';
 import { Screen } from '../../ui/layout/Screen';
 import { SwipePane } from '../../ui/layout/SwipePane';
+import { DailyWheelCard } from '../wheel/DailyWheelCard';
 import { Sheet } from '../../ui/Sheet';
 import { SecondaryAction } from '../../ui/SecondaryAction';
 import { isPaired } from '../../domain/identity/rekey';
@@ -181,6 +182,10 @@ export function DashboardPage() {
                 {/* The way into Eve's Garden. It was only in the menu, behind
                     two taps. */}
                 <BossGateCard coupleId={coupleId} memberId={memberId} />
+
+                {coupleId && memberId ? (
+                  <DailyWheelCard coupleId={coupleId} memberId={memberId} day={day} />
+                ) : null}
 
                 <HomeFooter
                   coupleId={coupleId}

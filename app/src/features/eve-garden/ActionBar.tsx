@@ -1,3 +1,4 @@
+import { useBuzz } from '../../pwa/haptics';
 import type { ActionDto, BattleDto, Charge, MonsterDto, MoveStyle, RaidStatsDto } from './engine/types';
 import { Icon } from '../../components/icons';
 import type { IconName } from '../../nav';
@@ -65,10 +66,12 @@ function styleName(style: MoveStyle): string {
 export function ActionBar({
   actions, allActions, battle, monster, level, busy, kit, charges, stats, onAct, onFlee,
 }: ActionBarProps) {
+  const buzz = useBuzz();
   const fighting = battle?.outcome === 'Fighting';
   const yourTurn = fighting && battle?.turn === 'Player';
   const unlocked = new Set(actions.map((a) => a.id));
-  const locked = allActions.filter((a) => !unlocked.has(a.id)).slice(0, 2);
+  // Not in a fight: the pad is docked in thumb reach and every row costs board.
+  const locked = fighting ? [] : allActions.filter((a) => !unlocked.has(a.id)).slice(0, 2);
   const onWeakness = chargeOnWeakness(charges, monster?.weakness);
   const lit = new Set(charges);
 
@@ -93,7 +96,8 @@ export function ActionBar({
                 className={`garden-action is-${action.style.toLowerCase()}${strong ? ' is-strong' : ''}${charged ? ' is-charged' : ''}${recharging ? ' is-recharging' : ''}`}
                 // Outside a fight there is nothing to press them at.
                 disabled={busy || !yourTurn || recharging}
-                onClick={() => onAct(action)}
+                // Buzz before anything async: iOS only ticks inside the tap itself.
+                onClick={() => { buzz('tap'); onAct(action); }}
                 title={(() => {
                   const key = moveKeyFor(action.style);
                   return key ? kit.moves[key].description : undefined;
@@ -139,7 +143,7 @@ export function ActionBar({
           type="button"
           className="garden-flee"
           disabled={busy || !yourTurn}
-          onClick={onFlee}
+          onClick={() => { buzz('tap'); onFlee(); }}
         >
           <Icon name="arrow" turn="left" />
           Walk away

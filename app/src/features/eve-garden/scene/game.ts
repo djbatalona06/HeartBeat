@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { SPRITE_SIZE } from '../../../domain/rpg/sprites';
 import { ARENA_HEIGHT, ARENA_WIDTH } from '../../../domain/rpg/arena';
 import { BattleGardenScene } from './BattleGardenScene';
-import type { Blow, SceneHandle, SceneHooks } from './events';
+import type { Blow, MinionSpot, SceneHandle, SceneHooks } from './events';
 
 /**
  * The only file in Eve's Garden that imports Phaser.
@@ -38,6 +38,10 @@ export interface StartOptions {
   dark: boolean;
   /** `useTheme().calm`: no motion in the fight, and no waiting on it. */
   calm: boolean;
+  /** The baked 3D checkerboard from `arenaFloor.ts`, or undefined to keep the pixel ground. */
+  floor?: HTMLCanvasElement;
+  /** The island skirmishes standing on this stage, if any. */
+  minions?: readonly MinionSpot[];
 }
 
 export function startGarden(
@@ -48,7 +52,7 @@ export function startGarden(
   const scale = 3;
   const scene = new BattleGardenScene(
     options.island, options.stage, options.monsterSprite, options.petSprite,
-    options.hour, options.dark, options.calm, hooks, options.allySprite,
+    options.hour, options.dark, options.calm, hooks, options.allySprite, options.floor, options.minions,
   );
 
   const game = new Phaser.Game({

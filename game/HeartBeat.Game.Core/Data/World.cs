@@ -57,11 +57,29 @@ public static class World
     /// </summary>
     public static Monster? MonsterAt(int island, int stage, DioramaTheme theme)
     {
+        // Stage numbers above 100 are the island's skirmishes, not stages. They
+        // ride the same (island, stage, theme) address so a fight needs no new
+        // field to carry which one it is.
+        if (Minions.IsMinionStage(stage)) return MinionAt(island, stage, theme);
+
         Stage? found = StageFor(island, stage);
         if (found is null) return null;
 
         string? darkName = DarkNames.TryGetValue(found.Monster.Id, out string? n) ? n : null;
         return found.Monster.Forged(theme, darkName);
+    }
+
+    /// <summary>One skirmish monster, wearing the right face, or null (islands 1 to 4 have none).</summary>
+    public static Monster? MinionAt(int island, int stage, DioramaTheme theme)
+    {
+        Monster? mini = Minions.For(island, stage);
+        if (mini is null) return null;
+
+        // "Little " plus the parent's dark name, so the dark face of a skirmish
+        // reads as the same creature as the dark face of the stage it follows.
+        string? parent = Minions.ParentOf(island, stage)?.Id;
+        string? darkName = parent is not null && DarkNames.TryGetValue(parent, out string? n) ? Minions.Named(n) : null;
+        return mini.Forged(theme, darkName);
     }
 
     public static Stage? StageFor(int island, int stage)
