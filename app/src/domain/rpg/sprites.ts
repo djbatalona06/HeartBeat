@@ -1,4 +1,4 @@
-import { ISLAND_SPRITES, ISLAND_SPRITE_ORDER } from './monsterSprites';
+import { ELDER_SPRITES, ISLAND_SPRITES, ISLAND_SPRITE_ORDER } from './monsterSprites';
 
 /**
  * Every pixel in the overworld, as text.
@@ -632,14 +632,16 @@ export const ISLAND_SPRITE_KEYS: Record<number, readonly string[]> = {
   ])),
 };
 
-// Islands 8-10 reuse the drawings of islands 4, 2 and 3, turned to face the other way
-// with their mid and light colours swapped, so a returning couple meets the
-// same spirits grown old rather than a blank. Derived rather than redrawn: the
-// painted pixels, and so every weight rule `sprites.test.ts` holds, carry over
-// unchanged. Hand-drawn replacements can take these keys over one at a time.
+// Islands 8-10 are islands 4, 2 and 3 grown old. Each now has its own drawing in
+// `ELDER_SPRITES`; `remix` (the original mirrored, mid and light swapped) is only
+// the fallback for an elder somebody adds to `ELDER_ISLANDS` before drawing it,
+// so a returning couple never meets a blank. `SPRITES` takes the drawings first.
 for (const [, from] of ELDER_ISLANDS) {
   const sources = from === 1 ? ISLAND_1_SPRITE_KEYS : ISLAND_SPRITE_ORDER[from];
-  for (const key of sources) SPRITES[`${key}-elder`] = remix(SPRITES[key]);
+  for (const key of sources) {
+    const elder = `${key}-elder`;
+    SPRITES[elder] = ELDER_SPRITES[elder] ?? remix(SPRITES[key]);
+  }
 }
 
 const KEYS = new Set(Object.keys(SPRITES));
