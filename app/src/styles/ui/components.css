@@ -185,3 +185,15 @@
   pointer-events: none;
   width: min(var(--shell-max), calc(100vw - var(--space-5)));
 }
+
+/* ---- continuous corners -------------------------------------------------------
+   Apple's corners are not circular arcs: the curve eases into the straight edge,
+   which is what makes a card read as one cut object rather than a rectangle with
+   its corners filed off. `corner-shape` is that curve (Chrome 139+, and other
+   engines as they land it). It is a separate property from `border-radius`, so
+   it needs no fight with `legacy` for the radius — each pack's own radius is
+   still what sets the size, and a browser without it keeps the circular corner.
+   `squircle` keeps the pack's character: shinobi's 6px stays sharp. */
+@supports (corner-shape: squircle) {
+  .tilecard, .listrow, .sheet, .panel, .menu-panel, .primary, .quiet, .chip { corner-shape: squircle; }
+}

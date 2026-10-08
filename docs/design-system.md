@@ -20,12 +20,25 @@ the same question asked about a first-party CSS-in-JS layer.
 
 | Token | Value | Use for |
 |---|---|---|
-| `--space-1` … `--space-7` | 4 · 8 · 12 · 16 · 24 · 32 · 44 px | Every gap and pad. A raw `14px` is drift. |
-| `--stack` | 18px | The gap between stacked cards. Raise this first when a screen feels crowded. |
+| `--space-1` … `--space-7` | 4 · 8 · 12 · 16 · 24 · 32 · 44 px **at 390px wide**, fluid either side | Every gap and pad. A raw `14px` is drift. |
+| `--stack` | 24px at 390px, fluid | The gap between stacked cards. Raise this first when a screen feels crowded. |
 | `--text-xs` … `--text-3xl` | 12px → fluid 44px | Nothing carrying meaning goes below `--text-xs`. |
 | `--tap` | 48px | Above Apple's 44pt floor. The posture is a phone in bed, one-handed. |
-| `--shell-max` / `--shell-gutter` | 560px / 18px | The column. |
+| `--shell-max` / `--shell-gutter` | 560px / 20px at 390px, fluid | The column. |
 | `--tabbar-h` / `--shell-bottom-clear` | 62px / bar + `--space-5` | What a page must leave clear. |
+
+**Spacing follows the screen.** Every spacing token is `fluid(px)` in
+`themes/tokens.ts`: `clamp(0.875×, N vw, 1.25×)`, where `N` makes it exactly
+`px` at `FLUID_REF_WIDTH` (390). A 320px phone gets 12% less of everything, a
+430px one a little more, and a desktop window stops at 25% over, so the column
+never breathes like a poster. One formula for the whole scale rather than seven
+hand-tuned clamps keeps the ratios intact at every width.
+`tokens.test.ts` resolves them at 280–1440px and fails if the scale crosses
+itself, misses its stated size at 390, or stops being clamped.
+**Not fluid on purpose:** `--tap` (a thumb does not scale with the glass),
+`--tabbar-h`, and type (`--text-*` already have their own clamps, and nothing
+meaningful goes below 12px). A raw `padding: 14px` in a new rule opts out of
+all of this — use the tokens.
 
 **Faces.** `--font-body` is Outfit in every pack: it carries the numbers,
 dates and lists, and one body face means no screen reflows when the pack
@@ -93,6 +106,19 @@ Three things about it are deliberate and easy to undo by accident:
 
 Why a lean and not the hue rotation this was first sketched as:
 [`PULSE.md`](./PULSE.md) §3.
+
+### Material, fills and the iOS curve
+
+| Token | Value | Use for |
+|---|---|---|
+| `--material` / `--material-blur` | surface at 86% · `saturate(180%) blur(24px)` | Chrome that scrolling content passes under — the tab bar. Glass, edged with a hairline, never a shadow. |
+| `--fill-1` / `--fill-2` / `--fill-3` | text colour at 12 / 8 / 5% | What sits *inside* a surface: a chip, a segmented track, a pressed row. |
+| `--ease-ios` | `cubic-bezier(0.32, 0.72, 0, 1)` | Things that arrive (a panel, a fade-in). Never overshoots; keep `--ease-reward` for earned moments. |
+
+All three are derived from the pack's own tokens, so they follow the theme and
+the palette. Cards and buttons also take `corner-shape: squircle` where the
+browser has it (`styles/ui/components.css`), which changes the curve into the
+edge and not the radius, so each pack's own radius still sets the size.
 
 ### Depth
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { THEMES } from './index';
-import { SHARED_TOKENS, contrast, darkVariantOf, themeToCssVars } from './tokens';
+import { FLUID_REF_WIDTH, SHARED_TOKENS, SPACE_PX, contrast, darkVariantOf, themeToCssVars } from './tokens';
 import type { ThemeMode } from './types';
 
 /**
@@ -203,6 +203,13 @@ describe('no token is pure black or pure white', () => {
  * failure mode is silent — a token that quietly stops being emitted does not
  * throw, it just makes one screen look slightly wrong on one theme.
  */
+/** What a `clamp(min px, N vw, max px)` token is worth on a viewport `width` px wide. */
+function resolveFluid(value: string, width: number): number {
+  const m = /^clamp\(([\d.]+)px, ([\d.]+)vw, ([\d.]+)px\)$/.exec(value);
+  if (!m) throw new Error(`not a fluid value: ${value}`);
+  return Math.min(Number(m[3]), Math.max(Number(m[1]), (Number(m[2]) / 100) * width));
+}
+
 describe('the shared shape layer', () => {
   const SPACING = ['--space-1', '--space-2', '--space-3', '--space-4', '--space-5', '--space-6', '--space-7'];
   const TYPE = ['--text-xs', '--text-sm', '--text-base', '--text-lg', '--text-xl', '--text-2xl', '--text-3xl'];
@@ -226,10 +233,40 @@ describe('the shared shape layer', () => {
     }
   });
 
-  it('rises monotonically through the spacing scale', () => {
-    const px = (key: string) => Number.parseFloat(SHARED_TOKENS[key]);
-    for (let i = 1; i < SPACING.length; i += 1) {
-      expect(px(SPACING[i])).toBeGreaterThan(px(SPACING[i - 1]));
+  it('rises monotonically through the spacing scale, at every width', () => {
+    // Fluid values are compared at the widths a phone or a desktop actually
+    // is, not just the reference: a scale that crosses itself at 320px is a
+    // layout bug that only one phone sees.
+    for (const width of [280, 320, 390, 430, 768, 1440]) {
+      const at = (key: string) => resolveFluid(SHARED_TOKENS[key], width);
+      for (let i = 1; i < SPACING.length; i += 1) {
+        expect(at(SPACING[i]), `${SPACING[i]} @ ${width}px`).toBeGreaterThan(at(SPACING[i - 1]));
+      }
+    }
+  });
+
+  it('is exactly the stated size at the reference width', () => {
+    for (const [step, px] of Object.entries(SPACE_PX)) {
+      expect(resolveFluid(SHARED_TOKENS[`--space-${step}`], FLUID_REF_WIDTH)).toBeCloseTo(px, 1);
+    }
+    expect(resolveFluid(SHARED_TOKENS['--stack'], FLUID_REF_WIDTH)).toBeCloseTo(24, 1);
+    expect(resolveFluid(SHARED_TOKENS['--shell-gutter'], FLUID_REF_WIDTH)).toBeCloseTo(20, 1);
+  });
+
+  it('is clamped, so no screen gets a runaway rhythm', () => {
+    for (const key of [...SPACING, '--stack', '--shell-gutter']) {
+      const [lo, hi] = [resolveFluid(SHARED_TOKENS[key], 1), resolveFluid(SHARED_TOKENS[key], 100000)];
+      const ref = resolveFluid(SHARED_TOKENS[key], FLUID_REF_WIDTH);
+      expect(lo, key).toBeGreaterThan(ref * 0.8);
+      expect(lo, key).toBeLessThanOrEqual(ref);
+      expect(hi, key).toBeGreaterThanOrEqual(ref);
+      expect(hi, key).toBeLessThan(ref * 1.3);
+    }
+  });
+
+  it('spends fluid spacing on every pack the same way', () => {
+    for (const theme of THEMES) {
+      for (const key of SPACING) expect(themeToCssVars(theme)[key]).toMatch(/^clamp\(/);
     }
   });
 
@@ -300,5 +337,31 @@ describe('the type scale', () => {
       const floor = Number.parseFloat(value.replace(/^clamp\(/, ''));
       expect(floor, key).toBeGreaterThanOrEqual(13);
     }
+  });
+});
+
+describe('the Apple-feel tokens', () => {
+  const NEW = ['--ease-ios', '--material', '--material-blur', '--fill-1', '--fill-2', '--fill-3'];
+
+  it('reaches every pack in both palettes', () => {
+    for (const theme of THEMES) {
+      for (const mode of ['dark', 'light'] as ThemeMode[]) {
+        const vars = themeToCssVars(theme, mode);
+        for (const key of NEW) expect(vars[key], `${theme.id} ${mode} ${key}`).toBeTruthy();
+      }
+    }
+  });
+
+  it('never overshoots on the curve meant for things that arrive', () => {
+    // Control points of cubic-bezier(x1, y1, x2, y2): y2 > 1 would overshoot.
+    const nums = SHARED_TOKENS['--ease-ios'].match(/-?[\d.]+/g)!.map(Number);
+    expect(nums[3]).toBeLessThanOrEqual(1);
+  });
+
+  it('keeps the fill ladder in order', () => {
+    const vars = themeToCssVars(THEMES[0]);
+    const pct = (k: string) => Number(/(\d+)%/.exec(vars[k])![1]);
+    expect(pct('--fill-1')).toBeGreaterThan(pct('--fill-2'));
+    expect(pct('--fill-2')).toBeGreaterThan(pct('--fill-3'));
   });
 });
