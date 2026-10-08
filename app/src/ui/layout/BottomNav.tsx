@@ -1,7 +1,14 @@
-import { NavLink } from 'react-router-dom';
+import type { MouseEvent } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { OPEN_WHILE_UNPAIRED, PRIMARY_TABS } from '../../nav';
 import { Icon } from '../../components/icons';
 import { BadgeDot } from '../BadgeDot';
+import { useBuzz } from '../../pwa/haptics';
+import { slideTo } from '../../pwa/viewTransition';
+import { slideDirection } from '../../domain/touch/slide';
+import { useTheme } from '../../themes/ThemeProvider';
+
+const TAB_PATHS = PRIMARY_TABS.map((tab) => tab.to);
 
 /**
  * The six, across the bottom, as a grid.
@@ -50,6 +57,20 @@ export interface BottomNavProps {
 }
 
 export function BottomNav({ locked, badges }: BottomNavProps) {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { calm } = useTheme();
+  const tap = useBuzz();
+
+  // The buzz first, while the tap still counts as a gesture. Then the slide,
+  // which takes over the navigation only when it will actually run; otherwise
+  // NavLink navigates exactly as it did before.
+  const onTab = (to: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+    tap('tap');
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (slideTo(() => navigate(to), slideDirection(pathname, to, TAB_PATHS), calm)) event.preventDefault();
+  };
+
   return (
     <nav className="tabbar" aria-label="Sections">
       {PRIMARY_TABS.map((tab) => {
@@ -60,6 +81,7 @@ export function BottomNav({ locked, badges }: BottomNavProps) {
             to={tab.to}
             end={tab.to === '/'}
             className="tabbar-tab"
+            onClick={onTab(tab.to)}
             data-locked={locked && !OPEN_WHILE_UNPAIRED.includes(tab.to) ? 'true' : undefined}
           >
             <span className="tabbar-glyph">

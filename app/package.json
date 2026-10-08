@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "garden:glb": "node tools/garden-glb.mjs",
+    "splash": "node tools/splash.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -b --noEmit && tsc -p tsconfig.functions.json",

@@ -125,15 +125,42 @@ self.addEventListener('push', (event) => {
     tag: data.tag ?? 'heartbeat',
     renotify: Boolean(data.tag),
     icon: 'icons/icon-192.png',
-    badge: 'icons/icon-192.png',
+    // Android draws the badge as a silhouette from its alpha, so a full-colour
+    // square icon became a white square. This one is the heart alone. iOS
+    // ignores the field and uses the app icon.
+    badge: 'icons/badge-96.png',
     data: { path: data.path ?? '/' },
   };
 
-  event.waitUntil(self.registration.showNotification(data.title ?? 'HeartBeat', options));
+  event.waitUntil(
+    self.registration.showNotification(data.title ?? 'HeartBeat', options).then(updateBadge),
+  );
 });
+
+/**
+ * The number on the home-screen icon, from here, while the app is closed.
+ *
+ * The open app sets it from its own badges (`useAppBadge`), but nothing ran
+ * once it was closed, so the number stayed at whatever it was when the app
+ * last went to the background. The worker cannot see those badges, so it
+ * counts what it can see — the notifications still sitting in the tray — and
+ * the app corrects it the moment it opens. Swallowed if the API is missing or
+ * permission was refused, as `pwa/badge.ts` does.
+ */
+function updateBadge(): Promise<void> {
+  if (!('setAppBadge' in self.navigator)) return Promise.resolve();
+  const nav = self.navigator as WorkerNavigator & {
+    setAppBadge: (n?: number) => Promise<void>;
+    clearAppBadge: () => Promise<void>;
+  };
+  return self.registration.getNotifications()
+    .then((shown) => (shown.length > 0 ? nav.setAppBadge(shown.length) : nav.clearAppBadge()))
+    .catch(() => {});
+}
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  event.waitUntil(updateBadge());
   // Both spellings of a route reduce to one here, and anything that would
   // leave the app becomes home. Four producers write these paths and they do
   // not agree on the hash -- see domain/notify/target.ts.

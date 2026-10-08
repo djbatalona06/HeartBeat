@@ -285,6 +285,7 @@ function SlotSheet({ shelf, worth, onClose, onEquip, onUnequip }: {
       label={shelf ? SLOT_NAMES[shelf.slot] : 'Gear'}
       scrimClassName="menu-scrim"
       panelClassName="gear-sheet"
+      draggable
     >
       {shelf ? (
         <>

@@ -30,6 +30,8 @@ import { SceneBackdrop } from './features/home/SceneBackdrop';
 import { WelcomePage } from './features/onboarding/WelcomePage';
 import { OnboardingPage } from './features/onboarding/OnboardingPage';
 import { useSync } from './pwa/useSync';
+import { useKeyboardInset } from './pwa/useKeyboardInset';
+import { PullToRefresh } from './components/PullToRefresh';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CommandMenu } from './components/CommandMenu';
 
@@ -79,6 +81,8 @@ export function App() {
   // Reconciles the day log with the other phone. Mounted here rather than in a
   // page so it keeps running whichever tab is open.
   useSync();
+  // Keeps the tab bar and the thread out from under the iOS keyboard.
+  useKeyboardInset();
   // Fetches the gear drawings at idle so the service worker caches them for
   // offline use; they are not in the precache. See `GearIcon`.
   useWarmGearArt();
@@ -120,6 +124,9 @@ export function App() {
               features/home/SceneBackdrop.tsx. */}
           <SceneBackdrop />
           <ToastHost>
+            {/* Shell chrome, so every screen gets it; the sync it asks for is
+                the one `useSync` above already owns. */}
+            <PullToRefresh />
             <main className="shell">
               {/* Outside PairGate, and asks a different question: not whether
                   there are two of you, but whether the one of you here has met

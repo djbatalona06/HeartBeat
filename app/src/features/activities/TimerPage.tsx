@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { clock, useElapsed } from './useElapsed';
 import { PageTitle } from '../../ui/layout/PageTitle';
 import { GUIDES } from '../guide/guides';
+import { useWakeLock } from '../../pwa/useWakeLock';
 
 /** The lengths worth one tap. Anything else is what the +1 button is for. */
 const PRESETS = [1, 3, 5, 10, 20, 25];
@@ -21,6 +22,8 @@ const PRESETS = [1, 3, 5, 10, 20, 25];
 export function TimerPage() {
   const [minutes, setMinutes] = useState(5);
   const [running, setRunning] = useState(false);
+  // The screen is watched, not touched, while this runs: keep it awake.
+  useWakeLock(running);
   const [elapsed, reset] = useElapsed(running);
   const [done, setDone] = useState(false);
 

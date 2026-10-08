@@ -6,6 +6,18 @@ import { replanNudges } from './nudgeSync';
 import { loadSettings } from '../db/database';
 import { settleLifeEvents } from '../db/repository';
 
+/** The running hook's round, for a caller that wants one now. */
+let runNow: (() => Promise<void>) | null = null;
+
+/**
+ * One round, now — what pull-to-refresh asks for. Resolves when the round ends,
+ * or at once if no `useSync` is mounted or a round is already running (that
+ * round is the refresh).
+ */
+export function syncNow(): Promise<void> {
+  return runNow?.() ?? Promise.resolve();
+}
+
 /**
  * Runs sync on the occasions that matter and no others.
  *
@@ -13,7 +25,8 @@ import { settleLifeEvents } from '../db/repository';
  * pocket has nothing to say. The moments a round trip is actually worth making
  * are when the app comes back to the foreground, when the network returns, and
  * once on launch — which together cover every way the other phone's changes
- * become interesting.
+ * become interesting. And when somebody pulls the screen down to ask, which is
+ * `syncNow`.
  */
 export function useSync(): void {
   useEffect(() => {
@@ -73,6 +86,7 @@ export function useSync(): void {
       }
     };
 
+    runNow = run;
     const onVisible = () => { if (document.visibilityState === 'visible') void run(); };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', run);
@@ -80,6 +94,7 @@ export function useSync(): void {
 
     return () => {
       cancelled = true;
+      if (runNow === run) runNow = null;
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', run);
     };

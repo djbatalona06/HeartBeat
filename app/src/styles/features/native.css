@@ -1,0 +1,70 @@
+/* ---- native feel ------------------------------------------------------------
+   The touch and motion pieces that make the installed app behave like one:
+   the sheet grabber, the pull-to-refresh mark, and the tab slide. All of them
+   sit still under calm and reduced motion. */
+
+/* The grabber on a draggable sheet (`ui/Sheet.tsx`). Touch only: with a mouse
+   there is nothing to grab, and the scrim and Escape already close it. */
+.sheet-grabber { display: none; }
+@media (pointer: coarse) {
+  .sheet-grabber {
+    display: block;
+    width: 36px;
+    height: 5px;
+    margin: calc(var(--space-1) * -1) auto var(--space-2);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
+  }
+}
+
+/* Pull to refresh (`components/PullToRefresh.tsx`). `--ptr` is how far the
+   damped pull has travelled; the mark rides down with it and fills in as it
+   arms, then beats while the sync runs. */
+.ptr {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + var(--space-2));
+  left: 50%;
+  z-index: var(--z-toast);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  transform: translate(-50%, calc(var(--ptr) - 44px));
+}
+.ptr-mark {
+  fill: var(--color-accent);
+  opacity: 0.45;
+  transform: scale(0.8);
+  transition: opacity var(--motion-fast) var(--ease-soft), transform var(--motion-fast) var(--ease-ios);
+}
+.ptr[data-state='armed'] .ptr-mark,
+.ptr[data-state='refreshing'] .ptr-mark { opacity: 1; transform: scale(1); }
+.ptr[data-state='refreshing'] .ptr-mark { animation: ptr-beat 0.9s ease-in-out infinite; }
+@keyframes ptr-beat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+:root[data-calm='true'] .ptr-mark { animation: none; transition: none; }
+
+/* The tab slide (`pwa/viewTransition.ts`). Only the page moves: the bar and
+   the two top corners are lifted out of the root snapshot by naming them, so
+   they stay put while the screen behind them changes. Calm and reduced motion
+   never start one; `slideTo` checks before asking. */
+.tabbar { view-transition-name: tabbar; }
+.menu-button { view-transition-name: menu-button; }
+.status-hud { view-transition-name: status-hud; }
+
+@keyframes slide-out-left { to { opacity: 0; transform: translateX(-8%); } }
+@keyframes slide-in-right { from { opacity: 0; transform: translateX(8%); } }
+@keyframes slide-out-right { to { opacity: 0; transform: translateX(8%); } }
+@keyframes slide-in-left { from { opacity: 0; transform: translateX(-8%); } }
+
+:root[data-slide='forward']::view-transition-old(root) { animation: slide-out-left var(--motion-medium) var(--ease-ios) both; }
+:root[data-slide='forward']::view-transition-new(root) { animation: slide-in-right var(--motion-medium) var(--ease-ios) both; }
+:root[data-slide='back']::view-transition-old(root) { animation: slide-out-right var(--motion-medium) var(--ease-ios) both; }
+:root[data-slide='back']::view-transition-new(root) { animation: slide-in-left var(--motion-medium) var(--ease-ios) both; }
+

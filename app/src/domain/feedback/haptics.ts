@@ -33,6 +33,11 @@
  * No polyfill. The known one hooks `AudioContext` to fake it, this repository
  * bundles nothing third-party (`NOTICE.md` exists to say so), and uncertain iOS
  * support is a bad thing to buy with a dependency.
+ *
+ * What iOS *does* have, from Safari 17.4, is `<input type="checkbox" switch>`,
+ * which plays the system tick when it is toggled from a tap. `pwa/haptics.ts`
+ * uses that where `navigator.vibrate` is missing, and `tickOffsets` below is
+ * how a pattern becomes ticks.
  */
 
 /**
@@ -100,4 +105,35 @@ export function hapticFor(kind: HapticKind, at: HapticContext): number[] | null 
   if (at.calm || !at.enabled || !at.supported) return null;
   const pattern = HAPTIC_PATTERNS[kind];
   return pattern ? [...pattern] : null;
+}
+
+/**
+ * The closest gap two system ticks can sit apart and still be felt as two.
+ *
+ * Measured by ear and thumb rather than taken from a spec, because there is no
+ * spec: closer than this and the Taptic Engine folds them into one.
+ */
+export const MIN_TICK_GAP_MS = 80;
+
+/**
+ * When to fire each system tick, for a phone that has no Vibration API but
+ * does have Safari's `<input switch>` (iOS 17.4+).
+ *
+ * That control gives one fixed tick per toggle, with no length to choose. So a
+ * pattern is replayed as its *count*: one tick for every buzz in it, starting
+ * where the buzz would have started, pushed apart to `MIN_TICK_GAP_MS`. `tap`
+ * stays one tick and `levelUp` stays three, which keeps the four kinds
+ * distinguishable by count, the property the patterns were chosen for.
+ */
+export function tickOffsets(pattern: readonly number[]): number[] {
+  const out: number[] = [];
+  let at = 0;
+  pattern.forEach((ms, i) => {
+    if (i % 2 === 0) {
+      const prev = out[out.length - 1];
+      out.push(prev === undefined ? at : Math.max(at, prev + MIN_TICK_GAP_MS));
+    }
+    at += ms;
+  });
+  return out;
 }

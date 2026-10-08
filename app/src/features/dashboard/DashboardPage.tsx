@@ -411,6 +411,7 @@ function TodaySection({ open, loaded, equippedIds, onComplete }: TodaySectionPro
         label="Everything today"
         scrimClassName="menu-scrim"
         panelClassName="menu-panel birb-sheet"
+        draggable
       >
         <div className="birb-sheet-head">
           <h2 className="section-title">Today</h2>

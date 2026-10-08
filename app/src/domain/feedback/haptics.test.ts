@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  HAPTIC_KINDS, HAPTIC_PATTERNS, MAX_PATTERN_MS, hapticFor, type HapticContext,
+  HAPTIC_KINDS, HAPTIC_PATTERNS, MAX_PATTERN_MS, MIN_TICK_GAP_MS, hapticFor, tickOffsets, type HapticContext,
 } from './haptics';
 
 /**
@@ -87,5 +87,25 @@ describe('the patterns themselves', () => {
     const error = HAPTIC_PATTERNS.error.reduce((s, ms) => s + ms, 0);
     const success = HAPTIC_PATTERNS.success.reduce((s, ms) => s + ms, 0);
     expect(error).toBeGreaterThan(success);
+  });
+});
+
+describe('tickOffsets', () => {
+  it('keeps one tick per buzz, so each kind is still told apart by count', () => {
+    expect(tickOffsets(HAPTIC_PATTERNS.tap)).toEqual([0]);
+    expect(tickOffsets(HAPTIC_PATTERNS.success)).toHaveLength(2);
+    expect(tickOffsets(HAPTIC_PATTERNS.error)).toHaveLength(2);
+    expect(tickOffsets(HAPTIC_PATTERNS.levelUp)).toHaveLength(3);
+  });
+
+  it('never puts two ticks closer than the engine can separate', () => {
+    for (const kind of HAPTIC_KINDS) {
+      const ticks = tickOffsets(HAPTIC_PATTERNS[kind]);
+      ticks.slice(1).forEach((t, i) => expect(t - ticks[i]).toBeGreaterThanOrEqual(MIN_TICK_GAP_MS));
+    }
+  });
+
+  it('starts each tick no earlier than its buzz would have', () => {
+    expect(tickOffsets([10, 200, 10])).toEqual([0, 210]);
   });
 });
