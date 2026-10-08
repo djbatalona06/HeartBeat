@@ -27,6 +27,12 @@ describe('iOS launch images', () => {
     expect(new Set(media).size).toBe(media.length);
   });
 
+  it('leaves every comment in index.html closed', () => {
+    // The generator once cut a multi-line marker comment short, and Vite's
+    // HTML parser refused the whole file. Only the build noticed.
+    expect(html.split('<!--').length).toBe(html.split('-->').length);
+  });
+
   it('points the home-screen icon at the 180px file', () => {
     expect(html).toContain('<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png" />');
   });

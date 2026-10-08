@@ -253,7 +253,8 @@ const html = readFileSync(HTML, 'utf8');
 const from = html.indexOf(START);
 const to = html.indexOf(END);
 if (from < 0 || to < 0) throw new Error(`index.html needs the ${START} … ${END} markers`);
-const head = html.slice(0, html.indexOf('\n', from) + 1);
+// Everything up to the end of the opening comment, which may span lines.
+const head = html.slice(0, html.indexOf('-->', from) + 4);
 writeFileSync(HTML, `${head}${tags.join('\n')}\n    ${html.slice(to)}`);
 
 console.log(`wrote ${readdirSync(SPLASH).length} launch images, the 180px icon and the badge`);

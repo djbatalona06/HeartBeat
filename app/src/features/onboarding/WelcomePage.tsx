@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { saveSettings } from '../../db/database';
 import { installState, isIos } from '../../pwa/install';
 import { providerLink } from '../../pwa/api';
+import { ShareGlyph } from '../../components/ShareGlyph';
 
 const REPO_URL = 'https://github.com/djbatalona06/HeartBeat';
 
@@ -37,7 +38,8 @@ export function WelcomePage() {
   async function lookAroundAnyway() {
     setBusy(true);
     try {
-      await saveSettings({ guestAcknowledged: true });
+      // The steps were just shown, so the Home screen's re-offer waits its turn.
+      await saveSettings({ guestAcknowledged: true, installOfferedAt: Date.now() });
       navigate('/', { replace: true });
     } finally {
       setBusy(false);
@@ -88,7 +90,7 @@ export function WelcomePage() {
             the browser inside another app{isIos() ? '' : ' — iPhone only lets web apps install from Safari'}.
           </li>
           <li>
-            <strong>Share → Add to Home Screen.</strong> Not cosmetic — iOS
+            <strong>Share <ShareGlyph /> → Add to Home Screen.</strong> Not cosmetic — iOS
             refuses to deliver notifications to a web app unless it was added
             to the Home Screen and opened from that icon.
           </li>

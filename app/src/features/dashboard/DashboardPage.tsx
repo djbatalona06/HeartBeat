@@ -36,6 +36,7 @@ import { LogStrip } from './LogStrip';
 import { CostumeLayer } from '../party/art/costumes';
 import { BossGateCard } from './BossGateCard';
 import { GUIDES } from '../guide/guides';
+import { InstallNudge } from '../onboarding/InstallNudge';
 
 /**
  * Home. What the pet is doing, and what is left to do today.
@@ -102,6 +103,9 @@ export function DashboardPage() {
 
   return (
     <Screen guide={GUIDES.home} title="HeartBeat" sub={<>{paired ? 'Paired' : 'Just you so far'} · {day}</>}>
+      {/* Renders nothing unless this is Safari on an iPhone, not yet
+          installed, and the last offer was a few days ago. */}
+      <InstallNudge settings={settings} />
       {/* Three panes, so the first screen holds only what Home is for: the
           pet, the log row, and what today still wants (docs/ONE-SCROLL.md).
           Nothing left the page; it moved one swipe over. The pane order keeps

@@ -68,3 +68,17 @@
 :root[data-slide='back']::view-transition-old(root) { animation: slide-out-right var(--motion-medium) var(--ease-ios) both; }
 :root[data-slide='back']::view-transition-new(root) { animation: slide-in-left var(--motion-medium) var(--ease-ios) both; }
 
+
+/* The two offers: notifications after a logged mood (`settings/PushOffer.tsx`)
+   and the Home Screen again for a phone still in Safari
+   (`onboarding/InstallNudge.tsx`). Plain panels; only the layout is new. */
+.push-offer-actions,
+.install-nudge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.push-offer-actions { margin-top: var(--space-3); }
+.install-nudge .section-sub { flex: 1 1 16rem; }
+.share-glyph { display: inline-block; vertical-align: -0.2em; color: var(--color-accent); }

@@ -602,6 +602,17 @@ export interface Settings {
    */
   guestAcknowledged?: boolean;
   /**
+   * When the install steps were last shown — on the Welcome screen, or by the
+   * Home screen's nudge that re-offers them to a phone still in Safari. See
+   * `domain/notify/offer.ts`.
+   */
+  installOfferedAt?: number;
+  /**
+   * When "not now" was last said to the notifications offer that follows a
+   * logged mood. Backs the offer off for a few days; see `domain/notify/offer.ts`.
+   */
+  pushOfferDismissedAt?: number;
+  /**
    * Set the first time this phone has been offered "keep your link safe with
    * Google or GitHub", whether it said yes or later. Asked once per install, so
    * it never nags; the same sign-in stays available in Settings afterwards. See
