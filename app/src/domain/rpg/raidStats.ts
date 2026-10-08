@@ -1,6 +1,6 @@
 import { GEAR_SLOTS, type GearSlot } from './types';
 import { GEAR_PRICE } from './shop';
-import { TIERS, passiveFor, stackPassives, statLevelFor, type Tier } from './tiers';
+import { TIERS, TIER_STAT_LEVELS, passiveFor, stackPassives, statLevelFor, type Tier } from './tiers';
 import { hash, roll } from '../hash';
 import type { HouseSlot } from './furniture';
 import type { PetSpecies } from './pets';
@@ -213,12 +213,44 @@ export interface StatSource {
   tier: Tier;
   statLevel: number;
   order: readonly RaidStatKey[];
+  /** A support source can contribute less than the tier's usual passive. */
+  passiveScale?: number;
 }
 
 /** Where in its tier's band a priced or named catalogue entry sits. Stable
  *  across devices and releases, for the reasons `catalogueStatLevel` gives. */
 export function sourceStatLevel(id: string, tier: Tier): number {
   return statLevelFor(tier, roll(hash(id), 0));
+}
+
+/**
+ * Companions are support, not a second equipment rack. Their bands stay below
+ * the floor for same-tier gear (apart from the one-point common floor), and
+ * bond can only deepen a source within that support curve.
+ */
+export const COMPANION_STAT_LEVELS: Record<Tier, { min: number; max: number }> = {
+  common: { min: 1, max: 1 },
+  rare: { min: 2, max: 3 },
+  epic: { min: 4, max: 6 },
+  legendary: { min: 7, max: 10 },
+  mythic: { min: 11, max: 15 },
+};
+
+/** Companions also bring half the normal tier passive. */
+export const COMPANION_PASSIVE_SCALE = 0.5;
+
+/**
+ * One companion's support value. The id makes its starting point stable, while
+ * bond is capped at a modest multiplier so it never enters gear's tier band.
+ * `Math.floor` deliberately preserves that ceiling.
+ */
+export function companionStatLevel(id: string, tier: Tier, bondLift = 0): number {
+  const band = COMPANION_STAT_LEVELS[tier];
+  const base = band.min + Math.floor(roll(hash(id), 1) * (band.max - band.min + 1));
+  const lift = Math.max(0, Math.min(0.3, bondLift));
+  const level = Math.max(1, Math.floor(base * (1 + lift)));
+  const gearFloor = TIER_STAT_LEVELS[tier].min;
+  return Math.min(level, tier === 'common' ? gearFloor : gearFloor - 1);
 }
 
 export interface RaidSheet {
@@ -252,7 +284,7 @@ export function raidSheet(sources: readonly StatSource[]): RaidSheet {
 
   for (const source of sources) {
     base = addRaidStats(base, dealStatLevel(source.statLevel, source.order));
-    const percent = passiveFor(source.tier, source.statLevel);
+    const percent = passiveFor(source.tier, source.statLevel) * Math.max(0, source.passiveScale ?? 1);
     const primary = source.order[0];
     if (percent > 0 && primary) percents[primary].push(percent);
   }

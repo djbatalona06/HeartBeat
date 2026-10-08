@@ -8,7 +8,7 @@ import {
 } from './raidGate';
 import { COMPANION_KITS } from './companionSkills';
 import { MASCOT_ROSTER } from '../../features/pet/mascots/roster';
-import { RAID_STATS } from './raidStats';
+import { COMPANION_PASSIVE_SCALE, COMPANION_STAT_LEVELS, RAID_STATS } from './raidStats';
 import { TIERS, TIER_STAT_LEVELS } from './tiers';
 import { STAGES_PER_ISLAND } from './world';
 
@@ -93,12 +93,15 @@ describe('the cards', () => {
     expect(kitty.tier).toBe('common');
   });
 
-  it('gives each one a raid contribution inside its own tier band', () => {
+  it('gives each one a lower companion contribution than same-tier gear', () => {
     for (const card of gateCards({ affinity: { shinobi: 9999 } })) {
-      const band = TIER_STAT_LEVELS[card.tier];
+      const companion = COMPANION_STAT_LEVELS[card.tier];
+      const gear = TIER_STAT_LEVELS[card.tier];
       expect(card.source.tier).toBe(card.tier);
-      expect(card.source.statLevel, card.themeId).toBeGreaterThanOrEqual(band.min);
-      expect(card.source.statLevel, card.themeId).toBeLessThanOrEqual(band.max);
+      expect(card.source.statLevel, card.themeId).toBeGreaterThanOrEqual(companion.min);
+      if (card.tier === 'common') expect(card.source.statLevel, card.themeId).toBe(gear.min);
+      else expect(card.source.statLevel, card.themeId).toBeLessThan(gear.min);
+      expect(card.source.passiveScale).toBe(COMPANION_PASSIVE_SCALE);
       expect(card.source.order[0]).toBe(MASCOT_RAID_ORDER[card.themeId][0]);
     }
   });

@@ -357,6 +357,20 @@ function hash32(text: string, seed: number): number {
 }
 
 /**
+ * A stable local id from a calendar provider's own key.
+ *
+ * CSV exports have no event id, so `stableEventId` below builds one from their
+ * visible content. iCalendar does have a UID, and keeping it here means a
+ * source-calendar edit can update the same local row instead of leaving the old
+ * appointment beside the new one.
+ */
+export function stableEventIdForKey(memberId: string, key: string, prefix = 'csv'): string {
+  const source = `${memberId}\u0000${key}`;
+  const half = (seed: number) => pad(hash32(source, seed).toString(16), 8);
+  return `${prefix}-${half(0x811c9dc5)}${half(0x9e3779b1)}`;
+}
+
+/**
  * The id a row will occupy, derived from the row itself.
  *
  * Keyed on the member, the day, the folded title and the start time — the four
@@ -377,8 +391,7 @@ export function stableEventId(
     event.title.trim().toLowerCase().replace(/\s+/g, ' '),
     event.startsAt ?? 'all-day',
   ].join(' ');
-  const half = (seed: number) => pad(hash32(key, seed).toString(16), 8);
-  return `csv-${half(0x811c9dc5)}${half(0x9e3779b1)}`;
+  return stableEventIdForKey(memberId, key);
 }
 
 /* ---- the import ----------------------------------------------------------- */

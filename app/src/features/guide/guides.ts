@@ -163,8 +163,8 @@ export const GUIDES = {
   friends: {
     title: 'Partner',
     steps: [
-      'See your partner\'s bird and how many days you have both shown up.',
-      'Tap Send good vibes (3 left a day).',
+      'See your partner\'s birb and the days you have both shown up.',
+      'Send a little support — up to 3 times a day.',
     ],
     game: 'A Good Vibe gives your partner 4 XP and 2 coins and you 2 XP and 1 coin. Both of you logging in a day lights the Both of you charge.',
   },

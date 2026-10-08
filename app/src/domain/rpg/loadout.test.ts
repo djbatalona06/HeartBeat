@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ASCENDANT_RAID_ORDER, COMPANION_IMPACT, COMPANION_RANK_LIFT, companionRankLift, PET_LEVEL_STAT_STEP, PET_RAID_ORDER, ascendantSource,
+  ASCENDANT_RAID_ORDER, COMPANION_RANK_LIFT, companionRankLift, PET_LEVEL_STAT_STEP, PET_RAID_ORDER, ascendantSource,
   companionSource, dyeSource, furnitureSources,
   FIGHT_CAPS, FIGHT_HALF_AT, gearLift, gearSources, holdingsLoadout, loadoutSheet, petSource,
 } from './loadout';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { RAID_STATS, raidSheet, sourceStatLevel, type RaidStatKey } from './raidStats';
+import { COMPANION_PASSIVE_SCALE, RAID_STATS, raidSheet, type RaidStatKey } from './raidStats';
 import { GEAR } from './gear';
 import { FURNITURE } from './furniture';
 import { DYES } from './dyes';
@@ -122,9 +122,10 @@ describe('a companion', () => {
     expect(ranked.statLevel).toBeGreaterThan(fresh.statLevel);
   });
 
-  it('counts for half of a gear item on the same rung', () => {
+  it('stays below same-tier gear and carries a smaller passive', () => {
     const fresh = companionSource(pet(kind.id, 0))!;
-    expect(fresh.statLevel).toBe(Math.max(1, Math.round(sourceStatLevel(kind.id, kind.rarity) * COMPANION_IMPACT)));
+    expect(fresh.statLevel).toBeLessThan(TIER_STAT_LEVELS[kind.rarity].min);
+    expect(fresh.passiveScale).toBe(COMPANION_PASSIVE_SCALE);
   });
 
   it('gains most from its first ranks, and never reaches the cap', () => {

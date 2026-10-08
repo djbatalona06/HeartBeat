@@ -101,15 +101,15 @@ export function FriendsPage() {
     <div className="page">
       <header className="page-head">
         <PageTitle guide={GUIDES.friends}>Partner</PageTitle>
-        <p className="page-sub">Tree Town has two houses.</p>
+        <p className="page-sub">See their birb, your shared days, and send a little support.</p>
       </header>
 
       {!partner ? (
         <section className="panel">
-          <h2 className="section-title">Nobody here yet</h2>
+          <h2 className="section-title">Your partner will appear here</h2>
           <p className="section-sub">
-            This town fills up when the second phone joins. Pairing lives in{' '}
-            <Link to="/settings">Settings</Link>.
+            Pair their phone in <Link to="/settings">Settings</Link>. Once they join, this is where you will
+            see their birb and send them a little support.
           </p>
         </section>
       ) : (
@@ -121,7 +121,7 @@ export function FriendsPage() {
             companionId={companion?.kindId}
           />
 
-          <GoodVibes vibesLeft={vibesLeft} note={note} onNote={setNote} onSend={sendVibes} />
+          <GoodVibes name={partner.displayName || 'your partner'} vibesLeft={vibesLeft} note={note} onNote={setNote} onSend={sendVibes} />
         </>
       )}
     </div>
@@ -158,7 +158,7 @@ function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouse
 
   return (
     <section className="panel">
-      <h2 className="section-title">{name}</h2>
+      <h2 className="section-title">{name}'s corner</h2>
       <div className="friend-house">
         {/* Their colourway, not yours -- the dye lives on their avatar. */}
         <div
@@ -173,7 +173,7 @@ function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouse
         </div>
         <dl className="friend-facts">
           <div>
-            <dt>Friendship</dt>
+            <dt>Shared days</dt>
             <dd>{friendship} {friendship === 1 ? 'day' : 'days'}</dd>
           </div>
           <div>
@@ -187,7 +187,7 @@ function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouse
         </dl>
       </div>
       <p className="section-sub friend-companion">
-        {waiting ? `Still syncing ${name}'s birb.` : mascot ? `${mascot.name} the ${mascot.species}.` : ''}
+        {waiting ? `Still syncing ${name}'s birb.` : mascot ? `${mascot.name} the ${mascot.species} is keeping them company.` : ''}
         {costume ? ` Wearing the ${costume.name.toLowerCase()}.` : ''}
       </p>
     </section>
@@ -195,26 +195,26 @@ function PartnerHouse({ partner, avatar, friendship, companionId }: PartnerHouse
 }
 
 interface GoodVibesProps {
+  name: string;
   vibesLeft: number;
   note: string;
   onNote: (note: string) => void;
   onSend: () => void;
 }
 
-function GoodVibes({ vibesLeft, note, onNote, onSend }: GoodVibesProps) {
+function GoodVibes({ name, vibesLeft, note, onNote, onSend }: GoodVibesProps) {
   return (
     <section className="panel">
-      <h2 className="section-title">Good vibes</h2>
+      <h2 className="section-title">Send {name} a little support</h2>
       <p className="section-sub">
-        {GOOD_VIBES_PER_SENDER_PER_DAY} a day, and each grants them energy
-        rather than costing you any. A note is optional — the energy
-        arrives either way.
+        Send up to {GOOD_VIBES_PER_SENDER_PER_DAY} each day. Every one gives them energy and costs
+        you nothing; a note is optional.
       </p>
       <input
         className="field"
         value={note}
         maxLength={140}
-        placeholder="Say something, or don't"
+        placeholder="Thinking of you"
         aria-label="A note to send with it"
         onChange={(event) => onNote(event.target.value)}
       />
@@ -222,7 +222,7 @@ function GoodVibes({ vibesLeft, note, onNote, onSend }: GoodVibesProps) {
         disabled={vibesLeft === 0}
         onClick={onSend}>{vibesLeft === 0
           ? `That is ${GOOD_VIBES_PER_SENDER_PER_DAY} for today`
-          : `Send good vibes (${vibesLeft} left)`}</PrimaryAction>
+          : `Send support (${vibesLeft} left)`}</PrimaryAction>
     </section>
   );
 }

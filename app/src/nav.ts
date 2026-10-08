@@ -95,7 +95,7 @@ export const PRIMARY_TABS: Tab[] = [
   { to: '/', label: 'Home', icon: 'house', hint: 'Your birb, and what today still wants' },
   { to: '/quests', label: 'Quests', icon: 'sparkle', hint: 'Extra ways to earn, and the shelf' },
   { to: '/shop', label: 'Shop', icon: 'shop', hint: 'Gear, eggs, and what coins are for' },
-  { to: '/partner', label: 'Partner', icon: 'friends', hint: 'Their birb, and something kind to send' },
+  { to: '/partner', label: 'Partner', icon: 'friends', hint: 'Their birb, shared days, and a little support' },
   { to: '/assets', label: 'Bag', icon: 'bag', hint: 'Gear and your stat sheet' },
   { to: '/birb', label: 'Birb', icon: 'bird', hint: 'Your companions, colours, and room' },
 ];

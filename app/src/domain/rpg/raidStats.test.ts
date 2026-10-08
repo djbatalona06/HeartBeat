@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  FURNITURE_RAID_ORDER, GEAR_RAID_ORDER, RAID_STATS, RAID_STAT_BLURBS, RAID_STAT_NAMES,
-  SPECIES_RAID_ORDER, SPREAD_SHARES, ZERO_RAID_STATS, addRaidStats, dealStatLevel, raidSheet,
+  COMPANION_PASSIVE_SCALE, COMPANION_STAT_LEVELS, FURNITURE_RAID_ORDER, GEAR_RAID_ORDER, RAID_STATS, RAID_STAT_BLURBS, RAID_STAT_NAMES,
+  SPECIES_RAID_ORDER, SPREAD_SHARES, ZERO_RAID_STATS, addRaidStats, companionStatLevel, dealStatLevel, raidSheet,
   sourceStatLevel, tierForPrice, type RaidStatKey, type StatSource,
 } from './raidStats';
 import { GEAR_PRICE } from './shop';
@@ -148,6 +148,29 @@ describe('a stat level from an id', () => {
   });
 });
 
+describe('the companion support curve', () => {
+  it('stays in the lower companion band, beneath same-tier gear', () => {
+    for (const tier of TIERS) {
+      const companion = COMPANION_STAT_LEVELS[tier];
+      const gear = TIER_STAT_LEVELS[tier];
+      for (const id of ['mascot-pony', 'cat-mythic', 'x']) {
+        const level = companionStatLevel(id, tier, 0.3);
+        expect(level, `${id} ${tier}`).toBeGreaterThanOrEqual(companion.min);
+        expect(level, `${id} ${tier}`).toBeLessThanOrEqual(companion.max + 4);
+        if (tier === 'common') expect(level, `${id} ${tier}`).toBe(gear.min);
+        else expect(level, `${id} ${tier}`).toBeLessThan(gear.min);
+      }
+    }
+  });
+
+  it('raises an epic companion with bond without entering gear’s band', () => {
+    const fresh = companionStatLevel('epic-companion', 'epic');
+    const bonded = companionStatLevel('epic-companion', 'epic', 0.3);
+    expect(bonded).toBeGreaterThan(fresh);
+    expect(bonded).toBeLessThan(TIER_STAT_LEVELS.epic.min);
+  });
+});
+
 describe('the sheet', () => {
   const source = (over: Partial<StatSource> = {}): StatSource => ({
     id: 'a', label: 'A', tier: 'common', statLevel: 4,
@@ -178,6 +201,12 @@ describe('the sheet', () => {
     const sheet = raidSheet([source({ tier: 'common', statLevel: 3 })]);
     for (const key of RAID_STATS) expect(sheet.passives[key]).toBe(0);
     expect(sheet.total).toEqual(sheet.base);
+  });
+
+  it('scales a companion passive below the normal tier passive', () => {
+    const full = raidSheet([source({ tier: 'mythic', statLevel: 50 })]);
+    const companion = raidSheet([source({ tier: 'mythic', statLevel: 15, passiveScale: COMPANION_PASSIVE_SCALE })]);
+    expect(companion.passives.burden).toBeLessThan(full.passives.burden);
   });
 
   it('lifts the total by exactly the passive it reports', () => {

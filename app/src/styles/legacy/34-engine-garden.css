@@ -565,8 +565,8 @@
 /* ---- the Raid Gate --------------------------------------------------------
    The threshold you cross on the way into Eve's Garden. Four bands, top to
    bottom: the seven islands as a trail, this island's boss in the arch, the
-   companions as a row of cards, and the button that commits. On a phone the
-   trail and the roster scroll sideways and nothing else changes. */
+   companions as a responsive grid of cards, and the button that commits. The
+   trail may scroll sideways on a phone; the companions always fit the width. */
 
 .raid-gate {
   display: grid;
@@ -697,25 +697,21 @@
   .raid-gate-boss-card { width: 100%; }
 }
 
-/* -- the roster: the companions, as a row of cards -- */
+/* -- the roster: companions fill the available width, never a sideways rail -- */
 .raid-gate-roster {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
   gap: var(--space-2);
-  padding-bottom: var(--space-1);
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  width: 100%;
 }
-.raid-gate-roster::-webkit-scrollbar { display: none; }
 
 .raid-gate-pedestal {
-  flex: 0 0 auto;
-  scroll-snap-align: center;
   display: grid;
   justify-items: center;
+  align-content: start;
   gap: var(--space-1);
-  width: 9.5rem;
+  width: 100%;
+  min-width: 0;
   padding: var(--space-2) 0 0;
   border: none;
   background: none;
@@ -755,7 +751,10 @@
 
 .raid-gate-card {
   display: grid;
+  align-content: start;
   gap: 2px;
+  min-width: 0;
+  height: 100%;
   width: 100%;
   padding: var(--space-2);
   border: var(--border-width) solid var(--color-border);
@@ -808,6 +807,11 @@
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   line-height: var(--line-body);
+}
+
+@media (min-width: 58rem) {
+  /* Five garden companions share one uninterrupted desktop row. */
+  .raid-gate-roster { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
 /* Everything under the scene: who you picked, and the one button that commits
@@ -1145,4 +1149,3 @@
   .garden-tree-leaf,
   .garden-tree-shaft { opacity: 1; }
 }
-
