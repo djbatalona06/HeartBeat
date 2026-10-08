@@ -169,6 +169,35 @@ export default defineConfig({
         orientation: 'portrait',
         background_color: '#2a0f1c',
         theme_color: '#2a0f1c',
+        // What PWABuilder's scan asked for and a store listing would show. None
+        // of it changes how the installed app behaves on iPhone, which ignores
+        // shortcuts; Android's long-press menu uses them. The router is a
+        // HashRouter, so a shortcut is a hash route.
+        categories: ['lifestyle', 'health', 'games'],
+        display_override: ['standalone', 'minimal-ui'],
+        shortcuts: [
+          {
+            name: 'Log your mood',
+            short_name: 'Mood',
+            description: 'Open the mood check-in',
+            url: `${BASE}#/mood`,
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: "Eve's Garden",
+            short_name: 'Garden',
+            description: 'Go to the islands and the boss',
+            url: `${BASE}#/eve-garden`,
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: 'Tasks',
+            short_name: 'Tasks',
+            description: 'Dailies, habits and to-dos',
+            url: `${BASE}#/tasks`,
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+        ],
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
