@@ -17,23 +17,22 @@ describe('garden videos', () => {
     }
   });
 
-  it('play in the dark palette with motion allowed', () => {
-    expect(gardenVideoSrc('kitty', 'dark', false, '/')).toBe(
+  it('play with motion allowed', () => {
+    expect(gardenVideoSrc('kitty', false, '/')).toBe(
       '/media/heartbeat-gardens/01-kitty-garden.mp4',
     );
   });
 
-  it('keep the drawn garden for calm, reduced motion and the light palette', () => {
-    expect(gardenVideoSrc('kitty', 'dark', true, '/')).toBeNull();
-    expect(gardenVideoSrc('kitty', 'light', false, '/')).toBeNull();
+  it('keep the drawn garden for calm and reduced motion', () => {
+    expect(gardenVideoSrc('kitty', true, '/')).toBeNull();
   });
 
   it('keep the drawn garden for a theme it has never heard of', () => {
-    expect(gardenVideoSrc('nope', 'dark', false, '/')).toBeNull();
+    expect(gardenVideoSrc('nope', false, '/')).toBeNull();
   });
 
   it('respect a sub-path base', () => {
-    expect(gardenVideoSrc('pony', 'dark', false, '/heartbeat/')).toBe(
+    expect(gardenVideoSrc('pony', false, '/heartbeat/')).toBe(
       '/heartbeat/media/heartbeat-gardens/05-pony-garden.mp4',
     );
   });

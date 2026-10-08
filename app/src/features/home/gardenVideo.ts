@@ -1,5 +1,3 @@
-import type { ThemeMode } from '../../themes/types';
-
 /**
  * Which looping garden film belongs to which theme.
  *
@@ -20,22 +18,23 @@ export const GARDEN_VIDEO_FILES = {
  * Where the clip is served from, or null when the home screen should keep the
  * drawn garden.
  *
- * The films are night scenes, so they only stand in for the garden in the dark
- * palette; a light page behind a dark film would be the one case the veil's
- * contrast proof (`themes/veil.test.ts`) never modelled. Calm and reduced
- * motion get nothing at all — not a paused film, no request — because the
- * brief is that those switches mean no motion and no extra download.
+ * Both palettes get the film. An earlier version limited it to dark, on the
+ * worry that a night scene behind a light page was unproven; the cost was that
+ * any phone on an automatic day/night schedule saw no film for half the day and
+ * reported it as broken. In light mode the veil is the light scrim, so the words
+ * on top still sit on a pale wash — see `home.css` for the readability check.
+ * Calm and reduced motion get nothing at all — not a paused film, no request —
+ * because those switches mean no motion and no extra download.
  *
  * `base` is Vite's `BASE_URL` (always ends in a slash), so the clip resolves
  * when the app is served from a sub-path.
  */
 export function gardenVideoSrc(
   themeId: string,
-  mode: ThemeMode,
   calm: boolean,
   base: string,
 ): string | null {
-  if (calm || mode !== 'dark') return null;
+  if (calm) return null;
   const file = (GARDEN_VIDEO_FILES as Record<string, string>)[themeId];
   return file ? `${base}media/heartbeat-gardens/${file}` : null;
 }

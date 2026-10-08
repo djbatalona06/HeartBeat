@@ -69,7 +69,7 @@ export function SceneBackdrop() {
 function HomeGarden() {
   const { mode, calm, themeId } = useTheme();
   const { hour, phase } = useHour();
-  const videoSrc = gardenVideoSrc(themeId, mode, calm, import.meta.env.BASE_URL);
+  const videoSrc = gardenVideoSrc(themeId, calm, import.meta.env.BASE_URL);
 
   const settings = useLiveQuery(() => db.settings.get('settings'), []);
   const day = todayKey(settings?.timeZone ?? 'America/Los_Angeles');
