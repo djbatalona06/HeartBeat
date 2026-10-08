@@ -6,3 +6,22 @@
    Each pane stacks its cards on the same rhythm `.page` gives a page, because a
    pane is a page one swipe over. */
 .home-pane > * + * { margin-top: var(--stack); }
+
+/* ---- the theme's tree film, over the drawn garden ---------------------------
+   Mounted by `features/home/GardenVideo.tsx` inside `.home-scene`, under the
+   veil. Invisible until the browser reports it is playing, so a slow or failed
+   download leaves the drawn garden showing instead of a black frame.
+   `bottom` keeps the pond and ground in view when a tall phone crops the sides. */
+.home-scene-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--motion-medium, 400ms) ease;
+}
+
+.home-scene-video[data-playing='true'] { opacity: 1; }

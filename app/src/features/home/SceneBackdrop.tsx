@@ -8,6 +8,8 @@ import { RADIANCE_FULL } from '../../domain/rpg/vitals';
 import type { Garden } from '../../domain/rpg/plots';
 import { ThemeBackdrop, useTheme } from '../../themes/ThemeProvider';
 import { GardenBackdrop } from '../eve-garden/GardenBackdrop';
+import { GardenVideo } from './GardenVideo';
+import { gardenVideoSrc } from './gardenVideo';
 import { useHour } from './useHour';
 
 /**
@@ -65,8 +67,9 @@ export function SceneBackdrop() {
  * foreground cycle. See CLAUDE.md.
  */
 function HomeGarden() {
-  const { mode, calm } = useTheme();
+  const { mode, calm, themeId } = useTheme();
   const { hour, phase } = useHour();
+  const videoSrc = gardenVideoSrc(themeId, mode, calm, import.meta.env.BASE_URL);
 
   const settings = useLiveQuery(() => db.settings.get('settings'), []);
   const day = todayKey(settings?.timeZone ?? 'America/Los_Angeles');
@@ -115,6 +118,9 @@ function HomeGarden() {
         petLevel={levelForXp(pet?.xp ?? 0)}
         dye={avatar?.dye}
       />
+      {/* The theme's tree, over the drawing — dark palette, phone upright, calm
+          off, and only once it is actually playing. See `GardenVideo`. */}
+      {videoSrc && <GardenVideo src={videoSrc} />}
       {/* The ground under the words.
           Top and bottom only, fading out through the middle: the page header
           and the tab bar are the two places bare text meets the scene, and the

@@ -947,6 +947,25 @@
   );
 }
 
+/* The drawn garden is dark where the words are; the films have a bright canopy
+   right behind the header and the tab pill. While one is actually playing the
+   top veil holds full strength a little longer and reaches further down, so the
+   page title, the date line and the pane tabs stay readable over gold and coral
+   leaves. The middle is still clear: the cards there carry their own surface.
+   Lives here, not in `features/home.css`, because `legacy` is the later layer and
+   would beat it. `:has()` rather than a second attribute set from script — a browser without
+   it simply keeps the lighter veil, and the film is still a film. */
+.home-scene:has(.home-scene-video[data-playing='true']) .home-scene-veil {
+  background: linear-gradient(
+    to bottom,
+    var(--scrim) 0,
+    var(--scrim) 16%,
+    transparent 46%,
+    transparent 64%,
+    var(--scrim) 100%
+  );
+}
+
 /* Calm and the OS setting both stand the scene still. The reduced-motion block
    further down already covers the garden's own layers; this is the other half,
    because `data-calm` is the app's own quiet switch and the pack backdrops
