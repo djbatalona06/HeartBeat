@@ -25,6 +25,7 @@ import { LoginPopup } from './features/dashboard/LoginPopup';
 import { MascotSync } from './features/pet/MascotSync';
 import { useWarmGearArt } from './features/party/art/gear/GearIcon';
 import { ToastHost } from './ui/Toast';
+import { AccountPrompt } from './features/settings/AccountPrompt';
 import { SceneBackdrop } from './features/home/SceneBackdrop';
 import { WelcomePage } from './features/onboarding/WelcomePage';
 import { OnboardingPage } from './features/onboarding/OnboardingPage';
@@ -259,6 +260,9 @@ export function App() {
                 nothing here that waits on a second person. */}
             <StatusHud />
             <BottomNav locked={(ready && !paired) || naming.show} badges={badges.byRoute} />
+            {/* Once, after pairing: the optional "keep your link safe" sign-in.
+                It waits for the naming screen rather than stacking on it. */}
+            <AccountPrompt otherGateShowing={naming.show} />
           </ToastHost>
         </HashRouter>
       </ThemeProvider>

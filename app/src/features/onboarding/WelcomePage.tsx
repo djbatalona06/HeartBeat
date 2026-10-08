@@ -19,7 +19,7 @@ export function WelcomePage() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
 
-  // Whether this deploy offers GitHub recovery at all. Asked without a token,
+  // Whether this deploy offers Google or GitHub recovery at all. Asked without a token,
   // which the endpoint allows precisely so this screen — which nobody on it is
   // signed in to — can find out. Never throws; a null answer is "no".
   const [recovery, setRecovery] = useState(false);
@@ -143,10 +143,11 @@ export function WelcomePage() {
         <section className="panel">
           <h2 className="section-title">Been here before?</h2>
           <p className="section-sub">
-            If you were already part of a couple here and connected GitHub,
-            you can sign back in with it rather than pairing again. It is not
-            a login — it only proves you are you, so this phone can pick up
-            where the old one left off.
+            If you were already part of a couple here and connected Google or
+            GitHub, you can sign back in with it rather than pairing again. It
+            is not a login — it only proves you are you, so this phone can pick
+            up where the old one left off, with your partner link and everything
+            that was saved.
           </p>
           <Link className="primary welcome-recover" to="/settings">
             Get back in &rarr;

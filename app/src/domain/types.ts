@@ -601,6 +601,13 @@ export interface Settings {
    * `features/onboarding/WelcomePage.tsx`.
    */
   guestAcknowledged?: boolean;
+  /**
+   * Set the first time this phone has been offered "keep your link safe with
+   * Google or GitHub", whether it said yes or later. Asked once per install, so
+   * it never nags; the same sign-in stays available in Settings afterwards. See
+   * `features/settings/AccountPrompt.tsx`.
+   */
+  accountPromptSeenAt?: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

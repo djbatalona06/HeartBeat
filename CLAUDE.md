@@ -119,7 +119,11 @@ Two workflows deploy: `deploy.yml` (Pages, every push to `main`) and `worker-dep
 - `CLOUDFLARE_ACCOUNT_ID` — from the Cloudflare dashboard sidebar
 
 Optional, and set on the **Pages project** rather than as repo secrets:
-`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` turn on GitHub account recovery.
+`GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` turn on GitHub account recovery, and
+`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` turn on Google's (scope `openid`
+only — no email is stored). Each sign-in is bound to the browser that started
+it by a client-held verifier (migration 0020), and a paired phone is offered
+"keep your link safe" once (`features/settings/AccountPrompt.tsx`).
 Unset is a supported configuration — the feature hides itself and the pairing
 code remains the only way into a couple either way. See §8 of `docs/DEPLOY.md`.
 

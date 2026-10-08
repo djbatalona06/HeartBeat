@@ -11,6 +11,7 @@ import { OPEN_WHILE_UNPAIRED } from '../../nav';
 import { PrimaryAction } from '../../ui/PrimaryAction';
 import { SecondaryAction } from '../../ui/SecondaryAction';
 import { Sheet } from '../../ui/Sheet';
+import { PopupPresence } from '../../ui/popupPresence';
 
 /**
  * The seven-day login award, as a popup that finds you.
@@ -88,6 +89,8 @@ export function LoginPopup() {
       scrimClassName="popup-scrim"
       panelClassName="popup-panel login-popup"
     >
+      {/* Tells the other one-time popups to wait their turn. */}
+      <PopupPresence />
       {receipt ? (
         <>
           <h2 className="section-title">Claimed</h2>
