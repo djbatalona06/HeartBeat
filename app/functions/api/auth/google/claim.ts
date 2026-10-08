@@ -20,9 +20,16 @@ import type { GoogleEnv } from '../_google';
  * immediately, because their app stops working.
  */
 export const onRequestPost: PagesFunction<GoogleEnv> = async ({ request, env }) => {
-  const body = (await request.json().catch(() => ({}))) as { claim?: string };
+  const body = (await request.json().catch(() => ({}))) as {
+    claim?: string;
+    verifier?: string;
+  };
   const code = (body.claim ?? '').trim();
   if (!code) return json({ error: 'claim required' }, 400);
+
+  // The plaintext only the browser that started this holds. Hashed here and
+  // compared inside the DELETE, so a wrong one consumes nothing.
+  const verifierHash = await hashToken((body.verifier ?? '').trim());
 
   const now = Date.now();
   await sweep(env.DB, now);
@@ -30,7 +37,7 @@ export const onRequestPost: PagesFunction<GoogleEnv> = async ({ request, env }) 
   // Consumed by the read, for the same reason the state is: single-use has to
   // be enforced by the write, not by a check somebody can race.
   const claim = await env.DB.prepare(CLAIM_CONSUME_SQL)
-    .bind(code, now, 'google')
+    .bind(code, now, 'google', verifierHash)
     .first<{
       outcome: string;
       member_id: string | null;

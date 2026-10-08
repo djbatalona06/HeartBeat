@@ -1,0 +1,23 @@
+-- Tie a sign-in to the browser that started it.
+--
+-- Until now an OAuth round trip was identified by `state` alone, and `state` is
+-- only a row in this database. Nothing tied the callback to the browser that
+-- began the flow, so one person could start a "get back in" for their own
+-- member, stop at the callback URL, and hand that URL to somebody else. If the
+-- other person opened it, their phone would collect a claim for the first
+-- person's member and quietly re-pair itself into the wrong couple.
+--
+-- The fix is a secret that only the starting browser holds. The app invents a
+-- random `verifier`, keeps it, and sends the server only its SHA-256 at the
+-- start. The hash rides along from the state to the claim, and the claim can
+-- only be spent by presenting the plaintext that hashes to it. A callback URL
+-- that has been passed to somebody else is useless to them: they do not have
+-- the verifier, and a wrong guess does not consume the claim, so it cannot be
+-- used to burn the owner's either.
+--
+-- Nullable on purpose. A phone still running the previous version of the app
+-- starts a "connect" without one, and that path is already protected by the
+-- bearer token the claim step demands; the start handler refuses a "get back
+-- in" that arrives without a hash, so a recovery never has a NULL here.
+ALTER TABLE oauth_states ADD COLUMN verifier_hash TEXT;
+ALTER TABLE oauth_claims ADD COLUMN verifier_hash TEXT;

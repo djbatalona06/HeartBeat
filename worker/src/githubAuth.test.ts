@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  CLAIM_CONSUME_SQL, LINK_UPSERT_SQL, RECOVER_LOOKUP_SQL, STATE_CONSUME_SQL,
+  CLAIM_CONSUME_SQL, LINK_UPSERT_SQL, RECOVER_LOOKUP_SQL, STATE_CONSUME_SQL, STATE_INSERT_SQL,
 } from '../../app/functions/api/auth/_github';
 
 /**
@@ -73,7 +73,7 @@ describe('the OAuth state', () => {
 
   const consume = (state: string, at = NOW) =>
     db.prepare(STATE_CONSUME_SQL).get(state, at, 'github') as
-      { intent: string; member_id: string | null } | undefined;
+      { intent: string; member_id: string | null; verifier_hash: string | null } | undefined;
 
   it('hands back the intent and member it was started with', () => {
     start('s1', 'link', 'her');
@@ -109,6 +109,12 @@ describe('the OAuth state', () => {
     expect(consume('s2')).toMatchObject({ intent: 'recover', member_id: null });
   });
 
+  /** What lets the callback copy the browser's secret onto the claim. */
+  it('hands back the verifier hash it was started with', () => {
+    db.prepare(STATE_INSERT_SQL).run('s4', 'recover', null, NOW, LATER, 'github', 'c'.repeat(64));
+    expect(consume('s4')).toMatchObject({ verifier_hash: 'c'.repeat(64) });
+  });
+
   it('accepts no intent the schema does not know', () => {
     expect(() => start('s3', 'become-admin', null)).toThrow();
   });
@@ -125,8 +131,8 @@ describe('the claim code', () => {
        VALUES (?,?,?,?,?,?,?,'github')`,
     ).run(code, outcome, 'her', 'c1', 'octocat', NOW, expires);
 
-  const consume = (code: string, at = NOW) =>
-    db.prepare(CLAIM_CONSUME_SQL).get(code, at, 'github') as
+  const consume = (code: string, at = NOW, verifierHash = '') =>
+    db.prepare(CLAIM_CONSUME_SQL).get(code, at, 'github', verifierHash) as
       { outcome: string; member_id: string } | undefined;
 
   it('is single-use, like the state', () => {
@@ -138,6 +144,50 @@ describe('the claim code', () => {
   it('expires', () => {
     park('k1', 'recovered', NOW - 1);
     expect(consume('k1')).toBeFalsy();
+  });
+
+  /**
+   * The browser binding (migration 0020). A claim started with a verifier can
+   * only be spent by the browser that holds it, so a callback URL passed to
+   * somebody else is worth nothing to them.
+   */
+  describe('bound to the browser that started it', () => {
+    const HASH = 'a'.repeat(64);
+    const bound = (code: string) =>
+      db.prepare(
+        `INSERT INTO oauth_claims
+           (code, outcome, member_id, couple_id, github_login, created_at, expires_at,
+            provider, verifier_hash)
+         VALUES (?,?,?,?,?,?,?,'github',?)`,
+      ).run(code, 'recovered', 'her', 'c1', 'octocat', NOW, LATER, HASH);
+
+    it('is spent by the matching verifier', () => {
+      bound('k1');
+      expect(consume('k1', NOW, HASH)).toMatchObject({ outcome: 'recovered', member_id: 'her' });
+    });
+
+    it('refuses a different verifier', () => {
+      bound('k1');
+      expect(consume('k1', NOW, 'b'.repeat(64))).toBeFalsy();
+    });
+
+    it('refuses no verifier at all', () => {
+      bound('k1');
+      expect(consume('k1', NOW, '')).toBeFalsy();
+    });
+
+    /** Guessing must not be a way to destroy the real owner's code. */
+    it('is not consumed by a wrong guess', () => {
+      bound('k1');
+      expect(consume('k1', NOW, 'b'.repeat(64))).toBeFalsy();
+      expect(consume('k1', NOW, HASH)).toBeTruthy();
+    });
+
+    /** A connect started by a copy of the app that predates the column. */
+    it('still accepts a claim that never had one', () => {
+      park('k2', 'linked');
+      expect(consume('k2', NOW, 'anything')).toMatchObject({ outcome: 'linked' });
+    });
   });
 
   /**

@@ -92,21 +92,32 @@ export function backToApp(request: Request, params: Record<string, string>): Res
 export const STATE_CONSUME_SQL =
   `DELETE FROM oauth_states
     WHERE state = ? AND expires_at >= ? AND provider = ?
-    RETURNING intent, member_id`;
+    RETURNING intent, member_id, verifier_hash`;
 
-/** The same, for the code the redirect came back with. `handle` is whatever the
+/** The same, for the code the redirect came back with. The last bind is the
+ *  SHA-256 of the verifier the app presents: a claim that was started with one
+ *  can only be spent with it, and a wrong one is *not* a consume — the DELETE
+ *  simply matches nothing, so guessing cannot burn the real owner's code. `handle` is whatever the
  *  provider is willing to show in Settings — a GitHub login, or '' for Google,
  *  which is asked for no scope that would reveal one. */
 export const CLAIM_CONSUME_SQL =
   `DELETE FROM oauth_claims
     WHERE code = ? AND expires_at >= ? AND provider = ?
+      AND (verifier_hash IS NULL OR verifier_hash = ?)
     RETURNING outcome, member_id, couple_id, github_login AS handle`;
 
 export const STATE_INSERT_SQL =
-  `INSERT INTO oauth_states (state, intent, member_id, created_at, expires_at, provider)
-   VALUES (?, ?, ?, ?, ?, ?)`;
+  `INSERT INTO oauth_states
+     (state, intent, member_id, created_at, expires_at, provider, verifier_hash)
+   VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
 export const CLAIM_INSERT_SQL =
   `INSERT INTO oauth_claims
-     (code, outcome, member_id, couple_id, github_login, created_at, expires_at, provider)
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+     (code, outcome, member_id, couple_id, github_login, created_at, expires_at, provider,
+      verifier_hash)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+/** What `start` accepts as a verifier hash: a SHA-256 in lowercase hex. */
+export function validChallenge(value: unknown): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
+}

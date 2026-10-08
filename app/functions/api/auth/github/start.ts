@@ -3,6 +3,7 @@ import {
   STATE_INSERT_SQL, STATE_TTL_MS, authorizeUrl, githubApp, randomKey, redirectUriFor, sweep,
   type GitHubEnv,
 } from '../_github';
+import { validChallenge } from '../_oauth';
 
 /**
  * Begin a GitHub sign-in. Answers with a URL for the app to send the browser
@@ -24,8 +25,22 @@ export const onRequestPost: PagesFunction<GitHubEnv> = async ({ request, env }) 
   // deploy; the client hides the buttons on this answer. See /api/health.
   if (!app) return json({ error: 'github sign-in is not configured here' }, 503);
 
-  const body = (await request.json().catch(() => ({}))) as { intent?: string };
+  const body = (await request.json().catch(() => ({}))) as {
+    intent?: string;
+    challenge?: unknown;
+  };
   const intent = body.intent === 'recover' ? 'recover' : 'link';
+
+  // The browser's own secret, hashed. A recovery without one is refused: it is
+  // exactly the case where a callback URL handed to somebody else would
+  // otherwise work, so it is the case that has to be bound. A connect may
+  // arrive without (an older copy of the app) because its claim already needs
+  // the bearer. See migration 0020.
+  const challenge = validChallenge(body.challenge) ? body.challenge : null;
+  if (body.challenge !== undefined && !challenge) return json({ error: 'bad challenge' }, 400);
+  if (intent === 'recover' && !challenge) {
+    return json({ error: 'update the app to sign in this way' }, 400);
+  }
 
   const now = Date.now();
   await sweep(env.DB, now);
@@ -39,7 +54,7 @@ export const onRequestPost: PagesFunction<GitHubEnv> = async ({ request, env }) 
 
   const state = randomKey();
   await env.DB.prepare(STATE_INSERT_SQL)
-    .bind(state, intent, memberId, now, now + STATE_TTL_MS, 'github')
+    .bind(state, intent, memberId, now, now + STATE_TTL_MS, 'github', challenge)
     .run();
 
   await recordAuthEvent(
