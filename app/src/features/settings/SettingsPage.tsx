@@ -150,7 +150,7 @@ export function SettingsPage() {
           Yours alone. Your partner picks their own, and the pet on the home
           screen follows whichever one you are wearing.
         </p>
-        <div className="theme-grid" role="radiogroup" aria-label="Theme">
+        <div className="theme-grid pick-grid" role="radiogroup" aria-label="Theme">
           {THEMES.map((theme) => (
             <button
               key={theme.id}

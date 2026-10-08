@@ -697,25 +697,18 @@
   .raid-gate-boss-card { width: 100%; }
 }
 
-/* -- the roster: the companions, as a row of cards -- */
-.raid-gate-roster {
-  display: flex;
-  gap: var(--space-2);
-  padding-bottom: var(--space-1);
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.raid-gate-roster::-webkit-scrollbar { display: none; }
+/* -- the roster: the companions, all five in view --
+   The layout (three across, the last two centred) is `.pick-grid`. It used to
+   be a sideways row of 9.5rem cards, which showed two of the five and clipped
+   the chosen one's glow against the scroller's edge. */
+.raid-gate-roster { padding-block: var(--space-2) var(--space-1); }
 
 .raid-gate-pedestal {
-  flex: 0 0 auto;
-  scroll-snap-align: center;
   display: grid;
   justify-items: center;
+  align-content: start;
   gap: var(--space-1);
-  width: 9.5rem;
+  width: 100%;
   padding: var(--space-2) 0 0;
   border: none;
   background: none;
@@ -729,8 +722,8 @@
 
 .raid-gate-figure {
   display: block;
-  width: 4.5rem;
-  height: 4.5rem;
+  width: clamp(3.25rem, 17vw, 4.5rem);
+  aspect-ratio: 1;
   transition: transform var(--motion-medium) var(--ease-soft);
 }
 .raid-gate-figure svg { width: 100%; height: 100%; }
@@ -741,7 +734,7 @@
    the backdrop's own drift. */
 .raid-gate-plinth {
   display: block;
-  width: 4rem;
+  width: clamp(3rem, 15vw, 4rem);
   height: 0.85rem;
   border-radius: 50%;
   background: var(--color-surface-muted);
@@ -766,7 +759,7 @@
 }
 .raid-gate-pedestal[data-selected] .raid-gate-card { border-color: var(--color-accent); }
 
-.raid-gate-card-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-1); }
+.raid-gate-card-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-1); }
 .raid-gate-name { font-weight: 600; font-size: var(--text-sm); }
 .raid-gate-strong {
   align-self: flex-start;
@@ -782,7 +775,7 @@
    bubble (0-1), drawn as a conic gradient in the pack's accent over the muted
    surface; the number sits in the middle, so the ring is never the only way to
    read it. See GatePedestal.tsx. */
-.raid-gate-bubbles { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-1); }
+.raid-gate-bubbles { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-1); margin-top: var(--space-1); }
 .raid-gate-bubble {
   --fill: 0;
   display: inline-grid;
@@ -803,6 +796,16 @@
 }
 .raid-gate-bubble-label { font-size: var(--text-xs); color: var(--color-text-muted); }
 .raid-gate-bubble-rank .raid-gate-bubble-value { width: 1.75rem; }
+
+/* Three across leaves a card about 80px of text. Smaller rings, no captions
+   (they are aria-hidden already; the value and the hidden sentence say it). */
+@media (max-width: 26rem) {
+  .raid-gate-card { text-align: center; }
+  .raid-gate-strong { align-self: center; }
+  .raid-gate-bubble-value { width: 1.75rem; }
+  .raid-gate-bubble-rank .raid-gate-bubble-value { width: 1.5rem; }
+  .raid-gate-bubble-label { display: none; }
+}
 
 .raid-gate-affinity {
   font-size: var(--text-xs);

@@ -97,7 +97,7 @@ export function OnboardingPage() {
             you can change it any time from Settings, and your partner picks
             their own.
           </p>
-          <div className="onboarding-pets">
+          <div className="onboarding-pets pick-grid">
             {THEMES.map((t) => {
               const mascot = getMascot(t.id);
               return (
