@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { MENU_GROUPS, OPEN_WHILE_UNPAIRED } from '../nav';
 import { Icon } from './icons';
 import { Sheet } from '../ui/Sheet';
+import { useBuzz } from '../pwa/haptics';
 
 /**
  * The three-line button, and the grid of everywhere the six tabs are not.
@@ -34,6 +35,7 @@ export function MenuSheet({ locked }: { locked: boolean }) {
   const location = useLocation();
 
   const close = useCallback(() => setOpen(false), []);
+  const tap = useBuzz();
 
   // Navigating is the point of the menu, so arriving somewhere closes it. This
   // watches the location rather than each link's onClick: a tap on the tab you
@@ -48,7 +50,7 @@ export function MenuSheet({ locked }: { locked: boolean }) {
         aria-label={open ? 'Close menu' : 'Open menu'}
         aria-expanded={open}
         aria-haspopup="menu"
-        onClick={() => setOpen((was) => !was)}
+        onClick={() => { tap('tap'); setOpen((was) => !was); }}
       >
         <Icon name="menu" />
       </button>
@@ -59,6 +61,7 @@ export function MenuSheet({ locked }: { locked: boolean }) {
         label="Everywhere else"
         scrimClassName="menu-scrim"
         panelClassName="menu-panel"
+        draggable
       >
         {MENU_GROUPS.map((group) => (
           <section className="menu-group" key={group.title}>

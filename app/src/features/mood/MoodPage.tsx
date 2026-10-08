@@ -31,6 +31,7 @@ import {
 } from './mood';
 import { PageTitle } from '../../ui/layout/PageTitle';
 import { GUIDES } from '../guide/guides';
+import { PushOffer } from '../settings/PushOffer';
 
 /**
  * Three meters a day, each, side by side.
@@ -78,6 +79,9 @@ export function MoodPage() {
     setDraft({ ...(shown ?? NEUTRAL_MOOD), [key]: value });
   };
 
+  // Set by a save, for the notifications offer that rides on it.
+  const [logged, setLogged] = useState(false);
+
   const save = async () => {
     setSaving(true);
     try {
@@ -91,6 +95,7 @@ export function MoodPage() {
         ...shownFlags,
       });
       reset();
+      setLogged(true);
     } finally {
       setSaving(false);
     }
@@ -117,6 +122,9 @@ export function MoodPage() {
         partnerName={partnerName}
         onChange={setMeter}
       />
+
+      {/* Straight after the meters, because that is where the save happened. */}
+      <PushOffer settings={settings} justWon={logged} />
 
       {/* Below the meters rather than above them: the day's own numbers are
           what this page is for, and a compliment is what you do once you have

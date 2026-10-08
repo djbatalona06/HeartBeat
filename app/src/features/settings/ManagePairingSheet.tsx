@@ -57,6 +57,7 @@ export function ManagePairingSheet({
       label="Manage pairing"
       scrimClassName="menu-scrim"
       panelClassName="pair-sheet"
+      draggable
     >
       <span className="pair-sheet-grip" aria-hidden="true" />
 

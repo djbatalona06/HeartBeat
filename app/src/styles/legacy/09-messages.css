@@ -71,6 +71,11 @@
   box-shadow: var(--shadow);
   backdrop-filter: blur(14px);
 }
+/* With the iOS keyboard up the tab bar is hidden (05-chrome.css), so the
+   thread sits on the keyboard instead of on a bar that is no longer there.
+   `--kb-inset` is written by `pwa/useKeyboardInset.ts`. */
+:root[data-keyboard='open'] .chat { bottom: calc(var(--kb-inset) + var(--space-2)); }
+:root[data-keyboard='open'] .chat-pill { visibility: hidden; }
 
 .chat-head {
   display: flex;

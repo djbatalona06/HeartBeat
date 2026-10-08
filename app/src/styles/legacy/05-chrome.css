@@ -106,6 +106,9 @@
   /* A hairline, not a shadow: a bar docked to the edge has nothing to cast on. */
   border-top: 0.5px solid var(--hairline);
 }
+/* A docked bar has nowhere to go when the keyboard comes up: iOS leaves it
+   under the keys, or perched on them. Native apps hide it, and so does this. */
+:root[data-keyboard='open'] .tabbar { visibility: hidden; }
 /* Glass, the way iOS does a tab bar. It was a 97% slab with a 14px blur, dense
    enough that nothing could show through. 86% and a 24px blur dissolves the
    body text sliding behind it to colour, and `saturate` keeps that colour

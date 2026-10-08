@@ -665,6 +665,7 @@ function Companions({ avatar, pets, owned, onChoose, onSeeLore }: {
         label="All companions"
         scrimClassName="menu-scrim"
         panelClassName="menu-panel birb-sheet"
+        draggable
       >
         <div className="birb-sheet-head">
           <h2 className="section-title">All companions</h2>

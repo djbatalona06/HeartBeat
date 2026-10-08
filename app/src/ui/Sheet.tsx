@@ -1,5 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { useFocusTrap } from './useFocusTrap';
+import { useDragToDismiss } from './useDragToDismiss';
 
 /**
  * A scrim, a panel, and the four behaviours every one of them needs.
@@ -30,6 +31,13 @@ import { useFocusTrap } from './useFocusTrap';
  * Both class names are the caller's. The whole point of `MenuSheet` is that its
  * panel flips direction at 768px, and a component that imposed its own panel
  * would take that away — so this owns behaviour and the caller keeps the paint.
+ *
+ * ## Drag to dismiss, for the ones that rise from the bottom
+ *
+ * `draggable` adds a grabber and lets a finger pull the panel down to close it
+ * (`useDragToDismiss`). Opt-in, because a centred popup has no edge to be
+ * pulled towards. It closes through the same path as the scrim, so focus is
+ * restored the same way.
  */
 export interface SheetProps {
   open: boolean;
@@ -39,15 +47,15 @@ export interface SheetProps {
   label: string;
   scrimClassName: string;
   panelClassName: string;
+  /** A bottom sheet: show a grabber and close on a downward drag. */
+  draggable?: boolean;
 }
 
 export function Sheet({
-  open, onClose, children, label, scrimClassName, panelClassName,
+  open, onClose, children, label, scrimClassName, panelClassName, draggable = false,
 }: SheetProps) {
   const panel = useRef<HTMLDivElement>(null);
   const restoreFocus = useFocusTrap(panel, open, { onEscape: onClose });
-
-  if (!open) return null;
 
   // Restored on every close path, not just Escape: closing by scrim used to
   // leave a keyboard user at the top of the document with no idea where they were.
@@ -55,6 +63,9 @@ export function Sheet({
     onClose();
     restoreFocus();
   };
+  useDragToDismiss(panel, open && draggable, closeByScrim);
+
+  if (!open) return null;
 
   return (
     <>
@@ -70,6 +81,7 @@ export function Sheet({
         aria-modal="true"
         aria-label={label}
       >
+        {draggable ? <span className="sheet-grabber" aria-hidden="true" /> : null}
         {children}
       </div>
     </>

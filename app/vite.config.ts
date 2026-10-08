@@ -78,7 +78,12 @@ export default defineConfig({
     react(),
     dotnetWasm(),
     VitePWA({
-      registerType: 'prompt',
+      // Matches what actually happens: `sw.ts` calls skipWaiting and
+      // clients.claim, and main.tsx reloads once on `controllerchange`. The
+      // option only shapes a registration script that `injectRegister: null`
+      // never emits, so 'prompt' was a promise of an update toast that
+      // nothing ever showed.
+      registerType: 'autoUpdate',
       injectRegister: null,
       strategies: 'injectManifest',
       srcDir: 'src/pwa',
@@ -146,6 +151,11 @@ export default defineConfig({
           // The per-pack headline faces, ~160 KiB together. Cached on first
           // use by `pwa/sw.ts` instead; see the @font-face note in styles/legacy/01-base.css.
           'fonts/display/**',
+          // The iOS launch images (`tools/splash.mjs`), one per screen size.
+          // iOS fetches its own one at install time and never asks the service
+          // worker for it, so precaching all of them would only make every
+          // install download two dozen pictures of the wrong screen.
+          'splash/**',
         ],
       },
       manifest: {

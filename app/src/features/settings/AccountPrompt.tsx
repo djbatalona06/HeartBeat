@@ -91,6 +91,7 @@ export function AccountPrompt({ otherGateShowing }: { otherGateShowing: boolean 
       label="Keep your link safe"
       scrimClassName="popup-scrim"
       panelClassName="account-panel"
+      draggable
     >
       <h2 className="account-title">Keep your link safe</h2>
       <p className="account-body">

@@ -4,6 +4,12 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body, #root { height: 100%; }
+/* The dynamic viewport where there is one: in a Safari tab `100%` is the tall
+   viewport with the toolbars hidden, so a full-height screen loses its bottom
+   edge under them. The installed app has no toolbars and reads the same. */
+@supports (height: 100dvh) {
+  body, #root { height: 100dvh; }
+}
 
 body {
   background: var(--color-base, #2a0f1c);

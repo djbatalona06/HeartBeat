@@ -12,6 +12,7 @@ import { useTheme } from '../../themes/ThemeProvider';
 import { PrimaryAction } from '../../ui/PrimaryAction';
 import { PageTitle } from '../../ui/layout/PageTitle';
 import { GUIDES } from '../guide/guides';
+import { useWakeLock } from '../../pwa/useWakeLock';
 
 /**
  * Breathing, counted.
@@ -33,6 +34,8 @@ export function BreathePage() {
   const { calm } = useTheme();
   const [pattern, setPattern] = useState<Pattern>(PATTERNS[0]);
   const [running, setRunning] = useState(false);
+  // The screen is watched, not touched, while this runs: keep it awake.
+  useWakeLock(running);
   const [elapsed, setElapsed] = useState(0);
   const startedAt = useRef(0);
   const frame = useRef(0);

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadSettings, saveSettings } from '../../db/database';
-import { clearNudges, health, subscribePush, unsubscribePush } from '../../pwa/api';
-import { PushError, enablePush, notificationPermission } from '../../pwa/push';
+import { clearNudges, health, unsubscribePush } from '../../pwa/api';
+import { PushError, notificationPermission } from '../../pwa/push';
+import { enableReminders } from '../../pwa/reminders';
 import { replanNudges } from '../../pwa/nudgeSync';
 import {
   DEFAULT_HOUR,
@@ -21,7 +22,8 @@ import { useBusyAction } from '../../ui/useBusyAction';
  * and a denial can only be undone by deleting the icon and adding it again.
  * Asking on mount, or on a render that happens to run after a state change,
  * spends a chance the person cannot get back. So there is a button, and the
- * button is the only thing that calls `enablePush`.
+ * button is the only thing that calls `enablePush` (through `enableReminders`,
+ * which the offer after a logged mood shares — also a button).
  *
  * The states are told apart rather than collapsed into "off". A browser that
  * cannot do push, a permission already denied, and a server that is not
@@ -107,11 +109,8 @@ export function NotificationsBlock() {
     async () => {
       if (!token || !memberId || !vapid.current) return;
       setNote(null);
-      // The tap is here, and nowhere else.
-      const sub = await enablePush(vapid.current);
-      await subscribePush(token, sub);
-      await saveSettings({ notifyOn: true, notifyHour: hour, pushEndpoint: sub.endpoint });
-      const count = await schedule();
+      // The tap is here, and in the offer after a logged mood; nowhere else.
+      const count = await enableReminders(vapid.current, token, hour);
       setPermission(notificationPermission());
       await refresh();
       setNote(count > 0
