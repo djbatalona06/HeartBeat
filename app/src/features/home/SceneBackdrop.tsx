@@ -8,8 +8,8 @@ import { RADIANCE_FULL } from '../../domain/rpg/vitals';
 import type { Garden } from '../../domain/rpg/plots';
 import { ThemeBackdrop, useTheme } from '../../themes/ThemeProvider';
 import { GardenBackdrop } from '../eve-garden/GardenBackdrop';
-import { GardenVideo } from './GardenVideo';
-import { gardenVideoSrc } from './gardenVideo';
+import { GardenGlb } from './GardenGlb';
+import { gardenModelSrc } from './gardenModel';
 import { useHour } from './useHour';
 
 /**
@@ -67,9 +67,9 @@ export function SceneBackdrop() {
  * foreground cycle. See CLAUDE.md.
  */
 function HomeGarden() {
-  const { mode, calm, themeId } = useTheme();
+  const { mode, calm } = useTheme();
   const { hour, phase } = useHour();
-  const videoSrc = gardenVideoSrc(themeId, calm, import.meta.env.BASE_URL);
+  const modelSrc = gardenModelSrc(calm, import.meta.env.BASE_URL);
 
   const settings = useLiveQuery(() => db.settings.get('settings'), []);
   const day = todayKey(settings?.timeZone ?? 'America/Los_Angeles');
@@ -118,9 +118,9 @@ function HomeGarden() {
         petLevel={levelForXp(pet?.xp ?? 0)}
         dye={avatar?.dye}
       />
-      {/* The theme's tree, over the drawing — dark palette, phone upright, calm
-          off, and only once it is actually playing. See `GardenVideo`. */}
-      {videoSrc && <GardenVideo src={videoSrc} />}
+      {/* The tree, in 3D, over the drawing — calm off, and only once it has
+          drawn a frame. Painted from the theme in front of it. See `GardenGlb`. */}
+      {modelSrc && <GardenGlb src={modelSrc} />}
       {/* The ground under the words.
           Top and bottom only, fading out through the middle: the page header
           and the tab bar are the two places bare text meets the scene, and the

@@ -14,16 +14,52 @@ import type { Theme, ThemeMode, ThemeVariant } from './types';
  * are widely and fairly critiqued as cluttered, so what is taken is the shape
  * and the breathing room, not the number of things on a page.
  */
+/**
+ * The width a spacing value is *designed* at, in px: a current iPhone. Every
+ * `--space-*` is exactly its stated size here, which is what the shipped
+ * layouts were drawn and checked at, and it moves smoothly either side.
+ */
+export const FLUID_REF_WIDTH = 390;
+
+/** How far a fluid value may fall or rise from its reference, as a fraction. */
+const FLUID_FLOOR = 0.875;
+const FLUID_CEIL = 1.25;
+
+/**
+ * A size that follows the screen: `px` at `FLUID_REF_WIDTH`, scaling with the
+ * viewport between a floor and a ceiling.
+ *
+ * Spacing used to be one fixed number, so a 320px phone got the same 24px gutter
+ * as a 430px one — a tenth of the screen wasted on the small phone and the big
+ * one looking tight. `vw` makes the rhythm a proportion of the glass instead.
+ * The floor stops a small phone's rhythm collapsing into clutter, and the
+ * ceiling stops a desktop window ballooning it (the column is `--shell-max`
+ * wide there, so it should not breathe as if it were a poster).
+ *
+ * One formula for all of them rather than seven hand-tuned clamps: the scale
+ * keeps its ratios at every width, which is the thing that made the 4px scale
+ * worth having.
+ */
+export function fluid(px: number): string {
+  const round = (v: number) => Math.round(v * 2) / 2;
+  const vw = Math.round(((px / FLUID_REF_WIDTH) * 100) * 1000) / 1000;
+  return `clamp(${round(px * FLUID_FLOOR)}px, ${vw}vw, ${round(px * FLUID_CEIL)}px)`;
+}
+
+/** The spacing scale at its reference width, in px. `fluid()` is applied below. */
+export const SPACE_PX = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32, 7: 44 } as const;
+
 export const SHARED_TOKENS: Record<string, string> = {
-  // A 4px scale. Everything in the stylesheet is one of these, so the rhythm
-  // is a decision made once rather than a guess made per component.
-  '--space-1': '4px',
-  '--space-2': '8px',
-  '--space-3': '12px',
-  '--space-4': '16px',
-  '--space-5': '24px',
-  '--space-6': '32px',
-  '--space-7': '44px',
+  // A 4px scale at the reference width, fluid either side of it. Everything in
+  // the stylesheet is one of these, so the rhythm is a decision made once
+  // rather than a guess made per component.
+  '--space-1': fluid(SPACE_PX[1]),
+  '--space-2': fluid(SPACE_PX[2]),
+  '--space-3': fluid(SPACE_PX[3]),
+  '--space-4': fluid(SPACE_PX[4]),
+  '--space-5': fluid(SPACE_PX[5]),
+  '--space-6': fluid(SPACE_PX[6]),
+  '--space-7': fluid(SPACE_PX[7]),
 
   // Big, friendly, and fluid. The floor matters more than the ceiling: nothing
   // that carries meaning is allowed below 12px.
@@ -44,6 +80,11 @@ export const SHARED_TOKENS: Record<string, string> = {
   // Everyday motion settles with barely any overshoot: a calm screen does not
   // bounce every time a chip is pressed.
   '--ease-soft': 'cubic-bezier(0.34, 1.1, 0.5, 1)',
+  // The curve iOS moves a sheet and a navigation push on: fast out of the
+  // blocks, a long unhurried settle. For things that *arrive* — a panel, a
+  // fade-in, a tab glyph — where `--ease-soft`'s small overshoot would read as
+  // a bounce. Never overshoots, so it is safe on anything that has an edge.
+  '--ease-ios': 'cubic-bezier(0.32, 0.72, 0, 1)',
   // The overshoot is kept for the moments that are earned (a bar filling, the
   // day's hello, a charge pouring in), where it is what makes the fill read as
   // a reward rather than a progress report.
@@ -55,7 +96,7 @@ export const SHARED_TOKENS: Record<string, string> = {
   // screen places its ring inside whatever is left — should be able to read it
   // instead of copying `92px` and drifting the next time this changes.
   '--shell-max': '560px',
-  '--shell-gutter': '20px',
+  '--shell-gutter': fluid(20),
   '--shell-top': 'var(--space-5)',
   '--shell-bottom': 'var(--space-5)',
   /** The tab bar's own height, before the phone's safe area is added under it.
@@ -69,7 +110,7 @@ export const SHARED_TOKENS: Record<string, string> = {
 
   // The gap between stacked cards. Finch's breathing room is mostly this one
   // number, and it is the first thing to raise when a screen feels crowded.
-  '--stack': '24px',
+  '--stack': fluid(24),
   /** Between groups of content on one page: wider than `--stack`, so a page
       reads as a few groups rather than one long run of cards. */
   '--section-gap': 'var(--space-6)',
@@ -251,6 +292,32 @@ export function themeToCssVars(theme: Theme, mode: ThemeMode = 'dark'): Record<s
     '--scrim': `color-mix(in srgb, ${c.base} ${SCRIM_STRENGTH}%, transparent)`,
     '--glass': `color-mix(in srgb, ${c.surface} ${GLASS_STRENGTH}%, transparent)`,
     '--hairline': `color-mix(in srgb, ${c.text} 14%, transparent)`,
+
+    /**
+     * Apple's "material": chrome that is glass over what scrolls under it.
+     *
+     * Three things make it read as the real thing rather than as a translucent
+     * panel — a blur wide enough to dissolve the text behind, a saturation
+     * boost so the colour that bleeds through is richer rather than greyer
+     * (blur alone washes it out), and a hairline instead of a shadow. The
+     * tint is the page's own surface at 86%, not white or black, so it follows
+     * the pack and the palette the way `--scrim` and `--glass` do; the 14% that
+     * shows through is what keeps it from being a flat bar. Used by the tab
+     * bar, which is the one surface that always has content moving behind it.
+     */
+    '--material': `color-mix(in srgb, ${c.surface} 86%, transparent)`,
+    '--material-blur': 'saturate(180%) blur(24px)',
+
+    /**
+     * The fill ladder: three strengths of the text colour laid over whatever is
+     * behind, for the things that are *inside* a surface — a chip, a segmented
+     * track, a pressed row. Apple's primary / secondary / tertiary system fill.
+     * Derived from `--color-text`, so it is dark ink on a light page and light
+     * ink on a dark one without a second set of values.
+     */
+    '--fill-1': `color-mix(in srgb, ${c.text} 12%, transparent)`,
+    '--fill-2': `color-mix(in srgb, ${c.text} 8%, transparent)`,
+    '--fill-3': `color-mix(in srgb, ${c.text} 5%, transparent)`,
 
     /**
      * How far the mood may lean the accent, as the stylesheet spends it.

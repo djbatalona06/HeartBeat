@@ -189,6 +189,23 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   Guardian) is each member's avatar, `vitals.ts` (Egg → Elder) is the shared
   pet. Ascendant's raid source fills burden, reveal and fortify — the stats the
   pet's own source leaves open — through `loadoutSheet`, so the fight sees it.
+- **The home garden is one GLB, repainted from the theme — not five films.**
+  `app/public/media/heartbeat-gardens/garden.glb` is written by
+  `app/tools/garden-glb.mjs` (deterministic; run `npm run garden:glb
+  --workspace app` to change the tree). Its materials are named for a *role*
+  (`leaf`, `leafAlt`, `bloom`, `trunk`, `rock`, `ground`) and
+  `mascots/3d/gardenPalette.ts` blends them from the pack's own tokens, so a new
+  pack needs no new asset. `gardenModel.test.ts` fails if a material name and a
+  role disagree. `gardenScene.ts` lives under `mascots/3d/` for the same reason
+  the pets do — that path is what puts three.js in the lazy `mascot3d` chunk, so
+  it must import nothing from outside `3d/` but `three`. `GardenGlb.tsx` stays
+  over the drawn garden (its first paint and its fallback), and calm, reduced
+  motion and Save-Data mean **no request at all**.
+- **Spacing is fluid, and a number you type is a number that opts out.**
+  `--space-*`, `--stack` and `--shell-gutter` are `clamp(…, N vw, …)` from
+  `fluid()` in `themes/tokens.ts`, exact at 390px. `tokens.test.ts` parses them
+  with `resolveFluid`, so a token that stops matching `clamp(Npx, Nvw, Npx)` fails
+  there. `--tap` and the tab bar stay fixed on purpose.
 - **A skill kit is character, not palette.** `companionSkills.test.ts` fails if
   a rights holder's name appears anywhere in that file, the same guard
   `pets.test.ts` and `mascots/roster.test.ts` already carry. Kits belong to the

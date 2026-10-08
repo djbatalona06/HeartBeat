@@ -10,5 +10,31 @@ body {
   color: var(--color-text, #fff3f7);
   font-family: var(--font-body, system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: none;
+  /* A phone must not re-size text on rotate, nor invent a tint when a link is
+     touched, nor wait 300ms to find out whether a tap was a double-tap. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  text-rendering: optimizeLegibility;
+  /* Never let the browser fake a bold or italic the face does not have. */
+  font-synthesis: none;
 }
+
+/* Headings break evenly instead of leaving one orphan word on a line, and body
+   copy avoids a last-line widow. Both are progressive: older engines ignore
+   them and wrap as they always did. */
+h1, h2, h3, .page-title { text-wrap: balance; }
+p, li, .page-sub { text-wrap: pretty; }
+
+/* Buttons do not select their own label when held, and images and icons are
+   not draggable ghosts. Text in a field is excluded, since that is the one
+   place selection is the point. */
+button, [role='button'], .tabbar, .menu-button {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+img, svg { -webkit-user-drag: none; }
