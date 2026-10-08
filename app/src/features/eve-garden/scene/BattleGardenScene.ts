@@ -6,7 +6,7 @@ import {
 } from '../../../domain/rpg/arena';
 import { lightingAt } from '../../../domain/rpg/diorama';
 import { bakeAll } from '../../rpg/overworld/bake';
-import { strikePlan, type FightTiming } from '../../../domain/scene/strikePlan';
+import { strikePlan, togetherBeats, type FightTiming } from '../../../domain/scene/strikePlan';
 import { depthForRow, hopFor, liftAt } from '../../../domain/scene/walk';
 import {
   effectColours, moveVfxFor, shapeFor, type EffectPalette, type EffectToken, type VfxShape,
@@ -109,6 +109,8 @@ export class BattleGardenScene extends Phaser.Scene {
    * back towards the row the bob started on.
    */
   private petBob?: Phaser.Tweens.Tween;
+  /** The warning sign over the monster, while it is about to do something. */
+  private sign?: { parts: Phaser.GameObjects.Rectangle[]; pulse: Phaser.Tweens.Tween };
 
   private tile = { x: 0, y: 0 };
   private moving = false;
@@ -466,6 +468,187 @@ export class BattleGardenScene extends Phaser.Scene {
   }
 
   /**
+   * The couple's move: your pet and your partner's spring at the foe together.
+   *
+   * About a second and a half (`FIGHT_TIMING.together`, split by
+   * `togetherBeats`), in four beats:
+   *
+   * 1. **Gather** — both lean back, a thread of light links them and a ring
+   *    opens round each, so it reads as two bodies agreeing to do one thing.
+   * 2. **Charge** — both spring forward at once and a bolt leaves each, crossing
+   *    to the foe.
+   * 3. **Impact** — the two land together: one bloom, one ring, and the foe is
+   *    knocked back and flashes, the way a plain hit does.
+   * 4. **Settle** — both ease back, the thread fades.
+   *
+   * Only `x` is tweened on the sprites. Both idle bobs own `y` (a second tween
+   * on the same property is what once made walking drift back to the old row),
+   * and the lunges sit inside the 9–10 depth band while everything drawn on top
+   * stays at 11 and above.
+   *
+   * The partner is the pet `setAlly` stood on its pedestal. With none, an echo
+   * of your own pet — translucent, tinted in the accent — splits off, takes the
+   * partner's part and folds back in, so the move is never one body short.
+   * Under calm it resolves at once with nothing drawn.
+   */
+  together(effectiveness: 'weak' | 'plain' | 'strong'): Promise<void> {
+    const lead = this.pet;
+    const foe = this.foe;
+    if (!lead || !foe || this.still) return Promise.resolve();
+
+    const z = this.zoom;
+    const size = this.size;
+    const beats = togetherBeats(this.timing);
+    const { fill, edge } = this.colours('accent');
+
+    // Who stands beside you. A real partner's pet when one is on its pedestal;
+    // otherwise an echo of yours, made here and removed before this resolves.
+    const real = this.ally?.visible ? this.ally : undefined;
+    const lean = (sprite: Phaser.GameObjects.Image) => (foe.x >= sprite.x ? 1 : -1);
+    const away = lean(lead);
+    const echo = real
+      ? undefined
+      : this.add.image(lead.x, lead.y, this.petSprite)
+        .setOrigin(0, 0)
+        .setFlipX(lead.flipX)
+        .setAlpha(0)
+        .setTint(this.accent)
+        .setDepth(lead.depth);
+    const mate = real ?? echo!;
+    const mateHome = real
+      ? { x: real.x, y: real.y }
+      // Just behind you, so the two read as a pair rather than a stack.
+      : { x: lead.x - away * size * 0.85, y: lead.y };
+    const leadHome = { x: lead.x };
+    const lunge = size * 0.3;
+
+    // The thread between the two, redrawn as they move.
+    const thread = this.add.line(0, 0, 0, 0, 0, 0, fill, 0).setOrigin(0, 0).setLineWidth(z).setDepth(11);
+    const relink = () => {
+      thread.setTo(
+        lead.x + size / 2, lead.y + size * 0.55,
+        mate.x + size / 2, mate.y + size * 0.55,
+      );
+    };
+    relink();
+
+    // The pace a shape's own timer should run at to fill a beat.
+    const paced = (ms: number) => ms / Math.max(1, this.timing.skill);
+    const centre = (sprite: Phaser.GameObjects.Image): Point => ({ x: sprite.x + size / 2, y: sprite.y + size / 2 });
+
+    return new Promise((resolve) => {
+      const finish = () => {
+        thread.destroy();
+        echo?.destroy();
+        lead.x = leadHome.x;
+        if (real) real.x = mateHome.x;
+        resolve();
+      };
+
+      // 1. Gather: lean back together, link up, a ring round each.
+      if (echo) {
+        this.tweens.add({ targets: echo, x: mateHome.x, y: mateHome.y, alpha: 0.6, duration: beats.gather, ease: 'Sine.easeOut' });
+      }
+      this.tweens.add({ targets: thread, alpha: 0.9, duration: beats.gather, ease: 'Sine.easeOut' });
+      this.tweens.add({
+        targets: lead,
+        x: leadHome.x - away * z * 3,
+        duration: beats.gather,
+        ease: 'Sine.easeOut',
+        onUpdate: relink,
+      });
+      this.tweens.add({
+        targets: mate,
+        x: mateHome.x - lean(mate) * z * 3,
+        duration: beats.gather,
+        ease: 'Sine.easeOut',
+        onUpdate: relink,
+      });
+      void this.playShape('ring', centre(lead), centre(lead), { fill, edge, count: 1, pace: paced(beats.gather) });
+      void this.playShape('ring', centre(mate), centre(mate), { fill, edge, count: 1, pace: paced(beats.gather) });
+
+      this.time.delayedCall(beats.gather, () => {
+        // 2. Charge: both spring at once, a bolt from each.
+        const strong = effectiveness === 'strong' ? 2 : 0;
+        const boltPace = paced(beats.charge / 0.6);
+        void this.playShape('bolt', centre(lead), centre(foe), { fill, edge, count: 1 + strong, pace: boltPace });
+        void this.playShape('bolt', centre(mate), centre(foe), { fill, edge, count: 1 + strong, pace: boltPace });
+        this.tweens.add({
+          targets: lead, x: lead.x + away * (lunge + z * 3), duration: beats.charge, ease: 'Quad.easeIn', onUpdate: relink,
+        });
+        this.tweens.add({
+          targets: mate, x: mate.x + lean(mate) * (lunge + z * 3), duration: beats.charge, ease: 'Quad.easeIn', onUpdate: relink,
+        });
+
+        this.time.delayedCall(beats.charge, () => {
+          // 3. Impact: the two land together; the foe takes it like any hit.
+          const foeHome = foe.x;
+          void this.playShape('ring', centre(foe), centre(foe), { fill, edge, count: 1, pace: paced(beats.impact) });
+          foe.setTintFill(0xffffff);
+          this.time.delayedCall(this.timing.hurt / 3, () => this.applyLighting());
+          this.tweens.add({
+            targets: foe,
+            x: foeHome + away * KNOCKBACK * z * 1.5,
+            duration: beats.impact / 2,
+            yoyo: true,
+            ease: 'Quad.easeOut',
+            onComplete: () => { foe.x = foeHome; },
+          });
+
+          this.time.delayedCall(beats.impact, () => {
+            // 4. Settle: back to where each began, and the thread lets go.
+            this.tweens.add({ targets: thread, alpha: 0, duration: beats.settle });
+            if (echo) {
+              this.tweens.add({ targets: echo, x: lead.x, y: lead.y, alpha: 0, duration: beats.settle });
+            }
+            this.tweens.add({ targets: lead, x: leadHome.x, duration: beats.settle, ease: 'Sine.easeInOut', onUpdate: relink });
+            if (real) {
+              this.tweens.add({ targets: real, x: mateHome.x, duration: beats.settle, ease: 'Sine.easeInOut', onUpdate: relink });
+            }
+            this.time.delayedCall(beats.settle, finish);
+          });
+        });
+      });
+    });
+  }
+
+  /**
+   * A warning sign over the monster: a bar and a dot, pulsing, in the danger
+   * colour so it reads on every pack.
+   *
+   * Pulses `alpha` and nothing else — the foe's idle bob owns `y`, and a sign
+   * that tweened a position would be one more thing drifting off its row. Under
+   * calm nothing is drawn: `BattleLog` carries the same warning in words, inside
+   * its live region, which is where calm and screen-reader players read it.
+   */
+  telegraph(kind: string | null): void {
+    this.sign?.pulse.stop();
+    for (const part of this.sign?.parts ?? []) part.destroy();
+    this.sign = undefined;
+    if (!kind || this.still || !this.foe || this.beaten) return;
+
+    const z = this.zoom;
+    const { fill, edge } = this.colours('danger');
+    const x = this.foe.x + this.size / 2;
+    const top = this.foe.y - z * 2;
+    const mark = (cx: number, cy: number, w: number, h: number) => {
+      const part = this.add.rectangle(cx, cy, w, h, fill, 1).setDepth(12);
+      if (edge !== undefined) part.setStrokeStyle(z * 0.5, edge, 1);
+      return part;
+    };
+    const parts = [mark(x, top - z * 4, z * 2, z * 5), mark(x, top + z * 1, z * 2, z * 2)];
+    const pulse = this.tweens.add({
+      targets: parts,
+      alpha: 0.35,
+      duration: 380,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+    this.sign = { parts, pulse };
+  }
+
+  /**
    * A companion's skill, as one of five motions.
    *
    * `scene/vfx.ts` decides which motion a skill's `vfx` key maps to; this plays
@@ -731,6 +914,7 @@ export class BattleGardenScene extends Phaser.Scene {
   defeat(): Promise<void> {
     this.beaten = true;
     this.engaged = false;
+    this.telegraph(null);
     if (!this.foe) return Promise.resolve();
     if (this.still) {
       for (const target of [this.foe, this.foeShadow]) target?.setAlpha(0);

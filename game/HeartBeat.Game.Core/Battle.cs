@@ -33,6 +33,22 @@ public static class Battle
     public const int MonsterHealFadeRounds = 20;
 
     /// <summary>
+    /// How many of the player's own turns <c>Together</c> sits out after it is
+    /// used. One: use it, make one other move, and it is ready again.
+    /// </summary>
+    public const int TogetherCooldownTurns = 1;
+
+    /// <summary>The cooldown after a turn in which <paramref name="used"/> was played.</summary>
+    private static int CooldownAfter(BattleState state, PlayerAction? used) =>
+        used?.Style == Style.Together
+            ? TogetherCooldownTurns
+            : Math.Max(0, state.TogetherCooldown - 1);
+
+    /// <summary>Whether a move can be played this turn. Only <c>Together</c> ever cannot.</summary>
+    public static bool IsReady(BattleState state, PlayerAction action) =>
+        !(action.Style == Style.Together && state.TogetherCooldown > 0);
+
+    /// <summary>
     /// A fresh fight.
     ///
     /// The player always moves first when their speed is at least the
@@ -172,6 +188,9 @@ public static class Battle
         if (action is null) return Say(state, Side.Player, "Nothing happens.");
         string name = string.IsNullOrWhiteSpace(displayName) ? action.Name : displayName;
         if (action.UnlockLevel > level) return Say(state, Side.Player, $"{name} is not yours yet.");
+        // Refused without spending the turn, like any other move that cannot be
+        // played: a double tap on a recharging button costs nothing.
+        if (!IsReady(state, action)) return Say(state, Side.Player, $"{name} is catching its breath.");
 
         double wobble = Rng.Wobble(state.Seed, state.Round * 3);
         BattleState next = state;
@@ -231,7 +250,7 @@ public static class Battle
         Combatant ticked = TickEffects(next.Player, out int drained);
         if (drained > 0) next = Say(next, Side.Player, $"The drain takes {drained}.");
 
-        return Settle(next with { Player = ticked, Turn = Side.Monster }, monster);
+        return Settle(next with { Player = ticked, Turn = Side.Monster, TogetherCooldown = CooldownAfter(state, action) }, monster);
     }
 
     /// <summary>
@@ -251,7 +270,8 @@ public static class Battle
         {
             return Say(state with { Outcome = Outcome.Fled }, Side.Player, "You back away, and it lets you.");
         }
-        return Say(state with { Turn = Side.Monster }, Side.Player, "You try to back away. It follows.");
+        // A turn spent, so the couple's move gets its breath back like any other.
+        return Say(state with { Turn = Side.Monster, TogetherCooldown = CooldownAfter(state, null) }, Side.Player, "You try to back away. It follows.");
     }
 
     /// <summary>
@@ -268,66 +288,95 @@ public static class Battle
         if (state.Outcome != Outcome.Fighting || state.Turn != Side.Monster) return state;
         if (monster.Actions.Count == 0) return state with { Turn = Side.Player, Round = state.Round + 1 };
 
-        double pick = Rng.Roll(state.Seed, state.Round * 3 + 2);
-        // The first action is the bread-and-butter one and comes up half the
-        // time; the rest share what is left.
-        int index = pick < 0.5 ? 0 : 1 + (int)(((pick - 0.5) / 0.5) * (monster.Actions.Count - 1));
-        MonsterAction action = monster.Actions[Math.Clamp(index, 0, monster.Actions.Count - 1)];
+        // What this monster means to do, shaped by its playstyle. For a Steady
+        // monster this is exactly the original seeded pick, so nothing that was
+        // tuned against it moves. `Telegraph` makes this same call, which is why
+        // a warning and the move it warns of can never disagree.
+        MonsterPlan plan = Behaviours.Plan(state, monster);
 
         double wobble = Rng.Wobble(state.Seed, state.Round * 3 + 3);
         BattleState next = state;
 
-        switch (action.Type)
+        if (plan.Action is null)
         {
-            case ActionType.Attack:
+            // A beat of its rhythm in which it does nothing but get ready.
+            next = Say(next, Side.Monster, $"{monster.Name} gathers itself.");
+        }
+        else
+        {
+            MonsterAction action = plan.Action;
+            switch (action.Type)
             {
-                int damage = Damage(
-                    state.Monster.Attack,
-                    action.Power,
-                    state.Player.Defense,
-                    1.0,
-                    wobble,
-                    state.Monster.MagnitudeOf(StatusKind.AttackDown));
+                case ActionType.Attack:
+                {
+                    if (plan.Misses)
+                    {
+                        next = Say(next, Side.Monster, $"{action.Name} - it lunges and misses.");
+                        break;
+                    }
 
-                (Combatant you, int dealt, int blocked) = Absorb(state.Player, damage);
-                string blockNote = blocked > 0 ? $" Your ward takes {blocked}." : "";
-                next = Say(next with { Player = you }, Side.Monster, $"{action.Name} hits for {dealt}.{blockNote}");
-                break;
-            }
+                    Combatant you = state.Player;
+                    int total = 0;
+                    int turnedAside = 0;
+                    for (int hit = 0; hit < Math.Max(1, plan.Hits); hit++)
+                    {
+                        // The first hit keeps the original wobble roll so a
+                        // single-hit move replays as it always did; later hits
+                        // draw from their own stream rather than reusing it.
+                        double roll = hit == 0 ? wobble : Rng.Wobble(state.Seed ^ 0x51ED270Bu, state.Round * 2 + hit);
+                        int damage = Damage(
+                            state.Monster.Attack,
+                            action.Power,
+                            state.Player.Defense,
+                            plan.Scale,
+                            roll,
+                            state.Monster.MagnitudeOf(StatusKind.AttackDown));
 
-            case ActionType.Heal:
-            {
-                // A monster's second wind runs out. Without the fade, a
-                // healer met under-levelled out-heals every hit it takes and
-                // the fight never ends - the one bug this reducer must not have.
-                double fade = Math.Max(0, 1 - ((state.Round - 1) / (double)MonsterHealFadeRounds));
-                int power = (int)Math.Round(action.Power * fade, MidpointRounding.AwayFromZero);
-                int healed = Math.Min(power, state.Monster.MaxHp - state.Monster.Hp);
-                next = Say(
-                    next with { Monster = state.Monster with { Hp = state.Monster.Hp + healed } },
-                    Side.Monster,
-                    $"{monster.Name} uses {action.Name} and recovers {healed}.");
-                break;
-            }
+                        (you, int dealt, int blocked) = Absorb(you, damage);
+                        total += dealt;
+                        turnedAside += blocked;
+                    }
 
-            case ActionType.Shield:
-            {
-                var guard = action.Status ?? new StatusEffect(StatusKind.Guard, action.Power, 2);
-                next = Say(
-                    next with { Monster = state.Monster with { Effects = [.. state.Monster.Effects, guard] } },
-                    Side.Monster,
-                    $"{monster.Name} draws in. {action.Name}.");
-                break;
-            }
+                    string blockNote = turnedAside > 0 ? $" Your ward takes {turnedAside}." : "";
+                    string manner = plan.Hits > 1 ? $" {plan.Hits} blows" : plan.Telegraph == "heavy" ? " a heavy blow" : "";
+                    next = Say(next with { Player = you }, Side.Monster, $"{action.Name}{manner} hits for {total}.{blockNote}");
+                    break;
+                }
 
-            case ActionType.Debuff:
-            {
-                var effect = action.Status ?? new StatusEffect(StatusKind.SpeedDown, action.Power, 1);
-                next = Say(
-                    next with { Player = state.Player with { Effects = [.. state.Player.Effects, effect] } },
-                    Side.Monster,
-                    $"{action.Name}. It settles on you.");
-                break;
+                case ActionType.Heal:
+                {
+                    // A monster's second wind runs out. Without the fade, a
+                    // healer met under-levelled out-heals every hit it takes and
+                    // the fight never ends - the one bug this reducer must not have.
+                    double fade = Math.Max(0, 1 - ((state.Round - 1) / (double)MonsterHealFadeRounds));
+                    int power = (int)Math.Round(action.Power * fade, MidpointRounding.AwayFromZero);
+                    int healed = Math.Min(power, state.Monster.MaxHp - state.Monster.Hp);
+                    next = Say(
+                        next with { Monster = state.Monster with { Hp = state.Monster.Hp + healed } },
+                        Side.Monster,
+                        $"{monster.Name} uses {action.Name} and recovers {healed}.");
+                    break;
+                }
+
+                case ActionType.Shield:
+                {
+                    var guard = action.Status ?? new StatusEffect(StatusKind.Guard, action.Power, 2);
+                    next = Say(
+                        next with { Monster = state.Monster with { Effects = [.. state.Monster.Effects, guard] } },
+                        Side.Monster,
+                        $"{monster.Name} draws in. {action.Name}.");
+                    break;
+                }
+
+                case ActionType.Debuff:
+                {
+                    var effect = action.Status ?? new StatusEffect(StatusKind.SpeedDown, action.Power, 1);
+                    next = Say(
+                        next with { Player = state.Player with { Effects = [.. state.Player.Effects, effect] } },
+                        Side.Monster,
+                        $"{action.Name}. It settles on you.");
+                    break;
+                }
             }
         }
 
@@ -367,7 +416,7 @@ public static class Battle
     public static int HitsLeft(BattleState state, Monster monster, int level)
     {
         int perHit = Actions.UnlockedAt(level)
-            .Where(a => a.Type == ActionType.Attack)
+            .Where(a => a.Type == ActionType.Attack && IsReady(state, a))
             .Select(a => PreviewDamage(state, a, monster))
             .DefaultIfEmpty(1)
             .Max();

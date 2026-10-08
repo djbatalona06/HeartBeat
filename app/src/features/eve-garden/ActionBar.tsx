@@ -83,13 +83,16 @@ export function ActionBar({
             weakness: monster?.weakness, strength: monster?.strength,
           });
           const strong = fighting && action.type === 'Attack' && onWeakness !== undefined;
+          // Together sits out the turn after it is used; C# refuses it and the
+          // button says why rather than silently doing nothing.
+          const recharging = action.style === 'Together' && (battle?.togetherCooldown ?? 0) > 0;
           return (
             <li key={action.id} className={action.style === 'Together' ? 'is-wide' : undefined}>
               <button
                 type="button"
-                className={`garden-action is-${action.style.toLowerCase()}${strong ? ' is-strong' : ''}${charged ? ' is-charged' : ''}`}
+                className={`garden-action is-${action.style.toLowerCase()}${strong ? ' is-strong' : ''}${charged ? ' is-charged' : ''}${recharging ? ' is-recharging' : ''}`}
                 // Outside a fight there is nothing to press them at.
-                disabled={busy || !yourTurn}
+                disabled={busy || !yourTurn || recharging}
                 onClick={() => onAct(action)}
                 title={(() => {
                   const key = moveKeyFor(action.style);
@@ -102,8 +105,9 @@ export function ActionBar({
                 </span>
                 <span className="garden-action-note">
                   {styleName(action.style)}
-                  {lift > 0 ? ` · +${lift}%` : ''}
-                  {strong ? ' · it feels this' : ''}
+                  {recharging ? ' · recharging' : ''}
+                  {!recharging && lift > 0 ? ` · +${lift}%` : ''}
+                  {!recharging && strong ? ' · it feels this' : ''}
                 </span>
                 {/* The boost bar. Full at +LIFT_FULL%; the number above keeps
                     counting past it, the bar does not pretend to. */}

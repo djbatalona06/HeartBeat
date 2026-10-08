@@ -1,10 +1,9 @@
 // The favicon each deploy target actually earns.
 //
-// All four used to point at one of two things: the app's own PWA icon
-// (borrowed by the landing page, which draws its own distinct mark in its
-// header and never used it for its tab), or a cat mark copied by hand into
-// both gift/build.mjs and scripts/build-study.mjs — two copies that had
-// already drifted from each other and from the landing page's own SVG.
+// They used to point at the app's own PWA icon (borrowed by the landing page,
+// which draws its own distinct mark in its header and never used it for its
+// tab), or a cat mark copied by hand into more than one build script — copies
+// that had already drifted from each other and from the landing page's own SVG.
 // Kept here once, so changing a mark means changing it in one place.
 
 function iconTag(viewBox, body) {
@@ -36,9 +35,3 @@ export const GIFT_FAVICON = iconTag('0 0 100 100',
   + '<path d="M50 30C40 14 20 14 24 28c2 6 14 4 26 2z" fill="#f2578a"/>'
   + '<path d="M50 30C60 14 80 14 76 28c-2 6-14 4-26 2z" fill="#f2578a"/>');
 
-/** The study page's own mark — a flashcard, dog-eared, mid-flip. */
-export const STUDY_FAVICON = iconTag('0 0 100 100',
-  '<rect x="16" y="20" width="68" height="60" rx="6" fill="#6ebeeb"/>'
-  + '<path d="M84 20 L84 44 L60 20 Z" fill="#111a24" opacity="0.25"/>'
-  + '<path d="M30 42 L70 42 M30 56 L58 56" stroke="#111a24" stroke-width="5" '
-  + 'stroke-linecap="round" opacity="0.55"/>');

@@ -6,7 +6,7 @@ import react from '@vitejs/plugin-react';
  * garden with no first-run or pairing gate in front of it. See `src/harness.tsx`
  * for why it exists.
  *
- * Its own config, on the `vite.standalone.config.ts` pattern, so a dev
+ * Its own config, so a dev
  * dependency of a dev tool can never reach `vite.config.ts` and therefore
  * never reach `dist/` or the service-worker manifest.
  */

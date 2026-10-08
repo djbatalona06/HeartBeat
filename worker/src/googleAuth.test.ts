@@ -169,16 +169,16 @@ describe('the two providers', () => {
   beforeEach(() => { db = fresh(); });
 
   const start = (state: string, provider: string) =>
-    db.prepare(STATE_INSERT_SQL).run(state, 'recover', null, NOW, LATER, provider);
+    db.prepare(STATE_INSERT_SQL).run(state, 'recover', null, NOW, LATER, provider, null);
 
   const consumeState = (state: string, provider: string) =>
     db.prepare(STATE_CONSUME_SQL).get(state, NOW, provider) as { intent: string } | undefined;
 
   const park = (code: string, provider: string) =>
-    db.prepare(CLAIM_INSERT_SQL).run(code, 'recovered', 'her', 'c1', '', NOW, LATER, provider);
+    db.prepare(CLAIM_INSERT_SQL).run(code, 'recovered', 'her', 'c1', '', NOW, LATER, provider, null);
 
   const consumeClaim = (code: string, provider: string) =>
-    db.prepare(CLAIM_CONSUME_SQL).get(code, NOW, provider) as { outcome: string } | undefined;
+    db.prepare(CLAIM_CONSUME_SQL).get(code, NOW, provider, '') as { outcome: string } | undefined;
 
   it('will not let one provider spend the other provider\'s state', () => {
     start('s1', 'google');

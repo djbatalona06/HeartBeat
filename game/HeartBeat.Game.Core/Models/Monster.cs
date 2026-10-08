@@ -20,7 +20,8 @@ public sealed record Monster(
     Element Strength,
     IReadOnlyList<MonsterAction> Actions,
     string SpriteKey,
-    DioramaTheme Theme)
+    DioramaTheme Theme,
+    Behavior Behavior = Behavior.Steady)
 {
     /// <summary>
     /// How much harder the dark variant of an island hits.

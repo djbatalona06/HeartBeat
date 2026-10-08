@@ -24,12 +24,10 @@ queries:
 #
 # **Build artefacts that inline source already scanned.** `gift/birthday.html`
 # is `gift/build.mjs`'s output: the vendored three.js above, plus
-# `gift/src/*.js`, in one file. `study/index.html` is the same arrangement for
-# the standalone study bundle. Scanning either means reading our own code a
+# `gift/src/*.js`, in one file. Scanning it means reading our own code a
 # second time — in minified form, at a line number nobody can act on — and
 # reporting anything found twice. The sources they are built from are scanned
 # where they are written, which is where a fix would go.
 paths-ignore:
   - gift/src/vendor
   - gift/birthday.html
-  - study/index.html

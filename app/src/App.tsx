@@ -9,7 +9,6 @@ import { WorkPage } from './features/work/WorkPage';
 import { TasksPage } from './features/tasks/TasksPage';
 import { ShopPage } from './features/shop/ShopPage';
 import { AssetsPage } from './features/assets/AssetsPage';
-import { StudyRoute } from './features/study/StudyRoute';
 import { ChatPanel } from './features/chat/ChatPanel';
 import { PairGate } from './features/pairing/PairGate';
 import { usePairing } from './features/pairing/usePairing';
@@ -26,6 +25,7 @@ import { LoginPopup } from './features/dashboard/LoginPopup';
 import { MascotSync } from './features/pet/MascotSync';
 import { useWarmGearArt } from './features/party/art/gear/GearIcon';
 import { ToastHost } from './ui/Toast';
+import { AccountPrompt } from './features/settings/AccountPrompt';
 import { SceneBackdrop } from './features/home/SceneBackdrop';
 import { WelcomePage } from './features/onboarding/WelcomePage';
 import { OnboardingPage } from './features/onboarding/OnboardingPage';
@@ -220,7 +220,6 @@ export function App() {
                             notification deep links, in the command menu, and quite
                             possibly on somebody's home screen. */}
                         <Route path="/cycle" element={<Navigate to="/mood" replace />} />
-                        <Route path="/study" element={<StudyRoute />} />
                         <Route path="/mood" element={<MoodPage />} />
                         <Route path="/exercise" element={<ExercisePage />} />
                         <Route path="/work" element={<WorkPage />} />
@@ -261,6 +260,9 @@ export function App() {
                 nothing here that waits on a second person. */}
             <StatusHud />
             <BottomNav locked={(ready && !paired) || naming.show} badges={badges.byRoute} />
+            {/* Once, after pairing: the optional "keep your link safe" sign-in.
+                It waits for the naming screen rather than stacking on it. */}
+            <AccountPrompt otherGateShowing={naming.show} />
           </ToastHost>
         </HashRouter>
       </ThemeProvider>

@@ -82,7 +82,8 @@ public static class Island3
                     new MonsterAction("Refresh", 45, Element.Mood, ActionType.Heal),
                 ],
                 SpriteKey: "pingwing",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Swarm)),
 
             new Stage(5, "Quiet Pool", new Monster(
                 Id: "i3s5-lilypad-imp",
@@ -112,7 +113,8 @@ public static class Island3
                         new StatusEffect(StatusKind.Drain, 9, 3)),
                 ],
                 SpriteKey: "gristmill",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Guardian)),
 
             new Stage(7, "The Top of the Falls", new Monster(
                 Id: "i3s7-cascade-warden",
@@ -129,7 +131,8 @@ public static class Island3
                         new StatusEffect(StatusKind.Drain, 13, 3)),
                 ],
                 SpriteKey: "cascade-warden",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Swarm)),
         ]);
 
     /// <summary>What each stage's monster is called on the island's dark face.</summary>

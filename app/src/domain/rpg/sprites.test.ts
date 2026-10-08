@@ -6,6 +6,7 @@ import {
   hasSprite, spriteFor, spriteKeyForTheme,
 } from './sprites';
 import { COMPANION_KITS } from './companionSkills';
+import { ELDER_SPRITES } from './monsterSprites';
 import { TILE, TILE_KINDS, ZONES } from './zones';
 import { ENEMIES } from './enemies';
 
@@ -124,6 +125,25 @@ describe("Eve's Garden, every island", () => {
 
 // The drift checks. These are why the data is TypeScript and not a PNG: a
 // missing sprite is a failing test rather than a blank square in the garden.
+describe('the elder islands', () => {
+  /** The remix is a fallback for an elder nobody has drawn yet; none should need it now. */
+  it('draws all twenty-one of islands 8 to 10 by hand', () => {
+    const keys = [8, 9, 10].flatMap((island) => [...(ISLAND_SPRITE_KEYS[island] ?? [])]);
+    expect(keys).toHaveLength(21);
+    for (const key of keys) expect(ELDER_SPRITES[key], key).toBeDefined();
+  });
+
+  it('is not just the young spirit turned round', () => {
+    for (const [elder, drawing] of Object.entries(ELDER_SPRITES)) {
+      const young = SPRITES[elder.replace(/-elder$/, '')];
+      expect(drawing.join(''), elder).not.toBe(young.join(''));
+      const painted = (rows: readonly string[]) => rows.join('').split('').filter((c) => c !== '.').length;
+      // Grown old only adds: a crest, tassels, lines of age.
+      expect(painted(drawing), elder).toBeGreaterThanOrEqual(painted(young));
+    }
+  });
+});
+
 describe('coverage', () => {
   it('draws every tile kind the legend declares', () => {
     for (const kind of TILE_KINDS) {

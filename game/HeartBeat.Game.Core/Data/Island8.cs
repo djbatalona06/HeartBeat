@@ -80,7 +80,8 @@ public static class Island8
                     new MonsterAction("Echo Back", 317, Element.Focus, ActionType.Heal),
                 ],
                 SpriteKey: "the-echo-elder",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Healer)),
 
             new Stage(5, "High Meadow Crest", new Monster(
                 Id: "i8s5-puffball",
@@ -110,7 +111,8 @@ public static class Island8
                         new StatusEffect(StatusKind.Drain, 65, 3)),
                 ],
                 SpriteKey: "cairn-keeper-elder",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Bruiser)),
 
             new Stage(7, "The High Summit Bonfire", new Monster(
                 Id: "i8s7-merriweather",
@@ -127,7 +129,8 @@ public static class Island8
                         new StatusEffect(StatusKind.Drain, 83, 3)),
                 ],
                 SpriteKey: "merriweather-elder",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Drainer)),
         ]);
 
     /// <summary>What each stage's monster is called on the island's dark face.</summary>

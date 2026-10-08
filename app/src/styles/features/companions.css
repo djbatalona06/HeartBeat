@@ -1,0 +1,63 @@
+/* ---- companion stats and the filter bar -------------------------------------
+   Used by the "All companions" sheet on /birb (`features/shop/ShopPage.tsx`,
+   `CompanionFilterBar.tsx`). The chips themselves are the shared `.chip`;
+   only the row layout is here. Tokens only. */
+
+.pet-filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.pet-filter-group { display: flex; flex-direction: column; }
+
+.pet-filter-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.pet-filter-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.pet-filter-count { font-size: var(--text-sm); color: var(--color-text-muted); white-space: nowrap; }
+.pet-filter-foot .chip { white-space: nowrap; }
+
+/* One companion's stat strip. */
+.pet-stats { margin-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+
+.pet-stat-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+
+.pet-stat {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr 2.5rem;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.pet-stat-name { color: var(--color-text-muted); }
+.pet-stat-value { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* One line per group, scrolled sideways, so a dozen chips do not stack into a
+   screen of their own before the first companion appears. Its own class rather
+   than `.chips`: that one is in the legacy layer, which beats this layer
+   whatever the selectors, so overriding it from here would silently do nothing. */
+.pet-filter-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: var(--space-1);
+}
+.pet-filter-row::-webkit-scrollbar { display: none; }
+.pet-filter-row .chip { flex: none; }

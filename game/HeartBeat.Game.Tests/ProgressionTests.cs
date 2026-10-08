@@ -147,4 +147,11 @@ public class ProgressionTests
         foreach (PlayerAction a in Actions.All) Assert.Equal(a, Actions.ById(a.Id));
         Assert.Null(Actions.ById("nonsense"));
     }
+
+    [Fact]
+    public void RewardTextNamesTheMovesAtTheirOwnLevels()
+    {
+        Assert.Contains("Mend", Progression.RewardTextAt(Actions.Mend.UnlockLevel), StringComparison.Ordinal);
+        Assert.Contains("Together", Progression.RewardTextAt(Actions.Together.UnlockLevel), StringComparison.Ordinal);
+    }
 }

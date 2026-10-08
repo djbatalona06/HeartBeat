@@ -81,7 +81,8 @@ public static class Island5
                     new MonsterAction("Wind Back", 96, Element.Focus, ActionType.Heal),
                 ],
                 SpriteKey: "midnight-clock",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Trickster)),
 
             new Stage(5, "Pillow Fields", new Monster(
                 Id: "i5s5-fluffkin",
@@ -111,7 +112,8 @@ public static class Island5
                         new StatusEffect(StatusKind.Drain, 20, 3)),
                 ],
                 SpriteKey: "anvil-golem",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Guardian)),
 
             new Stage(7, "The Dreamwell", new Monster(
                 Id: "i5s7-lady-lullaby",
@@ -128,7 +130,8 @@ public static class Island5
                         new StatusEffect(StatusKind.Drain, 28, 3)),
                 ],
                 SpriteKey: "lady-lullaby",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Guardian)),
         ]);
 
     /// <summary>What each stage's monster is called on the island's dark face.</summary>

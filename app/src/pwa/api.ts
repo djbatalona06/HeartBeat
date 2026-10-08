@@ -8,6 +8,7 @@
  */
 
 import { TranscribeError } from './micErrors';
+import { newVerifier, rememberVerifier, sha256Hex, takeVerifier } from './oauthVerifier';
 import type { Gender } from '../domain/types';
 
 export interface ChatMessage {
@@ -562,15 +563,20 @@ export async function providerStart(
   intent: 'link' | 'recover',
   token?: string,
 ): Promise<string> {
+  // The browser's own secret. Only its hash is sent; the secret itself waits
+  // here for the claim, which is what stops a callback URL passed to somebody
+  // else from working for them. See `pwa/oauthVerifier.ts`.
+  const verifier = newVerifier();
   const res = await fetch(`/api/auth/${provider}/start`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       ...(token ? authHeaders(token) : {}),
     },
-    body: JSON.stringify({ intent }),
+    body: JSON.stringify({ intent, challenge: await sha256Hex(verifier) }),
   });
   if (!res.ok) throw await errorFrom(res);
+  rememberVerifier(provider, verifier);
   return ((await res.json()) as { url: string }).url;
 }
 
@@ -600,7 +606,7 @@ export async function providerClaim(
       'content-type': 'application/json',
       ...(token ? authHeaders(token) : {}),
     },
-    body: JSON.stringify({ claim }),
+    body: JSON.stringify({ claim, verifier: takeVerifier(provider) }),
   });
   if (!res.ok) throw await errorFrom(res);
   return (await res.json()) as ProviderClaim;

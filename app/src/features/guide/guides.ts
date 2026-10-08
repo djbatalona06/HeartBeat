@@ -205,15 +205,6 @@ export const GUIDES = {
     ],
     game: 'The gear you wear sets the raid sheet Eve\'s Garden fights with. Purses open into coins.',
   },
-  study: {
-    title: 'Study',
-    steps: [
-      'Pick a deck, then tap Review or Quiz.',
-      'Tap Show the answer.',
-      'Grade it: Again, Hard, Good or Easy.',
-    ],
-    game: 'Each card pays 2 XP and 1 coin (up to 60 a day), and the XP goes to your shared pet too. Studying does not light the Work charge.',
-  },
   mood: {
     title: 'Mood',
     steps: [
@@ -314,7 +305,6 @@ const BY_PATH: Record<string, GuideId> = {
   '/raid': 'raid',
   '/eve-garden': 'eveGarden',
   '/assets': 'bag',
-  '/study': 'study',
   '/mood': 'mood',
   '/exercise': 'exercise',
   '/work': 'work',

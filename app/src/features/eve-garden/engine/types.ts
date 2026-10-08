@@ -1,3 +1,5 @@
+import type { MonsterBehavior, Telegraph } from '../../../domain/rpg/behaviours';
+
 /**
  * The TypeScript twin of the DTOs in `game/HeartBeat.Game.Core/Dto.cs`.
  *
@@ -68,6 +70,8 @@ export interface MonsterDto {
   actionNames: string[];
   /** What beating it is worth. */
   xp: number;
+  /** How it fights beyond its stats. Absent from an older build, which reads as Steady. */
+  behavior?: MonsterBehavior;
 }
 
 export interface StageDto {
@@ -149,6 +153,17 @@ export interface BattleDto {
   stats: RaidStatsDto | null;
   /** The companion's name for each move id, for the log line. Also the page's to set. */
   moveNames: Record<string, string> | null;
+  /**
+   * Your turns until Together is ready again; 0 when it is. Handed back to C#
+   * unchanged, like everything else on the battle. Optional because a battle
+   * from before the cooldown existed does not carry it, and reads as ready.
+   */
+  togetherCooldown?: number;
+  /**
+   * What the monster is about to do, when that is worth a warning. Computed by
+   * the game core from the same state its next move is, so it is never wrong.
+   */
+  telegraph?: Telegraph | null;
 }
 
 export interface ProgressDto {

@@ -70,4 +70,15 @@ public sealed record BattleState(
     /// thinking about boosts gets none, which is the balanced baseline.
     /// </summary>
     public Boosts Boosts { get; init; } = Boosts.None;
+
+    /// <summary>
+    /// Player turns until <c>Together</c> can be used again, 0 when it is ready.
+    ///
+    /// The couple's move hits hardest and is the one that takes two bodies, so it
+    /// needs a breath between uses: using it sets this to
+    /// <see cref="Battle.TogetherCooldownTurns"/>, and every player turn after
+    /// counts it down. An init property for the reason <see cref="Boosts"/> is:
+    /// a state built without thinking about it starts ready.
+    /// </summary>
+    public int TogetherCooldown { get; init; }
 }

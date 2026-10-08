@@ -112,8 +112,11 @@ public static class Progression
     public static string RewardTextAt(int level)
     {
         if (level < 2 || level > MaxLevel) return "";
-        if (level == 4) return "Mend: your companion can heal.";
-        if (level == 10) return "Together: the couple's move.";
+        // Read off the moves themselves: these were hard-coded to 4 and 10, which
+        // were the unlock levels once and have not been for a long time, so the
+        // level-up line named a move two levels late and another five late.
+        if (level == Actions.Mend.UnlockLevel) return "Mend: your companion can heal.";
+        if (level == Actions.Together.UnlockLevel) return "Together: the couple's move.";
 
         PlayerStats gain = GainAt(level, StatsAt(level - 1));
         var parts = new List<string>();

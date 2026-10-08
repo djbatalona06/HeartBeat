@@ -26,10 +26,8 @@
   "app/src/features/rpg/EncounterOverlay.tsx": 1,
   "app/src/features/settings/StudyLinkBlock.tsx": 3,
   "app/src/features/shop/ShopPage.tsx": 1,
-  "app/src/features/study/StudyPage.tsx": 1,
   "app/src/features/tasks/TasksPage.tsx": 1,
   "app/src/features/work/WorkPage.tsx": 1,
   "app/src/harness.tsx": 3,
-  "app/src/standalone.tsx": 2,
   "app/src/ui/StatChip.tsx": 1
 }

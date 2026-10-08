@@ -45,7 +45,6 @@ today, and says nothing otherwise.
 | **Cycle** | Period tracking, behind its own PIN if you want one |
 | **Party** | The two of you as a party: gear, pets, and the boss you are fighting |
 | **Settings** | Pairing, the theme picker, your partner's name and photo, calendar |
-| **Study** | 226 flashcards on programming, spaced out so they stick, plus a timed quiz |
 
 The **pet** is the point. It gains XP when either of you logs something, and
 levels up on quests that get set from a few questions during setup. Rep ranges,
@@ -126,20 +125,6 @@ screen. Play them all, or press *make the heart*, and the records rise out of
 the box and re-form the heart the original piece was built around.
 
 How to rebuild it is in [`docs/DEVELOPING.md`](docs/DEVELOPING.md#the-gift).
-
-## The study page
-
-[`study/index.html`](study) is the app's Study screen built as one self-contained
-file — React, the theme engine, both typefaces and all 226 cards inside it.
-Download it, double-click it, and it works with no internet.
-
-One caveat worth knowing: opened straight off the disk, Chrome treats the page
-as having no origin and refuses it any storage at all, so the sitting works but
-a reload starts over. The page says so, and has **Save progress** for exactly
-that. Opened from a web address — the link on the front door — it remembers
-normally.
-
-How it is built is in [`docs/DEVELOPING.md`](docs/DEVELOPING.md#the-study-page).
 
 ## For developers
 

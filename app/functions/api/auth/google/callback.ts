@@ -36,7 +36,7 @@ export const onRequestGet: PagesFunction<GoogleEnv> = async ({ request, env }) =
   // arrives, and a state minted for GitHub is not one this route can spend.
   const pending = await env.DB.prepare(STATE_CONSUME_SQL)
     .bind(state, now, 'google')
-    .first<{ intent: string; member_id: string | null }>();
+    .first<{ intent: string; member_id: string | null; verifier_hash: string | null }>();
   if (!pending) return backToApp(request, { google: 'failed' });
 
   const user = await identify(app, code, redirectUriFor(request));
@@ -81,7 +81,10 @@ export const onRequestGet: PagesFunction<GoogleEnv> = async ({ request, env }) =
     // The handle column stays empty: the `openid` scope reveals no login, no
     // name and no address, which is the point of asking for nothing else.
     await env.DB.prepare(CLAIM_INSERT_SQL)
-      .bind(claim, 'linked', pending.member_id, member.couple_id, '', now, expires, 'google')
+      .bind(
+        claim, 'linked', pending.member_id, member.couple_id, '', now, expires, 'google',
+        pending.verifier_hash,
+      )
       .run();
 
     await recordAuthEvent(
@@ -111,7 +114,10 @@ export const onRequestGet: PagesFunction<GoogleEnv> = async ({ request, env }) =
   // and the rotation happens when it is exchanged — see the note on
   // `oauth_claims` in migration 0012.
   await env.DB.prepare(CLAIM_INSERT_SQL)
-    .bind(claim, 'recovered', link.member_id, link.couple_id, '', now, expires, 'google')
+    .bind(
+      claim, 'recovered', link.member_id, link.couple_id, '', now, expires, 'google',
+      pending.verifier_hash,
+    )
     .run();
 
   return backToApp(request, { google: 'recovered', claim });

@@ -7,7 +7,8 @@ namespace HeartBeat.Game.Core;
 ///
 /// Three moves from day one - one of each <see cref="Style"/> a companion
 /// fights with - so a brand-new couple has a real choice on their first turn.
-/// The heal arrives at level 4 and the couple's move at 10. The names here are
+/// The heal arrives at level 2 and the couple's move at 5, and the couple's move
+/// needs a breath between uses (<see cref="Battle.TogetherCooldownTurns"/>). The names here are
 /// the plain ones; each companion's kit renames them on the TypeScript side.
 /// </summary>
 public static class Actions

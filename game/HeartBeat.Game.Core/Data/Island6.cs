@@ -82,7 +82,8 @@ public static class Island6
                     new MonsterAction("Relight", 143, Element.Mood, ActionType.Heal),
                 ],
                 SpriteKey: "lamp-keeper",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Swarm)),
 
             new Stage(5, "The Sandbar", new Monster(
                 Id: "i6s5-crablet",
@@ -112,7 +113,8 @@ public static class Island6
                         new StatusEffect(StatusKind.Drain, 29, 3)),
                 ],
                 SpriteKey: "barnacle-golem",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Bruiser)),
 
             new Stage(7, "The Tide Between", new Monster(
                 Id: "i6s7-queen-coralie",
@@ -129,7 +131,8 @@ public static class Island6
                         new StatusEffect(StatusKind.Drain, 41, 3)),
                 ],
                 SpriteKey: "queen-coralie",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Swarm)),
         ]);
 
     /// <summary>What each stage's monster is called on the island's dark face.</summary>

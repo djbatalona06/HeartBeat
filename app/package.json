@@ -47,8 +47,7 @@
     "ignore": {
       "files": [
         "tools/**",
-        "dist/**",
-        "dist-standalone/**"
+        "dist/**"
       ]
     }
   }

@@ -11,14 +11,15 @@
    Mounted by `features/home/GardenVideo.tsx` inside `.home-scene`, under the
    veil. Invisible until the browser reports it is playing, so a slow or failed
    download leaves the drawn garden showing instead of a black frame.
-   `bottom` keeps the pond and ground in view when a tall phone crops the sides. */
+   On a phone the clip fills the height and only the sides are cropped; on a wide window the
+   crop is a horizontal band, and 55% centres it on the trunk and pond rather than the grass. */
 .home-scene-video {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center bottom;
+  object-position: center 55%;
   pointer-events: none;
   opacity: 0;
   transition: opacity var(--motion-medium, 400ms) ease;

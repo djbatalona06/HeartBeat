@@ -157,7 +157,8 @@ public static class Api
         m.Id, m.Name, m.Type, m.Hp, m.Attack, m.Defense, m.Speed,
         m.Weakness, m.Strength, m.SpriteKey, m.Theme,
         ActionNames: m.Actions.Select(a => a.Name).ToList(),
-        Xp: Progression.XpForDefeating(m.Type));
+        Xp: Progression.XpForDefeating(m.Type),
+        Behavior: m.Behavior);
 
     private static CombatantDto ToDto(Combatant c) => new(
         c.Hp, c.MaxHp, c.Shield, c.Attack, c.Defense, c.Speed, c.HpFraction,
@@ -173,7 +174,11 @@ public static class Api
         HitsLeft: s.Outcome == Outcome.Fighting ? Battle.HitsLeft(s, monster, level) : 0,
         Charges: s.Boosts.Charges,
         Stats: s.Boosts.Stats,
-        MoveNames: moveNames);
+        MoveNames: moveNames,
+        TogetherCooldown: s.TogetherCooldown,
+        // What the monster is about to do, if it is the kind of move worth a
+        // warning. The same call the monster's turn makes, so it is never wrong.
+        Telegraph: Behaviours.Telegraph(s, monster));
 
     private static BattleState FromDto(BattleDto d) => new(
         d.MonsterId, d.Round, d.Turn,
@@ -185,6 +190,7 @@ public static class Api
         // a workout logged mid-fight lands on the next swing. The opening-only
         // ones (Nourish, Gratitude, Balance) have already done their work.
         Boosts = new Boosts(d.Charges?.Distinct().ToList() ?? [], d.Stats ?? RaidStats.None),
+        TogetherCooldown = Math.Max(0, d.TogetherCooldown),
     };
 
     private static Combatant FromDto(CombatantDto c) => new(

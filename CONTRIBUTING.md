@@ -12,7 +12,6 @@ npm run check:config
 npm run ui:check
 npm test
 APP_BASE=/ npm run build
-npm run study:build      # if anything reachable from standalone.tsx changed
 ```
 
 CI runs all of it, plus `npm run visual` and `npm run lighthouse`, which need
@@ -27,12 +26,6 @@ where every security property is a `WHERE` clause. Dev-toolchain advisories are
 reported but never fail the build; Dependabot opens the upgrade PR instead.
 
 ## The five that bite
-
-1. **`study/index.html` goes stale on far more than CSS, and rebuilding it is
-   the *last* thing you do.** It inlines the whole stylesheet *and* the whole
-   standalone bundle, so any change reachable from `app/src/standalone.tsx`
-   moves its bytes. A rebuild that happens before one more commit lands is a
-   rebuild that did not happen. CI fails on `git diff --exit-code`.
 
 2. **A raw `<button>` fails review.** Use `PrimaryAction`, `SecondaryAction`,
    `Chip`, `ListRow` or `TileCard`. `npm run ui:check` enforces it as a

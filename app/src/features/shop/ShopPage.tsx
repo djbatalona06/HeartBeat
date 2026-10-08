@@ -58,6 +58,11 @@ import { GearIcon } from '../party/art/gear/GearIcon';
 import { petArt } from '../party/art/pets';
 import { ChestAlcove } from '../party/ChestAlcove';
 import { GardenPlots } from './GardenPlots';
+import { CompanionFilterBar } from './CompanionFilterBar';
+import {
+  companionFacets, companionRows, filterCompanions, type CompanionFilter, type CompanionRow,
+} from '../../domain/rpg/companionStats';
+import { RAID_STAT_NAMES, RAID_STATS } from '../../domain/rpg/raidStats';
 import { Merchant } from '../party/Merchant';
 import { RaidSheet } from '../party/RaidSheet';
 import { Boss } from '../party/Boss';
@@ -605,16 +610,29 @@ function Companions({ avatar, pets, owned, onChoose, onSeeLore }: {
   onSeeLore: (petId: string) => void;
 }) {
   const [all, setAll] = useState(false);
+  const [filter, setFilter] = useState<CompanionFilter>({});
   const level = levelOf(avatar);
   const sheet = sheetFor(avatar, gearBonusWithRefinement(avatar.gear, level, refineByItemId(owned)));
   // The one you walk with first, so it is never the card behind "See all".
   const ordered = [...pets].sort((a, b) =>
     Number(b.id === avatar.companionId) - Number(a.id === avatar.companionId));
   const shown = ordered.slice(0, COMPANIONS_SHOWN);
+
+  // What each companion is worth on its own, and the filter over all of them.
+  // All the arithmetic is in `domain/rpg/companionStats.ts`; this only renders.
+  const rows = companionRows(pets, avatar.companionId);
+  const rowById = new Map(rows.map((row) => [row.pet.id, row]));
+  const facets = companionFacets(rows);
+  const visible = filterCompanions(rows, filter);
+  // One scale for every bar, so a bigger bar means a bigger number across cards.
+  const statMax = Math.max(1, ...rows.flatMap((row) => RAID_STATS.map((key) => row.stats[key])));
+
   const card = (pet: PetInstance, compact = false) => (
     <PetCard
       key={pet.id}
       pet={pet}
+      row={compact ? undefined : rowById.get(pet.id)}
+      statMax={statMax}
       chosen={avatar.companionId === pet.id}
       compact={compact}
       onChoose={onChoose}
@@ -652,7 +670,20 @@ function Companions({ avatar, pets, owned, onChoose, onSeeLore }: {
           <h2 className="section-title">All companions</h2>
           <SecondaryAction onClick={() => setAll(false)}>Done</SecondaryAction>
         </div>
-        <ul className="pet-list">{ordered.map((pet) => card(pet))}</ul>
+        <CompanionFilterBar
+          facets={facets}
+          filter={filter}
+          onChange={setFilter}
+          shown={visible.length}
+          total={rows.length}
+        />
+        {visible.length === 0 ? (
+          <p className="section-sub">
+            None of your companions match that. Clear a filter to see them again.
+          </p>
+        ) : (
+          <ul className="pet-list">{visible.map((row) => card(row.pet))}</ul>
+        )}
       </Sheet>
 
       <Merchant title="Egg odds" sub="What the next egg could be, with your luck folded in.">
@@ -667,8 +698,12 @@ function Companions({ avatar, pets, owned, onChoose, onSeeLore }: {
  * it `compact` -- portrait, name, rank and the walk button -- and the sheet
  * shows the MP, the skill and the lore, so three companions fit in a screen.
  */
-function PetCard({ pet, chosen, compact = false, onChoose, onSeeLore }: {
+function PetCard({ pet, row, statMax, chosen, compact = false, onChoose, onSeeLore }: {
   pet: PetInstance;
+  /** What this companion is worth on its own. Absent on the compact card. */
+  row?: CompanionRow;
+  /** The largest single stat among everything owned, so the bars share a scale. */
+  statMax: number;
   chosen: boolean;
   compact?: boolean;
   onChoose: (petId: string | undefined) => void;
@@ -707,7 +742,12 @@ function PetCard({ pet, chosen, compact = false, onChoose, onSeeLore }: {
         <div className="pet-skill">
           <strong>{view.kind.skill.name}</strong> · {view.kind.skill.mpCost} MP
           <div className="task-line">{view.kind.skill.blurb}</div>
+          {row && !row.skill.unlocked ? (
+            <div className="task-line">Unlocks at rank {row.skill.minRank}.</div>
+          ) : null}
         </div>
+
+        {row ? <PetStats row={row} statMax={statMax} /> : null}
 
         {/* The lore is a reveal, not a label: it exists only once the egg is
             open, which is the whole of why an egg is worth having. */}
@@ -727,6 +767,45 @@ function PetCard({ pet, chosen, compact = false, onChoose, onSeeLore }: {
         </button>
       </BorderGlow>
     </li>
+  );
+}
+
+/**
+ * What one companion adds to the raid sheet, and how close it is to its next
+ * rank. Only the stats it gives are listed, and every bar shares one scale, so
+ * a longer bar is a bigger number on any card in the list.
+ */
+function PetStats({ row, statMax }: { row: CompanionRow; statMax: number }) {
+  return (
+    <div className="pet-stats">
+      <ul className="pet-stat-list" aria-label={`${row.kind.name} adds`}>
+        {RAID_STATS.filter((key) => row.stats[key] > 0).map((key) => (
+          <li className="pet-stat" key={key}>
+            <span className="pet-stat-name">{RAID_STAT_NAMES[key]}</span>
+            <div className="bar"><div className="bar-fill bar-fill-accent" style={{ width: `${(row.stats[key] / statMax) * 100}%` }} /></div>
+            <span className="pet-stat-value">{row.stats[key]}</span>
+          </li>
+        ))}
+      </ul>
+      {row.passivePercent > 0 ? (
+        <p className="task-line">
+          Always on: +{row.passivePercent}% {RAID_STAT_NAMES[row.primary]}.
+        </p>
+      ) : null}
+      <div className="bar-row">
+        <span className="bar-label">Bond</span>
+        <div className="bar">
+          <div className="bar-fill bar-fill-accent" style={{ width: `${row.rankProgress * 100}%` }} />
+        </div>
+        <span className="bar-value">{row.bond}</span>
+      </div>
+      <p className="task-line">
+        {row.toNextRank === null
+          ? 'Top rank.'
+          : `${row.toNextRank} more bond to rank ${row.rank + 1}.`}
+        {row.lift > 0 ? ` Bond adds ${Math.round(row.lift * 100)}%.` : ''}
+      </p>
+    </div>
   );
 }
 
