@@ -93,16 +93,6 @@ publishing it here would be redistribution. `gift:build:music` produces
 `birthday-with-music.html`, which is gitignored and meant to be sent directly.
 See [NOTICE.md](../NOTICE.md).
 
-## The study page
-
-It is the same component the app mounts, handed a different store: Dexie inside
-the PWA, localStorage in the file. Nothing is duplicated, which is the only
-reason having it twice is affordable.
-
-```bash
-npm run study:build   # rebuild study/index.html from app/src/
-```
-
 ## The website
 
 `main` publishes the whole repository to GitHub Pages via
@@ -157,7 +147,6 @@ involves no deploy credentials.
 | Dashboard grid and pet XP bar | Done |
 | Work screen | Done |
 | Cycle screen, forecast and PIN lock | Done |
-| Study: 226 cards, spaced repetition, quiz, standalone build | Done |
 | Mood / Exercise screens | Next |
 | Quests, achievements, push reminders | After that |
 

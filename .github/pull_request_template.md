@@ -10,9 +10,6 @@
 - [ ] `npm run ui:check`
 - [ ] `npm test`
 - [ ] `APP_BASE=/ npm run build`
-- [ ] `npm run study:build` — only if this PR touches anything reachable from
-      `app/src/standalone.tsx` (see "The five that bite" #1 in
-      [CONTRIBUTING.md](../CONTRIBUTING.md))
 
 Re-read [CONTRIBUTING.md](../CONTRIBUTING.md#the-five-that-bite) — "The five
 that bite" — before pushing rather than after CI catches it.

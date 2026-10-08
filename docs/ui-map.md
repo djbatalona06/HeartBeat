@@ -40,8 +40,8 @@ screen as "CSS" will fight the others.
    (`mascots/3d/engine.ts`). The SVG drawings are the loading, offline and no-WebGL
    state, so they are not dead code. The chunk is lazy and kept out of the precache.
 6. **Overlays**: sheets, popups, toasts, the command menu, the boss-gate prompt.
-7. **Standalone artefacts**: `study/index.html` and `gift/birthday.html` inline the
-   whole stylesheet (`cssCodeSplit: false`) and are diff-checked in CI.
+7. **Standalone artefacts**: `gift/birthday.html` inlines the whole stylesheet
+   (`cssCodeSplit: false`) and is diff-checked in CI.
 
 Engine rules a styling rewrite must not break (from `CLAUDE.md`): nothing else may
 tween `pet.y` while the pet walks; every garden effect that reads the game client
@@ -80,7 +80,6 @@ From `app/src/App.tsx` (HashRouter). Redirects are listed so a rebuild keeps the
 | `/overworld` | `OverworldPage` | `./features/rpg/OverworldPage` |
 | `/assets` | `AssetsPage` | `./features/assets/AssetsPage` |
 | `/cycle` | redirect | → `/mood` |
-| `/study` | `StudyRoute` | `./features/study/StudyRoute` |
 | `/mood` | `MoodPage` | `./features/mood/MoodPage` |
 | `/exercise` | `ExercisePage` | `./features/exercise/ExercisePage` |
 | `/work` | `WorkPage` | `./features/work/WorkPage` |
@@ -156,7 +155,7 @@ hand-written `.page`, so spacing is set in two places today.
 | 4370–4437 | the study app link | 11 | `.study-` | `features/settings/StudyLinkBlock.tsx`, `features/settings/ComplimentBlock.tsx`, `App.tsx` |
 | 4438–4526 | saying something sweet | 19 | `.sweet-` | `features/mood/ComplimentComposer.tsx`, `features/settings/ComplimentBlock.tsx` |
 | 4527–4638 | the deadline picker | 26 | `.deadline-` | `components/DeadlinePicker.tsx` |
-| 4639–4922 | the command menu | 63 | `.cmd-`, `.deck-`, `.grade-` | `features/study/StudyPage.tsx`, `components/CommandMenu.tsx`, `standalone.tsx` |
+| 4639–4922 | the command menu | 63 | `.cmd-` | `components/CommandMenu.tsx` |
 | 4923–4940 | the cycle log, as a section of Mood | 5 | `.cycle-`, `.cal-`, `.icon-` | `features/cycle/CyclePage.tsx`, `features/work/WorkPage.tsx`, `features/cycle/CycleLock.tsx` |
 | 4941–4969 | the activities hub and its screens | 8 | `.activity-` | `features/activities/ActivitiesPage.tsx`, `features/eve-garden/EveGardenPage.tsx` |
 | 4970–5001 | breathing | 8 | `.breathe-` | `features/activities/BreathePage.tsx`, `App.tsx` |
@@ -285,7 +284,6 @@ colour and motion tokens are too. See `docs/design-system.md`, `docs/TAILWIND.md
   every route in `npm run visual`.
 - **Budgets**: precache ceiling 1260 KiB (`tools/lighthouse.mjs`); the Lighthouse
   check fails a build that preloads the three.js chunk.
-- **Artefacts**: rebuild `study/index.html` last, after the final source edit.
 
 ## 6 · Target stack, by layer
 
@@ -344,7 +342,7 @@ and the film grain on a real phone before promising a speed-up.
    class-name pattern), a test that every `var(--x)` is defined (14 are not today,
    section 4), real visual baselines from a CI `visual-frames` artifact.
 5. **Done means**: `npm run typecheck`, `npm test`, `npm run visual` (two themes, axe,
-   no console errors), the Lighthouse gate, and `npm run study:build` last.
+   no console errors), and the Lighthouse gate.
 
 ## 9 · Dead-rule candidates
 

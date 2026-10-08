@@ -717,6 +717,11 @@ the first pairing, and again if the couple ever re-pairs.
 
 ## Study
 
+> **Retired.** The in-app Study screen and the one-file `study/index.html` were
+> removed. What remains of the idea is the XP link (`/api/study/*`, Settings →
+> Connections), which lets a separate study app feed the pet. The notes below are
+> kept as the record of how the screen worked.
+
 A spaced-repetition deck of 226 cards on software development — JavaScript,
 TypeScript, React, Git, HTTP, SQL, data structures, the shell, and the craft
 itself. Flashcards with four grades, and a timed multiple-choice quiz over the

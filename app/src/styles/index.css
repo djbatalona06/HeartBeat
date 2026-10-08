@@ -1,7 +1,7 @@
 /*
- * The one stylesheet entry. main.tsx, standalone.tsx and harness.tsx import this
- * file and nothing else, which is what keeps `cssCodeSplit: false` and the two
- * standalone artefacts (study/, gift/) seeing one sheet.
+ * The one stylesheet entry. main.tsx and harness.tsx import this file and
+ * nothing else, which is what keeps `cssCodeSplit: false` and both builds
+ * seeing one sheet.
  *
  * Layer order is fixed here, once. A later layer beats an earlier one whatever
  * the selectors' specificity, so a rule's layer is a decision, not a habit:

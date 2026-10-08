@@ -9,7 +9,6 @@ import type {
 } from '../domain/rpg/types';
 import type { InventoryItem } from '../domain/rpg/inventory';
 import type { PetInstance } from '../domain/rpg/pets';
-import type { CardProgress, StudySession } from '../domain/study/types';
 import type { Reflection } from '../domain/selfcare/reflections';
 import type { WorldProgress } from '../domain/rpg/world';
 
@@ -46,10 +45,6 @@ export class HeartBeatDB extends Dexie {
 
   // v5 — camera proof.
   workoutPhotos!: Table<WorkoutPhoto, string>;
-
-  // v6 — the study layer. Decks ship with the build; only progress is stored.
-  studyProgress!: Table<CardProgress, string>;
-  studySessions!: Table<StudySession, string>;
 
   // v7 — gear ownership. Avatar.gear only ever recorded what is worn.
   inventory!: Table<InventoryItem, string>;
@@ -213,6 +208,14 @@ export class HeartBeatDB extends Dexie {
     // stake this week" -- and `coupleId` alone serves the history.
     this.version(11).stores({
       wagers: 'id, coupleId, weekStart, [coupleId+weekStart]',
+    });
+
+    // v12 — the in-app Study screen is gone, so its two tables go with it.
+    // `null` deletes a store; the older versions above stay as written, because
+    // Dexie replays them in order on a phone that is still on one of them.
+    this.version(12).stores({
+      studyProgress: null,
+      studySessions: null,
     });
   }
 }

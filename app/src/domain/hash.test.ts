@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { hash, roll } from './hash';
-import { hash as hashFromQuiz } from './study/quiz';
 
 describe('hash', () => {
   it('is stable across calls', () => {
@@ -24,11 +23,6 @@ describe('hash', () => {
     expect(hash('')).toBe(2166136261);
   });
 
-  // The point of the extraction: quiz.ts re-exports this exact function, so a
-  // change here cannot silently relay the deck's choices differently.
-  it('is the same function quiz.ts exports', () => {
-    expect(hashFromQuiz).toBe(hash);
-  });
 });
 
 describe('roll', () => {

@@ -9,7 +9,6 @@ import { WorkPage } from './features/work/WorkPage';
 import { TasksPage } from './features/tasks/TasksPage';
 import { ShopPage } from './features/shop/ShopPage';
 import { AssetsPage } from './features/assets/AssetsPage';
-import { StudyRoute } from './features/study/StudyRoute';
 import { ChatPanel } from './features/chat/ChatPanel';
 import { PairGate } from './features/pairing/PairGate';
 import { usePairing } from './features/pairing/usePairing';
@@ -220,7 +219,6 @@ export function App() {
                             notification deep links, in the command menu, and quite
                             possibly on somebody's home screen. */}
                         <Route path="/cycle" element={<Navigate to="/mood" replace />} />
-                        <Route path="/study" element={<StudyRoute />} />
                         <Route path="/mood" element={<MoodPage />} />
                         <Route path="/exercise" element={<ExercisePage />} />
                         <Route path="/work" element={<WorkPage />} />

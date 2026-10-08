@@ -20,7 +20,7 @@ Three deploy targets out of one repo, sharing one D1 database:
 |---|---|---|
 | `app/` | Vite + React + TS PWA, and the `/api/*` Pages Functions beside it | Cloudflare Pages — `heartbeat-eop.pages.dev` |
 | `worker/` | Cloudflare Worker: pairing, boss HP, push | Cloudflare Workers |
-| `index.html` + `gift/` + `study/` | Landing page, birthday piece, standalone study build | GitHub Pages |
+| `index.html` + `gift/` | Landing page, birthday piece | GitHub Pages |
 
 The layering is strict and worth restating because the plan below depends on it:
 
@@ -316,9 +316,6 @@ never needs auth at all.
 
 Beyond the ones in `CLAUDE.md`, which all still apply:
 
-- **`study/index.html` is a committed build artefact.** Any edit to
-  `app/src/styles.css` — any rule, anywhere — changes it, and CI fails on
-  `git diff --exit-code`. Run `npm run study:build` and commit the result.
 - **A new holding kind is four edits plus a migration**, and only
   `worker/src/holdings.test.ts` keeps them in step. Imported decks stored as a
   new kind pay this cost; stored under an existing kind, they do not.
@@ -332,8 +329,8 @@ Beyond the ones in `CLAUDE.md`, which all still apply:
 - **CodeQL scans this repo, and what it does *not* read is a decision.**
   `.github/codeql/codeql-config.yml` holds both halves: the default queries
   plus security-extended, and a `paths-ignore` for vendored three.js and for
-  the two build artefacts that inline source scanned elsewhere
-  (`gift/birthday.html`, `study/index.html`). Excluding anything else means
+  the build artefact that inlines source scanned elsewhere
+  (`gift/birthday.html`). Excluding anything else means
   saying why in that file. The one alert the Security tab is expected to carry
   is `js/missing-origin-check` on `engine/game.worker.ts` — a dedicated
   worker's message handler has no origin to check; the reasoning is in the

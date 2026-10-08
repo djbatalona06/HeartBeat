@@ -200,11 +200,6 @@ Call it a day of work, in one PR or two (A–C "material", D–E "scene"). The
 brief's own estimate was "a few days of Claude iteration" for a rebuild that
 would have discarded steps 3–6.
 
-**`styles.css` changes in every tranche**, so: `npm run study:build` as the
-**last** edit of the change and commit `study/index.html`, or CI fails on
-`git diff --exit-code`. The artefact inlines the whole stylesheet *and* the
-standalone bundle, so a rebuild that happens before one more commit lands is a
-rebuild that did not happen.
 
 ---
 
@@ -256,5 +251,4 @@ npm run typecheck
 npm run check:config
 npm test
 APP_BASE=/ npm run build
-npm run study:build   # last edit of the change; commit study/index.html
 ```

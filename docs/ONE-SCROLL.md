@@ -112,5 +112,3 @@ Each phase is its own PR, so one long page never blocks the rest.
   so use it rather than a hand-rolled carousel.
 - **Don't hide the primary action behind a swipe.** If a page's main button ends
   up in pane 2, the page split is wrong.
-- **`study/index.html` goes stale** whenever `styles.css` or app source changes.
-  Run `npm run study:build` last in every phase PR.

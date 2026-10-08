@@ -115,7 +115,6 @@ export const MENU_GROUPS: MenuGroup[] = [
       { to: '/mood', label: 'Mood', icon: 'mood', hint: 'Three meters, the cycle log, something sweet' },
       { to: '/exercise', label: 'Move', icon: 'dumbbell', hint: 'Workouts and proof' },
       { to: '/work', label: 'Work', icon: 'calendar', hint: 'The shared calendar' },
-      { to: '/study', label: 'Study', icon: 'cards', hint: 'Flashcards, due today' },
     ],
   },
   {
