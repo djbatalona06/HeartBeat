@@ -58,6 +58,10 @@ interface Look {
   pace: number;
 }
 
+/** The ground the 3D floor stands in for. Everything else is still drawn from pixel art. */
+const FLOOR_SPRITES = ['tile-grass', 'tile-path'];
+const FLOOR_KEY = 'arena-floor';
+
 /** How far a struck sprite is knocked, in pixels before scaling. */
 const KNOCKBACK = 5;
 
@@ -88,6 +92,14 @@ export class BattleGardenScene extends Phaser.Scene {
    * was the stand-in, and it made every companion's move look like nobody's.
    */
   private accent = 0xffffff;
+
+  /**
+   * The baked 3D checkerboard (`arenaFloor.ts`), when there is one. It replaces
+   * the grass and path tiles only: walls, water, stone, beds and the gate are
+   * still drawn from the pixel art over it, and `isWalkable` still reads the
+   * same grid, so what you see and where you can step cannot disagree.
+   */
+  private readonly floor?: HTMLCanvasElement;
   /**
    * The pack's colours as hex, for the per-move effects. Read beside the
    * accent; `effectColours` decides which ones need an edge to be seen. Empty
@@ -130,8 +142,10 @@ export class BattleGardenScene extends Phaser.Scene {
     calm: boolean,
     hooks: SceneHooks,
     allySprite?: string,
+    floor?: HTMLCanvasElement,
   ) {
     super(BattleGardenScene.KEY);
+    this.floor = floor;
     this.arena = arenaFor(island, stage);
     this.monsterSprite = monsterSprite;
     this.petSprite = petSprite;
@@ -178,10 +192,18 @@ export class BattleGardenScene extends Phaser.Scene {
       if (this.textures.exists(key)) this.textures.remove(key);
       this.textures.addCanvas(key, canvas);
     }
+    if (this.floor) {
+      if (this.textures.exists(FLOOR_KEY)) this.textures.remove(FLOOR_KEY);
+      this.textures.addCanvas(FLOOR_KEY, this.floor);
+    }
   }
 
   create(): void {
     const size = this.size;
+
+    if (this.floor) {
+      this.add.image(0, 0, FLOOR_KEY).setOrigin(0, 0).setDisplaySize(ARENA_WIDTH * size, ARENA_HEIGHT * size);
+    }
 
     for (let y = 0; y < ARENA_HEIGHT; y += 1) {
       for (let x = 0; x < ARENA_WIDTH; x += 1) {
@@ -189,6 +211,14 @@ export class BattleGardenScene extends Phaser.Scene {
         // the ground walked can never be two different grids.
         const kind = tileKindAt(this.arena, x, y);
         if (!kind) continue;
+        if (this.floor && FLOOR_SPRITES.includes(kind.sprite)) {
+          // The checkerboard is the ground here. The path is the one thing the
+          // pixel tiles said that it does not, so it keeps a tint.
+          if (kind.sprite === 'tile-path') {
+            this.add.rectangle(x * size, y * size, size, size, this.accent, 0.18).setOrigin(0, 0);
+          }
+          continue;
+        }
         this.add.image(x * size, y * size, kind.sprite).setOrigin(0, 0);
       }
     }

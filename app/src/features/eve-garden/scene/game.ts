@@ -38,6 +38,8 @@ export interface StartOptions {
   dark: boolean;
   /** `useTheme().calm`: no motion in the fight, and no waiting on it. */
   calm: boolean;
+  /** The baked 3D checkerboard from `arenaFloor.ts`, or undefined to keep the pixel ground. */
+  floor?: HTMLCanvasElement;
 }
 
 export function startGarden(
@@ -48,7 +50,7 @@ export function startGarden(
   const scale = 3;
   const scene = new BattleGardenScene(
     options.island, options.stage, options.monsterSprite, options.petSprite,
-    options.hour, options.dark, options.calm, hooks, options.allySprite,
+    options.hour, options.dark, options.calm, hooks, options.allySprite, options.floor,
   );
 
   const game = new Phaser.Game({

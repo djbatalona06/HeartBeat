@@ -56,6 +56,7 @@ import { ActionBar } from './ActionBar';
 import { ChargeMeter } from './ChargeMeter';
 import { VictoryBanner } from './VictoryBanner';
 import { SpinOffer } from '../wheel/SpinOffer';
+import { loadArenaFloor } from './arenaFloor';
 import { Icon } from '../../components/icons';
 import { InfoBubble } from '../../ui/InfoBubble';
 import { GUIDES } from '../guide/guides';
@@ -532,8 +533,11 @@ export function EveGardenPage() {
     if (!sceneSprite || !companion || !host.current) return undefined;
     let live = true;
 
-    import('./scene/game')
-      .then(({ startGarden }) => {
+    // The floor first, and only the floor: it draws one frame and lets go of the
+    // GPU before Phaser asks for it, and it is null (in well under a second) on
+    // calm, Save-Data, no WebGL or no connection, which starts the board as it was.
+    Promise.all([import('./scene/game'), loadArenaFloor(host.current, calmRef.current)])
+      .then(([{ startGarden }, floor]) => {
         if (!live || !host.current) return;
         scene.current = startGarden(
           host.current,
@@ -546,6 +550,7 @@ export function EveGardenPage() {
             hour: new Date().getHours(),
             dark: sceneDark,
             calm: calmRef.current,
+            floor: floor ?? undefined,
           },
           { onEngage: () => engageRef.current() },
         );
