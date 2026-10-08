@@ -147,6 +147,7 @@ public static class Progression
     /// <summary>XP for winning a fight, by what was beaten.</summary>
     public static int XpForDefeating(MonsterType type) => type switch
     {
+        MonsterType.Minion => 8,
         MonsterType.Common => 30,
         MonsterType.SemiBoss => 75,
         MonsterType.Elite => 90,

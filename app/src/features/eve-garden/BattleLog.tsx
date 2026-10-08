@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { SecondaryAction } from '../../ui/SecondaryAction';
 import { Sheet } from '../../ui/Sheet';
 import type { BattleDto, MonsterDto } from './engine/types';
 import { WEAKNESS_MULTIPLIER } from '../../domain/rpg/charges';
@@ -87,9 +88,7 @@ export function BattleLog({ battle, monster, weakHits = [] }: BattleLogProps) {
         <div className="garden-foe">
           <div className="garden-foe-head">
             <h3 className="garden-foe-name">{monster.name}</h3>
-            <button type="button" className="garden-log-open" aria-haspopup="dialog" onClick={() => setOpen(true)}>
-              Full log
-            </button>
+            <SecondaryAction aria-haspopup="dialog" onClick={() => setOpen(true)}>Full log</SecondaryAction>
           </div>
 
           <Bar label="Them" value={battle.monster.hp} max={battle.monster.maxHp} tone="foe" />
@@ -120,7 +119,8 @@ export function BattleLog({ battle, monster, weakHits = [] }: BattleLogProps) {
           {monster.type === 'Boss' ? 'Island boss'
             : monster.type === 'SemiBoss' ? 'Semi-boss'
               : monster.type === 'Elite' ? 'Elite'
-                : 'Common'}
+                : monster.type === 'Minion' ? 'Skirmish'
+                  : 'Common'}
           {' · weak to '}
           <strong>{monster.weakness}</strong>
           {' · shrugs off '}

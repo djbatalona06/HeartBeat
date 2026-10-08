@@ -45,10 +45,15 @@ public static class Api
     /// </summary>
     public static string? Stage(int island, int stage, string theme)
     {
-        Stage? found = Data.World.StageFor(island, stage);
         Monster? monster = Data.World.MonsterAt(island, stage, ParseTheme(theme));
-        if (found is null || monster is null) return null;
-        return Write(new StageDto(found.Number, found.Name, ToDto(monster)), GameJson.Default.StageDto);
+        if (monster is null) return null;
+        // A skirmish is addressed like a stage (see `World.MonsterAt`) but has
+        // no `Stage` of its own; it is named for what it is.
+        Stage? found = Data.World.StageFor(island, stage);
+        if (found is null && !Minions.IsMinionStage(stage)) return null;
+        return Write(
+            new StageDto(found?.Number ?? stage, found?.Name ?? "A skirmish", ToDto(monster)),
+            GameJson.Default.StageDto);
     }
 
     /// <summary>Opens a fight. Returns <c>null</c> if there is nothing on that stage to fight.</summary>

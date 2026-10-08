@@ -12,7 +12,7 @@ import {
   effectColours, moveVfxFor, shapeFor, type EffectPalette, type EffectToken, type VfxShape,
 } from './vfx';
 import { signatureFor, type SignaturePiece } from './signatures';
-import type { Blow, Cast, SceneHooks, StepResult } from './events';
+import type { MinionSpot, Blow, Cast, SceneHooks, StepResult } from './events';
 
 /**
  * One stage of Eve's Garden, drawn.
@@ -61,6 +61,16 @@ interface Look {
 /** The ground the 3D floor stands in for. Everything else is still drawn from pixel art. */
 const FLOOR_SPRITES = ['tile-grass', 'tile-path'];
 const FLOOR_KEY = 'arena-floor';
+/** How big a skirmish is drawn next to a stage's monster. */
+const MINION_SCALE = 0.6;
+
+/** One skirmish on the board: its sprite, its shadow, and whether it has been beaten. */
+interface MinionFoe {
+  spot: MinionSpot;
+  image: Phaser.GameObjects.Image;
+  shadow: Phaser.GameObjects.Ellipse;
+  beaten: boolean;
+}
 
 /** How far a struck sprite is knocked, in pixels before scaling. */
 const KNOCKBACK = 5;
@@ -108,9 +118,16 @@ export class BattleGardenScene extends Phaser.Scene {
   private palette: EffectPalette = { accent: '', success: '', danger: '', text: '', base: '' };
 
   private pet!: Phaser.GameObjects.Image;
+  /** The foe a fight is with right now: the stage's monster, or a skirmish while one is open. */
   private foe!: Phaser.GameObjects.Image;
   private petShadow!: Phaser.GameObjects.Ellipse;
   private foeShadow!: Phaser.GameObjects.Ellipse;
+  private mainFoe!: Phaser.GameObjects.Image;
+  private mainFoeShadow!: Phaser.GameObjects.Ellipse;
+  private readonly minionSpots: readonly MinionSpot[];
+  private minionFoes: MinionFoe[] = [];
+  /** The skirmish being fought, or undefined while the stage's own monster is. */
+  private activeMinion?: MinionFoe;
   private ally?: Phaser.GameObjects.Image;
   private allyShadow?: Phaser.GameObjects.Ellipse;
   private allyAt?: { x: number; y: number };
@@ -143,9 +160,11 @@ export class BattleGardenScene extends Phaser.Scene {
     hooks: SceneHooks,
     allySprite?: string,
     floor?: HTMLCanvasElement,
+    minions: readonly MinionSpot[] = [],
   ) {
     super(BattleGardenScene.KEY);
     this.floor = floor;
+    this.minionSpots = minions;
     this.arena = arenaFor(island, stage);
     this.monsterSprite = monsterSprite;
     this.petSprite = petSprite;
@@ -234,6 +253,19 @@ export class BattleGardenScene extends Phaser.Scene {
       .image(this.arena.monster.x * size, this.arena.monster.y * size, this.monsterSprite)
       .setOrigin(0, 0)
       .setDepth(depthForRow(this.arena.monster.y, ARENA_HEIGHT));
+    this.mainFoe = this.foe;
+    this.mainFoeShadow = this.foeShadow;
+
+    // The island's skirmishes: the parent's sprite, small, stood on open ground.
+    this.minionFoes = this.minionSpots.map((spot) => {
+      const inset = (size - size * MINION_SCALE) / 2;
+      const image = this.add
+        .image(spot.x * size + inset, spot.y * size + size - size * MINION_SCALE - 2, spot.sprite)
+        .setOrigin(0, 0)
+        .setScale(MINION_SCALE)
+        .setDepth(depthForRow(spot.y, ARENA_HEIGHT));
+      return { spot, image, shadow: this.addShadow(spot.x, spot.y), beaten: false };
+    });
 
     this.tile = { ...this.arena.spawn };
     this.pet = this.add
@@ -247,6 +279,7 @@ export class BattleGardenScene extends Phaser.Scene {
     // stops a turn-based screen looking frozen between turns.
     this.petBob = this.idle(this.pet);
     this.idle(this.foe, 120);
+    this.minionFoes.forEach((m, i) => this.idle(m.image, 240 + i * 160));
 
     this.sparks = this.physics.add.group();
 
@@ -334,12 +367,15 @@ export class BattleGardenScene extends Phaser.Scene {
     const light = lightingAt(this.hour, 1);
     const tint = this.dark ? 0x7a7f96 : light.isNight ? 0xa8b0cc : 0xffffff;
 
-    for (const target of [this.pet, this.foe, this.ally]) target?.setTint(tint);
+    for (const target of [this.pet, this.mainFoe, this.ally, ...this.minionFoes.map((m) => m.image)]) {
+      target?.setTint(tint);
+    }
 
     for (const [shadow, at] of [
       [this.petShadow, this.tile],
-      [this.foeShadow, this.arena.monster],
+      [this.mainFoeShadow, this.arena.monster],
       [this.allyShadow, this.allyAt],
+      ...this.minionFoes.map((m) => [m.shadow, m.spot] as const),
     ] as const) {
       if (!at) continue;
       if (!shadow) continue;
@@ -380,13 +416,24 @@ export class BattleGardenScene extends Phaser.Scene {
       this.engage();
       return 'engaged';
     }
+    // The same for a skirmish: standing on its tile is how it is fought, and
+    // one already beaten is gone, so its tile is open ground again.
+    const ontoMinion = this.minionFoes.find((m) => !m.beaten && m.spot.x === next.x && m.spot.y === next.y);
+    if (ontoMinion) {
+      this.engage(ontoMinion);
+      return 'engaged';
+    }
     if (!isWalkable(this.arena, next.x, next.y)) return 'blocked';
 
     this.moving = true;
     this.walkTo(next, STEP_MS, hopFor({ dy, calm: this.still }), () => {
       this.moving = false;
       this.hooks.onMove?.();
-      if (!this.beaten && isAdjacentToMonster(this.arena, next.x, next.y)) this.engage();
+      if (!this.beaten && isAdjacentToMonster(this.arena, next.x, next.y)) { this.engage(); return; }
+      const beside = this.minionFoes.find(
+        (m) => !m.beaten && Math.abs(m.spot.x - next.x) + Math.abs(m.spot.y - next.y) === 1,
+      );
+      if (beside) this.engage(beside);
     });
     return 'moved';
   }
@@ -433,10 +480,22 @@ export class BattleGardenScene extends Phaser.Scene {
     });
   }
 
-  private engage(): void {
-    if (this.engaged || this.beaten) return;
+  /** Open the fight with the stage's monster, or with a skirmish when one is given. */
+  private engage(minion?: MinionFoe): void {
+    if (this.engaged) return;
+    if (!minion && this.beaten) return;
     this.engaged = true;
-    this.hooks.onEngage();
+    this.activeMinion = minion;
+    this.foe = minion ? minion.image : this.mainFoe;
+    this.foeShadow = minion ? minion.shadow : this.mainFoeShadow;
+    this.hooks.onEngage(minion?.spot.stage);
+  }
+
+  /** Back to the stage's own monster as the foe the strikes are aimed at. */
+  private standDown(): void {
+    this.activeMinion = undefined;
+    this.foe = this.mainFoe;
+    this.foeShadow = this.mainFoeShadow;
   }
 
   /**
@@ -942,21 +1001,28 @@ export class BattleGardenScene extends Phaser.Scene {
 
   /** The monster is down. Fade it out and leave the ground clear. */
   defeat(): Promise<void> {
-    this.beaten = true;
+    // A skirmish going down leaves the stage's own monster standing and the
+    // stage unfinished; only the stage's monster ends the stage.
+    const minion = this.activeMinion;
+    if (minion) minion.beaten = true;
+    else this.beaten = true;
     this.engaged = false;
     this.telegraph(null);
-    if (!this.foe) return Promise.resolve();
+    const downed = [this.foe, this.foeShadow];
+    const grown = minion ? MINION_SCALE * 1.4 : 1.4;
+    this.standDown();
+    if (!downed[0]) return Promise.resolve();
     if (this.still) {
-      for (const target of [this.foe, this.foeShadow]) target?.setAlpha(0);
+      for (const target of downed) target?.setAlpha(0);
       return Promise.resolve();
     }
 
     return new Promise((resolve) => {
       this.tweens.add({
-        targets: [this.foe, this.foeShadow],
+        targets: downed,
         alpha: 0,
-        scaleX: 1.4,
-        scaleY: 1.4,
+        scaleX: grown,
+        scaleY: grown,
         duration: this.timing.defeat,
         ease: 'Quad.easeIn',
         onComplete: () => resolve(),
@@ -967,6 +1033,7 @@ export class BattleGardenScene extends Phaser.Scene {
   /** The fight ended without a win. Put the pet back where it started. */
   withdraw(): void {
     this.engaged = false;
+    this.standDown();
     if (!this.pet) return;
     this.moving = true;
     this.walkTo({ ...this.arena.spawn }, this.still ? 0 : STEP_MS * 3, 0, () => { this.moving = false; });

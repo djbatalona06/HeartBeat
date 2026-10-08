@@ -196,3 +196,26 @@ export async function spinBossWheel(memberId: MemberId, coupleId: string, monste
 export async function hasSpun(memberId: MemberId, source: string): Promise<boolean> {
   return (await db.inventory.get(purseRowId(memberId, source))) !== undefined;
 }
+
+/* -- island skirmishes -------------------------------------------------------- */
+
+/**
+ * Note a skirmish win for today. True the first time for that skirmish on that
+ * day (so it pays its XP), false after, which is what makes them worth
+ * walking into once a day and no more. Per member, on the member's own avatar,
+ * so a partner's win never spends yours.
+ */
+export async function recordMinionWin(
+  memberId: MemberId,
+  coupleId: string,
+  day: DayKey,
+  monsterId: string,
+): Promise<boolean> {
+  return db.transaction('rw', db.avatars, async () => {
+    const avatar = await getOrCreateAvatar(memberId, coupleId);
+    const beaten = avatar.minionDay === day ? avatar.minionsBeaten ?? [] : [];
+    if (beaten.includes(monsterId)) return false;
+    await db.avatars.put({ ...avatar, minionDay: day, minionsBeaten: [...beaten, monsterId], updatedAt: now() });
+    return true;
+  });
+}

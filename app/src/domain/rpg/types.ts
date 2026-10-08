@@ -266,6 +266,13 @@ export interface Avatar {
   /** Replay-loot drops taken on `replayDay`, against `REPLAY_DAILY_CAP`. */
   replayDay?: string;
   replayCount?: number;
+  /**
+   * The island skirmishes (`minions.ts`) beaten on `minionDay`, by monster id.
+   * Per member and per day: what keeps them from being farmed, and what makes
+   * them come back tomorrow.
+   */
+  minionDay?: string;
+  minionsBeaten?: string[];
   /** Coins the overworld's repeat-win trickle has paid on `foeCoinsDay`. */
   foeCoinsDay?: string;
   foeCoinsPaid?: number;

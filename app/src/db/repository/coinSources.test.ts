@@ -2,7 +2,8 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../database';
 import {
-  claimDailyLogin, getOrCreateAvatar, hasSpun, openPurse, settleGardenClear, spinBossWheel, spinDailyWheel,
+  claimDailyLogin, getOrCreateAvatar, hasSpun, openPurse, recordMinionWin, settleGardenClear, spinBossWheel,
+  spinDailyWheel,
 } from './index';
 import { LOGIN_REWARDS, REPLAY_DAILY_CAP, purseRowId, stageCoins } from '../../domain/rpg/coinSources';
 import { bossSpinSource, dailySpinSource } from '../../domain/rpg/wheel';
@@ -156,5 +157,29 @@ describe('the reward wheel', () => {
     expect(await spinBossWheel(ME, COUPLE, boss)).not.toBeNull();
     expect(await spinBossWheel(ME, COUPLE, boss)).toBeNull();
     expect(await hasSpun(ME, bossSpinSource(boss))).toBe(true);
+  });
+});
+
+describe('island skirmishes', () => {
+  it('pay on the first win of the day and not again', async () => {
+    expect(await recordMinionWin(ME, COUPLE, DAY, 'm5k1-glowmoth')).toBe(true);
+    expect(await recordMinionWin(ME, COUPLE, DAY, 'm5k1-glowmoth')).toBe(false);
+    expect(await recordMinionWin(ME, COUPLE, DAY, 'm5k2-shellsnooze')).toBe(true);
+    expect((await db.avatars.get(ME))!.minionsBeaten).toEqual(['m5k1-glowmoth', 'm5k2-shellsnooze']);
+  });
+
+  it('come back the next day', async () => {
+    await recordMinionWin(ME, COUPLE, DAY, 'm5k1-glowmoth');
+    expect(await recordMinionWin(ME, COUPLE, '2026-10-04' as DayKey, 'm5k1-glowmoth')).toBe(true);
+    expect((await db.avatars.get(ME))!.minionsBeaten).toEqual(['m5k1-glowmoth']);
+  });
+
+  it('never touch the partner, the stage record or coins', async () => {
+    await getOrCreateAvatar('member-them', COUPLE);
+    const mine = (await getOrCreateAvatar(ME, COUPLE)).coins;
+    await recordMinionWin(ME, COUPLE, DAY, 'm5k1-glowmoth');
+    expect((await db.avatars.get('member-them'))!.minionsBeaten).toBeUndefined();
+    expect((await db.avatars.get(ME))!.coins).toBe(mine);
+    expect((await db.avatars.get(ME))!.gardenBested ?? []).toEqual([]);
   });
 });
