@@ -790,7 +790,7 @@
   stroke-width: 2;
   stroke-linejoin: round;
 }
-.raid-gate-wheel-dot { fill: var(--color-accent); }
+.raid-gate-wheel-dot { fill: var(--stat, var(--color-accent)); }
 .raid-gate-wheel-dot[data-leans] { stroke: var(--color-surface); stroke-width: 1; }
 .raid-gate-wheel-level {
   position: absolute;
@@ -809,6 +809,33 @@
   color: var(--color-text);
 }
 .raid-gate-wheel-lv { font-size: 0.5em; font-weight: 600; color: var(--color-text-muted); letter-spacing: 0.04em; }
+
+.raid-gate-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+/* A chip: the stat's own hue as a dot, its name beside it. The lead stat is the
+   pet's type and gets the heavier weight. */
+.raid-gate-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  font-size: var(--text-xs);
+  line-height: 1.2;
+  color: var(--color-text-muted);
+}
+.raid-gate-stat::before {
+  content: '';
+  flex: none;
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: var(--stat, var(--color-accent));
+}
+.raid-gate-stat[data-lead] { font-weight: 700; color: var(--color-text); }
 
 .raid-gate-affinity {
   font-size: var(--text-xs);
