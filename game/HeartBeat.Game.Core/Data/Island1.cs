@@ -97,7 +97,8 @@ public static class Island1
                     new MonsterAction("Settle In", 14, Element.Rest, ActionType.Heal),
                 ],
                 SpriteKey: "lie-in",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Healer)),
 
             new Stage(5, "Open Ground", new Monster(
                 Id: "i1s5-dust-drifter",
@@ -124,7 +125,8 @@ public static class Island1
                         new StatusEffect(StatusKind.Drain, 4, 3)),
                 ],
                 SpriteKey: "couch-moss",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Guardian)),
 
             new Stage(7, "The Sentinel's Field", new Monster(
                 Id: "i1s7-sedentary-sentinel",
@@ -141,7 +143,8 @@ public static class Island1
                         new StatusEffect(StatusKind.Drain, 5, 3)),
                 ],
                 SpriteKey: "sedentary-sentinel",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Bruiser)),
         ]);
 
     /// <summary>

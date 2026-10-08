@@ -69,6 +69,12 @@ export interface SceneHandle {
    * own pet joins in, so the move never plays with one body missing.
    */
   together(effectiveness: 'weak' | 'plain' | 'strong'): Promise<void>;
+  /**
+   * Mark the monster as about to do something worth a warning (the game core's
+   * `telegraph` kind), or clear the mark with null. A small pulsing sign above
+   * it; nothing under calm, where the card's text carries the warning.
+   */
+  telegraph(kind: string | null): void;
   /** The monster is down: fade it out and leave the ground clear. */
   defeat(): Promise<void>;
   /** The fight ended without a win. Walk the pet back to its spawn tile. */

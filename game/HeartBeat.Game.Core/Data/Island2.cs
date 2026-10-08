@@ -83,7 +83,8 @@ public static class Island2
                     new MonsterAction("Warm Leftovers", 35, Element.Movement, ActionType.Heal),
                 ],
                 SpriteKey: "auntie-crumble",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Trickster)),
 
             new Stage(5, "Melon Patch", new Monster(
                 Id: "i2s5-rindroll",
@@ -113,7 +114,8 @@ public static class Island2
                         new StatusEffect(StatusKind.Drain, 6, 3)),
                 ],
                 SpriteKey: "frostcrate",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Bruiser)),
 
             new Stage(7, "The Great Oven", new Monster(
                 Id: "i2s7-mother-marzipan",
@@ -130,7 +132,8 @@ public static class Island2
                         new StatusEffect(StatusKind.Drain, 8, 3)),
                 ],
                 SpriteKey: "mother-marzipan",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Guardian)),
         ]);
 
     /// <summary>What each stage's monster is called on the island's dark face.</summary>

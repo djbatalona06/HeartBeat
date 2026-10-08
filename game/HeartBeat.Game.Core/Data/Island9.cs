@@ -80,7 +80,8 @@ public static class Island9
                     new MonsterAction("Warm Leftovers", 465, Element.Movement, ActionType.Heal),
                 ],
                 SpriteKey: "auntie-crumble-elder",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Trickster)),
 
             new Stage(5, "Deep Melon Patch", new Monster(
                 Id: "i9s5-rindroll",
@@ -110,7 +111,8 @@ public static class Island9
                         new StatusEffect(StatusKind.Drain, 87, 3)),
                 ],
                 SpriteKey: "frostcrate-elder",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Bruiser)),
 
             new Stage(7, "The Deep Great Oven", new Monster(
                 Id: "i9s7-mother-marzipan",
@@ -127,7 +129,8 @@ public static class Island9
                         new StatusEffect(StatusKind.Drain, 116, 3)),
                 ],
                 SpriteKey: "mother-marzipan-elder",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Guardian)),
         ]);
 
     /// <summary>What each stage's monster is called on the island's dark face.</summary>

@@ -81,7 +81,8 @@ public static class Island7
                     new MonsterAction("Regrow", 213, Element.Movement, ActionType.Heal),
                 ],
                 SpriteKey: "twin-oak",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Healer)),
 
             new Stage(5, "Leaf Loft", new Monster(
                 Id: "i7s5-leaflit",
@@ -111,7 +112,8 @@ public static class Island7
                         new StatusEffect(StatusKind.Drain, 43, 3)),
                 ],
                 SpriteKey: "heartwood-golem",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Guardian)),
 
             new Stage(7, "The Crown of the Tree", new Monster(
                 Id: "i7s7-heartwood-crown",
@@ -128,7 +130,8 @@ public static class Island7
                         new StatusEffect(StatusKind.Drain, 59, 3)),
                 ],
                 SpriteKey: "heartwood-crown",
-                Theme: DioramaTheme.Light)),
+                Theme: DioramaTheme.Light,
+                Behavior: Behavior.Drainer)),
         ]);
 
     /// <summary>What each stage's monster is called on the island's dark face.</summary>

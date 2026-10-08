@@ -157,7 +157,8 @@ public static class Api
         m.Id, m.Name, m.Type, m.Hp, m.Attack, m.Defense, m.Speed,
         m.Weakness, m.Strength, m.SpriteKey, m.Theme,
         ActionNames: m.Actions.Select(a => a.Name).ToList(),
-        Xp: Progression.XpForDefeating(m.Type));
+        Xp: Progression.XpForDefeating(m.Type),
+        Behavior: m.Behavior);
 
     private static CombatantDto ToDto(Combatant c) => new(
         c.Hp, c.MaxHp, c.Shield, c.Attack, c.Defense, c.Speed, c.HpFraction,
@@ -174,7 +175,10 @@ public static class Api
         Charges: s.Boosts.Charges,
         Stats: s.Boosts.Stats,
         MoveNames: moveNames,
-        TogetherCooldown: s.TogetherCooldown);
+        TogetherCooldown: s.TogetherCooldown,
+        // What the monster is about to do, if it is the kind of move worth a
+        // warning. The same call the monster's turn makes, so it is never wrong.
+        Telegraph: Behaviours.Telegraph(s, monster));
 
     private static BattleState FromDto(BattleDto d) => new(
         d.MonsterId, d.Round, d.Turn,

@@ -1146,3 +1146,15 @@
   .garden-tree-shaft { opacity: 1; }
 }
 
+
+/* What the monster is about to do, in words. The scene draws a pulsing sign for
+   the same fact; this is the half that calm and a screen reader get. */
+.garden-foe-warning {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--color-danger);
+  background: var(--color-surface-muted);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}

@@ -109,6 +109,8 @@ export class BattleGardenScene extends Phaser.Scene {
    * back towards the row the bob started on.
    */
   private petBob?: Phaser.Tweens.Tween;
+  /** The warning sign over the monster, while it is about to do something. */
+  private sign?: { parts: Phaser.GameObjects.Rectangle[]; pulse: Phaser.Tweens.Tween };
 
   private tile = { x: 0, y: 0 };
   private moving = false;
@@ -611,6 +613,42 @@ export class BattleGardenScene extends Phaser.Scene {
   }
 
   /**
+   * A warning sign over the monster: a bar and a dot, pulsing, in the danger
+   * colour so it reads on every pack.
+   *
+   * Pulses `alpha` and nothing else — the foe's idle bob owns `y`, and a sign
+   * that tweened a position would be one more thing drifting off its row. Under
+   * calm nothing is drawn: `BattleLog` carries the same warning in words, inside
+   * its live region, which is where calm and screen-reader players read it.
+   */
+  telegraph(kind: string | null): void {
+    this.sign?.pulse.stop();
+    for (const part of this.sign?.parts ?? []) part.destroy();
+    this.sign = undefined;
+    if (!kind || this.still || !this.foe || this.beaten) return;
+
+    const z = this.zoom;
+    const { fill, edge } = this.colours('danger');
+    const x = this.foe.x + this.size / 2;
+    const top = this.foe.y - z * 2;
+    const mark = (cx: number, cy: number, w: number, h: number) => {
+      const part = this.add.rectangle(cx, cy, w, h, fill, 1).setDepth(12);
+      if (edge !== undefined) part.setStrokeStyle(z * 0.5, edge, 1);
+      return part;
+    };
+    const parts = [mark(x, top - z * 4, z * 2, z * 5), mark(x, top + z * 1, z * 2, z * 2)];
+    const pulse = this.tweens.add({
+      targets: parts,
+      alpha: 0.35,
+      duration: 380,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+    this.sign = { parts, pulse };
+  }
+
+  /**
    * A companion's skill, as one of five motions.
    *
    * `scene/vfx.ts` decides which motion a skill's `vfx` key maps to; this plays
@@ -876,6 +914,7 @@ export class BattleGardenScene extends Phaser.Scene {
   defeat(): Promise<void> {
     this.beaten = true;
     this.engaged = false;
+    this.telegraph(null);
     if (!this.foe) return Promise.resolve();
     if (this.still) {
       for (const target of [this.foe, this.foeShadow]) target?.setAlpha(0);

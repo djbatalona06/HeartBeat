@@ -42,7 +42,8 @@ public sealed record MonsterDto(
     string SpriteKey,
     DioramaTheme Theme,
     IReadOnlyList<string> ActionNames,
-    int Xp);
+    int Xp,
+    Behavior Behavior = Behavior.Steady);
 
 public sealed record StageDto(int Number, string Name, MonsterDto Monster);
 
@@ -97,7 +98,8 @@ public sealed record BattleDto(
     IReadOnlyList<Charge>? Charges = null,
     RaidStats? Stats = null,
     IReadOnlyDictionary<string, string>? MoveNames = null,
-    int TogetherCooldown = 0);
+    int TogetherCooldown = 0,
+    string? Telegraph = null);
 
 public sealed record ProgressDto(
     int Xp,

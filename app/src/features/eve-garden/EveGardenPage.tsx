@@ -47,6 +47,7 @@ import { BossGatePrompt } from './gate/BossGatePrompt';
 import { REGATE_DELAY_MS, backToTheGate, promptApplies } from '../../domain/rpg/gatePrompt';
 import { starMilestone } from '../../domain/rpg/starChests';
 import { REDRIVE_DELAY_MS, settle, shouldRedriveMonster } from './round';
+import { blowsFor, monsterMissed } from '../../domain/rpg/behaviours';
 import { Compass } from './Compass';
 import { WorldMap } from './WorldMap';
 import { BattleLog } from './BattleLog';
@@ -312,6 +313,16 @@ export function EveGardenPage() {
     allyRef.current = allySprite;
     scene.current?.setAlly(allySprite);
   }, [allySprite]);
+
+  // The warning sign over the monster: shown while it is your turn and the
+  // game core says something is coming, cleared the moment it is not. Pushed to
+  // the scene rather than drawn from React, because Phaser owns the canvas.
+  // `companion` is a dep for the reason the Raid Gate note in CLAUDE.md gives:
+  // the scene only exists after the gate's pick.
+  const warning = battle?.outcome === 'Fighting' && battle.turn === 'Player' ? battle.telegraph ?? null : null;
+  useEffect(() => {
+    scene.current?.telegraph(warning);
+  }, [warning, companion]);
 
   /**
    * How full the tether is.
@@ -742,10 +753,18 @@ export function EveGardenPage() {
       const gap = strikePlan({ calm: calmRef.current }).turnGap;
       if (gap > 0) await new Promise((resolve) => setTimeout(resolve, gap));
 
+      // The warning was computed from this same state, so it says how many
+      // blows are coming: a Swarm's flurry is two, everything else one. A swing
+      // that misses is left out rather than drawn as a hit.
+      const blows = blowsFor(mine.telegraph);
       const theirs = await game.monsterMove(mine);
       if (!theirs) return;
       setBattle(theirs);
-      await settle(scene.current?.strike('monster-hits', 'plain'));
+      if (!monsterMissed(theirs.log)) {
+        for (let blow = 0; blow < blows; blow += 1) {
+          await settle(scene.current?.strike('monster-hits', 'plain'));
+        }
+      }
 
       if (theirs.outcome !== 'Fighting') await finish(theirs, foe);
     } catch (error) {
@@ -780,7 +799,11 @@ export function EveGardenPage() {
         .then(async (theirs) => {
           if (!theirs) throw new Error('the monster could not take its turn');
           setBattle(theirs);
-          await settle(scene.current?.strike('monster-hits', 'plain'));
+          if (!monsterMissed(theirs.log)) {
+            for (let blow = 0; blow < blowsFor(battle.telegraph); blow += 1) {
+              await settle(scene.current?.strike('monster-hits', 'plain'));
+            }
+          }
           if (theirs.outcome !== 'Fighting') await finish(theirs, foe);
         })
         .catch((error) => setFault(faultFrom('round', error)))

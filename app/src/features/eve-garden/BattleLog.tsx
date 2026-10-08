@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { BattleDto, MonsterDto } from './engine/types';
 import { WEAKNESS_MULTIPLIER } from '../../domain/rpg/charges';
+import { behaviorBlurb, telegraphText } from '../../domain/rpg/behaviours';
 
 /**
  * What just happened, and what you are fighting.
@@ -69,9 +70,18 @@ export function BattleLog({ battle, monster, weakHits = [] }: BattleLogProps) {
           {monster.strength}
         </p>
 
+        {behaviorBlurb(monster.behavior) && (
+          <p className="garden-foe-note">{behaviorBlurb(monster.behavior)}</p>
+        )}
+
         <Bar label="Them" value={battle.monster.hp} max={battle.monster.maxHp} tone="foe" />
         <Bar label="You" value={battle.player.hp} max={battle.player.maxHp} tone="you" />
 
+        {/* The same warning the scene draws as a sign, in words and inside the
+            live region — which is the only place calm and a screen reader get it. */}
+        {battle.outcome === 'Fighting' && battle.turn === 'Player' && telegraphText(monster.name, battle.telegraph) && (
+          <p className="garden-foe-warning" role="status">{telegraphText(monster.name, battle.telegraph)}</p>
+        )}
         {battle.player.shield > 0 && (
           <p className="garden-foe-note">Ward holding {battle.player.shield}.</p>
         )}
