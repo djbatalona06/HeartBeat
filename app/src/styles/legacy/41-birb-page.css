@@ -61,6 +61,12 @@
   gap: var(--space-3);
 }
 .pet-list-compact .pet-portrait { width: 2.75rem; height: 2.75rem; margin: 0; }
+/* On a narrow phone the full-width walk button squeezed the name to nothing,
+   so it takes its own row beneath the portrait and name. */
+@media (max-width: 26rem) {
+  .pet-list-compact .pet { grid-template-columns: auto 1fr; }
+  .pet-list-compact .pet > :last-child { grid-column: 1 / -1; }
+}
 .pet-list-compact .pet-head { display: grid; gap: 0; }
 
 /* ---- the partner's companion at the Raid Gate -----------------------------

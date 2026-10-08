@@ -403,6 +403,17 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   boss clear done together, and boss replay loot (three drops a day per member).
   Garden coins are **per member** (`Avatar.gardenBested`), not read off the
   couple's world row, so a stage your partner beat first still pays you yours.
+- **The gate's mascot is priced off the couple's level, never off affinity, and
+  is identical across all five.** `gateCards({ petLevel })` gives every mascot
+  `max(2, petLevel)` stat points; only the *shape* (`MASCOT_RAID_ORDER`) differs.
+  It used to be priced off rounds fought with that one, so a favourite quietly
+  outranked the other four in the fight, and the floor of two is why: one point
+  deals to a single stat, which left Foxglove and Marigold showing one. The page
+  derives its cards from the live `petLevel` (`EveGardenPage`), and the same cards
+  feed the card and the fight sheet. Affinity is still recorded for
+  `mostFavoured`. The gate card draws `StatWheel`: `reach` is the drawing scale
+  (relative to the strongest stat), `fill` is the true saturation and is what is
+  spoken.
 - **Companions count for half.** `companionSource` weighs a companion at
   `COMPANION_IMPACT` (0.5) of a same-rung item, and bond adds on a flattening
   curve (`companionRankLift`, capped under `COMPANION_RANK_LIFT`).

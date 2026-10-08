@@ -107,7 +107,7 @@ export function RaidGate({
         <TogetherTether partnerName={together.partnerName} present={together.present} />
       ) : null}
 
-      <div className="raid-gate-roster" role="group" aria-label="Choose a companion">
+      <div className="raid-gate-roster pick-grid" role="group" aria-label="Choose a companion">
         {cards.map((card) => (
           <GatePedestal
             key={card.themeId}

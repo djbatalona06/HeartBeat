@@ -1,0 +1,26 @@
+/* ---- the pet pickers: five companions, one grid ---------------------------
+   There are five of them, and every picker used to lay out as if there were
+   three or four (an auto-fill that left an orphan on the left, a 152px-wide
+   row that scrolled sideways). Six columns, each pet two wide: three across,
+   and the last two sit centred under them instead of hugging the left edge.
+   On a very narrow phone it is four columns, two across, and the fifth is
+   centred on its own row. Onboarding, Settings and the Raid Gate all use it. */
+.pick-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.pick-grid > * {
+  grid-column: span 2;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Only when there are exactly five: the 4th and 5th children. */
+.pick-grid > :nth-child(4):nth-last-child(2) { grid-column: 2 / span 2; }
+.pick-grid > :nth-child(5):last-child { grid-column: 4 / span 2; }
+
+@media (max-width: 21.25rem) {
+  .pick-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pick-grid > :nth-child(4):nth-last-child(2) { grid-column: span 2; }
+  .pick-grid > :nth-child(5):last-child { grid-column: 2 / span 2; }
+}

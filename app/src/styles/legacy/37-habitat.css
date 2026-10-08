@@ -94,10 +94,11 @@ a, button, input, select, textarea, summary, label, [role='button'] {
    becomes a solid surface with no blur. Where a scrim only dims, it keeps
    dimming and loses the blur. */
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .home-today, .tabbar, .menu-button, .status-hud, .chat {
+  .home-today, .menu-button, .status-hud, .chat {
     backdrop-filter: none;
     background: var(--color-surface);
   }
+  .tabbar::before { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--color-surface); }
   .menu-scrim, .popup-scrim, .cmd-scrim { backdrop-filter: none; }
 }
 

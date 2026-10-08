@@ -97,22 +97,32 @@
   height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
   padding-inline: max(env(safe-area-inset-left), var(--space-1)) max(env(safe-area-inset-right), var(--space-1));
-  /* Glass, the way iOS does a tab bar: see `--material` in themes/tokens.ts.
-     It was a 97% slab with a 14px blur — dense enough that nothing could show
-     through, which is the one thing a blur is for — because a column of body
-     text slides behind a full-width bar on every scroll. 86% and a 24px blur
-     dissolves that text to colour instead of leaving it readable, and
-     `saturate` keeps the colour that bleeds through alive. Where backdrop-filter
-     is unsupported the tint alone is already 86% of an opaque surface, so the
-     labels stay legible without it (the `@supports` below makes that explicit). */
-  background: var(--material);
-  -webkit-backdrop-filter: var(--material-blur);
-  backdrop-filter: var(--material-blur);
+  /* The bar itself carries no filter. A big backdrop-filter on a `position:
+     fixed` box, over a full-screen canvas, is what let iOS Safari leave the
+     bar behind mid-page after a scroll. The glass lives on `::before`, and the
+     bar gets its own layer. See `--material` in themes/tokens.ts. */
+  isolation: isolate;
+  transform: translateZ(0);
   /* A hairline, not a shadow: a bar docked to the edge has nothing to cast on. */
   border-top: 0.5px solid var(--hairline);
 }
+/* Glass, the way iOS does a tab bar. It was a 97% slab with a 14px blur, dense
+   enough that nothing could show through. 86% and a 24px blur dissolves the
+   body text sliding behind it to colour, and `saturate` keeps that colour
+   alive. It paints first, so the (positioned) tabs sit over it without a
+   z-index. Where backdrop-filter is unsupported the tint alone is 86% of an
+   opaque surface, so the labels stay legible (the `@supports` below). */
+.tabbar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--material);
+  -webkit-backdrop-filter: var(--material-blur);
+  backdrop-filter: var(--material-blur);
+}
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .tabbar { background: color-mix(in srgb, var(--color-surface) 97%, transparent); }
+  .tabbar::before { background: color-mix(in srgb, var(--color-surface) 97%, transparent); }
 }
 
 .tabbar-tab {

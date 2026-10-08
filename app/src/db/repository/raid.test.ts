@@ -97,12 +97,13 @@ describe('the ledger', () => {
     expect(total % 3).toBe(0);
   });
 
-  it('raises the rank on the card once the rounds are there', async () => {
+  it('puts the rounds on the card, without making that companion any stronger', async () => {
     await recordRaidRounds('pony', AFFINITY_RANKS[2]);
     const cards = await loadGateCards();
     const pony = cards.find((c) => c.themeId === 'pony')!;
-    expect(pony.rank).toBe(3);
-    expect(pony.tier).toBe('epic');
+    const kitty = cards.find((c) => c.themeId === 'kitty')!;
+    expect(pony.affinity).toBe(AFFINITY_RANKS[2]);
+    expect(pony.source.statLevel).toBe(kitty.source.statLevel);
   });
 });
 
@@ -132,7 +133,7 @@ describe('opening the gate', () => {
   it('opens with the affinity on the cards, not an empty arch', async () => {
     await recordRaidRounds('shinobi', AFFINITY_RANKS[1]);
     const { cards } = await openRaidGate();
-    expect(cards.find((c) => c.themeId === 'shinobi')!.rank).toBe(2);
+    expect(cards.find((c) => c.themeId === 'shinobi')!.affinity).toBe(AFFINITY_RANKS[1]);
   });
 });
 

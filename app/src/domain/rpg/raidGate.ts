@@ -1,8 +1,8 @@
 import type { Element } from '../../features/eve-garden/engine/types';
 import { MASCOT_ROSTER, FALLBACK_MASCOT_ID } from '../../features/pet/mascots/roster';
 import { COMPANION_KITS, kitFor, type CompanionKit } from './companionSkills';
-import { RAID_STATS, raidSheet, sourceStatLevel, type RaidStatKey, type StatSource } from './raidStats';
-import { FIGHT_HALF_AT } from './loadout';
+import { RAID_STATS, raidSheet, type RaidStatKey, type StatSource } from './raidStats';
+import { FIGHT_HALF_AT, tierForStatLevel } from './loadout';
 import { TIERS, tierRank, type Tier } from './tiers';
 import { STAGES_PER_ISLAND } from './world';
 
@@ -28,15 +28,22 @@ import { STAGES_PER_ISLAND } from './world';
  * companions you hatch and rank up, and one of them rides along. This is who
  * you *are* in the garden; that is who came with you.
  *
+ * ## Strength is the couple's level, and the same for all five
+ *
+ * A mascot's source used to be priced off *affinity* — rounds fought with that
+ * one — so a favourite you had always picked outranked four you had not, and
+ * the fifth you tried on a whim was genuinely weaker in the fight. That reads
+ * as being punished for having a favourite. The source is now priced off the
+ * shared pet's level, which is the number in the corner on every screen, and
+ * it is **identical across the five**: what differs is the shape — which stats
+ * it leans on (`MASCOT_RAID_ORDER`) — not how much it is worth.
+ *
  * ## Affinity
  *
- * Rounds fought alongside a mascot, per mascot. It is the only number on a
- * gate card that is that card's own — the shared pet's level belongs to the
- * couple and is the same behind every one of them — so it is what makes the
- * gate a board with five different things on it rather than five hats.
- *
- * It only ever rises, like bond in `pets.ts`, and for the same reason: nothing
- * in this app takes something away because a fortnight went quietly.
+ * Rounds fought alongside a mascot, per mascot, still recorded. It no longer
+ * sets strength; it is the ledger `mostFavoured` reads. It only ever rises,
+ * like bond in `pets.ts`: nothing in this app takes something away because a
+ * fortnight went quietly.
  */
 
 /** Which of the garden's five elements each mascot answers to. */
@@ -93,6 +100,19 @@ export function tierForRank(rank: number): Tier {
 
 /* -- the cards --------------------------------------------------------------- */
 
+/**
+ * The least a mascot is ever worth. Two points deal as 1 and 1 down a four-stat
+ * order (`dealStatLevel`), so even a level-one couple's companion shows two
+ * stats; one point deals as 1 and 0, which is how Foxglove and Marigold used
+ * to show a single stat at the start.
+ */
+export const MASCOT_MIN_STAT_LEVEL = 2;
+
+/** What every mascot is worth at the couple's level: the level itself, floored. */
+export function mascotStatLevel(petLevel: number): number {
+  return Math.max(MASCOT_MIN_STAT_LEVEL, Math.round(petLevel));
+}
+
 export interface GateCard {
   themeId: string;
   /** The mascot's own name. */
@@ -101,10 +121,11 @@ export interface GateCard {
   blurb: string;
   element: Element;
   kit: CompanionKit;
+  /** Rounds fought alongside it. Recorded, but it no longer sets strength. */
   affinity: number;
-  rank: number;
-  /** Rounds to the next rank, or null at the top. */
-  toNextRank: number | null;
+  /** The couple's level: the same on all five cards, and what prices `source`. */
+  level: number;
+  /** The rung that level lands on. The same for all five. */
   tier: Tier;
   /** Its contribution to the raid sheet, at this rank. */
   source: StatSource;
@@ -118,6 +139,8 @@ export interface GateCard {
 }
 
 export interface GateInput {
+  /** The shared pet's level. Prices every mascot equally. Defaults to 1. */
+  petLevel?: number;
   /** Rounds fought alongside each mascot, keyed by theme id. */
   affinity?: Readonly<Record<string, number>>;
   /** Theme ids that are out of reach, with the reason to show. */
@@ -135,8 +158,9 @@ export function gateCards(input: GateInput = {}): GateCard[] {
   return COMPANION_KITS.map((kit) => {
     const identity = MASCOT_ROSTER[kit.themeId] ?? MASCOT_ROSTER[FALLBACK_MASCOT_ID];
     const affinity = Math.max(0, input.affinity?.[kit.themeId] ?? 0);
-    const rank = affinityRank(affinity);
-    const tier = tierForRank(rank);
+    const level = Math.max(1, Math.round(input.petLevel ?? 1));
+    const statLevel = mascotStatLevel(level);
+    const tier = tierForStatLevel(statLevel);
     const order = MASCOT_RAID_ORDER[kit.themeId] ?? MASCOT_RAID_ORDER[FALLBACK_MASCOT_ID];
     const reason = input.unavailable?.[kit.themeId];
 
@@ -150,14 +174,13 @@ export function gateCards(input: GateInput = {}): GateCard[] {
       element: MASCOT_ELEMENTS[kit.themeId] ?? 'Mood',
       kit,
       affinity,
-      rank,
-      toNextRank: toNextRank(affinity),
+      level,
       tier,
       source: {
         id: `mascot-${kit.themeId}`,
         label: identity.name,
         tier,
-        statLevel: sourceStatLevel(`mascot-${kit.themeId}`, tier),
+        statLevel,
         order,
       },
       leans: order.slice(0, 3).filter((stat) => RAID_STATS.includes(stat)),
@@ -188,6 +211,71 @@ export function statBubbles(card: Pick<GateCard, 'source' | 'leans'>): StatBubbl
   return card.leans.map((stat) => {
     const value = Math.max(0, total[stat] ?? 0);
     return { stat, value, fill: value / (value + FIGHT_HALF_AT) };
+  });
+}
+
+/* -- the gate's stat wheel --------------------------------------------------- */
+
+export interface WheelSpoke {
+  stat: RaidStatKey;
+  value: number;
+  /** 0-1, on the same saturating curve as `StatBubble.fill`. */
+  fill: number;
+  /**
+   * 0-1, how far out to draw the spoke. Not `fill`: that curve tops out near 0.3
+   * at level 50, which would draw a speck. This is relative to the companion's
+   * own strongest stat (so the *shape* reads), lifted a little as it levels (so
+   * growth shows), and never below `WHEEL_MIN_REACH` for a stat it has, so a
+   * stat it brings is always visible against the empty ones.
+   */
+  reach: number;
+  /** True for the stats the mascot is built around (`GateCard.leans`). */
+  leans: boolean;
+}
+
+/** The shortest a spoke is drawn when the companion has any of that stat. */
+export const WHEEL_MIN_REACH = 0.45;
+/** The `fill` at which a wheel counts as fully grown: a level-50 top stat. */
+const WHEEL_FULL_FILL = 0.3;
+
+/**
+ * One spoke per raid stat, in `RAID_STATS` order, so every wheel has the same
+ * seven corners and two pets can be compared by laying one over the other.
+ * Stats the mascot brings nothing to sit at the centre.
+ */
+export function wheelSpokes(card: Pick<GateCard, 'source' | 'leans'>): WheelSpoke[] {
+  const total = raidSheet([card.source]).total;
+  const values = RAID_STATS.map((stat) => Math.max(0, total[stat] ?? 0));
+  const top = Math.max(1, ...values);
+  const growth = Math.min(1, top / (top + FIGHT_HALF_AT) / WHEEL_FULL_FILL);
+  return RAID_STATS.map((stat, i) => {
+    const value = values[i];
+    const reach = value > 0
+      ? Math.min(1, (WHEEL_MIN_REACH + (1 - WHEEL_MIN_REACH) * (value / top)) * (0.7 + 0.3 * growth))
+      : 0;
+    return { stat, value, fill: value / (value + FIGHT_HALF_AT), reach, leans: card.leans.includes(stat) };
+  });
+}
+
+/**
+ * The corners of a spoke chart: spoke `i` of `n` points at `i / n` of a turn,
+ * starting straight up and going clockwise. `fills` are 0-1; `radius` is the
+ * length of a full spoke. Returned unrounded to two places so a snapshot of the
+ * attribute is stable. A fill outside 0-1 is clamped rather than trusted.
+ */
+export function wheelPoints(
+  fills: readonly number[],
+  radius: number,
+  centre: { x: number; y: number } = { x: 0, y: 0 },
+): { x: number; y: number }[] {
+  const n = fills.length;
+  return fills.map((fill, i) => {
+    const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+    const r = radius * Math.min(1, Math.max(0, fill));
+    return {
+      x: Math.round((centre.x + Math.cos(angle) * r) * 100) / 100,
+      y: Math.round((centre.y + Math.sin(angle) * r) * 100) / 100,
+    };
   });
 }
 

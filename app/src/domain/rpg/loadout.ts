@@ -228,7 +228,7 @@ export function ascendantSource(petLevel: number): StatSource {
  * only the pet needs it: everything else knows its own tier and derives its
  * stat level from that, which is the direction the table actually reads.
  */
-function tierForStatLevel(statLevel: number) {
+export function tierForStatLevel(statLevel: number) {
   if (statLevel >= 30) return 'mythic' as const;
   if (statLevel >= 20) return 'legendary' as const;
   if (statLevel >= 10) return 'epic' as const;
