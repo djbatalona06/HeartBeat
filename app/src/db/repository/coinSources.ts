@@ -5,6 +5,8 @@ import {
   claimLogin, purseById, purseRowId, replayAllowance, replayLoot, stageCoins,
   type LoginReward,
 } from '../../domain/rpg/coinSources';
+import { starMilestone } from '../../domain/rpg/starChests';
+import { bossSpinSource, dailySpinSource, rollWheel, spinRoll, type WheelSegment } from '../../domain/rpg/wheel';
 import { getOrCreateAvatar } from './rpg';
 import { now } from './shared';
 
@@ -140,4 +142,57 @@ export async function settleGardenClear(
     }
     return { coins, purses, replay: true };
   });
+}
+
+/* -- the reward wheel --------------------------------------------------------- */
+
+export interface WheelSpin {
+  segment: WheelSegment;
+  coins: number;
+  purse: string;
+}
+
+/**
+ * Spin for a source, once. The prize is a purse row whose id is made from the
+ * source, which is both what makes a retry (or the same member's other phone)
+ * the same row and what says "already spun"; it is stored already opened, and
+ * its coins are paid in the same transaction. Null when this source was spun.
+ */
+async function spinFor(memberId: MemberId, coupleId: string, source: string): Promise<WheelSpin | null> {
+  const id = purseRowId(memberId, source);
+  if (await db.inventory.get(id)) return null;
+  const segment = rollWheel(spinRoll(memberId, source));
+  const purse = purseById(segment.purse);
+  if (!purse) return null;
+  const avatar = await getOrCreateAvatar(memberId, coupleId);
+  const at = now();
+  await db.avatars.put(applyPayout(avatar, { xp: 0, coins: purse.coins, energy: 0, mp: 0 }, at));
+  await db.inventory.put({
+    id, coupleId, memberId, itemId: purse.id, refine: 0, acquiredAt: at, updatedAt: at, openedAt: at,
+  });
+  return { segment, coins: purse.coins, purse: purse.id };
+}
+
+/** Today's free spin. Once a day, in the member's own zone. */
+export async function spinDailyWheel(memberId: MemberId, coupleId: string, day: DayKey): Promise<WheelSpin | null> {
+  return db.transaction('rw', db.avatars, db.inventory, () => spinFor(memberId, coupleId, dailySpinSource(day)));
+}
+
+/**
+ * The bonus spin for a boss. Only for an island boss the couple has actually
+ * cleared, and once per boss per member, so there are as many as there are
+ * bosses and no more.
+ */
+export async function spinBossWheel(memberId: MemberId, coupleId: string, monsterId: string): Promise<WheelSpin | null> {
+  if (starMilestone(monsterId)?.chestId !== 'gilded') return null;
+  return db.transaction('rw', db.avatars, db.inventory, db.worldProgress, async () => {
+    const world = await db.worldProgress.get(coupleId);
+    if (!world?.cleared.includes(monsterId)) return null;
+    return spinFor(memberId, coupleId, bossSpinSource(monsterId));
+  });
+}
+
+/** Whether a spin has been taken (or a boss spin is still waiting), for the button's state. */
+export async function hasSpun(memberId: MemberId, source: string): Promise<boolean> {
+  return (await db.inventory.get(purseRowId(memberId, source))) !== undefined;
 }

@@ -1,8 +1,12 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../database';
-import { claimDailyLogin, getOrCreateAvatar, openPurse, settleGardenClear } from './index';
+import {
+  claimDailyLogin, getOrCreateAvatar, hasSpun, openPurse, settleGardenClear, spinBossWheel, spinDailyWheel,
+} from './index';
 import { LOGIN_REWARDS, REPLAY_DAILY_CAP, purseRowId, stageCoins } from '../../domain/rpg/coinSources';
+import { bossSpinSource, dailySpinSource } from '../../domain/rpg/wheel';
+import { ISLANDS } from '../../domain/rpg/islands';
 import type { DayKey } from '../../domain/types';
 
 const ME = 'member-me';
@@ -102,5 +106,55 @@ describe('a garden win', () => {
     const before = (await db.avatars.get('member-them'))!.coins;
     await settleGardenClear(ME, COUPLE, win());
     expect((await db.avatars.get('member-them'))!.coins).toBe(before);
+  });
+});
+
+describe('the reward wheel', () => {
+  it('pays once a day and a second spin is a no-op', async () => {
+    const before = (await getOrCreateAvatar(ME, COUPLE)).coins;
+    const first = await spinDailyWheel(ME, COUPLE, DAY);
+    expect(first).not.toBeNull();
+    expect((await db.avatars.get(ME))!.coins).toBe(before + first!.coins);
+    expect(await hasSpun(ME, dailySpinSource(DAY))).toBe(true);
+
+    expect(await spinDailyWheel(ME, COUPLE, DAY)).toBeNull();
+    expect((await db.avatars.get(ME))!.coins).toBe(before + first!.coins);
+    expect(await db.inventory.count()).toBe(1);
+  });
+
+  it('lands the same on any phone for the same day, and a new day spins again', async () => {
+    const a = await spinDailyWheel(ME, COUPLE, DAY);
+    await db.avatars.clear();
+    await db.inventory.clear();
+    const again = await spinDailyWheel(ME, COUPLE, DAY);
+    expect(again!.segment.id).toBe(a!.segment.id);
+    expect(await spinDailyWheel(ME, COUPLE, '2026-10-04' as DayKey)).not.toBeNull();
+  });
+
+  it('keeps the purse as an already-opened row, so nothing is left to open twice', async () => {
+    await spinDailyWheel(ME, COUPLE, DAY);
+    const rows = await db.inventory.toArray();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].openedAt).toBeDefined();
+    expect(rows[0].id).toBe(purseRowId(ME, dailySpinSource(DAY)));
+  });
+
+  it('never touches the partner\'s coins', async () => {
+    await getOrCreateAvatar('member-them', COUPLE);
+    const before = (await db.avatars.get('member-them'))!.coins;
+    await spinDailyWheel(ME, COUPLE, DAY);
+    expect((await db.avatars.get('member-them'))!.coins).toBe(before);
+  });
+
+  it('gives a boss spin only for a cleared island boss, once', async () => {
+    const boss = ISLANDS[0].stages[6].monsterId;
+    const common = ISLANDS[0].stages[0].monsterId;
+    await db.worldProgress.clear();
+    expect(await spinBossWheel(ME, COUPLE, boss)).toBeNull();
+    await db.worldProgress.put({ coupleId: COUPLE, cleared: [boss, common], updatedAt: 1 } as never);
+    expect(await spinBossWheel(ME, COUPLE, common)).toBeNull();
+    expect(await spinBossWheel(ME, COUPLE, boss)).not.toBeNull();
+    expect(await spinBossWheel(ME, COUPLE, boss)).toBeNull();
+    expect(await hasSpun(ME, bossSpinSource(boss))).toBe(true);
   });
 });

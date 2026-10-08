@@ -217,10 +217,51 @@
 .garden-log li { margin-bottom: 2px; }
 .garden-log .is-them { color: var(--color-text-muted); }
 
+/* The strip above the board (`BattleLog`): name and the full-log button on one
+   row, then both bars, then only the newest line. Everything else is in the sheet. */
+.garden-foe-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.garden-log-open {
+  flex: none;
+  min-height: var(--tap);
+  padding-inline: var(--space-3);
+  border: 0;
+  background: none;
+  color: var(--color-accent-text, var(--color-text));
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.garden-log-latest {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+.garden-log-latest.is-them { color: var(--color-text-muted); }
+.garden-log-sheet { display: grid; gap: var(--space-2); align-content: start; }
+.garden-log-sheet .garden-log { max-height: 50dvh; }
+
 /* The controller: the move pad beside today's charge meter, on every width.
    Two-thirds pad, one-third meter; the meter has a floor so its labels stay
-   readable on a 360px phone. */
+   readable on a 360px phone.
+
+   Docked just above the tab bar so it stays under the thumb while the board
+   scrolls. The offset is the same recipe the bottom sheets use: the bar's
+   height plus the home indicator's. */
 .garden-controls {
+  position: sticky;
+  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-2));
+  z-index: 2;
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(6.5rem, 1fr);
   gap: var(--space-3);

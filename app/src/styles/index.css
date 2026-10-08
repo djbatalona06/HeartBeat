@@ -26,6 +26,7 @@
 @import './features/account.css' layer(features);
 @import './features/companions.css' layer(features);
 @import './features/native.css' layer(features);
+@import './features/wheel.css' layer(features);
 @import './legacy/01-base.css' layer(legacy);
 @import './legacy/02-home.css' layer(legacy);
 @import './legacy/03-ui-layout.css' layer(legacy);

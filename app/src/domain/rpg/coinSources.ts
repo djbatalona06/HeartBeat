@@ -27,9 +27,11 @@ export interface Purse {
 }
 
 export const PURSES: readonly Purse[] = [
+  { id: 'purse-pinch', name: 'Pinch of coins', coins: 10 },
   { id: 'purse-small', name: 'Small purse', coins: 40 },
   { id: 'purse-fat', name: 'Fat purse', coins: 110 },
   { id: 'purse-hoard', name: 'Hoard', coins: 260 },
+  { id: 'purse-jackpot', name: 'Jackpot', coins: 500 },
 ];
 
 export function purseById(id: string): Purse | undefined {

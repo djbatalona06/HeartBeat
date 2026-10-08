@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Sheet } from '../../ui/Sheet';
 import type { BattleDto, MonsterDto } from './engine/types';
 import { WEAKNESS_MULTIPLIER } from '../../domain/rpg/charges';
 import { behaviorBlurb, telegraphText } from '../../domain/rpg/behaviours';
@@ -6,10 +7,15 @@ import { behaviorBlurb, telegraphText } from '../../domain/rpg/behaviours';
 /**
  * What just happened, and what you are fighting.
  *
- * Two panels that share a corner of the garden: the monster's card while a
- * fight is open, and the running log underneath it. Both are read-only — every
- * decision is made in the action bar — so this is the one part of the page with
- * no handlers on it.
+ * A strip above the board: the monster's name, both health bars, any warning,
+ * and only the *latest* line of the log. The move pad sits under the board in
+ * thumb reach, so this is read at a glance rather than scrolled. The whole log,
+ * and the monster's card, open in a bottom sheet from "Full log".
+ *
+ * The strip is the page's live region, so every new line is still heard; the
+ * sheet is for looking back and is deliberately not live, which would read the
+ * whole history out again on every turn. Every decision is made in the action
+ * bar — the one handler here only opens the sheet.
  */
 
 export interface BattleLogProps {
@@ -38,12 +44,14 @@ function Bar({ label, value, max, tone }: { label: string; value: number; max: n
 
 export function BattleLog({ battle, monster, weakHits = [] }: BattleLogProps) {
   const tail = useRef<HTMLLIElement | null>(null);
+  const [open, setOpen] = useState(false);
 
   // Keep the newest line in view. `block: 'nearest'` so a fight in a panel does
-  // not drag the whole page around underneath the canvas.
+  // not drag the whole page around underneath the canvas. Also runs on open: the
+  // sheet only exists while open, so its list starts at the top.
   useEffect(() => {
     tail.current?.scrollIntoView({ block: 'nearest' });
-  }, [battle?.log.length]);
+  }, [battle?.log.length, open]);
 
   if (!battle || !monster) return null;
 
@@ -55,10 +63,59 @@ export function BattleLog({ battle, monster, weakHits = [] }: BattleLogProps) {
   // honest answer.
   if (battle.monsterId !== monster.id) return null;
 
+  const lineText = (line: BattleDto['log'][number], index: number) =>
+    `${line.text}${weakHits.includes(index) ? ` On its weakness · ×${WEAKNESS_MULTIPLIER}.` : ''}`;
+  const last = battle.log.length - 1;
+
+  // Ward, hits left and effects on one line: they used to be three paragraphs,
+  // which is what made the panel taller than the board.
+  const status = [
+    battle.player.shield > 0 ? `Ward holding ${battle.player.shield}` : null,
+    battle.outcome === 'Fighting' && battle.hitsLeft > 0
+      ? `About ${battle.hitsLeft} more ${battle.hitsLeft === 1 ? 'hit' : 'hits'}`
+      : null,
+    ...battle.player.effects.map((e) => `${e.kind} ${e.turnsLeft} ${e.turnsLeft === 1 ? 'turn' : 'turns'}`),
+  ].filter(Boolean).join(' · ');
+
+  const warning = battle.outcome === 'Fighting' && battle.turn === 'Player'
+    ? telegraphText(monster.name, battle.telegraph)
+    : null;
+
   return (
-    <aside className="garden-battle" aria-live="polite">
-      <div className="garden-foe">
-        <h3 className="garden-foe-name">{monster.name}</h3>
+    <>
+      <aside className="garden-battle" aria-live="polite">
+        <div className="garden-foe">
+          <div className="garden-foe-head">
+            <h3 className="garden-foe-name">{monster.name}</h3>
+            <button type="button" className="garden-log-open" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+              Full log
+            </button>
+          </div>
+
+          <Bar label="Them" value={battle.monster.hp} max={battle.monster.maxHp} tone="foe" />
+          <Bar label="You" value={battle.player.hp} max={battle.player.maxHp} tone="you" />
+
+          {/* The same warning the scene draws as a sign, in words and inside the
+              live region — which is the only place calm and a screen reader get it. */}
+          {warning && <p className="garden-foe-warning" role="status">{warning}</p>}
+          {status && <p className="garden-foe-note">{status}.</p>}
+          {last >= 0 && (
+            <p className={`garden-log-latest ${battle.log[last].who === 'Player' ? 'is-you' : 'is-them'}`}>
+              {lineText(battle.log[last], last)}
+            </p>
+          )}
+        </div>
+      </aside>
+
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        label="Battle log"
+        scrimClassName="menu-scrim"
+        panelClassName="menu-panel garden-log-sheet"
+        draggable
+      >
+        <h2 className="section-title">{monster.name}</h2>
         <p className="garden-foe-kind">
           {monster.type === 'Boss' ? 'Island boss'
             : monster.type === 'SemiBoss' ? 'Semi-boss'
@@ -69,52 +126,22 @@ export function BattleLog({ battle, monster, weakHits = [] }: BattleLogProps) {
           {' · shrugs off '}
           {monster.strength}
         </p>
-
         {behaviorBlurb(monster.behavior) && (
           <p className="garden-foe-note">{behaviorBlurb(monster.behavior)}</p>
         )}
-
-        <Bar label="Them" value={battle.monster.hp} max={battle.monster.maxHp} tone="foe" />
-        <Bar label="You" value={battle.player.hp} max={battle.player.maxHp} tone="you" />
-
-        {/* The same warning the scene draws as a sign, in words and inside the
-            live region — which is the only place calm and a screen reader get it. */}
-        {battle.outcome === 'Fighting' && battle.turn === 'Player' && telegraphText(monster.name, battle.telegraph) && (
-          <p className="garden-foe-warning" role="status">{telegraphText(monster.name, battle.telegraph)}</p>
-        )}
-        {battle.player.shield > 0 && (
-          <p className="garden-foe-note">Ward holding {battle.player.shield}.</p>
-        )}
-        {battle.outcome === 'Fighting' && battle.hitsLeft > 0 && (
-          <p className="garden-foe-note">
-            About {battle.hitsLeft} more {battle.hitsLeft === 1 ? 'hit' : 'hits'}.
-          </p>
-        )}
-        {battle.player.effects.length > 0 && (
-          <ul className="garden-effects">
-            {battle.player.effects.map((effect, index) => (
-              // react-doctor-disable-next-line no-array-index-as-key -- the same effect can be applied twice, and the list is never reordered
-              <li key={`${effect.kind}-${index}`}>
-                {effect.kind} · {effect.turnsLeft} {effect.turnsLeft === 1 ? 'turn' : 'turns'}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <ol className="garden-log">
-        {battle.log.map((line, index) => (
-          <li
-            // react-doctor-disable-next-line no-array-index-as-key -- an append-only log with no ids; lines are never reordered or removed
-            key={`${line.round}-${index}`}
-            className={line.who === 'Player' ? 'is-you' : 'is-them'}
-            ref={index === battle.log.length - 1 ? tail : undefined}
-          >
-            {line.text}
-            {weakHits.includes(index) && ` On its weakness · ×${WEAKNESS_MULTIPLIER}.`}
-          </li>
-        ))}
-      </ol>
-    </aside>
+        <ol className="garden-log">
+          {battle.log.map((line, index) => (
+            <li
+              // react-doctor-disable-next-line no-array-index-as-key -- an append-only log with no ids; lines are never reordered or removed
+              key={`${line.round}-${index}`}
+              className={line.who === 'Player' ? 'is-you' : 'is-them'}
+              ref={index === last ? tail : undefined}
+            >
+              {lineText(line, index)}
+            </li>
+          ))}
+        </ol>
+      </Sheet>
+    </>
   );
 }

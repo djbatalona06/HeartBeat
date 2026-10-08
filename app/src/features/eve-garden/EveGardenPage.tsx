@@ -4,7 +4,7 @@ import { db, loadSettings } from '../../db/database';
 import {
   awardPetXp, chooseRaidCompanion, clearStageFor, coupleVitals, ensureIdentity,
   gardenMomentum, loadWorldProgress, openRaidGate,
-  recordRaidRounds, settleGardenClear, stampGatePresence, todaysCharges, travelToIsland,
+  recordRaidRounds, settleGardenClear, spinBossWheel, stampGatePresence, todaysCharges, travelToIsland,
 } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { levelForXp } from '../../domain/xp';
@@ -35,6 +35,7 @@ import type {
 import type { SceneHandle, StepResult } from './scene/events';
 import { DirectionPad } from './DirectionPad';
 import { buzz } from '../../pwa/haptics';
+import { useWakeLock } from '../../pwa/useWakeLock';
 import { useTheme } from '../../themes/ThemeProvider';
 import {
   blocksPlay, faultCopy, faultFrom, needsTextMode, type GardenFault,
@@ -54,6 +55,7 @@ import { BattleLog } from './BattleLog';
 import { ActionBar } from './ActionBar';
 import { ChargeMeter } from './ChargeMeter';
 import { VictoryBanner } from './VictoryBanner';
+import { SpinOffer } from '../wheel/SpinOffer';
 import { Icon } from '../../components/icons';
 import { InfoBubble } from '../../ui/InfoBubble';
 import { GUIDES } from '../guide/guides';
@@ -190,6 +192,8 @@ export function EveGardenPage() {
    */
   const [weakHits, setWeakHits] = useState<readonly number[]>([]);
   const [battle, setBattle] = useState<BattleDto | null>(null);
+  // A fight is watched as much as touched: don't let the phone dim mid-round.
+  useWakeLock(battle?.outcome === 'Fighting');
   const [busy, setBusy] = useState<Busy>('idle');
   const [mapOpen, setMapOpen] = useState(false);
   const [victory, setVictory] = useState<
@@ -1003,6 +1007,10 @@ export function EveGardenPage() {
         </p>
       )}
 
+      {/* The log is a strip above the board and the pad sits under it, so the
+          thumb never has to cross the picture. See `BattleLog`. */}
+      <BattleLog battle={battle} monster={monster} weakHits={weakHits} />
+
       <div className="garden-stage-wrap">
         {/* Behind the canvas, which is transparent so this shows through — see
             the header of `GardenBackdrop`. */}
@@ -1066,14 +1074,12 @@ export function EveGardenPage() {
           </p>
         )}
 
-
-        <BattleLog battle={battle} monster={monster} weakHits={weakHits} />
       </div>
 
       {/* The controller: the move pad on the left, today's charges on the right,
           side by side on every width. The meter is a picture of the day, never
           a control — logging happens on the pages that own it. */}
-      <div className="garden-controls">
+      <div className="garden-controls" data-no-pull>
         <ActionBar
           actions={progress?.actions ?? []}
           allActions={allActions}
@@ -1121,7 +1127,16 @@ export function EveGardenPage() {
           islandComplete={isIslandComplete(world, island)}
           nextIslandName={nextIslandName}
           onDismiss={() => { setVictory(null); setBattle(null); }}
-        />
+        >
+          {/* One bonus spin per island boss, on top of the day's own. */}
+          {victory.monster.type === 'Boss' && memberId && coupleId ? (
+            <SpinOffer
+              label="Bonus spin"
+              title="Boss bonus spin"
+              onSpin={() => spinBossWheel(memberId, coupleId, victory.monster.id)}
+            />
+          ) : null}
+        </VictoryBanner>
       )}
 
     </section>
