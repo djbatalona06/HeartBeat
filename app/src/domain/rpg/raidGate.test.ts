@@ -4,11 +4,11 @@ import {
   CLOCK_SKEW_MS, NO_BONUS, PRESENCE_WINDOW_MS, bossEntryBlockedBecause, partnerAtGate,
   partnerGateApplies, togetherBonus, togetherXp,
   affinityRank, canEnter, gateCards, gateDecision, gateGreeting, mostFavoured,
-  statBubbles, tierForRank, toNextRank, withAffinity,
+  MASCOT_MIN_STAT_LEVEL, WHEEL_MIN_REACH, mascotStatLevel, statBubbles, tierForRank, toNextRank, wheelPoints, wheelSpokes, withAffinity,
 } from './raidGate';
 import { COMPANION_KITS } from './companionSkills';
 import { MASCOT_ROSTER } from '../../features/pet/mascots/roster';
-import { RAID_STATS } from './raidStats';
+import { RAID_STATS, raidSheet } from './raidStats';
 import { TIERS, TIER_STAT_LEVELS } from './tiers';
 import { STAGES_PER_ISLAND } from './world';
 
@@ -82,19 +82,51 @@ describe('the cards', () => {
     for (const card of cards) expect(MASCOT_ELEMENTS[card.themeId]).toBe(card.element);
   });
 
-  it('reads affinity, and defaults everybody to a fresh rank one', () => {
-    const cards = gateCards({ affinity: { pony: AFFINITY_RANKS[2] } });
+  it('still records affinity, but it does not set strength', () => {
+    const cards = gateCards({ petLevel: 12, affinity: { pony: AFFINITY_RANKS[4] } });
     const pony = cards.find((c) => c.themeId === 'pony')!;
     const kitty = cards.find((c) => c.themeId === 'kitty')!;
-    expect(pony.rank).toBe(3);
-    expect(pony.tier).toBe('epic');
+    expect(pony.affinity).toBe(AFFINITY_RANKS[4]);
     expect(kitty.affinity).toBe(0);
-    expect(kitty.rank).toBe(1);
-    expect(kitty.tier).toBe('common');
+    // The one you always pick is worth no more than the one you never have.
+    expect(pony.source.statLevel).toBe(kitty.source.statLevel);
+    expect(pony.tier).toBe(kitty.tier);
+  });
+
+  it('prices every mascot at the couple\'s level, identically, at every level', () => {
+    for (let level = 1; level <= 50; level += 1) {
+      const cards = gateCards({ petLevel: level });
+      expect(new Set(cards.map((c) => c.source.statLevel)).size, `level ${level}`).toBe(1);
+      expect(new Set(cards.map((c) => c.tier)).size, `level ${level}`).toBe(1);
+      for (const card of cards) expect(card.level).toBe(level);
+    }
+  });
+
+  it('never lets strength fall as the level rises, and tops out in the mythic band', () => {
+    let last = 0;
+    for (let level = 1; level <= 50; level += 1) {
+      const now = gateCards({ petLevel: level })[0].source.statLevel;
+      expect(now, `level ${level}`).toBeGreaterThanOrEqual(last);
+      last = now;
+    }
+    expect(last).toBeLessThanOrEqual(TIER_STAT_LEVELS.mythic.max);
+  });
+
+  it('floors a fresh companion at two points, so it always shows two stats', () => {
+    expect(MASCOT_MIN_STAT_LEVEL).toBe(2);
+    expect(mascotStatLevel(1)).toBe(2);
+    expect(mascotStatLevel(0)).toBe(2);
+    expect(mascotStatLevel(30)).toBe(30);
+    // The regression: Foxglove and Marigold used to deal their single point to
+    // one stat and show nothing on the rest.
+    for (const card of gateCards()) {
+      const nonZero = RAID_STATS.filter((s) => raidSheet([card.source]).total[s] > 0);
+      expect(nonZero.length, card.themeId).toBeGreaterThanOrEqual(2);
+    }
   });
 
   it('gives each one a raid contribution inside its own tier band', () => {
-    for (const card of gateCards({ affinity: { shinobi: 9999 } })) {
+    for (const card of gateCards({ petLevel: 50 })) {
       const band = TIER_STAT_LEVELS[card.tier];
       expect(card.source.tier).toBe(card.tier);
       expect(card.source.statLevel, card.themeId).toBeGreaterThanOrEqual(band.min);
@@ -258,11 +290,74 @@ describe('the gate\'s bubbles', () => {
     }
   });
 
-  it('fills further as a companion climbs its ranks', () => {
+  it('fills further as the couple levels', () => {
     const fresh = gateCards().find((c) => c.themeId === 'pony')!;
-    const seasoned = gateCards({ affinity: { pony: 9999 } }).find((c) => c.themeId === 'pony')!;
+    const seasoned = gateCards({ petLevel: 40 }).find((c) => c.themeId === 'pony')!;
     const sum = (card: typeof fresh) => statBubbles(card).reduce((n, b) => n + b.fill, 0);
     expect(sum(seasoned)).toBeGreaterThan(sum(fresh));
+  });
+});
+
+describe('the gate\'s stat wheel', () => {
+  it('has one spoke per raid stat, in the same order on every card', () => {
+    for (const card of gateCards()) {
+      expect(wheelSpokes(card).map((s) => s.stat), card.themeId).toEqual([...RAID_STATS]);
+    }
+  });
+
+  it('marks exactly the stats a card leans on, and every one of them carries points', () => {
+    for (const card of gateCards()) {
+      const spokes = wheelSpokes(card);
+      expect(spokes.filter((s) => s.leans).map((s) => s.stat), card.themeId)
+        .toEqual(expect.arrayContaining(card.leans.filter((stat) => spokes.find((s) => s.stat === stat)!.value > 0)));
+      for (const spoke of spokes) {
+        expect(spoke.fill).toBeGreaterThanOrEqual(0);
+        expect(spoke.fill).toBeLessThan(1);
+        if (!spoke.leans) expect(spoke.value, `${card.themeId} ${spoke.stat}`).toBe(0);
+      }
+    }
+  });
+
+  it('draws a stat it has clearly, none it lacks, and the strongest furthest out', () => {
+    for (const card of gateCards({ petLevel: 1 })) {
+      const spokes = wheelSpokes(card);
+      for (const spoke of spokes) {
+        expect(spoke.reach, `${card.themeId} ${spoke.stat}`).toBeLessThanOrEqual(1);
+        if (spoke.value === 0) expect(spoke.reach).toBe(0);
+        else expect(spoke.reach).toBeGreaterThanOrEqual(WHEEL_MIN_REACH * 0.7);
+      }
+      const strongest = [...spokes].sort((a, b) => b.value - a.value)[0];
+      expect(Math.max(...spokes.map((s) => s.reach))).toBe(strongest.reach);
+    }
+  });
+
+  it('reaches further out as the couple levels, for the same companion', () => {
+    const at = (level: number) => wheelSpokes(gateCards({ petLevel: level }).find((c) => c.themeId === 'shinobi')!);
+    const reaches = [1, 5, 15, 30, 50].map((level) => Math.max(...at(level).map((s) => s.reach)));
+    reaches.slice(1).forEach((r, i) => expect(r).toBeGreaterThanOrEqual(reaches[i]));
+    expect(reaches[4]).toBeGreaterThan(reaches[0]);
+  });
+
+  it('grows every spoke\'s fill, or holds it, as the couple levels', () => {
+    const at = (level: number) => wheelSpokes(gateCards({ petLevel: level }).find((c) => c.themeId === 'shinobi')!);
+    const low = at(2);
+    const high = at(40);
+    high.forEach((spoke, i) => expect(spoke.fill).toBeGreaterThanOrEqual(low[i].fill));
+  });
+
+  it('places spoke zero straight up and goes clockwise', () => {
+    const [up, right, down, left] = wheelPoints([1, 1, 1, 1], 10, { x: 50, y: 50 });
+    expect(up).toEqual({ x: 50, y: 40 });
+    expect(right).toEqual({ x: 60, y: 50 });
+    expect(down).toEqual({ x: 50, y: 60 });
+    expect(left).toEqual({ x: 40, y: 50 });
+  });
+
+  it('puts an empty spoke at the centre and clamps a fill it should not trust', () => {
+    const [empty, over, under] = wheelPoints([0, 7, -3], 10);
+    expect(empty).toEqual({ x: 0, y: 0 });
+    expect(Math.hypot(over.x, over.y)).toBeCloseTo(10, 1);
+    expect(under.x === 0 && under.y === 0).toBe(true);
   });
 });
 

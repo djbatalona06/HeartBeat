@@ -19,7 +19,7 @@ import { chargeOnWeakness, gardenAwardId, payingActivities } from '../../domain/
 import { bossOf, faceOf } from '../../domain/rpg/islands';
 import { fireSkill, kitFor, moveKeyFor, moveNamesFor } from '../../domain/rpg/companionSkills';
 import {
-  NO_BONUS, PRESENCE_REFRESH_MS, allyThemeId, bossEntryBlockedBecause, partnerAtGate, partnerGateApplies,
+  NO_BONUS, PRESENCE_REFRESH_MS, allyThemeId, bossEntryBlockedBecause, gateCards, partnerAtGate, partnerGateApplies,
   togetherBonus, togetherXp, type GateCard, type GateVerdict, type TogetherBonus,
 } from '../../domain/rpg/raidGate';
 import { partnerOf } from '../pairing/namingGate';
@@ -296,6 +296,14 @@ export function EveGardenPage() {
 
   const petXp = pet?.xp ?? 0;
   const petLevel = levelForXp(petXp);
+  /**
+   * The five cards, priced at the couple's level so each is worth the same.
+   * `gate.cards` (read once, off the affinity ledger) only decides whether the
+   * gate opens; what is *shown* and what the fight is *handed* come from here,
+   * which follows the level live — one assembly, so the number on the card is
+   * the number in the fight.
+   */
+  const cards = useMemo(() => gateCards({ petLevel }), [petLevel]);
   const kit = useMemo(() => kitFor(companion ?? undefined), [companion]);
   const petSprite = spriteKeyForTheme(companion ?? undefined);
   /**
@@ -348,8 +356,8 @@ export function EveGardenPage() {
     house: (pet?.house ?? {}) as House,
     garden,
     pets: residents ?? [],
-    mascot: gate?.cards.find((card) => card.themeId === companion)?.source,
-  })), [avatar, bag, petXp, pet?.house, garden, residents, gate, companion]);
+    mascot: cards.find((card) => card.themeId === companion)?.source,
+  })), [avatar, bag, petXp, pet?.house, garden, residents, cards, companion]);
   const moveNames = useMemo(() => moveNamesFor(kit), [kit]);
 
   /* ---- the worker ---- */
@@ -927,7 +935,7 @@ export function EveGardenPage() {
     }
     return (
       <RaidGate
-        cards={gate.cards}
+        cards={cards}
         verdict={gate.verdict}
         hour={new Date().getHours()}
         dark={dark}
