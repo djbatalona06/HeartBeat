@@ -60,6 +60,15 @@ export interface SceneHandle {
    * skill and the swing behind it can be paced apart rather than overlapping.
    */
   skill(vfx: string): Promise<void>;
+  /**
+   * The couple's move: your pet and the partner's, springing at the foe
+   * together. About a second and a half, and nothing at all under calm.
+   *
+   * The partner's pet is the one `setAlly` stands on its pedestal. When there
+   * is none (alone, not paired, or their pick has not arrived) an echo of your
+   * own pet joins in, so the move never plays with one body missing.
+   */
+  together(effectiveness: 'weak' | 'plain' | 'strong'): Promise<void>;
   /** The monster is down: fade it out and leave the ground clear. */
   defeat(): Promise<void>;
   /** The fight ended without a win. Walk the pet back to its spawn tile. */

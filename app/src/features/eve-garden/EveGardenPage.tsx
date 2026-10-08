@@ -718,11 +718,18 @@ export function EveGardenPage() {
           const line = mine.log.map((entry) => entry.who).lastIndexOf('Player');
           if (line >= 0) setWeakHits((seen) => [...seen, line]);
         }
-        await settle(scene.current?.strike(
-          'player-hits',
-          edge,
-          move ? { move, kit: kit.themeId } : undefined,
-        ));
+        // The couple's move is a small scene of its own: your pet and the
+        // partner's (or an echo of yours) hit together. Every other move is the
+        // companion's lunge and spark.
+        if (action?.style === 'Together') {
+          await settle(scene.current?.together(edge));
+        } else {
+          await settle(scene.current?.strike(
+            'player-hits',
+            edge,
+            move ? { move, kit: kit.themeId } : undefined,
+          ));
+        }
       }
 
       if (mine.outcome !== 'Fighting') {

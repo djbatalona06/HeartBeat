@@ -86,6 +86,7 @@ export function startGarden(
   return {
     strike: (blow: Blow, effectiveness, cast) => live()?.strike(blow, effectiveness, cast) ?? Promise.resolve(),
     skill: (vfx: string) => live()?.skill(vfx) ?? Promise.resolve(),
+    together: (effectiveness) => live()?.together(effectiveness) ?? Promise.resolve(),
     defeat: () => live()?.defeat() ?? Promise.resolve(),
     withdraw: () => live()?.withdraw(),
     // Straight to the scene, not through `live()`: `setAlly` before `create()`

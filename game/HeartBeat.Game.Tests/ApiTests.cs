@@ -23,6 +23,26 @@ public class ApiTests
     }
 
     [Fact]
+    public void TheTogetherCooldownSurvivesTheRoundTripAsTogetherCooldown()
+    {
+        string state = Api.BeginBattle(1, 7, "light", 6, 31)!; // the boss: it survives a Together
+        Assert.Equal(0, Parse(state).GetProperty("togetherCooldown").GetInt32());
+
+        // The first turn may be the monster's; hand the move back to the player
+        // by playing it out until it is theirs.
+        while (Parse(state).GetProperty("turn").GetString() != "Player") state = Api.MonsterMove(state)!;
+
+        string used = Api.Act(state, "together")!;
+        Assert.Equal(1, Parse(used).GetProperty("togetherCooldown").GetInt32());
+
+        // The monster moves, then the recharging move is refused and the turn is still ours.
+        string theirs = Api.MonsterMove(used)!;
+        string refused = Api.Act(theirs, "together")!;
+        Assert.Equal("Player", Parse(refused).GetProperty("turn").GetString());
+        Assert.Equal(1, Parse(refused).GetProperty("togetherCooldown").GetInt32());
+    }
+
+    [Fact]
     public void WorldListsTenIslandsWithCamelCaseFields()
     {
         JsonElement world = Parse(Api.World());

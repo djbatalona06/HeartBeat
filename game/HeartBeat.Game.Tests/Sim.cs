@@ -23,10 +23,13 @@ public static class Sim
 
         PlayerAction? heal = available.FirstOrDefault(a => a.Type == ActionType.Heal);
         BattleState opening = state;
-        PlayerAction best = available
+        // Best first. The pick below takes the first one that is ready, so when
+        // the couple's move is recharging the sim falls back to its next-best
+        // attack - which is what a person tapping the button would do too.
+        List<PlayerAction> attacks = available
             .Where(a => a.Type == ActionType.Attack)
             .OrderByDescending(a => Battle.PreviewDamage(opening, a, monster))
-            .First();
+            .ToList();
 
         int guard = 0;
         while (state.Outcome == Outcome.Fighting && guard++ < RoundCap)
@@ -34,7 +37,9 @@ public static class Sim
             if (state.Turn == Side.Player)
             {
                 bool hurt = state.Player.HpFraction < 0.35 && state.Player.Hp < state.Player.MaxHp;
-                PlayerAction pick = hurt && heal is not null ? heal : best;
+                PlayerAction pick = hurt && heal is not null
+                    ? heal
+                    : attacks.First(a => Battle.IsReady(state, a));
                 state = Battle.Act(state, pick.Id, monster, level);
             }
             else

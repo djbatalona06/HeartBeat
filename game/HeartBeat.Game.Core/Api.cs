@@ -173,7 +173,8 @@ public static class Api
         HitsLeft: s.Outcome == Outcome.Fighting ? Battle.HitsLeft(s, monster, level) : 0,
         Charges: s.Boosts.Charges,
         Stats: s.Boosts.Stats,
-        MoveNames: moveNames);
+        MoveNames: moveNames,
+        TogetherCooldown: s.TogetherCooldown);
 
     private static BattleState FromDto(BattleDto d) => new(
         d.MonsterId, d.Round, d.Turn,
@@ -185,6 +186,7 @@ public static class Api
         // a workout logged mid-fight lands on the next swing. The opening-only
         // ones (Nourish, Gratitude, Balance) have already done their work.
         Boosts = new Boosts(d.Charges?.Distinct().ToList() ?? [], d.Stats ?? RaidStats.None),
+        TogetherCooldown = Math.Max(0, d.TogetherCooldown),
     };
 
     private static Combatant FromDto(CombatantDto c) => new(

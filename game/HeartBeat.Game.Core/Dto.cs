@@ -96,7 +96,8 @@ public sealed record BattleDto(
     int HitsLeft,
     IReadOnlyList<Charge>? Charges = null,
     RaidStats? Stats = null,
-    IReadOnlyDictionary<string, string>? MoveNames = null);
+    IReadOnlyDictionary<string, string>? MoveNames = null,
+    int TogetherCooldown = 0);
 
 public sealed record ProgressDto(
     int Xp,

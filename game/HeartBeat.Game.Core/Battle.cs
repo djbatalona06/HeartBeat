@@ -33,6 +33,22 @@ public static class Battle
     public const int MonsterHealFadeRounds = 20;
 
     /// <summary>
+    /// How many of the player's own turns <c>Together</c> sits out after it is
+    /// used. One: use it, make one other move, and it is ready again.
+    /// </summary>
+    public const int TogetherCooldownTurns = 1;
+
+    /// <summary>The cooldown after a turn in which <paramref name="used"/> was played.</summary>
+    private static int CooldownAfter(BattleState state, PlayerAction? used) =>
+        used?.Style == Style.Together
+            ? TogetherCooldownTurns
+            : Math.Max(0, state.TogetherCooldown - 1);
+
+    /// <summary>Whether a move can be played this turn. Only <c>Together</c> ever cannot.</summary>
+    public static bool IsReady(BattleState state, PlayerAction action) =>
+        !(action.Style == Style.Together && state.TogetherCooldown > 0);
+
+    /// <summary>
     /// A fresh fight.
     ///
     /// The player always moves first when their speed is at least the
@@ -172,6 +188,9 @@ public static class Battle
         if (action is null) return Say(state, Side.Player, "Nothing happens.");
         string name = string.IsNullOrWhiteSpace(displayName) ? action.Name : displayName;
         if (action.UnlockLevel > level) return Say(state, Side.Player, $"{name} is not yours yet.");
+        // Refused without spending the turn, like any other move that cannot be
+        // played: a double tap on a recharging button costs nothing.
+        if (!IsReady(state, action)) return Say(state, Side.Player, $"{name} is catching its breath.");
 
         double wobble = Rng.Wobble(state.Seed, state.Round * 3);
         BattleState next = state;
@@ -231,7 +250,7 @@ public static class Battle
         Combatant ticked = TickEffects(next.Player, out int drained);
         if (drained > 0) next = Say(next, Side.Player, $"The drain takes {drained}.");
 
-        return Settle(next with { Player = ticked, Turn = Side.Monster }, monster);
+        return Settle(next with { Player = ticked, Turn = Side.Monster, TogetherCooldown = CooldownAfter(state, action) }, monster);
     }
 
     /// <summary>
@@ -251,7 +270,8 @@ public static class Battle
         {
             return Say(state with { Outcome = Outcome.Fled }, Side.Player, "You back away, and it lets you.");
         }
-        return Say(state with { Turn = Side.Monster }, Side.Player, "You try to back away. It follows.");
+        // A turn spent, so the couple's move gets its breath back like any other.
+        return Say(state with { Turn = Side.Monster, TogetherCooldown = CooldownAfter(state, null) }, Side.Player, "You try to back away. It follows.");
     }
 
     /// <summary>
@@ -367,7 +387,7 @@ public static class Battle
     public static int HitsLeft(BattleState state, Monster monster, int level)
     {
         int perHit = Actions.UnlockedAt(level)
-            .Where(a => a.Type == ActionType.Attack)
+            .Where(a => a.Type == ActionType.Attack && IsReady(state, a))
             .Select(a => PreviewDamage(state, a, monster))
             .DefaultIfEmpty(1)
             .Max();

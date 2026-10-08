@@ -98,6 +98,77 @@ public class BattleTests
         Assert.Contains("not yours yet", after.Log[^1].Text, StringComparison.Ordinal);
     }
 
+    /// <summary>A fight at a level where Together is open, and it is the player's turn.</summary>
+    private static BattleState AtLevelFive() => Battle.Begin(Sentinel, 5, 7u) with { Turn = Side.Player };
+
+    [Fact]
+    public void TogetherStartsReadyAndSitsOutOneTurnAfterItIsUsed()
+    {
+        BattleState state = AtLevelFive();
+        Assert.Equal(0, state.TogetherCooldown);
+
+        BattleState used = Battle.Act(state, Actions.Together.Id, Sentinel, 5);
+        Assert.Equal(Side.Monster, used.Turn);
+        Assert.Equal(Battle.TogetherCooldownTurns, used.TogetherCooldown);
+    }
+
+    [Fact]
+    public void ARechargingTogetherIsRefusedAndCostsNoTurn()
+    {
+        BattleState used = Battle.Act(AtLevelFive(), Actions.Together.Id, Sentinel, 5);
+        BattleState back = Battle.MonsterMove(used, Sentinel) with { Turn = Side.Player };
+        Assert.Equal(1, back.TogetherCooldown);
+
+        BattleState refused = Battle.Act(back, Actions.Together.Id, Sentinel, 5);
+        Assert.Equal(Side.Player, refused.Turn);
+        Assert.Equal(back.Monster.Hp, refused.Monster.Hp);
+        Assert.Equal(1, refused.TogetherCooldown);
+        Assert.Contains("catching its breath", refused.Log[^1].Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnyOtherMoveBringsTogetherBack()
+    {
+        BattleState used = Battle.Act(AtLevelFive(), Actions.Together.Id, Sentinel, 5);
+        BattleState next = Battle.MonsterMove(used, Sentinel) with { Turn = Side.Player };
+
+        BattleState struck = Battle.Act(next, Actions.Strike.Id, Sentinel, 5);
+        Assert.Equal(0, struck.TogetherCooldown);
+
+        BattleState again = Battle.MonsterMove(struck, Sentinel) with { Turn = Side.Player };
+        BattleState second = Battle.Act(again, Actions.Together.Id, Sentinel, 5);
+        Assert.Equal(Side.Monster, second.Turn);
+        Assert.Equal(Battle.TogetherCooldownTurns, second.TogetherCooldown);
+    }
+
+    [Fact]
+    public void AGuardOrAHealAlsoCountsAsTheTurnInBetween()
+    {
+        BattleState used = Battle.Act(AtLevelFive(), Actions.Together.Id, Sentinel, 5);
+        BattleState next = Battle.MonsterMove(used, Sentinel) with { Turn = Side.Player };
+        Assert.Equal(0, Battle.Act(next, Actions.Guard.Id, Sentinel, 5).TogetherCooldown);
+    }
+
+    [Fact]
+    public void OnlyTogetherEverRecharges()
+    {
+        foreach (PlayerAction action in Actions.All)
+        {
+            Assert.Equal(action.Style != Style.Together, Battle.IsReady(AtLevelFive() with { TogetherCooldown = 1 }, action));
+        }
+    }
+
+    [Fact]
+    public void TheCooldownNeverMakesAFightEndless()
+    {
+        // The same ceiling `EveryFightTerminates` holds, with the sim now
+        // alternating around the cooldown.
+        foreach (int level in new[] { 5, 12, 30 })
+        {
+            Assert.True(Sim.Fight(Sentinel, level, 99u).Round < Sim.RoundCap);
+        }
+    }
+
     [Fact]
     public void AChargeOnTheWeaknessHurtsMoreThanNoCharge()
     {
