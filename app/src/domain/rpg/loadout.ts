@@ -10,7 +10,7 @@ import { refineByItemId, type InventoryItem } from './inventory';
 import { levelForXp } from '../xp';
 import type { Avatar } from './types';
 import {
-  FURNITURE_RAID_ORDER, GEAR_RAID_ORDER, SPECIES_RAID_ORDER, RAID_STATS, raidSheet,
+  COMPANION_PASSIVE_SCALE, companionStatLevel, FURNITURE_RAID_ORDER, GEAR_RAID_ORDER, SPECIES_RAID_ORDER, RAID_STATS, raidSheet,
   sourceStatLevel, tierForPrice, type RaidSheet, type RaidStatKey, type StatSource,
 } from './raidStats';
 import { isAscendant } from './unlocks';
@@ -25,25 +25,21 @@ import { isAscendant } from './unlocks';
  * `gear.ts`: the rules module never learns that ownership exists.
  *
  * Nothing here decides what a number is *worth*. Every tier and every stat
- * level comes from `tiers.ts` by way of the catalogue entry's own rung, so
- * there is no second place a value can be tuned and no way for the shop's
- * price and the fight's arithmetic to drift apart.
+ * level comes from `tiers.ts` by way of the catalogue entry's own rung, except
+ * companions. They intentionally use the lower support bands in `raidStats.ts`:
+ * company can deepen a build, never replace the gear that defines it.
  */
 
 /** The shared pet's own level, as points. The headline number's contribution. */
 export const PET_LEVEL_STAT_STEP = 2;
 
-/** A companion counts for half of a gear item on the same rung: company that
- *  helps, never the thing that carries the sheet. */
-export const COMPANION_IMPACT = 0.5;
-
 /** The most bond can ever add, as a fraction. Approached, never reached. */
-export const COMPANION_RANK_LIFT = 0.6;
+export const COMPANION_RANK_LIFT = 0.3;
 
 /**
  * What bond rank adds, on a flattening curve: each rank adds half of what the
  * one before it did, so the first ranks are the ones that matter (rank 2 is
- * +30%, rank 5 +56%) and a maxed companion still sits under the cap.
+ * +15%, rank 5 +28%) and a maxed companion still sits under the cap.
  */
 export function companionRankLift(rank: number): number {
   return COMPANION_RANK_LIFT * (1 - 0.5 ** Math.max(0, rank - 1));
@@ -156,19 +152,19 @@ export function dyeSource(dyeId: string | undefined): StatSource | undefined {
   };
 }
 
-/** The companion at your side, at half a gear item's weight, lifted by the rank its bond has earned. */
+/** The companion at your side, on the lower support curve, lifted by its bond rank. */
 export function companionSource(pet: PetInstance | undefined): StatSource | undefined {
   if (!pet) return undefined;
   const kind = petKindById(pet.kindId);
   if (!kind) return undefined;
   const rank = rankOf(pet.bond);
-  const base = sourceStatLevel(kind.id, kind.rarity);
   return {
     id: kind.id,
     label: kind.name,
     tier: kind.rarity,
-    statLevel: Math.max(1, Math.round(base * COMPANION_IMPACT * (1 + companionRankLift(rank)))),
+    statLevel: companionStatLevel(kind.id, kind.rarity, companionRankLift(rank)),
     order: SPECIES_RAID_ORDER[kind.species],
+    passiveScale: COMPANION_PASSIVE_SCALE,
   };
 }
 

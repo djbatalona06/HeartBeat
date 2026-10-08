@@ -1,7 +1,7 @@
 import type { Element } from '../../features/eve-garden/engine/types';
 import { MASCOT_ROSTER, FALLBACK_MASCOT_ID } from '../../features/pet/mascots/roster';
 import { COMPANION_KITS, kitFor, type CompanionKit } from './companionSkills';
-import { RAID_STATS, raidSheet, sourceStatLevel, type RaidStatKey, type StatSource } from './raidStats';
+import { COMPANION_PASSIVE_SCALE, companionStatLevel, RAID_STATS, raidSheet, type RaidStatKey, type StatSource } from './raidStats';
 import { FIGHT_HALF_AT } from './loadout';
 import { TIERS, tierRank, type Tier } from './tiers';
 import { STAGES_PER_ISLAND } from './world';
@@ -62,8 +62,8 @@ export const MASCOT_RAID_ORDER: Record<string, readonly RaidStatKey[]> = {
 
 /**
  * Rounds fought for each rank. Five rungs, mapped onto the five tiers, so a
- * companion you have taken everywhere reads as *legendary* in exactly the sense
- * a legendary item does and the two numbers are comparable.
+ * companion you have taken everywhere reads as *legendary* for its rarity and
+ * its gate card, while its lower support curve keeps gear as the stronger line.
  *
  * The first rung is free, because a companion you have never taken out should
  * still be worth taking out.
@@ -157,8 +157,9 @@ export function gateCards(input: GateInput = {}): GateCard[] {
         id: `mascot-${kit.themeId}`,
         label: identity.name,
         tier,
-        statLevel: sourceStatLevel(`mascot-${kit.themeId}`, tier),
+        statLevel: companionStatLevel(`mascot-${kit.themeId}`, tier),
         order,
+        passiveScale: COMPANION_PASSIVE_SCALE,
       },
       leans: order.slice(0, 3).filter((stat) => RAID_STATS.includes(stat)),
       resonance: Math.round((combo - 1) * 1000) / 10,

@@ -2,14 +2,16 @@ import { useRef, useState } from 'react';
 import { db } from '../../db/database';
 import { putWorkEvents } from '../../db/repository';
 import { parseCalendarCsv, toCalendarCsv, type CsvPreview } from '../../domain/calendar/csv';
+import { parseCalendarIcs } from '../../domain/calendar/ics';
 import { todayKey } from '../../domain/day';
 import { SecondaryAction } from '../../ui/SecondaryAction';
 import { PrimaryAction } from '../../ui/PrimaryAction';
 import { useBusyAction } from '../../ui/useBusyAction';
 import { saveCalendarIcs } from './saveCalendar';
+import { syncCalendar } from './calendarSync';
 
 /**
- * The calendar's file end: a CSV in, a CSV out.
+ * The calendar's file end: a CSV or iCalendar file in, and both formats out.
  *
  * Nothing is written until the preview has been read and agreed to. A calendar
  * export is somebody else's file, it is usually long, and a bad guess about a
@@ -45,13 +47,16 @@ export function CalendarFile({ memberId, timeZone }: { memberId: string | null; 
     setNote(null);
     await perform(
       async () => {
-        const next = parseCalendarCsv(await readFile(file), { memberId, timeZone });
+        const text = await readFile(file);
+        const next = isIcsFile(file)
+          ? parseCalendarIcs(text, { memberId, timeZone })
+          : parseCalendarCsv(text, { memberId, timeZone });
         const rows = await db.work.bulkGet(next.events.map((e) => e.id));
         setKnown(rows.filter(Boolean).length);
         setPreview(next);
         setFileName(file.name);
       },
-      'That file would not open. A .csv exported from your calendar is what this wants.',
+      'That file would not open. Try a .csv or .ics export from your calendar.',
       clear,
     );
   };
@@ -71,12 +76,18 @@ export function CalendarFile({ memberId, timeZone }: { memberId: string | null; 
             source: 'import' as const,
           })),
         );
-        setNote(importNote(preview.events.length, known));
+        const synced = await syncCalendar();
+        setNote(`${importNote(preview.events.length, known)} ${synced.message}`);
         clear();
       },
-      'Something went wrong writing those in. Nothing was changed — try once more.',
+      'Something went wrong writing those in. Your calendar was left as it was.',
     );
   };
+
+  const syncNow = () => perform(
+    async () => { setNote((await syncCalendar()).message); },
+    'This phone could not start a calendar sync. Your events remain saved here.',
+  );
 
   const build = async (): Promise<string | null> => {
     const rows = await db.work.toArray();
@@ -124,7 +135,8 @@ export function CalendarFile({ memberId, timeZone }: { memberId: string | null; 
     <section className="cal-file">
       <h2 className="section-title">The calendar as a file</h2>
       <p className="section-sub">
-        Bring in an export from your own calendar, or take this one with you.
+        Import a CSV or ICS export from Apple, Google, or Outlook. Review it first, then sync it to
+        the calendar you share with your partner.
       </p>
 
       {preview ? (
@@ -139,12 +151,12 @@ export function CalendarFile({ memberId, timeZone }: { memberId: string | null; 
       ) : (
         <div className="cal-file-actions">
           <label className="cal-file-pick" data-busy={busy ? 'true' : undefined}>
-            Choose a file
+            Choose a CSV or ICS file
             <input
               ref={input}
               className="cal-file-input"
               type="file"
-              accept=".csv,text/csv,text/comma-separated-values"
+              accept=".csv,.ics,.ical,text/csv,text/comma-separated-values,text/calendar"
               disabled={busy || !memberId}
               onChange={(e) => void pick(e.target.files?.[0])}
             />
@@ -155,6 +167,9 @@ export function CalendarFile({ memberId, timeZone }: { memberId: string | null; 
           </div>
           <SecondaryAction disabled={busy} onClick={() => void saveIcs()}>
             Save for Apple or Google Calendar
+          </SecondaryAction>
+          <SecondaryAction busy={busy} disabled={busy || !memberId} onClick={() => void syncNow()}>
+            Sync with your partner
           </SecondaryAction>
         </div>
       )}
@@ -214,7 +229,7 @@ function ImportPreview({ preview, fileName, known, busy, onConfirm, onCancel }: 
 
       <div className="row">
         <PrimaryAction disabled={busy || preview.events.length === 0} onClick={onConfirm}>
-          Bring them in
+          Import & sync
         </PrimaryAction>
         <SecondaryAction onClick={onCancel}>Not now</SecondaryAction>
       </div>
@@ -258,4 +273,10 @@ function readFile(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error ?? new Error('could not read the file'));
     reader.readAsText(file);
   });
+}
+
+/** Extensions are the reliable signal on iOS; text/calendar is useful elsewhere. */
+function isIcsFile(file: File): boolean {
+  const name = file.name.toLowerCase();
+  return file.type === 'text/calendar' || name.endsWith('.ics') || name.endsWith('.ical');
 }

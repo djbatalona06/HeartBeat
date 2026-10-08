@@ -31,8 +31,8 @@ import { GUIDES } from '../../guide/guides';
  * you fell through.
  *
  * The companions are a list of buttons in DOM order, which is also reading
- * order, so the row and the tab order agree without a `tabindex` anywhere. On a
- * narrow phone the same row scrolls sideways; the layout lives in CSS.
+ * order, so the responsive grid and the tab order agree without a `tabindex`
+ * anywhere. CSS fills each available row without creating a sideways rail.
  */
 
 export interface RaidGateProps {
