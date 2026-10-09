@@ -13,6 +13,7 @@ import {
 } from './vfx';
 import { signatureFor, type SignaturePiece } from './signatures';
 import type { MinionSpot, Blow, Cast, SceneHooks, StepResult } from './events';
+import { shouldAnimateArena } from '../arenaMotion';
 
 /**
  * One stage of Eve's Garden, drawn.
@@ -61,6 +62,7 @@ interface Look {
 /** The ground the 3D floor stands in for. Everything else is still drawn from pixel art. */
 const FLOOR_SPRITES = ['tile-grass', 'tile-path'];
 const FLOOR_KEY = 'arena-floor';
+const BOARD_SHIMMER_KEY = 'arena-board-shimmer';
 /** How big a skirmish is drawn next to a stage's monster. */
 const MINION_SCALE = 0.6;
 
@@ -138,6 +140,10 @@ export class BattleGardenScene extends Phaser.Scene {
    * back towards the row the bob started on.
    */
   private petBob?: Phaser.Tweens.Tween;
+  /** Decorative sweep over the floor only; never part of movement or combat state. */
+  private boardShimmer?: Phaser.GameObjects.Image;
+  private boardShimmerTween?: Phaser.Tweens.Tween;
+  private created = false;
   /** The warning sign over the monster, while it is about to do something. */
   private sign?: { parts: Phaser.GameObjects.Rectangle[]; pulse: Phaser.Tweens.Tween };
 
@@ -175,9 +181,10 @@ export class BattleGardenScene extends Phaser.Scene {
     this.hooks = hooks;
   }
 
-  /** Calm changed mid-fight. Takes effect from the next beat; nothing restarts. */
+  /** Calm changes timing on the next beat and pauses decorative board motion immediately. */
   setCalm(calm: boolean): void {
     this.timing = strikePlan({ calm });
+    if (this.created) this.syncBoardShimmer();
   }
 
   private get still(): boolean {
@@ -222,6 +229,7 @@ export class BattleGardenScene extends Phaser.Scene {
 
     if (this.floor) {
       this.add.image(0, 0, FLOOR_KEY).setOrigin(0, 0).setDisplaySize(ARENA_WIDTH * size, ARENA_HEIGHT * size);
+      if (shouldAnimateArena(this.still, this.floor.dataset.arena3d === 'true')) this.startBoardShimmer();
     }
 
     for (let y = 0; y < ARENA_HEIGHT; y += 1) {
@@ -287,6 +295,7 @@ export class BattleGardenScene extends Phaser.Scene {
 
     this.input.keyboard?.on('keydown', this.onKey, this);
     this.input.on('pointerdown', this.onPointer, this);
+    this.created = true;
   }
 
   /**
@@ -353,6 +362,72 @@ export class BattleGardenScene extends Phaser.Scene {
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
+  }
+
+  /** A theme-sampled glint, drawn above the floor image and below board pieces. */
+  private startBoardShimmer(): void {
+    if (!this.floor || !shouldAnimateArena(this.still, this.floor.dataset.arena3d === 'true')) return;
+    if (this.boardShimmer) {
+      this.boardShimmer.setVisible(true);
+      this.boardShimmerTween?.resume();
+      return;
+    }
+    if (!this.textures.exists(BOARD_SHIMMER_KEY)) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 32;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      let color = [255, 255, 255];
+      try {
+        const tileCenterX = Math.floor(this.floor.width / ARENA_WIDTH / 2);
+        const tileCenterY = Math.floor(this.floor.height / ARENA_HEIGHT / 2);
+        const pixel = this.floor.getContext('2d')?.getImageData(
+          tileCenterX, tileCenterY, 1, 1,
+        ).data;
+        if (pixel && pixel[3] > 0) color = [pixel[0], pixel[1], pixel[2]];
+      } catch {
+        // A neutral light sweep is still a decorative fallback if pixel reads are disabled.
+      }
+      const tint = `rgba(${color[0]},${color[1]},${color[2]},`;
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+      gradient.addColorStop(0, `${tint}0)`);
+      gradient.addColorStop(0.42, `${tint}0.08)`);
+      gradient.addColorStop(0.5, `${tint}0.18)`);
+      gradient.addColorStop(0.58, `${tint}0.08)`);
+      gradient.addColorStop(1, `${tint}0)`);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      this.textures.addCanvas(BOARD_SHIMMER_KEY, canvas);
+    }
+    const boardWidth = ARENA_WIDTH * this.size;
+    const boardHeight = ARENA_HEIGHT * this.size;
+    const stripWidth = boardWidth * 0.28;
+    this.boardShimmer = this.add.image(-stripWidth, boardHeight / 2, BOARD_SHIMMER_KEY)
+      .setOrigin(0, 0.5)
+      .setDisplaySize(stripWidth, boardHeight)
+      .setDepth(0)
+      .setAlpha(0.5);
+    this.boardShimmerTween = this.tweens.add({
+      targets: this.boardShimmer,
+      x: boardWidth,
+      duration: 18_000,
+      delay: 2_500,
+      repeat: -1,
+      ease: 'Linear',
+    });
+  }
+
+  private syncBoardShimmer(): void {
+    const active = shouldAnimateArena(this.still, this.floor?.dataset.arena3d === 'true');
+    if (active) {
+      this.startBoardShimmer();
+      this.boardShimmer?.setVisible(true);
+      this.boardShimmerTween?.resume();
+    } else {
+      this.boardShimmer?.setVisible(false);
+      this.boardShimmerTween?.pause();
+    }
   }
 
   /**

@@ -33,6 +33,18 @@ describe('the arena paint', () => {
     }
   });
 
+  it('keeps the tactile highlight and shadow inside the theme-derived RGB range', () => {
+    for (const { id, colors } of packs) {
+      const paint = arenaPaint(tokensOf(colors));
+      for (const tone of [paint.highlight, paint.shadow]) {
+        for (const channel of tone) {
+          expect(channel, id).toBeGreaterThanOrEqual(0);
+          expect(channel, id).toBeLessThanOrEqual(1);
+        }
+      }
+    }
+  });
+
   /** If the two squares matched it would be a plain floor, and the board would lose its pattern. */
   it('keeps the two squares visibly different in every pack and palette', () => {
     for (const { id, colors } of packs) {
