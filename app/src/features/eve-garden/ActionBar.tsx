@@ -28,7 +28,6 @@ export interface ActionBarProps {
   allActions: ActionDto[];
   battle: BattleDto | null;
   monster: MonsterDto | null;
-  level: number;
   busy: boolean;
   kit: CompanionKit;
   charges: readonly Charge[];
@@ -64,7 +63,7 @@ function styleName(style: MoveStyle): string {
 }
 
 export function ActionBar({
-  actions, allActions, battle, monster, level, busy, kit, charges, stats, onAct, onFlee,
+  actions, allActions, battle, monster, busy, kit, charges, stats, onAct, onFlee,
 }: ActionBarProps) {
   const buzz = useBuzz();
   const fighting = battle?.outcome === 'Fighting';
@@ -150,17 +149,37 @@ export function ActionBar({
         </button>
       )}
 
-      <p className="garden-actions-hint">
-        {!fighting
-          ? `Level ${level}. Walk into something to start a fight.`
-          : !yourTurn
-            ? 'Waiting on them.'
-            : onWeakness
-              ? `Your move. Today's ${CHARGE_COPY[onWeakness].label.toLowerCase()} is on its weakness — every hit lands harder.`
-              : monster
-                ? `Your move. ${weaknessHint(monster)}`
-                : 'Your move.'}
-      </p>
     </div>
+  );
+}
+
+export interface ActionHintProps {
+  battle: BattleDto | null;
+  monster: MonsterDto | null;
+  level: number;
+  charges: readonly Charge[];
+}
+
+/**
+ * The one-line instruction above the board, kept out of the docked controls so
+ * the dock is only the moves, the flee button and the meter. It reads the same
+ * battle and charges as the pad, so the two never disagree.
+ */
+export function ActionHint({ battle, monster, level, charges }: ActionHintProps) {
+  const fighting = battle?.outcome === 'Fighting';
+  const yourTurn = fighting && battle?.turn === 'Player';
+  const onWeakness = chargeOnWeakness(charges, monster?.weakness);
+  return (
+    <p className="garden-actions-hint">
+      {!fighting
+        ? `Level ${level}. Walk into something to start a fight.`
+        : !yourTurn
+          ? 'Waiting on them.'
+          : onWeakness
+            ? `Your move. Today's ${CHARGE_COPY[onWeakness].label.toLowerCase()} is on its weakness — every hit lands harder.`
+            : monster
+              ? `Your move. ${weaknessHint(monster)}`
+              : 'Your move.'}
+    </p>
   );
 }

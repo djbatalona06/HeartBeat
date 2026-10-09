@@ -54,7 +54,7 @@ import { blowsFor, monsterMissed } from '../../domain/rpg/behaviours';
 import { Compass } from './Compass';
 import { WorldMap } from './WorldMap';
 import { BattleLog } from './BattleLog';
-import { ActionBar } from './ActionBar';
+import { ActionBar, ActionHint } from './ActionBar';
 import { ChargeMeter } from './ChargeMeter';
 import { VictoryBanner } from './VictoryBanner';
 import { SpinOffer } from '../wheel/SpinOffer';
@@ -1070,6 +1070,7 @@ export function EveGardenPage() {
       {/* The log is a strip above the board and the pad sits under it, so the
           thumb never has to cross the picture. See `BattleLog`. */}
       <BattleLog battle={battle} monster={opponent} weakHits={weakHits} />
+      <ActionHint battle={battle} monster={opponent} level={progress?.level ?? 1} charges={charges} />
 
       <div className="garden-stage-wrap">
         {/* Behind the canvas, which is transparent so this shows through — see
@@ -1145,7 +1146,6 @@ export function EveGardenPage() {
           allActions={allActions}
           battle={battle}
           monster={opponent}
-          level={progress?.level ?? 1}
           busy={busy !== 'idle'}
           kit={kit}
           charges={charges}
