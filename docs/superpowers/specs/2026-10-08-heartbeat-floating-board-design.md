@@ -1,6 +1,6 @@
 # HeartBeat Floating Battle Board and Logo Animation Demo — Design Spec
 
-**Status:** Proposed; awaiting user review before implementation  
+**Status:** Approved by user; implementation underway
 **Date:** 2026-10-08  
 **Repository:** `djbatalona06/HeartBeat` (`main` at inspection: `3c6906c`)
 
@@ -13,10 +13,15 @@ The goal is a visual-only refresh that makes the battle arena read as a gently f
 ## 2. Hard scope boundaries
 
 - Do not change combat rules, turn resolution, movement, walkable tiles, enemy behavior, game balance, data, persistence, or worker behavior.
+
 - Do not change the game-engine or scene public interfaces (`SceneHandle`, `SceneHooks`, worker protocols, or C# APIs).
+
 - Do not change the camera to perspective/isometric or add realistic 3D rendering. Preserve straight-down grid alignment and the current 2.5D character presentation.
+
 - Do not introduce a new fixed palette. Derive every board material and lighting treatment from the existing theme tokens and preserve all five themes in both light and dark modes.
+
 - Honor calm/reduced-motion behavior and the current Save-Data asset fallback; no ambient animation should run when motion is suppressed.
+
 - Make no changes until the written spec has been reviewed and approved.
 
 ## 3. Design options considered
@@ -40,13 +45,18 @@ Proceed with option A. Preserve the 11×7 game grid, its current top-down camera
 ### Motion and accessibility
 
 - Treat ambient movement as decoration only: no input, timing, combat, or tile-state dependence.
+
 - Reuse the current calm/reduced-motion state. In calm/reduced-motion, render a static board finish and avoid starting the ambient animation.
+
 - Preserve text/log accessibility; no information may be communicated only through animated color or texture.
+
 - Keep motion subtle enough not to compete with the existing pet/enemy idle motion or battle VFX.
 
 ### Theme behavior
 
 Use only values derived from existing theme tokens via `arenaPaint` (or a narrowly scoped extension of that existing pure palette function). Validate all five theme packs across dark and light variants. Preserve perceptible checker contrast and ensure grain/lighting do not obscure sprites or tile identity.
+
+The arena's color tokens must follow the pet theme chosen at the Raid Gate, not an unrelated app-level theme selection. Keep the current light/dark mode variant, and use the selected companion palette for both the 3D checker floor and the static checker-floor fallback. Keep this wiring internal to the arena/scene startup path; do not change public engine interfaces.
 
 ## 5. Logo-animation demo
 
@@ -55,8 +65,10 @@ Use only values derived from existing theme tokens via `arenaPaint` (or a narrow
 Use the existing square 512×512 PWA icon at `app/public/icons/icon-512.png` as the reference. The icon is a white cat silhouette with a bow on a dark plum ground; retain its recognizable silhouette and proportions. Produce three static material directions, each using the source icon and its existing brand colors:
 
 1. **Soft enamel:** smooth, friendly, shallow dimensional edges and gentle studio light.
-2. **Satin ceramic/resin:** matte-satin material with a restrained fine-grain surface, matching the board's tactile finish.
-3. **Glossy glass/chrome:** the skill's supplied default direction, with controlled reflections rather than a photoreal scene.
+
+1. **Satin ceramic/resin:** matte-satin material with a restrained fine-grain surface, matching the board's tactile finish.
+
+1. **Glossy glass/chrome:** the skill's supplied default direction, with controlled reflections rather than a photoreal scene.
 
 Present the still concepts for user selection/approval. Animate only the selected still, using a restrained cinematic reveal with a slow turn/light sweep and minimal particles so it remains recognizably the HeartBeat app icon. The logo demo is an asset demonstration, not an app/brand replacement.
 
@@ -67,29 +79,43 @@ The installed skill directs the workflow through MuAPI's Nano Banana 2 Edit for 
 ## 6. Architecture and implementation notes
 
 - The arena model remains theme-neutral and role-based; material roles should remain synchronized with `ARENA_ROLES` and the model test.
+
 - The board's static geometry remains generated deterministically by `app/tools/arena-glb.mjs`; if that artifact changes, regenerate it with the documented workspace script and run the model tests.
+
 - Keep the one-frame WebGL bake lifecycle intact: no overlapping WebGL contexts and no long-lived renderer.
+
 - Put any board-only ambient Phaser visuals inside the existing battle scene implementation. Do not add scene/engine interface methods or pass new gameplay data.
+
 - Any added texture/noise must be light-weight, deterministic where practical, and covered by a fallback if unsupported.
+
 - Do not create separate per-theme model files; theme repainting remains the source of color variation.
 
 ## 7. Validation and acceptance criteria
 
 1. All existing grid/model assertions still pass: 11×7 footprint, material-role parity, and board alignment.
-2. All five themes × light/dark variants retain clearly distinguishable adjacent checker colors, with grain and highlights staying within their token-derived palette.
-3. The arena remains the same size and orientation; pet, enemy, and minion sprites line up with their existing tiles and remain unobscured.
-4. Ambient board animation is absent in calm/reduced-motion and does not start under the existing Save-Data fallback.
-5. No changes occur in movement, battle resolution, public scene/worker interfaces, or C# game logic.
-6. Run focused arena/palette/scene tests, the app typecheck, and relevant app test suite; run the repo's documented build/visual gates when the local .NET/WASM prerequisites are available.
-7. The logo still concepts are reviewed before animation; the final short animation is shown as a demo asset and does not replace the in-app icon.
+
+1. All five themes × light/dark variants retain clearly distinguishable adjacent checker colors, with grain and highlights staying within their token-derived palette.
+
+1. The arena remains the same size and orientation; pet, enemy, and minion sprites line up with their existing tiles and remain unobscured.
+
+1. Ambient board animation is absent in calm/reduced-motion and does not start under the existing Save-Data fallback.
+
+1. No changes occur in movement, battle resolution, public scene/worker interfaces, or C# game logic.
+
+1. Run focused arena/palette/scene tests, the app typecheck, and relevant app test suite; run the repo's documented build/visual gates when the local .NET/WASM prerequisites are available.
+
+1. The logo still concepts are reviewed before animation; the final short animation is shown as a demo asset and does not replace the in-app icon.
 
 ## 8. Risks and fallback
 
 - A stronger floating silhouette is constrained by the existing exact-size, straight-down board render. Keep the lift cue subtle; if a visible side wall would require changing the camera or grid framing, omit that cue rather than changing the engine boundary.
+
 - Extra texture or motion may reduce clarity/performance on mobile. Prefer a small, low-contrast treatment and retain the static fallback.
+
 - Browser/platform reduced-motion preferences and app calm mode must both be respected through the existing motion controls; verify how those states reach the scene before implementation, and stop for user briefing if any new interface would be needed.
+
 - The requested MuAPI example generation cannot run until the required MuAPI CLI/API credential is available.
 
 ## 9. Approval checkpoint
 
-This spec records the approved visual direction, not authorization to implement. The next step is for the user to review this file and request any edits. Only after the user approves the written spec should an implementation plan be prepared; no code or generated assets should be produced before then.
+The user approved this spec and requested that Approach A be planned and built. The selected-pet theme requirement above was added by the user before implementation. Implementation remains limited to the approved visual-only scope; if satisfying it would require changing public engine interfaces or gameplay behavior, stop and brief the user before proceeding.

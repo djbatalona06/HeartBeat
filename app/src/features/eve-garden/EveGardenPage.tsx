@@ -59,6 +59,7 @@ import { ChargeMeter } from './ChargeMeter';
 import { VictoryBanner } from './VictoryBanner';
 import { SpinOffer } from '../wheel/SpinOffer';
 import { loadArenaFloor } from './arenaFloor';
+import { arenaTokensForPet } from './arenaTheme';
 import { Icon } from '../../components/icons';
 import { InfoBubble } from '../../ui/InfoBubble';
 import { GUIDES } from '../guide/guides';
@@ -122,7 +123,7 @@ export function EveGardenPage() {
   const client = useRef<GameClient | null>(null);
 
   const settings = useLiveQuery(loadSettings, []);
-  const { calm } = useTheme();
+  const { calm, mode } = useTheme();
   const zone = settings?.timeZone ?? FALLBACK_ZONE;
   const day = todayKey(zone);
 
@@ -535,12 +536,13 @@ export function EveGardenPage() {
    * scene rebuilt under a fight destroys the tween a round is awaiting. The
    * values catch up the moment the fight ends — a win changes them on purpose.
    */
-  const pose = useRef({ island, stage, dark, sprite });
-  if (battle?.outcome !== 'Fighting') pose.current = { island, stage, dark, sprite };
+  const pose = useRef({ island, stage, dark, sprite, mode });
+  if (battle?.outcome !== 'Fighting') pose.current = { island, stage, dark, sprite, mode };
   const sceneIsland = pose.current.island;
   const sceneStage = pose.current.stage;
   const sceneDark = pose.current.dark;
   const sceneSprite = pose.current.sprite;
+  const sceneMode = pose.current.mode;
 
   /**
    * Whether the fight is read rather than watched.
@@ -565,9 +567,12 @@ export function EveGardenPage() {
     let live = true;
 
     // The floor first, and only the floor: it draws one frame and lets go of the
-    // GPU before Phaser asks for it, and it is null (in well under a second) on
-    // calm, Save-Data, no WebGL or no connection, which starts the board as it was.
-    Promise.all([import('./scene/game'), loadArenaFloor(host.current, calmRef.current)])
+    // GPU before Phaser asks for it. Calm, Save-Data, and failures use the
+    // selected companion's static 2D floor rather than opening WebGL.
+    Promise.all([
+      import('./scene/game'),
+      loadArenaFloor(host.current, calmRef.current, arenaTokensForPet(companion, sceneMode)),
+    ])
       .then(([{ startGarden }, floor]) => {
         if (!live || !host.current) return;
         scene.current = startGarden(
@@ -598,7 +603,7 @@ export function EveGardenPage() {
       scene.current?.destroy();
       scene.current = null;
     };
-  }, [sceneIsland, sceneStage, sceneSprite, petSprite, companion, sceneDark, textMode, reload]);
+  }, [sceneIsland, sceneStage, sceneSprite, petSprite, companion, sceneDark, sceneMode, textMode, reload]);
 
   /**
    * Stop rendering while the tab is hidden.

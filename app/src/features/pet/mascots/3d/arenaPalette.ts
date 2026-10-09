@@ -13,9 +13,19 @@ import { luma, mix, type Rgb, type Tokens } from './gardenPalette';
  */
 export const ARENA_ROLES = ['tileA', 'tileB', 'grout'] as const;
 export type ArenaRole = (typeof ARENA_ROLES)[number];
+export interface ArenaCssTokens {
+  base: string;
+  text: string;
+  accent: string;
+  success: string;
+  danger: string;
+}
 
 export interface ArenaPaint {
   colors: Record<ArenaRole, Rgb>;
+  /** Theme-derived lighting tones for the tactile rim and grain. */
+  highlight: Rgb;
+  shadow: Rgb;
   sky: Rgb;
   bounce: Rgb;
   ambient: number;
@@ -35,6 +45,8 @@ export function arenaPaint(t: Tokens): ArenaPaint {
       tileB: mix(floor, dark ? paper : ink, dark ? 0.14 : 0.16),
       grout: mix(ink, t.accent, 0.18),
     },
+    highlight: mix(paper, t.accent, 0.08),
+    shadow: mix(ink, t.accent, 0.16),
     sky: mix(paper, t.accent, 0.12),
     bounce: mix(ink, t.accent, 0.2),
     ambient: dark ? 1.7 : 2.3,

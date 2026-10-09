@@ -5,8 +5,9 @@ import {
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { toRgb } from './cssColor';
-import { ARENA_ROLES, arenaPaint, type ArenaRole } from './arenaPalette';
+import { ARENA_ROLES, arenaPaint, type ArenaCssTokens, type ArenaRole } from './arenaPalette';
 import type { Tokens } from './gardenPalette';
+import { finishArenaCanvas } from '../../../eve-garden/arenaCanvas';
 
 /**
  * Draws the battle board's checkerboard **once**, then lets go of the GPU.
@@ -29,16 +30,29 @@ import type { Tokens } from './gardenPalette';
  * above it, which is what lets the picture and the walkable grid be one grid.
  */
 
-/** The tokens the board is painted from, read off the element that wears the theme. */
-function tokensOf(el: HTMLElement): Tokens | null {
+/** The tokens the board is painted from, read from the selected companion or host. */
+function cssTokensOf(el: HTMLElement): ArenaCssTokens | null {
   const style = getComputedStyle(el);
-  const read = (name: string) => toRgb(style.getPropertyValue(name).trim());
-  const base = read('--color-base');
-  const text = read('--color-text');
-  const accent = read('--color-accent');
-  const success = read('--color-success');
-  const danger = read('--color-danger');
-  return base && text && accent && success && danger ? { base, text, accent, success, danger } : null;
+  const read = (name: string) => style.getPropertyValue(name).trim();
+  const tokens = {
+    base: read('--color-base'),
+    text: read('--color-text'),
+    accent: read('--color-accent'),
+    success: read('--color-success'),
+    danger: read('--color-danger'),
+  };
+  return Object.values(tokens).every(Boolean) ? tokens : null;
+}
+
+function tokensOf(colors: ArenaCssTokens): Tokens | null {
+  const base = toRgb(colors.base);
+  const text = toRgb(colors.text);
+  const accent = toRgb(colors.accent);
+  const success = toRgb(colors.success);
+  const danger = toRgb(colors.danger);
+  return base && text && accent && success && danger
+    ? { base, text, accent, success, danger }
+    : null;
 }
 
 export interface ArenaBakeOptions {
@@ -49,6 +63,8 @@ export interface ArenaBakeOptions {
   rows: number;
   /** Pixels per tile in the picture. */
   tilePx: number;
+  /** Tokens from the selected Raid Gate companion, in the current light/dark mode. */
+  themeTokens?: ArenaCssTokens;
   /** Asked once the file has loaded: true means nobody is waiting any more, so do not touch the GPU. */
   cancelled?: () => boolean;
 }
@@ -60,7 +76,9 @@ export interface ArenaBakeOptions {
  */
 export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasElement | null> {
   const { host, src, cols, rows, tilePx, cancelled } = options;
-  const tokens = tokensOf(host);
+  const themeColors = options.themeTokens ?? cssTokensOf(host);
+  if (!themeColors) return null;
+  const tokens = tokensOf(themeColors);
   if (!tokens) return null;
 
   // Fetched and parsed *before* a renderer exists, so the WebGL context lives
@@ -128,6 +146,8 @@ export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasEl
     const ctx = out.getContext('2d');
     if (!ctx) return null;
     ctx.drawImage(renderer.domElement, 0, 0);
+    finishArenaCanvas(out, themeColors, cols, rows, tilePx);
+    out.dataset.arena3d = 'true';
     return out;
   } catch {
     return null;
