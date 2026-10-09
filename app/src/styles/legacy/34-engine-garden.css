@@ -83,13 +83,20 @@
 
 /* The canvas. Same treatment as the overworld's — Phaser sizes it, this only
    gives it somewhere to be and stops it stretching on a wide screen. */
+/* The board is given a height, not a width: Phaser runs in FIT mode, so it
+   scales the arena to whichever edge runs out first and centres it. A box of
+   fixed height therefore keeps the pinned board from taking the whole phone,
+   and the picture never stretches. */
 .garden-stage {
   display: flex;
+  align-items: center;
   justify-content: center;
-  min-height: 34vh;
+  width: 100%;
+  height: 36dvh;
 }
 .garden-stage canvas {
   max-width: 100%;
+  max-height: 100%;
   height: auto;
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
@@ -98,10 +105,18 @@
   image-rendering: pixelated;
 }
 
+/* The board stays in view while the log and the page scroll. Sticky needs a
+   tall ancestor, and `section.garden` holds the log and the dock too, so it
+   holds for the whole fight. The base fill is what lets the log scroll
+   *behind* the board rather than through the transparent canvas; the backdrop
+   paints over it, so the garden itself is unchanged. */
 .garden-stage-wrap {
-  position: relative;
+  position: sticky;
+  top: calc(env(safe-area-inset-top) + var(--space-2));
+  z-index: 1;
   display: grid;
   gap: var(--space-3);
+  background: var(--color-base);
 }
 
 /* The canvas, and the walking pad under it at the right. Under rather than
@@ -269,10 +284,10 @@
 .garden-action {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
   width: 100%;
   min-height: var(--tap);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) var(--space-2);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius);
   background: var(--color-surface);
@@ -288,8 +303,19 @@
 .garden-action:focus-visible { border-color: var(--color-accent); }
 .garden-action:active:not(:disabled) { transform: translateY(1px); }
 .garden-action:disabled { opacity: 0.55; cursor: default; }
-.garden-action-name { font-weight: 600; overflow-wrap: anywhere; }
-.garden-action-note { font-size: var(--text-sm); color: var(--color-text-muted); }
+/* Long move names wrap onto an even second line instead of a short orphan that
+   crowds the boost bar. */
+.garden-action-name {
+  font-weight: 600;
+  line-height: var(--line-tight);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.garden-action-note {
+  font-size: var(--text-sm);
+  line-height: var(--line-tight);
+  color: var(--color-text-muted);
+}
 .garden-action-list .is-wide { grid-column: 1 / -1; }
 /* The boost bar: how much today's charges and the raid sheet lift this move.
    A track and a fill, both from the palette, so it reads in every pack. */
@@ -304,9 +330,15 @@
   background: linear-gradient(to right, var(--color-success) var(--boost, 0%), var(--color-surface-muted) var(--boost, 0%));
 }
 @media (max-width: 420px) {
-  .garden-action { padding: var(--space-2); }
+  .garden-action { padding: var(--space-1) var(--space-2); }
   .garden-action-name { font-size: var(--text-sm); }
-  .garden-action-note { font-size: var(--text-xs); }
+  /* One line of note on a small phone, so every move keeps the same height. */
+  .garden-action-note {
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 /* Effectiveness is carried by a border, not a colour swap, so it survives every
    pack and both variants. */
@@ -426,6 +458,9 @@
 
 .garden-actions-hint,
 .garden-note { margin-top: var(--space-2); }
+/* The hint sits between the log and the pinned board now, not in the dock, so
+   it needs air below as well as above. */
+.garden-actions-hint { margin-bottom: var(--space-2); }
 
 /* A fault the garden survives — a picture that would not load, a move that did
    not land. Deliberately a card rather than the full-page `.nothere`: the
@@ -1151,7 +1186,9 @@
   justify-content: center;
   gap: var(--space-1);
 }
-.garden-action-name { justify-content: flex-start; }
+/* The icon sits closer to its word than the default gap, and the gap is in em
+   so it grows and shrinks with the name's own size. */
+.garden-action-name { justify-content: flex-start; gap: 0.35em; }
 .garden-action-name .icon, .raid-gate-enter .icon { flex-shrink: 0; }
 .garden-vial-legend .icon, .garden-vial-earned .icon {
   display: inline-block;
