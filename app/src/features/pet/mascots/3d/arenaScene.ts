@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { toRgb } from './cssColor';
 import { ARENA_ROLES, arenaPaint, type ArenaCssTokens, type ArenaRole } from './arenaPalette';
 import type { Tokens } from './gardenPalette';
-import { finishArenaCanvas } from '../../../eve-garden/arenaCanvas';
+import { finishArenaCanvas } from './arenaFinish';
 
 /**
  * Draws the battle board's checkerboard **once**, then lets go of the GPU.

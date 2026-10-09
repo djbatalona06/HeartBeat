@@ -55,3 +55,9 @@ The logo-animation demo remains independent of the board implementation. The sel
 - `git diff --check` — passed. Changed files remain in the approved visual-only area; no worker, C#, grid, or game-rule files changed.
 - Chromium preview — all five actual GLB theme renders passed in light and dark variants; the 390 px gallery had no horizontal overflow.
 - Repository-wide `npm test` — app tests passed, then the worker suite stopped the command with 16 failures across 2 files (SQLite `column index out of range` in holdings tests). No worker files are changed by this task; the repo-wide test command is not green.
+
+### Correction (2026-10-09)
+
+Re-run on the branch after merging `main` (which includes the pinned-board change from #150): `npm run typecheck`, `npm test` (3,080 app tests, 154 worker tests, game tests) and `APP_BASE=/ npm run build` all pass. The worker failures recorded above did not reproduce.
+
+The import boundary was also broken: `mascots/3d/arenaScene.ts` imported `finishArenaCanvas` from `eve-garden/arenaCanvas.ts`, which pulled `domain/rpg/arena` into the lazy `mascot3d` chunk. The shared finish now lives in `mascots/3d/arenaFinish.ts`. The build shows `mascot3d` is not modulepreloaded from `index.html`.
