@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, loadSettings, saveSettings } from '../../db/database';
-import { ensureIdentity, putCycle } from '../../db/repository';
+import { db, loadSettings } from '../../db/database';
+import { ensureIdentity, putCycle, setTracksCycle } from '../../db/repository';
 import {
   addDays, daysBetween, daysInMonth, monthOf, shiftMonth, sundayIndex, todayKey,
 } from '../../domain/day';
@@ -10,10 +10,12 @@ import { FLOWS, MOODS, PHASE_LABEL, SYMPTOM_GROUPS } from '../../domain/cycle/ta
 import {
   daysLate, periodStartsFrom, phaseFor, predict, type Prediction,
 } from '../../domain/cycle/predict';
+import { canChooseViewing, cycleSubject, type CycleViewing } from '../../domain/cycle/subject';
 import { Icon } from '../../components/icons';
 import { CycleLock } from './CycleLock';
 import { WellnessNote } from '../mood/WellnessNote';
 import { LockSettings } from './LockSettings';
+import { useCycleFacts } from './useCycleFacts';
 
 /**
  * The cycle page.
@@ -74,6 +76,10 @@ export function CycleSection() {
 function CycleBody() {
   const settings = useLiveQuery(loadSettings, []);
   const timeZone = settings?.timeZone ?? DEFAULT_TIMEZONE;
+  // Whose day this is: the viewer's. Reading a partner in another time zone
+  // shows their phase and "late" against this phone's calendar day, which can
+  // be a day off near midnight. Their zone is not stored per member, so fixing
+  // it needs a synced field; until then it is a known limit, not an oversight.
   const today = todayKey(timeZone);
 
   const [identity, setIdentity] = useState<{ memberId: string } | null>(null);
@@ -87,16 +93,25 @@ function CycleBody() {
     return () => { live = false; };
   }, []);
 
-  const myId = identity?.memberId ?? null;
+  // Settings first: it is the identity every other screen reads, and it is
+  // there before `ensureIdentity` has finished on a phone that has been used.
+  const myId = settings?.memberId ?? identity?.memberId ?? null;
   const tracksCycle = settings?.tracksCycle;
 
-  const { subjectId, byDay, prediction } = useCycleLog(tracksCycle, myId, today);
+  const facts = useCycleFacts(settings, myId);
+  const [viewing, setViewing] = useState<CycleViewing>('me');
+  const subjectId = cycleSubject(facts, viewing);
+  const { byDay, prediction } = useCycleLog(subjectId, today);
 
   if (settings && tracksCycle === undefined) {
     return <TrackingQuestion />;
   }
 
-  const canLog = Boolean(tracksCycle && myId);
+  // Logging is only ever into my own cycle. Reading my partner's, whether it is
+  // the only one or I chose it, is read-only: a day sheet on their cycle would
+  // write a row under my id.
+  const canLog = Boolean(tracksCycle && myId && subjectId === myId);
+  const chooseViewing = canChooseViewing(facts);
 
   return (
     <section className="panel cycle-panel" aria-labelledby="cycle-heading">
@@ -107,6 +122,24 @@ function CycleBody() {
       <p className="section-sub">
         {canLog ? 'Yours to log. Both of you can see it.' : 'Theirs to log. You can see it.'}
       </p>
+
+      {/* Only when both of you log: otherwise there is one cycle to read. */}
+      {chooseViewing ? (
+        <div className="row" role="group" aria-label="Whose cycle to show">
+          <button
+            type="button" className="chip" aria-pressed={viewing === 'me'}
+            onClick={() => setViewing('me')}
+          >
+            Mine
+          </button>
+          <button
+            type="button" className="chip" aria-pressed={viewing === 'partner'}
+            onClick={() => setViewing('partner')}
+          >
+            Theirs
+          </button>
+        </div>
+      ) : null}
 
       {subjectId ? (
         <Summary prediction={prediction} today={today} />
@@ -145,22 +178,15 @@ function CycleBody() {
 }
 
 /**
- * Whose log this page is showing, and what follows from it.
+ * The log of one member, and what follows from it.
  *
  * Every row, not just this month's: the averages the forecast rests on need the
- * whole history, and a month's worth would shorten it to nothing. Mine if I
- * track; otherwise whoever else has written rows, which after a sync is my
- * partner.
+ * whole history, and a month's worth would shorten it to nothing. Whose it is
+ * was decided by `cycleSubject`; this only reads and forecasts.
  */
-function useCycleLog(tracksCycle: boolean | undefined, myId: string | null, today: DayKey) {
+function useCycleLog(subjectId: string | null, today: DayKey) {
   const allRows = useLiveQuery(async () => db.cycles.toArray(), []);
   const all = useMemo(() => allRows ?? [], [allRows]);
-
-  const subjectId = useMemo(() => {
-    if (tracksCycle) return myId;
-    const theirs = all.find((row) => row.memberId !== myId);
-    return theirs?.memberId ?? null;
-  }, [tracksCycle, myId, all]);
 
   const entries = useMemo(
     () => all.filter((row) => row.memberId === subjectId).sort((a, b) => a.day.localeCompare(b.day)),
@@ -178,7 +204,7 @@ function useCycleLog(tracksCycle: boolean | undefined, myId: string | null, toda
     [entries, today],
   );
 
-  return { subjectId, byDay, prediction };
+  return { byDay, prediction };
 }
 
 interface CycleCalendarProps {
@@ -420,13 +446,13 @@ function TrackingQuestion() {
         <div className="row">
           <button
             type="button" className="chip"
-            onClick={() => void saveSettings({ tracksCycle: true })}
+            onClick={() => void setTracksCycle(true)}
           >
             Mine
           </button>
           <button
             type="button" className="chip"
-            onClick={() => void saveSettings({ tracksCycle: false })}
+            onClick={() => void setTracksCycle(false)}
           >
             My partner&rsquo;s
           </button>

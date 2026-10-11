@@ -1,11 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, loadSettings } from '../../db/database';
+import { loadSettings } from '../../db/database';
 import { todayKey } from '../../domain/day';
 import { DEFAULT_TIMEZONE } from '../../domain/types';
 import {
   ADVISORY, lockedLanes, openLanes, sharedQuote,
 } from '../../domain/support/shared';
 import { LANE_NAMES } from '../../domain/support/lanes';
+import { partnerTracksCycle as partnerTracks } from '../../domain/cycle/subject';
+import { useCycleFacts } from '../cycle/useCycleFacts';
 
 /**
  * One line the two of you are on the same page of today.
@@ -58,19 +60,14 @@ export function WellnessNote({ placement }: WellnessNoteProps) {
   const day = todayKey(settings?.timeZone ?? DEFAULT_TIMEZONE);
 
   // Whether the *other* one tracks, which is what opens the `cycle-partner`
-  // lane. Read from the members table rather than assumed, and scoped to this
-  // couple.
-  const partners = useLiveQuery(
-    async () => (coupleId
-      ? db.members.where('coupleId').equals(coupleId).toArray()
-      : []),
-    [coupleId],
-  );
+  // lane. Not read off their member row: `Member.tracksCycle` is never served,
+  // so on this phone it was always false and the lane never opened. It is read
+  // from what does sync (their cycle rows) and from this person's own answer.
+  const facts = useCycleFacts(settings, settings?.memberId ?? null);
 
   if (!settings || !coupleId) return null;
 
-  const partnerTracksCycle = (partners ?? [])
-    .some((member) => member.id !== settings.memberId && member.tracksCycle === true);
+  const partnerTracksCycle = partnerTracks(facts);
 
   const input = {
     gender: settings.gender,

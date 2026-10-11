@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, loadSettings } from '../../db/database';
+import { loadSettings } from '../../db/database';
 import { ensureIdentity } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { LANE_NAMES, lanesFor } from '../../domain/support/lanes';
+import { partnerTracksCycle as partnerTracks } from '../../domain/cycle/subject';
+import { useCycleFacts } from '../cycle/useCycleFacts';
 import { ideasForDay } from '../../domain/support/ideas';
 import { quoteForDay } from '../../domain/support/quotes';
 import { PageTitle } from '../../ui/layout/PageTitle';
@@ -34,25 +36,16 @@ export function SupportPage() {
   }, []);
 
   const memberId = settings?.memberId ?? identity?.memberId;
-  const coupleId = settings?.coupleId ?? identity?.coupleId;
   const day = todayKey(settings?.timeZone ?? 'America/Los_Angeles');
 
-  const members = useLiveQuery(
-    async () => (coupleId ? db.members.where('coupleId').equals(coupleId).toArray() : []),
-    [coupleId],
-  );
-  const partner = useMemo(
-    () => (members ?? []).find((m) => m.id !== memberId),
-    [members, memberId],
-  );
-
-  // `Settings.tracksCycle` is the answer for this device; the partner's copy
-  // lives on their member row, which is the only place it can be read from
-  // here. See the note on Settings.tracksCycle for why the two differ.
+  // `Settings.tracksCycle` is the answer for this device. The partner's is not
+  // on their member row (that copy is never served), so it is read from what
+  // does sync: their cycle rows, and this person's own "my partner's" answer.
+  const cycleFacts = useCycleFacts(settings, memberId ?? null);
   const lanes = lanesFor({
     gender: settings?.gender,
     tracksCycle: settings?.tracksCycle === true,
-    partnerTracksCycle: partner?.tracksCycle === true,
+    partnerTracksCycle: partnerTracks(cycleFacts),
   });
 
   return (
