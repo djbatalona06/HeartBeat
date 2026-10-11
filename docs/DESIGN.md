@@ -40,7 +40,7 @@ push subscriptions so reminders can be delivered when the app is closed.
 
 - `domain/` — pure. No React, no Dexie. Plain data in, plain data out, with
   tests colocated. This is why vitest runs in a `node` environment.
-- `db/` — Dexie schema plus `repository.ts`. **Every write goes through the
+- `db/` — Dexie schema plus the `repository/` directory (one module per section behind a barrel). **Every write goes through the
   repository**; components import those functions and `await` them, and the live
   query re-renders. Nothing in `features/` touches the database directly.
 - `features/<name>/XxxPage.tsx` — one page per route, named exports, no default
@@ -172,32 +172,26 @@ error. Giving up on one photograph is the smaller loss.
 
 ## Dashboard
 
-The mascot in the centre, six circular doors evenly spaced around it, and the
-pet's XP bar underneath. It replaced a 2×2 grid that had grown to five tiles
-and left the fifth one a half-width orphan.
+Home is the pet and what today still wants, in three panes you swipe between
+(`SwipePane`, see `docs/ONE-SCROLL.md`):
 
-| Door | Contents |
+| Pane | Contents |
 |---|---|
-| Mood | Vertical 1–10 meters for hunger, joy, moody — both partners |
-| Move | Workout log; camera proof front and back |
-| Work | Shared calendar, populated by file import |
-| Cycle | Period tracking, optionally behind a PIN |
-| Party | Party sheet: gear, pets, the boss fight |
-| Settings | Pairing state, theme picker, partner name and photo, calendar |
+| Today | The mascot with its XP bar, the log row, an invite if the phone is not paired, and today's dailies |
+| Us | What you have done: the vitals, the two of you read side by side (paired phones only), and the unlock goals |
+| Adventure | The way into Eve's Garden, and what has been happening |
 
-Six is the ceiling — past that the bubbles crowd the pet and the ring stops
-reading as a ring. The right-hand arc is what you did today, the left-hand arc
-is everything else, and Party takes the sixth slot because it is the only route
-with neither a tab nor another door on this screen.
+It used to be a ring of six circular doors around the mascot. The ring is gone:
+it had its own six-door ceiling, the tab bar had a different six-tab ceiling,
+and the two disagreed on two of the six destinations they both carried. Every
+destination now lives on the bottom tab bar (Home, Quests, Shop, Partner, Bag,
+Birb) or behind the menu button, both defined in `app/src/nav.ts`, which frees
+Home to answer "what does today still want from me" rather than "where do I go".
 
-**The geometry is `features/dashboard/layout.ts`, and it is pure.** The page
-measures its own box with a `ResizeObserver` and hands the numbers over;
-`ringLayout` gives back a centre, a radius, a mascot diameter and one slot per
-door, and reports `fits: false` rather than quietly overlapping when the box is
-too small. That split is the only reason the spacing can be tested at all —
-Vitest runs in `environment: 'node'` and never sees a `.tsx` file. Bubble size
-is `--tap` plus `--space-5`, read off the document rather than typed in, so the
-48px tap floor holds wherever the tokens move.
+Mood, Move, Work, Tasks, Eve's Garden and the settings page ("You") are in the
+menu. The cycle log is the last section of Mood; `/cycle` remains as a
+redirect for notification links and is findable by the word "cycle" through the
+command menu's aliases.
 
 **The mascot follows the theme, not the couple.** Theme already lives in
 `localStorage` per device, so the two phones show different pets by
@@ -392,7 +386,7 @@ This is enforced by shape rather than by discipline. `neglect()` returns exactly
 `{ value, streak }`: there is no field for a cost, so a future edit that wants
 one has to change the signature and the test that pins the key set. No type
 outside `BossFight` carries a health field at all, and a test in
-`db/rpg.repository.test.ts` walks a person through missing every Daily for a
+`db/repository/rpg.test.ts` walks a person through missing every Daily for a
 month and asserts that not one pool came out smaller.
 
 ### What survives from Habitica, and what was changed
@@ -442,8 +436,8 @@ that simply said one.
 - Rendered as a pull quote rather than a panel: it is something to read, not
   something to do, and a bordered card with a title competes with the three
   meters the page is for.
-- `WellnessNote`, not `WellnessMessageCard` — `features/eve-garden/WellnessCards.tsx`
-  already exists and is a different thing.
+- `WellnessNote` (`features/mood/WellnessNote.tsx`), not a card: it is something
+  to read, not a panel to act on.
 - The locked placement carries one line of small print: **"Advisory only. Not
   contraception."** Said there and only there, because a warm sentence beside a
   cycle calendar is the context in which somebody might read more into it than
@@ -577,8 +571,8 @@ The three used to be spread across `/birb` — the sheet tucked under `worn`, th
 boss and the adventures each with their own flag — which put the seven raid
 stats on the tab about dressing a bird, and gave the one screen in the app that
 cannot render from IndexedDB no home of its own. `/birb` is now the bird and the
-room it lives in. `Boss` came out of `PartyPage.tsx` into its own file while
-moving; nothing about it was shared with the page.
+room it lives in. `Boss` (`features/party/Boss.tsx`) came out of the old party page into its own
+file while moving; nothing about it was shared with the page.
 
 The raid sheet is rendered in **two** places — `/raid` and the Bag — from one
 implementation. Its old comment argued it belonged "at the wardrobe, not
@@ -711,105 +705,36 @@ which used to mean they never synced and never appeared in a "mine" view again.
 `domain/identity/rekey.ts` is the description of the repair (which fields on
 which tables carry an id, which rows have to move rather than be updated in
 place, and who wins when two rows want the same day), and `rekeyIdentity` in
-`db/repository.ts` walks it inside one transaction.
+`db/repository/identity.ts` walks it inside one transaction.
 `features/pairing/usePairing.ts` notices the identity change and runs it — on
 the first pairing, and again if the couple ever re-pairs.
 
 ## Study
 
-> **Retired.** The in-app Study screen and the one-file `study/index.html` were
-> removed. What remains of the idea is the XP link (`/api/study/*`, Settings →
-> Connections), which lets a separate study app feed the pet. The notes below are
-> kept as the record of how the screen worked.
+There is no Study screen. The in-app flashcards and quiz, and the one-file
+`study/index.html` build of them, were removed. What remains is the **XP link**:
+a separate study app, on its own origin, can report a finished session and the
+shared pet gains XP for it. Nothing else crosses.
 
-A spaced-repetition deck of 226 cards on software development — JavaScript,
-TypeScript, React, Git, HTTP, SQL, data structures, the shell, and the craft
-itself. Flashcards with four grades, and a timed multiple-choice quiz over the
-same material.
-
-It is here rather than in an app of its own for one reason: HeartBeat already
-knows how to make a daily habit feel worth keeping, and that machinery — the
-pet, the avatar, the payout — is the expensive part. A study page bolted onto it
-inherits all of it for the cost of one screen.
-
-### It is local-only, and that is a decision
-
-`studyProgress` and `studySessions` are the first two stores that deliberately
-never reach the wire. The couple's sync exists so two people can read each
-other's day; a flashcard queue is not that. Keeping it local costs nothing and
-avoids a D1 migration, a CHECK-constraint rebuild and a CORS surface for data
-nobody else was going to read.
-
-The schema would have fought it anyway: `entries` is uniquely indexed on
-(member, kind, day), so per-card review state has no shape that fits.
-
-### The scheduler is SM-2 with the punishment removed
-
-`domain/study/srs.ts`. The arithmetic is SM-2's — an ease factor that drifts
-with how hard a card keeps being, intervals that multiply by it, the fixed 1-day
-and 6-day opening steps. Two things are changed.
-
-`again` is mapped to SM-2 quality 2 rather than 0. Quality 0 costs 0.8 of ease
-in a single press, two-thirds of the whole span between the floor and the start;
-at 2 it costs 0.32. One blank night should not undo a month of a card being
-easy. And a lapsed card is *not* reset to the beginning — it comes back today
-and keeps the ease it earned.
-
-That is the same ruling the RPG layer runs on, applied to forgetting: **nothing
-in daily life takes anything away.** A card you cannot recall has no cost field
-to charge. `srs.test.ts` pins it structurally — it asserts the exact set of keys
-a review returns, so a future edit cannot add a penalty without changing a test
-that says why it should not exist.
-
-### Payment is by cards seen, never by accuracy
-
-`domain/study/payout.ts`. A sitting is priced from the cards reviewed, weighted
-by the same `DIFFICULTY_WEIGHT` a task uses, and not at all by how many were got
-right. An economy that pays for accuracy pays you to review the deck you have
-already learnt, which is exactly the deck worth least.
-
-Rates sit below `task.ts` on purpose — twenty cards land near one medium task,
-not twenty times it. The guard against farming is a cap of 60 paid cards per
-day rather than one sitting per day, because two sittings in one evening is a
-good evening and the app should not have an opinion about it. Past the cap the
-page says so and keeps working.
-
-Stopping early still pays for what was done. Paying only a completed sitting
-would make the honest choice to stop at eight cards worth less than grinding
-through forty.
-
-### Not a tab
-
-Six along the bottom is already the ceiling on a phone. Study is a dashboard
-tile and a route, like `/cycle` and `/party`.
-
-### The same screen, built twice
-
-`features/study/StudyPage.tsx` is the only component mounted in two places: in
-the app against Dexie, and in `study/index.html` against localStorage. The seam
-is `db/studyStore.ts` — an interface the screen takes as a prop. It never
-imports `db`, because a single-file build that pulled in IndexedDB would be
-both large and broken.
-
-`scripts/build-study.mjs` inlines the bundle, the stylesheet and both typefaces
-into one file and then refuses to write it if any outward reference survives —
-the same assertion `gift/build.mjs` ends with, for the same reason. CI rebuilds
-it and fails if the committed artefact has drifted.
-
-**The trap it exists to handle:** opened as a `file://` page, Chrome treats the
-origin as opaque and `localStorage` *throws* rather than returning null. So the
-standalone store wraps every read and write and falls back to memory, the page
-says plainly that it cannot remember anything, and Save/Load progress writes the
-record to a JSON file. Served over https — which is how GitHub Pages publishes
-it — none of that comes up and persistence is ordinary.
+- **Linking.** `app/functions/api/study/link.ts` hands a paired phone a token
+  scoped to that one route. Minting retires the previous token, only a hash is
+  stored, and Settings → Connections shows a short fingerprint.
+- **Paying.** `app/functions/api/study/session.ts` takes a finished session.
+  `domain/study/award.ts` holds what each kind is worth, how the award is named
+  (`study-<sessionId>`, derived from the session so a retried request collides
+  with its first attempt) and which day it counts as (the member's timezone, not
+  UTC), with a daily ceiling per member.
+- **A pausable stopwatch.** `domain/study/clock.ts` and `pwa/useElapsed.ts` keep a
+  timer from counting while the phone is in a pocket.
 
 ### Why there is no Supabase
 
 The plan this grew from called for Supabase auth and realtime for a battle mode.
 This repository's position is no accounts, no email addresses, no analytics in
-the app, and no third parties beyond the two optional, off-by-default ones (account
-recovery, and anonymous server-side product counts), and it already has a backend. A second one, for a
-single-player feature, would contradict the product to save nothing.
+the app, and no third parties beyond the two optional, off-by-default ones
+(account recovery, and anonymous server-side product counts), and it already has
+a backend. A second one, for a single-player feature, would contradict the
+product to save nothing.
 
 ## Reminders
 

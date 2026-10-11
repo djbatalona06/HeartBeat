@@ -1,5 +1,7 @@
 # ui-map.md — the UI as it stands, for a rebuild in another session
 
+> **Historical.** Written against an earlier layout: the stylesheet was a single `app/src/styles.css` (it is now the `app/src/styles/` directory, see `CLAUDE.md`), and some files named below have since moved or been removed. Read it for the reasoning; check a path before relying on it.
+
 A handoff map. It exists so the session that rebuilds the UI/UX (in a different or
 similar styling language, chosen for speed and looks) does not have to read 8,190
 lines of `app/src/styles.css` to learn what is there. **Nothing here changes any

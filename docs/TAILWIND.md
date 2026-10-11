@@ -1,5 +1,7 @@
 # TAILWIND.md — would Tailwind help, and what would it cost
 
+> **Historical.** Written against an earlier layout: the stylesheet was a single `app/src/styles.css` (it is now the `app/src/styles/` directory, see `CLAUDE.md`), and some files named below have since moved or been removed. Read it for the reasoning; check a path before relying on it.
+
 Written because the question keeps coming up, and because the honest answer has
 two halves that get quoted separately. Short version: **not as things stand, and
 the reason is specific rather than taste.** The conditions that would change the
