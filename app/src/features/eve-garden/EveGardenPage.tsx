@@ -571,7 +571,7 @@ export function EveGardenPage() {
     // selected companion's static 2D floor rather than opening WebGL.
     Promise.all([
       import('./scene/game'),
-      loadArenaFloor(host.current, calmRef.current, arenaTokensForPet(companion, sceneMode)),
+      loadArenaFloor(calmRef.current, arenaTokensForPet(companion, sceneMode), () => !live),
     ])
       .then(([{ startGarden }, floor]) => {
         if (!live || !host.current) return;

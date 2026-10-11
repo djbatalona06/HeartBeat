@@ -68,6 +68,12 @@ export default defineConfig({
         manualChunks: (id) => {
           if (id.includes('commonjsHelpers')) return 'cjs-helpers';
           if (id.includes('node_modules/phaser')) return 'phaser';
+          // The four files under `3d/` that import no three.js: the colour maths
+          // the arena floor is painted with. Eve's Garden draws its static floor
+          // from them, and if they lived in `mascot3d` that route would import
+          // the whole three.js chunk just to reach them. `arenaChunk.test.ts`
+          // holds the list in step with the files.
+          if (/\/mascots\/3d\/(arenaPalette|arenaFinish|cssColor|gardenPalette)\.ts$/.test(id)) return 'arena-paint';
           if (id.includes('node_modules/three') || id.includes('/mascots/3d/')) return 'mascot3d';
           return undefined;
         },

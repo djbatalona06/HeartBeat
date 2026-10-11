@@ -125,6 +125,21 @@ if (manifest.length === 0) {
   check('none of phaser, the 3D mascots or the gear art is preloaded on boot', preloaded.length === 0, preloaded.join(', '));
   const wasm = manifest.filter((u) => u.endsWith('.wasm'));
   check('no .wasm is precached', wasm.length === 0, `${wasm.length} found`);
+
+  // The same leak one level down. `mascot3d-*` is three.js; it is reached with
+  // `import()` or not at all. A route chunk that *statically* imports it (a
+  // plain `import { x } from '.../mascots/3d/...'`) gets it fetched whenever
+  // that route opens, calm and Save-Data included, and cannot load offline when
+  // the chunk is not precached. Eve's Garden did exactly this through its
+  // static floor's colour maths, until those four files got their own
+  // `arena-paint` chunk (see `manualChunks` in vite.config.ts).
+  const chunks = (await readdir(join(DIST, 'assets'))).filter((f) => f.endsWith('.js') && !f.startsWith('mascot3d-'));
+  const static3d = [];
+  for (const file of chunks) {
+    const code = await readFile(join(DIST, 'assets', file), 'utf8');
+    if (/from\s*["']\.\/mascot3d-/.test(code)) static3d.push(file);
+  }
+  check('no chunk statically imports the 3D mascots chunk', static3d.length === 0, static3d.join(', '));
 }
 
 // ---- the heavy-asset runtime cache ------------------------------------------

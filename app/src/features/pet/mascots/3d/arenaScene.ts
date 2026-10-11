@@ -4,10 +4,8 @@ import {
   type BufferGeometry, type Material,
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { toRgb } from './cssColor';
 import { ARENA_ROLES, arenaPaint, type ArenaCssTokens, type ArenaRole } from './arenaPalette';
-import type { Tokens } from './gardenPalette';
-import { finishArenaCanvas } from './arenaFinish';
+import { finishArenaCanvas, rgbTokens } from './arenaFinish';
 
 /**
  * Draws the battle board's checkerboard **once**, then lets go of the GPU.
@@ -30,41 +28,18 @@ import { finishArenaCanvas } from './arenaFinish';
  * above it, which is what lets the picture and the walkable grid be one grid.
  */
 
-/** The tokens the board is painted from, read from the selected companion or host. */
-function cssTokensOf(el: HTMLElement): ArenaCssTokens | null {
-  const style = getComputedStyle(el);
-  const read = (name: string) => style.getPropertyValue(name).trim();
-  const tokens = {
-    base: read('--color-base'),
-    text: read('--color-text'),
-    accent: read('--color-accent'),
-    success: read('--color-success'),
-    danger: read('--color-danger'),
-  };
-  return Object.values(tokens).every(Boolean) ? tokens : null;
-}
-
-function tokensOf(colors: ArenaCssTokens): Tokens | null {
-  const base = toRgb(colors.base);
-  const text = toRgb(colors.text);
-  const accent = toRgb(colors.accent);
-  const success = toRgb(colors.success);
-  const danger = toRgb(colors.danger);
-  return base && text && accent && success && danger
-    ? { base, text, accent, success, danger }
-    : null;
-}
-
 export interface ArenaBakeOptions {
-  /** Where the theme's custom properties are read from. */
-  host: HTMLElement;
   src: string;
   cols: number;
   rows: number;
   /** Pixels per tile in the picture. */
   tilePx: number;
-  /** Tokens from the selected Raid Gate companion, in the current light/dark mode. */
-  themeTokens?: ArenaCssTokens;
+  /**
+   * Tokens from the selected Raid Gate companion, in the current light/dark
+   * mode. Required: with none the old code read the *app's* theme off the DOM,
+   * which is not the companion's, and the floor quietly changed pack.
+   */
+  themeTokens: ArenaCssTokens;
   /** Asked once the file has loaded: true means nobody is waiting any more, so do not touch the GPU. */
   cancelled?: () => boolean;
 }
@@ -75,10 +50,8 @@ export interface ArenaBakeOptions {
  * of which the caller keeps drawing the pixel tiles it always has.
  */
 export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasElement | null> {
-  const { host, src, cols, rows, tilePx, cancelled } = options;
-  const themeColors = options.themeTokens ?? cssTokensOf(host);
-  if (!themeColors) return null;
-  const tokens = tokensOf(themeColors);
+  const { src, cols, rows, tilePx, cancelled, themeTokens: themeColors } = options;
+  const tokens = rgbTokens(themeColors);
   if (!tokens) return null;
 
   // Fetched and parsed *before* a renderer exists, so the WebGL context lives
@@ -148,6 +121,7 @@ export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasEl
     ctx.drawImage(renderer.domElement, 0, 0);
     finishArenaCanvas(out, themeColors, cols, rows, tilePx);
     out.dataset.arena3d = 'true';
+    out.dataset.accent = themeColors.accent;
     return out;
   } catch {
     return null;

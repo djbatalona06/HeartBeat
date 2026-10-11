@@ -43,5 +43,6 @@ export function drawStaticArenaFloor(
   }
   finishArenaCanvas(canvas, colors, cols, rows, tilePx);
   canvas.dataset.arena3d = 'false';
+  canvas.dataset.accent = colors.accent;
   return canvas;
 }
