@@ -33,18 +33,19 @@ without the Home Screen step.
 
 ## What's on it
 
-The home screen is your pet, in the middle, with six doors evenly spaced in a
-ring around it. A door wears a dot when there is something logged behind it
-today, and says nothing otherwise.
+The home screen is your pet and what today still wants from you, spread over
+three panes you swipe between: **Today**, **Us** and **Adventure**. A bar along
+the bottom holds the six places you open it for: **Home**, **Quests**, **Shop**,
+**Partner**, **Bag** and **Birb**. Everything else is behind the menu button.
 
-| Door | What it holds |
+| Place | What it holds |
 |---|---|
-| **Mood** | Three sliders, 1–10: hunger, joy, moody. Both of you, side by side |
+| **Mood** | Three sliders, 1–10: hunger, joy, moody. Both of you, side by side. The cycle log is the last section of this page, behind its own PIN if you want one |
 | **Move** | A workout log, and camera proof — front and back — that you did it |
 | **Work** | A shared calendar, filled from a file you export from your own |
-| **Cycle** | Period tracking, behind its own PIN if you want one |
-| **Party** | The two of you as a party: gear, pets, and the boss you are fighting |
-| **Settings** | Pairing, the theme picker, your partner's name and photo, calendar |
+| **Tasks** | Dailies, habits and to-dos, and what you finished |
+| **Eve's Garden** | The islands, the boss, and going in together |
+| **You** | Pairing, the theme picker, your partner's name and photo, calendar |
 
 The **pet** is the point. It gains XP when either of you logs something, and
 levels up on quests that get set from a few questions during setup. Rep ranges,

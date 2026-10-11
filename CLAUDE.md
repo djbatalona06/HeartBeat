@@ -99,7 +99,7 @@ All writes go through `app/src/db/repository/`. Components call repository funct
 - `domain/rpg/companionSkills.ts` — one skill kit per mascot, keyed by theme id:
   the names of its four moves, plus two skills and a passive
 - `domain/rpg/charges.ts` — what today's logging lights up in a fight
-- `domain/rpg/islands.ts` — the seven islands and their bosses, a tested mirror
+- `domain/rpg/islands.ts` — the ten islands and their bosses, a tested mirror
   of `game/.../Data/Island<N>.cs` for the screens that must not boot wasm
 - `domain/rpg/raidGate.ts` — who stands in the arch, and when the gate opens
 - `domain/rpg/chests.ts` — three chests, three pity counters
@@ -115,7 +115,7 @@ All writes go through `app/src/db/repository/`. Components call repository funct
 
 Two workflows deploy: `deploy.yml` (Pages, every push to `main`) and `worker-deploy.yml` (the Worker, on pushes touching `worker/**` — it applies D1 migrations before deploying). Both need the same two repo secrets:
 
-- `CLOUDFLARE_API_TOKEN` — must have **Cloudflare Pages: Edit** + **D1: Edit** + **Workers AI: Read** + **Workers Scripts: Edit** (the last one for `worker-deploy.yml`)
+- `CLOUDFLARE_API_TOKEN` — must have **Cloudflare Pages: Edit** + **D1: Edit** + **Workers AI: Read** + **R2: Edit** (photographs live in an R2 bucket that `deploy.yml` creates) + **Workers Scripts: Edit** (the last one for `worker-deploy.yml`)
 - `CLOUDFLARE_ACCOUNT_ID` — from the Cloudflare dashboard sidebar
 
 Optional, and set on the **Pages project** rather than as repo secrets:
@@ -273,7 +273,7 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   they sync with the mood row, so a partner's flag lights both gardens. The
   garden pays each lit charge's XP once a day under `garden-<day>-<activity>`,
   deterministic so two phones never double-pay; never add the phone to that id. **Every fight must stay winnable with no charges and no gear**:
-  `IslandTests` simulates every stage of all seven islands uncharged, and a
+  `IslandTests` simulates every stage of all ten islands uncharged, and a
   charge may only ever help (`BattleTests.AChargeNeverCostsAnything`).
 - **The raid sheet reaches the fight.** `holdingsLoadout` + `loadoutSheet` is
   the one assembly, used by the party page and by `EveGardenPage`, and its
@@ -466,7 +466,7 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   any phone" and "already spun" (`wheel-<day>`, `wheel-boss-<monsterId>`). A boss
   spin needs the boss in the world row's `cleared` list.
 - **The 3D board floor is drawn once and then the GPU is let go.**
-  `3d/arenaScene.ts` loads `arena.glb` (`npm run arena:glb`), renders one
+  `3d/arenaScene.ts` loads `arena.glb` (`npm run arena:glb --workspace app`), renders one
   orthographic frame, copies it to a 2D canvas and releases the context *before*
   Phaser starts, so two WebGL contexts are never alive together. It loads the file
   before creating a renderer, and `arenaFloor.ts` gives up after 1.5 s. Calm,

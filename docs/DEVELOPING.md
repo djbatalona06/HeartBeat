@@ -55,8 +55,9 @@ checks, one automatic and one by hand.
 Functions under `wrangler pages dev` against a local D1 migrated from
 `worker/migrations/`, and drives two browser contexts — two phones, with
 nothing shared but the server. No Cloudflare account needed; CI runs it on
-every pull request. It checks seven things, and fails with a screenshot of each
-phone in `.shots/pair-live/`:
+every pull request. It checks seven pairing behaviours, then measures every page
+on a linked phone, and fails with a screenshot of each phone in
+`.shots/pair-live/`:
 
 1. One phone starts, the other types the code, and **both** find out — the one
    that started without a reload or a visit to Settings.
@@ -144,11 +145,12 @@ involves no deploy credentials.
 | Theme engine, 5 packs, contrast tests | Done |
 | Data model, Dexie schema, D1 schema | Done |
 | Pairing (invite link), entry sync | Done |
-| Dashboard grid and pet XP bar | Done |
+| Home (three panes), tab bar and pet XP bar | Done |
 | Work screen | Done |
 | Cycle screen, forecast and PIN lock | Done |
-| Mood / Exercise screens | Next |
-| Quests, achievements, push reminders | After that |
+| Mood and Exercise screens | Done |
+| Quests, achievements, push reminders | Done |
+| Eve's Garden (ten islands, chests, garden) | Done |
 
-[`docs/DESIGN.md`](DESIGN.md) is the spec for what remains, and explains why
+[`docs/DESIGN.md`](DESIGN.md) is the spec, and explains why
 each piece is shaped the way it is.

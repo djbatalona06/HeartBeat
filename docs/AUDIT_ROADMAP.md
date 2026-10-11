@@ -64,9 +64,9 @@ both fully implemented against Workers AI and cleanly return 503 when
 **CI.** `ci.yml` is a real gate, not theater: typecheck, config-sync,
 greppable UI-review rules, a hard `npm audit --omit=dev` gate at zero, the
 full test suite (app + worker + the C# game tests), a production build,
-Lighthouse against the built preview (not the dev server), and two
-build-artifact staleness checks (`gift/birthday.html`, `study/index.html`)
-that fail the build if the committed file doesn't match its source. The one
+Lighthouse against the built preview (not the dev server), and a
+build-artifact staleness check (`gift/birthday.html`) that fails the build if
+the committed file doesn't match its source. The one
 deliberately non-blocking step (`npm audit` on dev deps) says so in a comment
 explaining why.
 
@@ -220,16 +220,7 @@ the member's zone. Ordered roughly cheapest-and-most-valuable first.
    debugging session into a glance, and it's a read of an endpoint that
    already exists.
 
-3. **Third-party deck ingestion for Study**, per `plan.md` Phase 3 and
-   `CURRENT_STATE.md` §4 — the design is already fully specified (build-time
-   adapter, content-derived stable ids, why the runtime-fetch alternative is
-   overkill for 32 KB of cards) and simply hasn't been executed. It's the
-   single largest, best-scoped, genuinely unbuilt feature in the repo; the
-   one open question (whether to author `why` rationales for imported cards
-   or relax the type) is a content decision, not an engineering one, and
-   blocks nothing else.
-
-4. **A "download your record" export.** The app's whole privacy pitch is "no
+3. **A "download your record" export.** The app's whole privacy pitch is "no
    account, your phone holds the record, the server holds a copy so the
    other phone can read it" — and yet there is no path for a couple to pull
    that copy out as a file. A JSON export of a couple's own entries and
@@ -238,13 +229,13 @@ the member's zone. Ordered roughly cheapest-and-most-valuable first.
    compromise it, and it's the honest answer to "what if I want to stop
    using this" that a no-account app currently doesn't have.
 
-5. **Sync quests and achievements**, closing 2.4. Bigger than the others —
+4. **Sync quests and achievements**, closing 2.4. Bigger than the others —
    it's a new D1 table plus API surface, following the same shape
    `holdings.ts` already establishes — but it's the one place OAuth recovery
    currently promises less than it should. Worth scoping as its own small PR
    once 2.1–2.3 are cleared, not bundled with them.
 
-6. **Extend `/api/ask` into a standing weekly note**, rather than only a
+5. **Extend `/api/ask` into a standing weekly note**, rather than only a
    command-menu fallback for typed questions. The hard part — grounding a
    model in pre-aggregated counts instead of raw notes, so a prompt injection
    in free text can't reach it — is already solved and tested in
@@ -261,7 +252,7 @@ the member's zone. Ordered roughly cheapest-and-most-valuable first.
 |---|---|
 | Core sync, pairing, holdings | Built, tested, kept in step by CI |
 | GitHub/Google OAuth recovery | Built, self-disabling, gracefully degrades |
-| RPG/game (7 islands, chests, garden) | Built, no placeholder content |
+| RPG/game (10 islands, chests, garden) | Built, no placeholder content |
 | Push notifications | Built, RFC-pinned, one of the most careful modules in the repo |
 | AI ask / transcribe | Built, gated on `env.AI`, sound prompt-injection design |
 | Visual regression pixel-diff | **Half-wired** — instructions written, not executed; needs a real CI artifact (§2.1) |
@@ -270,5 +261,5 @@ the member's zone. Ordered roughly cheapest-and-most-valuable first.
 | Pre-sync quests/achievements | **Documented gap** — deliberately left for its own PR, needs a new D1 table (§2.4) |
 | Cycle-phase wellness tint | **Closed** — `phaseFor()` wired into the locked `cycle-summary` card (§2.5) |
 | "What's on" visibility | **Closed** — `WhatsOnBlock` in Settings reads `/api/health` (§2.6) |
-| Third-party study deck ingestion | **Speced, not built** — plan.md Phase 3 |
+| Third-party study deck ingestion | **Dropped** — the Study screen it fed was removed |
 | Data export | **Not present** — gap in an otherwise strong privacy story |

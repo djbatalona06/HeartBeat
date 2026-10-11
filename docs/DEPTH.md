@@ -1,5 +1,7 @@
 # DEPTH.md — the 2.5D pass, and what it costs
 
+> **Historical.** Written against an earlier layout: the stylesheet was a single `app/src/styles.css` (it is now the `app/src/styles/` directory, see `CLAUDE.md`), and some files named below have since moved or been removed. Read it for the reasoning; check a path before relying on it.
+
 A review of the "grainy 2.5D mobile RPG" brief against what this repo actually
 is, and a plan for the part of it worth building.
 

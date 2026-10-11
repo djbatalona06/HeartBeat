@@ -25,24 +25,24 @@ which matters here because the Worker holds two OAuth flows and a pile of SQL
 where every security property is a `WHERE` clause. Dev-toolchain advisories are
 reported but never fail the build; Dependabot opens the upgrade PR instead.
 
-## The five that bite
+## The four that bite
 
-2. **A raw `<button>` fails review.** Use `PrimaryAction`, `SecondaryAction`,
+1. **A raw `<button>` fails review.** Use `PrimaryAction`, `SecondaryAction`,
    `Chip`, `ListRow` or `TileCard`. `npm run ui:check` enforces it as a
    ratchet: what already exists is recorded, and the build fails when a file
    gains a new one. If a bare button is genuinely right, add the file to
    `RAW_BUTTON_EXEMPT` **with a reason** — that is meant to be a review
    conversation.
 
-3. **`db/repository/` is a directory, not a file.** A new section is a new
+2. **`db/repository/` is a directory, not a file.** A new section is a new
    file plus one `export *` in alphabetical order. Never append to an existing
    section; three PRs once broke `main` conflicting on the last line of the
    1,500-line original.
 
-4. **Day keys use the member's timezone, never UTC**, and **nothing in daily
+3. **Day keys use the member's timezone, never UTC**, and **nothing in daily
    life subtracts**. Health exists only inside a boss fight.
 
-5. **Rules go in `domain/`, with a test beside them.** Pure TypeScript, no
+4. **Rules go in `domain/`, with a test beside them.** Pure TypeScript, no
    React, no Dexie. A rule that lives inside a component is a rule with no
    test — `.test.tsx` runs in jsdom and is for component *behaviour* a
    screenshot cannot see, not for logic that should not have been there.

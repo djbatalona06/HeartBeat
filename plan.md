@@ -1,5 +1,13 @@
 # plan.md — Heartbeat v2: stats, learning, and the study bridge
 
+> **Status.** Phase 2 (goals you can see before you can reach them) shipped as
+> `domain/rpg/unlocks.ts`. Phases 1 and 3 were about the in-app Study screen and
+> its card decks, and the Study screen has since been removed, so those phases
+> were cut from this file. What remains of the study idea is the XP link
+> (`app/functions/api/study/`, Settings → Connections), which lets a separate
+> study app feed the pet. The rest of this file is kept for the reasoning in
+> §5, which still holds.
+
 **App:** https://heartbeat-eop.pages.dev/
 **Stack:** React + Vite + TypeScript PWA · Cloudflare Pages Functions · Cloudflare Worker · D1
 **Baseline:** `main` at the merge of [#57](https://github.com/djbatalona06/HeartBeat/pull/57)
@@ -37,68 +45,7 @@ independently revertible. Nothing below requires a big-bang branch.
 
 ## Phase 1 — The quiz timer stops when you are not looking
 
-**Size:** small. One hook, one screen edit, one test file.
-**Why first:** it is the only outright *defect* in the brief, it is the smallest
-change in the plan, and it costs the person using the app real points today.
-
-### The problem
-
-`StudyPage.tsx:457` runs `setInterval(() => setNow(Date.now()), 200)` and
-measures `elapsed` against a captured start time. There is no
-`visibilitychange` listener in the file. A notification, a phone call, or a
-glance at another tab spends the question's twenty seconds in the background,
-and the answer scores as missed on return. `scoreAnswer` pays nothing for a
-wrong answer however fast, so the cost is the whole question.
-
-### The work
-
-1. **`app/src/domain/study/clock.ts`** — a pure accumulator, because the rule is
-   a rule and this repo tests its rules:
-
-   ```ts
-   export interface Clock {
-     accumulatedMs: number;   // time already banked from previous visible runs
-     startedAt: number | null; // null while paused
-   }
-
-   export function start(now: number): Clock
-   export function pause(clock: Clock, now: number): Clock
-   export function resume(clock: Clock, now: number): Clock
-   export function elapsed(clock: Clock, now: number): number
-   ```
-
-   Total and pure: `pause` on an already-paused clock is a no-op, `resume` on a
-   running one is a no-op, and `elapsed` never goes backwards. Those three are
-   the test cases that matter, because the browser fires `visibilitychange` in
-   pairs that are not always balanced.
-
-2. **`app/src/pwa/useElapsed.ts`** — the four-line React side: subscribe to
-   `document.visibilitychange`, call `pause`/`resume`, tick while visible.
-   The split mirrors `domain/feedback/haptics.ts` (pure, tested) against
-   `pwa/haptics.ts` (four lines), which is how #57 split the same shape.
-
-3. **`StudyPage.tsx`** — replace the bare interval with the hook. The timer stays
-   **per question**, which it already is and which is correct; the brief's worry
-   about timers resetting on next-question clicks does not apply here.
-
-4. **Stop the interval when the tab is hidden.** A 200 ms interval in a
-   backgrounded PWA is throttled but not free.
-
-### Decisions to make explicitly
-
-- **A question paused mid-answer resumes; it does not restart.** Restarting
-  would hand back time somebody already spent thinking, which is a way to farm
-  the speed bonus by backgrounding the app.
-- **Cap the pause?** A question paused for six hours and resumed is not a fair
-  measurement of recall either. Recommendation: resume normally, and let the
-  20-second limit do its own work — a capped pause is a rule nobody can see.
-
-### Done when
-
-- `clock.test.ts` covers unbalanced pause/resume pairs and monotonic `elapsed`.
-- Backgrounding mid-question and returning leaves the countdown where it was.
-- `npm test`, `npm run typecheck` green. No `styles.css` change, so no
-  `study:build`.
+*Cut: it was about the Study screen, which has been removed.*
 
 ---
 
@@ -175,111 +122,14 @@ day 1; give near-miss feedback."*
 - `unlocks.test.ts` pins every threshold and asserts `progress` is monotonic in
   each input and clamped to 0–1.
 - The dashboard shows a locked goal with a real number on a fresh install.
-- `styles.css` almost certainly changes → **`npm run study:build`, commit
-  `study/index.html`**, or CI fails on the diff.
 
 ---
 
 ## Phase 3 — Nursing cards inside Heartbeat's learn mode
 
-**Size:** medium, and front-loaded with one content decision.
-**Why last:** it is the only phase that crosses a repo boundary, and it is worth
-nothing until Phases 1 and 2 make the learn loop good.
-
-### What is already true
-
-The bridge is built and runs **study app → Heartbeat**: a scoped token minted by
-`/api/study/link`, sessions POSTed to `/api/study/session`, replay-safe via a
-deterministic `study-<sessionId>` award id, capped at 120 XP per member-day,
-dated in the member's timezone. The nursing app queues offline and drains.
-
-**Keep all of it.** The brief's email + JWT + AuthBridge design would trade a
-one-route token for a broader bearer, add an email address to an app whose
-README promises it holds none, and add a fourth deploy target for two users.
-`docs/CURRENT_STATE.md` §4 makes that case in full.
-
-What is missing is **content**: Heartbeat's nine decks are developer topics
-(js, react, git, sql…). Jenny's 126 cards are ATI TEAS 7 science. Nothing
-carries the second into the first.
-
-### The blocking decision — `why`
-
-`Card` requires a `why` field, and the type comment says exactly why: *a
-flashcard that only asserts teaches recall of a string, and the point is to
-learn the thing.* The source cards are `{ category, subcategory, question,
-answer }`. **There is no rationale in the data.**
-
-Three honest options, and this is a content call, not a code call:
-
-| Option | Cost | Effect |
-|---|---|---|
-| **A.** Author rationales for the 126 cards | Real work, in the study repo, once | Keeps the rule; best learning outcome; helps both apps |
-| **B.** Make `why` optional for imported cards | One type change, ripples into the screen | Weakens a rule the repo chose deliberately |
-| **C.** Synthesise a `why` from `subcategory` | Cheap | Fake rationale is worse than none — recommend against |
-
-**Recommendation: A**, done in `Jenny-s-Study-Guide/data/flashcards.js` so both
-apps benefit, with B as the fallback if that stalls. Do not start Phase 3 before
-this is settled.
-
-### The work
-
-1. **`app/src/bridge/maStudyAdapter.ts`** — the adapter layer, which the brief
-   is right about: it survives schema changes in the nursing app without
-   rewriting Heartbeat's core.
-
-   ```ts
-   function mapNursingCard(raw: NursingCard): Card {
-     return {
-       id: `ma-${slug(raw.category)}-${index}`,   // stable across re-imports
-       deckId: `ma-${slug(raw.category)}`,
-       question: raw.question,
-       answer: raw.answer,
-       why: raw.rationale,                         // see the decision above
-       difficulty: difficultyFor(raw.subcategory),
-     };
-   }
-   ```
-
-   **Card ids must be stable across re-imports.** `CardProgress` is keyed by
-   `cardId`; ids that shift on re-import silently reset somebody's schedule.
-   Derive from content, never from array position alone.
-
-2. **How the cards travel.** In increasing order of cost — take the cheapest
-   that works:
-   - **Build-time import.** A script reads `flashcards.js`, emits
-     `app/src/content/study/nursing.ts`, and it registers in `DECKS` like every
-     other deck. No network, no auth, no new route, works offline on day one.
-     **Recommended.**
-   - **Runtime fetch + manifest.** Needed only if the cards must change without
-     a Heartbeat deploy. Costs a route, a cache, and a sync story.
-
-   Do not build the second until the first is proven insufficient. The brief's
-   "store a deck manifest locally, fetch content on demand" is the right shape
-   for a large remote catalogue; 32 KB of cards compiled into a bundle that
-   already precaches 882 KB is not that.
-
-3. **Register the deck.** `app/src/content/study/index.ts` — one line, the same
-   as the other nine.
-
-### Phase 3b — the GLB models, deferred on purpose
-
-Eight models, **31 MB**. The service worker precaches 12 entries at 882 KB
-today. If these enter the precache manifest the install becomes a 32 MB
-download on a phone.
-
-If it is built: lazy-load on demand from the study app's own origin, render in a
-modal, cache nothing, and assert in a test that no `.glb` is in the manifest.
-Defer until Phase 3 is stable and somebody actually wants it inside Heartbeat
-rather than in the app that already has it working.
-
-### Done when
-
-- `maStudyAdapter.test.ts` proves id stability across re-import and that every
-  produced card satisfies `Card`.
-- A nursing deck appears in the picker and runs through review and quiz
-  unchanged — no new quiz code, because `choicesFor` builds distractors from the
-  deck it is given.
-- Bundle size checked before and after.
+*Cut: with the Study screen gone there is no learn mode to put cards in. The study
+XP link (`/api/study/link`, `/api/study/session`) stays as built: a scoped token,
+replay-safe `study-<sessionId>` award ids, capped at 120 XP per member-day.*
 
 ---
 
@@ -293,8 +143,6 @@ trip over:
   logic that matters must not live in a component.
 - **`db/repository/` is a directory.** New section = new file + one `export *`
   in alphabetical order. Never append to an existing section.
-- **Editing `app/src/styles.css` means `npm run study:build` and committing
-  `study/index.html`.** CI fails on `git diff --exit-code`.
 - **A new holding kind is four edits plus a migration** — client `HOLDING_KINDS`,
   `KINDS` in `api/holdings.ts`, the D1 `CHECK` (rebuild the table; SQLite cannot
   alter one in place), and a `storeFor` case. Only `holdings.test.ts` keeps them
@@ -313,7 +161,6 @@ npm run typecheck        # both workspaces
 npm run check:config
 npm test                 # 1536 app + 138 worker at baseline
 APP_BASE=/ npm run build
-npm run study:build      # if styles.css changed; commit the artefact
 ```
 
 ---
@@ -367,10 +214,6 @@ mirror a whole database. Those were all right.
 | Risk | Mitigation |
 |---|---|
 | Rebuilding what exists | This document and `docs/CURRENT_STATE.md`. Before writing a module, grep `domain/` for its nouns. |
-| Phase 3 stalls on missing `why` rationales | Settle the content decision **before** starting Phase 3; Phases 1–2 do not depend on it. |
-| Imported card ids shift and reset schedules | Derive ids from content; pin with a test. |
-| 31 MB of GLB models enter the precache | Phase 3b is deferred; when built, assert no `.glb` in the manifest. |
-| `study/index.html` drifts and CI fails | `npm run study:build` after any `styles.css` edit, every time. |
 | Long-horizon goals feel impossible | Exact numbers on the progress bar, not percentages alone. |
 | No security scanning in a repo that now holds auth code | Out of scope here, flagged in #57, and worth its own small PR. |
 
@@ -378,11 +221,5 @@ mirror a whole database. Those were all right.
 
 ## 7 · Order of work
 
-1. **Phase 1** — timer pause. Smallest, fixes a real defect, no dependencies.
-2. **Phase 2** — visible locked goals. Renders logic that already ships.
-3. **Content decision** on `why` rationales. Blocks Phase 3, blocks nothing else.
-4. **Phase 3** — nursing deck import via build-time adapter.
-5. **Phase 3b** — GLB viewer, only if wanted, and only lazy-loaded.
-
-One PR per phase. Each is independently revertible, and none of them needs a
-long-lived branch.
+Phase 2 is the only phase that was built (see the status note at the top). It
+went in as its own PR, independently revertible, with no long-lived branch.

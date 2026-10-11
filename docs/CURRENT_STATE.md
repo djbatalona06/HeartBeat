@@ -82,7 +82,7 @@ gear/companion bonus passed in as a parameter. The only persisted numbers are
 `xp`, `coins`, `energy`, `mp` and `gear`. The plan's rule — "never store derived
 stats, only base and level" — is the rule the code is already built on.
 
-### 2.2 There are three currencies, and studying already pays all of them
+### 2.2 There are three currencies, and the app already pays all of them
 
 `Avatar` carries `coins` (`STARTER_COINS = 120`), `energy` and `mp`.
 `applyPayout` adds, `canSpend`/`spend` subtract, and `Payout`
@@ -93,9 +93,6 @@ accrual the plan wants Pulse to have — daily couple interactions, quiz
 completions, learn streaks — is wired to coins already:
 
 - Tasks: `domain/rpg/task.ts`, priced by `DIFFICULTY_WEIGHT`.
-- Study: `domain/study/payout.ts` — `XP_PER_CARD = 2`, `COINS_PER_CARD = 1`,
-  `ENERGY_PER_CARD = 1`, `MP_PER_CARD = 1`, capped at `DAILY_CARD_CAP = 60`
-  cards a day across every deck and both modes.
 - Achievements: 12 tracks × 3 tiers, `TIER_PAYOUT = { 1: 20, 2: 45, 3: 90 }`.
 - Quests: 14 templates through `domain/quests/engine.ts`.
 
@@ -130,10 +127,11 @@ Also in #57: a rolling seven-day `duoWeek` paying `DUO_WEEK_XP = 120`, and a
 `reunion` quest gated off the board until neither partner has logged for three
 days.
 
-**What is genuinely missing from §2.3** is not the ladder — it is the *shop
-window*. `nextTier` and `pointsToNext` exist and nothing renders a locked rung
-with a progress bar on the dashboard. A goal nobody can see from day one is not
-a long-horizon goal; it is a surprise.
+**What was missing from §2.3** was not the ladder — it was the *shop window*:
+`nextTier` and `pointsToNext` existed and nothing rendered a locked rung with a
+progress bar. That has since shipped as `domain/rpg/unlocks.ts` and the goals
+card on Home's Us pane. A goal nobody can see from day one is not a long-horizon
+goal; it is a surprise.
 
 ### 2.4 One pet, not two
 
@@ -148,76 +146,14 @@ the shared pet (a stage past Guardian, say) or dropped.
 
 ---
 
-## 3 · The learn section already exists
+## 3 · The learn section has been removed
 
-This is the largest single finding. `domain/study/` is five modules and 502
-lines of tested logic, and `features/study/StudyPage.tsx` is the screen over it.
-
-### 3.1 SM-2 is implemented — `domain/study/srs.ts`
-
-The plan's proposed `Flashcard` interface (`easeFactor`, `interval`,
-`repetitions`, `dueDate`) is a near-match for what ships, with the static card
-and the per-person progress correctly split into two types:
-
-| Plan | In the repo |
-|---|---|
-| `easeFactor: number` (default 2.5) | `CardProgress.ease`, `EASE_START = 2.5` |
-| `interval: number` | `CardProgress.interval` |
-| `repetitions: number` | `CardProgress.reviews` (+ `streak`, + `lapses`) |
-| `dueDate: string` | `CardProgress.dueOn: DayKey` |
-| Again/Hard/Good/Easy | `Grade = 'again' \| 'hard' \| 'good' \| 'easy'` |
-
-The implementation is a deliberate improvement on the canonical algorithm and
-the differences should be preserved, not "fixed" back:
-
-- Ease is clamped at both ends — `EASE_FLOOR = 1.3` (SM-2's own) and
-  `EASE_CEILING = 3` (added, because unbounded ease sends a card you guessed
-  right three times into a year-long interval).
-- `again` maps to SM-2 quality **2, not 0**. Quality 0 costs 0.8 of ease in one
-  press — two-thirds of the span between the floor and the start, for one blank
-  night. At 2 it costs 0.32.
-- A lapse is counted only for a card answered before. The first time you meet a
-  fact and do not know it is not forgetting.
-- `MAX_INTERVAL = 365`. Past a year the schedule is doing nothing a bookmark
-  could not do.
-
-The plan's "Again reduces ease by 0.2 (min 1.3)" is a different, simpler rule
-than what ships. What ships is SM-2's actual ease update, verbatim, then
-clamped. Do not replace it.
-
-### 3.2 The quiz timer exists — and has exactly the bug the plan predicted
-
-`domain/study/quiz.ts`: `QUIZ_LENGTH = 10`, `CHOICES = 4`,
-`TIME_LIMIT_MS = 20_000` **per question**, distractors drawn from the same deck
-by a stable FNV-1a hash so one card lays its options out the same way twice.
-`scoreAnswer` pays `BASE_POINTS = 100` plus up to half again for speed, and
-nothing for a wrong answer however fast.
-
-The plan flagged "timer must not reset when navigating between questions". That
-one is already right — the timer is per-question by design, and `scoreRun`
-accumulates across the run.
-
-**The real defect is the other one the plan named.** `StudyPage.tsx:457` is:
-
-```ts
-const timer = setInterval(() => setNow(Date.now()), 200);
-```
-
-with `elapsed` measured against a captured start time and no `visibilitychange`
-listener anywhere in the file. So a phone call, a notification, or a glance at
-another tab spends the question's twenty seconds in the background and the
-answer scores as missed on return. On a PWA this is not an edge case; it is
-Tuesday. **This is the highest-value small fix in the whole plan.**
-
-### 3.3 Decks are static and code-shipped
-
-`app/src/content/study/index.ts` registers nine decks — js, typescript, react,
-git, http, sql, bigo, shell, practice — each a `Deck` compiled into the bundle.
-`Card` requires a `why`, deliberately: a flashcard that only asserts teaches
-recall of a string.
-
-Note what this means for the bridge: Heartbeat's decks are **developer topics**.
-Jenny's app holds **nursing** content. Nothing merges them today.
+When this audit was written the app had a Study screen (flashcards on an SM-2
+schedule, and a timed quiz) over `domain/study/`. The screen, its decks and the
+one-file `study/index.html` have since been removed, and with them the timer
+defect this section described. What is left in `domain/study/` is `award.ts`
+(what a finished session is worth, and how it is named, for the XP link in §4)
+and `clock.ts` (the pausable stopwatch behind `pwa/useElapsed.ts`).
 
 ---
 
@@ -268,23 +204,6 @@ wants from the bridge — decks, quiz banks, models — is content moving the sa
 direction the sessions already move, or content that can be fetched by URL and
 never needs auth at all.
 
-### What ingestion would actually cost
-
-- **Phase 1 — flashcards.** `Jenny-s-Study-Guide/data/flashcards.js` holds 126
-  ATI TEAS 7 cards shaped `{ category, subcategory, question, answer }`, 32 KB.
-  Heartbeat's `Card` needs `id`, `deckId`, `question`, `answer`, `why`,
-  `difficulty`. **There is no `why` and no `difficulty` in the source** — an
-  adapter can synthesise `difficulty`, but `why` is required for a reason and
-  the honest options are to author rationales or to relax the type for imported
-  cards. This is the real decision in Phase 1, and it is a content decision, not
-  a code one.
-- **Phase 2 — quiz banks.** Heartbeat's quiz builds its own distractors from
-  the deck; imported cards work with it unchanged the moment Phase 1 lands.
-  There is no separate bank to ingest.
-- **Phase 3 — GLB models.** Eight files, **31 MB**. The service worker precaches
-  12 entries at 882 KB today. These must be fetched on demand from the study
-  app's own origin and must never enter the precache manifest.
-
 ---
 
 ## 5 · Where the draft plan lands, line by line
@@ -297,17 +216,12 @@ never needs auth at all.
 | §2.2 Upgrade currency | **Built**, named coins | `Avatar.coins`, `applyPayout`, `spend` |
 | §2.2 Super-linear upgrade costs | **Partly** — levels cost 1.35^n; no coin-spent upgrade track | `xp.ts` |
 | §2.3 Long-horizon ladder | **Built in #57** | `domain/rpg/together.ts` |
-| §2.3 Locked items visible day one | **Missing** — this is the gap | dashboard |
+| §2.3 Locked items visible day one | **Built** after this audit | `domain/rpg/unlocks.ts` |
 | §2.3 Dual Pet Fusion | **Conflicts** — one shared pet, not two | `petXp.ts` |
-| §3.1 SM-2 scheduler | **Built**, and better than specified | `domain/study/srs.ts` |
-| §3.1 Answer-then-reveal-then-rate | **Built** | `StudyPage.tsx` |
-| §3.2 Quiz timer | **Built** | `domain/study/quiz.ts` |
-| §3.2 Timer resets on navigation | **Not a bug here** — per-question by design | — |
-| §3.2 Pause when backgrounded | **Missing — real defect** | `StudyPage.tsx:457` |
 | §4.1 Bridge auth | **Built**, token-scoped; plan's email/JWT is a regression | `api/study/link.ts` |
 | §4.2 Session → XP | **Built**, replay-safe and capped | `api/study/session.ts` |
-| §4.2 Deck ingestion | **Genuinely new** | — |
-| §4.2 GLB viewer | **Genuinely new**, and 31 MB of it | — |
+| §3 Learn section (SM-2, quiz, decks) | **Removed** with the Study screen | — |
+| §4.2 Deck ingestion, GLB viewer | **Moot** — no learn mode to put them in | — |
 | §4.3 Adapter pattern | **Right call**, keep it | — |
 
 ---
@@ -317,11 +231,9 @@ never needs auth at all.
 Beyond the ones in `CLAUDE.md`, which all still apply:
 
 - **A new holding kind is four edits plus a migration**, and only
-  `worker/src/holdings.test.ts` keeps them in step. Imported decks stored as a
-  new kind pay this cost; stored under an existing kind, they do not.
+  `worker/src/holdings.test.ts` keeps them in step.
 - **`PARTNER_WRITABLE_KINDS` is a security list, `PARTNER_VISIBLE_KINDS` is a
-  display list.** Card progress is personal; if it ever syncs it is visible, not
-  writable.
+  display list.** Personal data that ever syncs is visible, not writable.
 - **Day keys are the member's timezone**, and the study bridge already gets this
   right by capturing the zone at mint. Anything counting "days" must match.
 - **`db/repository/` is a directory.** New section = new file + one `export *`

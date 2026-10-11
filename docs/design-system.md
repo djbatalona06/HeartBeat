@@ -142,7 +142,7 @@ alone reads as the light moving. Both together read as a finger.
 `--z-sheet: 45` · `--z-toast: 50`
 
 The scale exists so the next overlay is not `9999` because nobody could tell
-what it had to beat. **CI fails a hand-written `z-index` above 6.**
+what it had to beat. **CI fails a hand-written `z-index` above 4** (`styles.test.ts`, run by `npm test`); `npm run ui:check` uses a looser ceiling of 6.
 
 Not every rule below 6 uses the tokens, and that is knowingly left alone: the
 tab bar is a fixed sibling at a raw `2`, which is why the film grain hangs off

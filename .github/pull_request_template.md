@@ -11,5 +11,5 @@
 - [ ] `npm test`
 - [ ] `APP_BASE=/ npm run build`
 
-Re-read [CONTRIBUTING.md](../CONTRIBUTING.md#the-five-that-bite) — "The five
+Re-read [CONTRIBUTING.md](../CONTRIBUTING.md#the-four-that-bite) — "The four
 that bite" — before pushing rather than after CI catches it.
