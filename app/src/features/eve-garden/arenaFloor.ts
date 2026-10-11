@@ -13,7 +13,9 @@ import type { ArenaCssTokens } from '../pet/mascots/3d/arenaPalette';
  *
  * Made by `tools/arena-glb.mjs`. The three.js side is reached through a dynamic
  * `import()` only: that is what keeps it in the lazy `mascot3d` chunk, out of
- * the precache and out of the entry's preloads.
+ * the precache and out of the entry's preloads. The static floor's colour maths
+ * comes from the three-free `arena-paint` chunk, so importing it here does not
+ * pull three.js in; `arenaChunk.test.ts` and `lighthouse.mjs` hold that line.
  */
 
 export const ARENA_MODEL_FILE = 'arena.glb';
@@ -33,46 +35,79 @@ function saveData(): boolean {
   return conn?.saveData === true;
 }
 
-function tokensFromHost(host: HTMLElement): ArenaCssTokens | null {
-  const style = getComputedStyle(host);
-  const read = (name: string) => style.getPropertyValue(name).trim();
-  const tokens = {
-    base: read('--color-base'),
-    text: read('--color-text'),
-    accent: read('--color-accent'),
-    success: read('--color-success'),
-    danger: read('--color-danger'),
-  };
-  return Object.values(tokens).every(Boolean) ? tokens : null;
+/** The few floors kept: enough for a companion and the other light/dark mode, small enough to be cheap. */
+export const FLOOR_CACHE_MAX = 3;
+
+/** A floor is fully decided by the five tokens it is painted from. */
+export function floorCacheKey(tokens: ArenaCssTokens): string {
+  return [tokens.base, tokens.text, tokens.accent, tokens.success, tokens.danger].join('|');
 }
 
-/** The baked or static floor, or null only if no usable tokens/canvas exist. */
+/** Oldest out first. Re-remembering a key moves it to the back. */
+export function remember<T>(cache: Map<string, T>, key: string, value: T, max = FLOOR_CACHE_MAX): void {
+  cache.delete(key);
+  cache.set(key, value);
+  while (cache.size > max) {
+    const oldest = cache.keys().next().value;
+    if (oldest === undefined) break;
+    cache.delete(oldest);
+  }
+}
+
+/**
+ * Baked floors only. A static floor is a few milliseconds of 2D drawing, and a
+ * failed bake is not remembered, so a transient failure does not stick.
+ *
+ * Without this every stage clear rebuilt the scene and baked again: a glTF
+ * parse, a WebGL context made and force-lost, and a readback, for a picture that
+ * depends only on the companion and the light/dark mode.
+ */
+const baked = new Map<string, HTMLCanvasElement>();
+
+/**
+ * The baked or static floor, or null only if no usable canvas exists.
+ *
+ * `themeTokens` are the selected companion's, never read off the DOM: the page
+ * wears the *app's* theme, and a floor drawn from that would quietly change
+ * pack. `cancelled` is asked before the GPU is touched, so a bake that was
+ * started for a scene that has since been torn down does not open a WebGL
+ * context beside the one Phaser is using.
+ */
 export async function loadArenaFloor(
-  host: HTMLElement,
   calm: boolean,
-  themeTokens?: ArenaCssTokens,
+  themeTokens: ArenaCssTokens,
+  cancelled: () => boolean = () => false,
 ): Promise<HTMLCanvasElement | null> {
-  const colors = themeTokens ?? tokensFromHost(host);
-  if (!colors) return null;
-  const fallback = () => drawStaticArenaFloor(colors, ARENA_WIDTH, ARENA_HEIGHT, FLOOR_TILE_PX);
+  const fallback = () => drawStaticArenaFloor(themeTokens, ARENA_WIDTH, ARENA_HEIGHT, FLOOR_TILE_PX);
   const src = arenaModelSrc(calm, saveData(), import.meta.env.BASE_URL);
   if (!src) return fallback();
+
+  const key = floorCacheKey(themeTokens);
+  const known = baked.get(key);
+  if (known) {
+    remember(baked, key, known);
+    return known;
+  }
+
   // Set when the board has given up waiting, so a late finish never opens a
   // WebGL context beside the one Phaser is already using.
   let gaveUp = false;
+  let timer: number | undefined;
   const bake = import('../pet/mascots/3d/arenaScene')
     .then(({ bakeArena }) => bakeArena({
-      host,
       src,
       cols: ARENA_WIDTH,
       rows: ARENA_HEIGHT,
       tilePx: FLOOR_TILE_PX,
-      themeTokens: colors,
-      cancelled: () => gaveUp,
+      themeTokens,
+      cancelled: () => gaveUp || cancelled(),
     }))
     .catch(() => null);
   const patience = new Promise<null>((resolve) => {
-    window.setTimeout(() => { gaveUp = true; resolve(null); }, FLOOR_BUDGET_MS);
+    timer = window.setTimeout(() => { gaveUp = true; resolve(null); }, FLOOR_BUDGET_MS);
   });
-  return (await Promise.race([bake, patience])) ?? fallback();
+  const result = await Promise.race([bake, patience]);
+  window.clearTimeout(timer);
+  if (result?.dataset.arena3d === 'true') remember(baked, key, result);
+  return result ?? fallback();
 }

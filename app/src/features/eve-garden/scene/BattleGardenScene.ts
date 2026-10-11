@@ -198,6 +198,16 @@ export class BattleGardenScene extends Phaser.Scene {
     return { fill: toInt(fill), edge: edge === undefined ? undefined : toInt(edge) };
   }
 
+  /**
+   * The path's wash is the floor's own pack accent, so the path and the
+   * checkerboard agree. `this.accent` is the app's theme, which is a different
+   * pack whenever the companion is not the one the app is wearing.
+   */
+  private pathTint(): number {
+    const css = this.floor?.dataset.accent;
+    return css ? Phaser.Display.Color.ValueToColor(css).color : this.accent;
+  }
+
   private get size(): number {
     return SPRITE_SIZE * this.zoom;
   }
@@ -221,6 +231,10 @@ export class BattleGardenScene extends Phaser.Scene {
     if (this.floor) {
       if (this.textures.exists(FLOOR_KEY)) this.textures.remove(FLOOR_KEY);
       this.textures.addCanvas(FLOOR_KEY, this.floor);
+      // The picture is 64 px a tile and is drawn at 48, and the game is set to
+      // nearest-neighbour for its sprites. Nearest on a downscale drops rows of
+      // pixels and eats the 2 px rim; linear averages them.
+      this.textures.get(FLOOR_KEY).setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
   }
 
@@ -242,7 +256,7 @@ export class BattleGardenScene extends Phaser.Scene {
           // The checkerboard is the ground here. The path is the one thing the
           // pixel tiles said that it does not, so it keeps a tint.
           if (kind.sprite === 'tile-path') {
-            this.add.rectangle(x * size, y * size, size, size, this.accent, 0.18).setOrigin(0, 0);
+            this.add.rectangle(x * size, y * size, size, size, this.pathTint(), 0.18).setOrigin(0, 0);
           }
           continue;
         }

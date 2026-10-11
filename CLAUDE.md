@@ -368,6 +368,15 @@ Full deploy walkthrough: `docs/DEPLOY.md`
     entry chunk then imports them from there, and three.js gets modulepreloaded
     on every boot. That happened once with `../roster`; `lighthouse.mjs` now
     fails a build that preloads the chunk. Type imports are fine.
+  - **The reverse holds too: nothing outside `3d/` may import into `mascot3d`.**
+    A route that value-imports anything under `mascots/3d/` imports the whole
+    chunk, three.js included. Eve's Garden did, through its static floor's colour
+    maths, so calm and Save-Data still downloaded three.js. The four files there
+    that import no three (`arenaPalette`, `arenaFinish`, `cssColor`,
+    `gardenPalette`) are their own small `arena-paint` chunk in `vite.config.ts`
+    and the route may import those; everything else is reached with `import()`.
+    `eve-garden/arenaChunk.test.ts` holds the list, and `lighthouse.mjs` fails a
+    build in which any chunk statically imports `mascot3d`.
   - Idle motion is `3d/pose.ts`, pure and tested. Under calm (`data-calm`, which
     folds in reduced motion) the pose is independent of time and the loop draws
     once and stops.
