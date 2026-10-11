@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using HeartBeat.Game.Core.Data;
 using HeartBeat.Game.Core.Models;
@@ -27,7 +30,7 @@ public static class Api
     private static string Write<T>(T value, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> info) =>
         JsonSerializer.Serialize(value, info);
 
-    /// <summary>The seven islands, for the compass and the world map.</summary>
+    /// <summary>The ten islands, for the compass and the world map.</summary>
     public static string World()
     {
         var islands = Data.World.Islands
@@ -67,27 +70,42 @@ public static class Api
 
         var boosts = new Boosts(Charges.Parse(charges), ReadStats(statsJson));
         BattleState state = Battle.Begin(monster, level, ToSeed(seed), boosts);
-        return Write(ToDto(state, island, stage, face, level, monster), GameJson.Default.BattleDto);
+        return Write(Seal(ToDto(state, island, stage, face, level, monster)), GameJson.Default.BattleDto);
     }
 
     /// <summary>
     /// The player's turn. <paramref name="actionId"/> is an id from
     /// <see cref="Actions"/>, or <c>"flee"</c>.
     /// </summary>
-    public static string? Act(string battleJson, string actionId)
+    public static string? Act(string? battleJson, string? actionId)
     {
-        if (!TryRead(battleJson, out BattleDto? dto, out Monster? monster)) return null;
-        string? name = dto!.MoveNames is { } names && names.TryGetValue(actionId, out string? n) ? n : null;
-        BattleState next = Battle.Act(FromDto(dto), actionId, monster!, dto.Level, name);
-        return Write(ToDto(next, dto.Island, dto.Stage, dto.Theme, dto.Level, monster!, dto.MoveNames), GameJson.Default.BattleDto);
+        try
+        {
+            if (actionId is null || !TryRead(battleJson, out BattleDto? dto, out Monster? monster)) return null;
+            string? name = dto!.MoveNames is { } names && names.TryGetValue(actionId, out string? n) ? n : null;
+            BattleState next = Battle.Act(FromDto(dto), actionId, monster!, dto.Level, name);
+            return Write(Seal(ToDto(next, dto.Island, dto.Stage, dto.Theme, dto.Level, monster!, dto.MoveNames)), GameJson.Default.BattleDto);
+        }
+        catch (Exception)
+        {
+            // Total on purpose: see the class remarks.
+            return null;
+        }
     }
 
     /// <summary>The monster's turn. Kept separate so the overlay can animate between the two.</summary>
-    public static string? MonsterMove(string battleJson)
+    public static string? MonsterMove(string? battleJson)
     {
-        if (!TryRead(battleJson, out BattleDto? dto, out Monster? monster)) return null;
-        BattleState next = Battle.MonsterMove(FromDto(dto!), monster!);
-        return Write(ToDto(next, dto!.Island, dto.Stage, dto.Theme, dto.Level, monster!, dto.MoveNames), GameJson.Default.BattleDto);
+        try
+        {
+            if (!TryRead(battleJson, out BattleDto? dto, out Monster? monster)) return null;
+            BattleState next = Battle.MonsterMove(FromDto(dto!), monster!);
+            return Write(Seal(ToDto(next, dto!.Island, dto.Stage, dto.Theme, dto.Level, monster!, dto.MoveNames)), GameJson.Default.BattleDto);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     /// <summary>Level, stats and unlocked actions for a total XP figure.</summary>
@@ -101,7 +119,7 @@ public static class Api
     /// </summary>
     public static string Award(string activity, int currentXp)
     {
-        if (!Enum.TryParse(activity, ignoreCase: true, out Activity parsed))
+        if (!Enum.TryParse(activity, ignoreCase: true, out Activity parsed) || !Enum.IsDefined(parsed))
         {
             return Write(
                 new AwardDto(0, currentXp, Progression.LevelForXp(currentXp), false, "", ProgressFor(currentXp)),
@@ -109,7 +127,8 @@ public static class Api
         }
 
         int gained = Progression.XpFor(parsed);
-        int total = currentXp + gained;
+        // Widened so a pet near int.MaxValue clamps instead of wrapping negative.
+        int total = (int)Math.Min((long)currentXp + gained, int.MaxValue);
         int before = Progression.LevelForXp(currentXp);
         int after = Progression.LevelForXp(total);
 
@@ -202,11 +221,15 @@ public static class Api
         c.Hp, c.MaxHp, c.Shield, c.Attack, c.Defense, c.Speed,
         c.Effects.Select(e => new StatusEffect(e.Kind, e.Magnitude, e.TurnsLeft)).ToList());
 
-    /// <summary>Parses a battle and re-resolves its monster. False for anything malformed.</summary>
-    private static bool TryRead(string json, out BattleDto? dto, out Monster? monster)
+    /// <summary>
+    /// Parses a battle, checks its seal and re-resolves its monster. False for
+    /// anything malformed, partial or edited.
+    /// </summary>
+    private static bool TryRead(string? json, out BattleDto? dto, out Monster? monster)
     {
         dto = null;
         monster = null;
+        if (string.IsNullOrWhiteSpace(json)) return false;
         try
         {
             dto = JsonSerializer.Deserialize(json, GameJson.Default.BattleDto);
@@ -215,12 +238,88 @@ public static class Api
         {
             return false;
         }
-        if (dto is null) return false;
+        if (dto is null || dto.Player is null || dto.Monster is null || dto.Log is null) return false;
+        if (dto.Player.Effects is null || dto.Monster.Effects is null) return false;
+        if (!IsSealed(dto)) return false;
 
         // The monster is looked up rather than carried in the state, so its
         // stats cannot be edited by anything that can reach the JSON.
         monster = Data.World.MonsterAt(dto.Island, dto.Stage, dto.Theme);
         return monster is not null;
+    }
+
+    // ---- sealing --------------------------------------------------------
+    //
+    // The browser holds the state between calls, so it could edit it: set the
+    // monster's HP to 1, or the level to 46. Each state C# hands out therefore
+    // carries an HMAC over the fields that decide a fight, made with a key that
+    // is picked at random when the module starts and never leaves it.
+    //
+    // What this is and is not: it stops an edit made in the dev tools and a
+    // state replayed after a restart (the key changes, so the old fight is
+    // refused). It does not stop someone who owns the device and reads the
+    // module's memory, and nothing running there could.
+    //
+    // Left out on purpose: the charges and move names (the page adds them
+    // before each move - a workout logged mid-fight is meant to count), the
+    // log, and the fields that are only worked out for display.
+
+    private static readonly byte[] SealKey = NewKey();
+
+    private static byte[] NewKey()
+    {
+        var key = new byte[32];
+        try
+        {
+            RandomNumberGenerator.Fill(key);
+        }
+        catch (Exception)
+        {
+            // A runtime with no entropy source still gets a per-start key.
+            Random.Shared.NextBytes(key);
+        }
+        return key;
+    }
+
+    private static BattleDto Seal(BattleDto dto) => dto with { Sig = Sign(dto) };
+
+    private static bool IsSealed(BattleDto dto)
+    {
+        if (string.IsNullOrEmpty(dto.Sig)) return false;
+        byte[] given;
+        try
+        {
+            given = Convert.FromBase64String(dto.Sig);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+        byte[] expected = HMACSHA256.HashData(SealKey, Encoding.UTF8.GetBytes(Canonical(dto)));
+        return CryptographicOperations.FixedTimeEquals(given, expected);
+    }
+
+    private static string Sign(BattleDto dto) =>
+        Convert.ToBase64String(HMACSHA256.HashData(SealKey, Encoding.UTF8.GetBytes(Canonical(dto))));
+
+    private static string Canonical(BattleDto d)
+    {
+        var sb = new StringBuilder(256);
+        void Put(object? v) => sb.Append(Convert.ToString(v, CultureInfo.InvariantCulture)).Append('|');
+        void Side(CombatantDto c)
+        {
+            Put(c.Hp); Put(c.MaxHp); Put(c.Shield); Put(c.Attack); Put(c.Defense); Put(c.Speed);
+            foreach (EffectDto e in c.Effects) { Put(e.Kind); Put(e.Magnitude); Put(e.TurnsLeft); }
+            sb.Append(';');
+        }
+
+        Put(d.MonsterId); Put(d.Island); Put(d.Stage); Put(d.Theme); Put(d.Level);
+        Put(d.Round); Put(d.Turn); Put(d.Outcome); Put(d.Seed); Put(d.XpOwed); Put(d.TogetherCooldown);
+        RaidStats r = d.Stats ?? RaidStats.None;
+        Put(r.Energy); Put(r.Resilience); Put(r.Resonance); Put(r.Burden); Put(r.Fortify); Put(r.Reveal); Put(r.Recovery);
+        Side(d.Player);
+        Side(d.Monster);
+        return sb.ToString();
     }
 
     private static RaidStats ReadStats(string? json)
@@ -237,7 +336,7 @@ public static class Api
     }
 
     private static DioramaTheme ParseTheme(string theme) =>
-        Enum.TryParse(theme, ignoreCase: true, out DioramaTheme parsed) ? parsed : DioramaTheme.Light;
+        Enum.TryParse(theme, ignoreCase: true, out DioramaTheme parsed) && Enum.IsDefined(parsed) ? parsed : DioramaTheme.Light;
 
     /// <summary>
     /// JS numbers are doubles and every uint fits in one, but a caller that

@@ -111,7 +111,7 @@ public static class Charges
     {
         if (string.IsNullOrWhiteSpace(csv)) return [];
         return csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(s => Enum.TryParse(s, ignoreCase: true, out Charge c) ? (Charge?)c : null)
+            .Select(s => Enum.TryParse(s, ignoreCase: true, out Charge c) && Enum.IsDefined(c) ? (Charge?)c : null)
             .Where(c => c is not null)
             .Select(c => c!.Value)
             .Distinct()

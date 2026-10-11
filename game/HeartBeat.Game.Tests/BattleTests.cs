@@ -374,4 +374,40 @@ public class BattleTests
         Assert.True(Battle.HitsLeft(hurt, Sentinel, 8) < Battle.HitsLeft(start, Sentinel, 8));
         Assert.True(Battle.HitsLeft(start, Sentinel, 8) > 0);
     }
+
+    [Fact]
+    public void ASlowedPlayerIsLessLikelyToGetAway()
+    {
+        int normal = 0, slowed = 0, tried = 0;
+        for (uint seed = 1; seed <= 400; seed++)
+        {
+            BattleState open = Battle.Begin(Sprout, 20, seed);
+            if (open.Turn != Side.Player) continue;
+            tried++;
+            BattleState hobbled = open with
+            {
+                Player = open.Player with { Effects = [new StatusEffect(StatusKind.SpeedDown, 100, 1)] },
+            };
+            if (Battle.Flee(open, Sprout).Outcome == Outcome.Fled) normal++;
+            if (Battle.Flee(hobbled, Sprout).Outcome == Outcome.Fled) slowed++;
+        }
+        Assert.True(tried > 50);
+        Assert.True(slowed < normal, $"slowed {slowed} should be below normal {normal}");
+    }
+
+    [Fact]
+    public void TheMonstersSwingIsNotThePlayersNextSwing()
+    {
+        // The monster used to roll at `Round * 3 + 3`, which is exactly the
+        // player's roll one round later, so the two were the same number.
+        for (uint seed = 1; seed <= 20; seed++)
+        {
+            for (int round = 1; round <= 5; round++)
+            {
+                double playersNext = Rng.Wobble(seed, (round + 1) * 3);
+                double monsters = Rng.Wobble(seed ^ 0x6D6F6E73u, round);
+                Assert.NotEqual(playersNext, monsters);
+            }
+        }
+    }
 }

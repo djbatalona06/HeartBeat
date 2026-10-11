@@ -29,8 +29,13 @@ public static class Battle
     /// <summary>Damage multiplier when a charge hits the monster's weakness.</summary>
     public const double WeaknessMultiplier = 1.5;
 
-    /// <summary>By this round a monster's heals have faded to nothing.</summary>
+    /// <summary>
+    /// A monster's heals shrink each round and are gone entirely from round 21
+    /// (the factor is `1 - (round - 1) / 20`, which first reaches zero there).
+    /// </summary>
     public const int MonsterHealFadeRounds = 20;
+
+    private const uint MonsterWobbleSalt = 0x6D6F6E73u;
 
     /// <summary>
     /// How many of the player's own turns <c>Together</c> sits out after it is
@@ -165,8 +170,20 @@ public static class Battle
         };
     }
 
-    private static BattleState Say(BattleState state, Side who, string text) =>
-        state with { Log = [.. state.Log, new BattleLine(state.Round, who, text)] };
+    /// <summary>
+    /// The log is capped so that a refused move (which adds a line but spends no
+    /// turn) cannot grow the state, and with it every call's payload, without end.
+    /// </summary>
+    public const int MaxLogLines = 200;
+
+    private static BattleState Say(BattleState state, Side who, string text)
+    {
+        var line = new BattleLine(state.Round, who, text);
+        IReadOnlyList<BattleLine> log = state.Log.Count >= MaxLogLines
+            ? [.. state.Log.Skip(state.Log.Count - MaxLogLines + 1), line]
+            : [.. state.Log, line];
+        return state with { Log = log };
+    }
 
     /// <summary>
     /// One action from the player.
@@ -263,7 +280,10 @@ public static class Battle
     {
         if (state.Outcome != Outcome.Fighting || state.Turn != Side.Player) return state;
 
-        double edge = (state.Player.Speed - monster.Speed) * 0.05;
+        // A slowing effect on the player counts here: it is the only place speed
+        // is a contest rather than a turn order fixed at the start.
+        double slowed = state.Player.Speed * (1 - Math.Clamp(state.Player.MagnitudeOf(StatusKind.SpeedDown), 0, 100) / 100.0);
+        double edge = (slowed - monster.Speed) * 0.05;
         double chance = Math.Clamp(0.6 + edge, 0.35, 0.9);
 
         if (Rng.Roll(state.Seed, state.Round * 3 + 1) < chance)
@@ -294,7 +314,9 @@ public static class Battle
         // a warning and the move it warns of can never disagree.
         MonsterPlan plan = Behaviours.Plan(state, monster);
 
-        double wobble = Rng.Wobble(state.Seed, state.Round * 3 + 3);
+        // Salted rather than stepped on: `Round * 3 + 3` is the player's roll for
+        // the next round, so the monster's swing used to repeat the player's.
+        double wobble = Rng.Wobble(state.Seed ^ MonsterWobbleSalt, state.Round);
         BattleState next = state;
 
         if (plan.Action is null)

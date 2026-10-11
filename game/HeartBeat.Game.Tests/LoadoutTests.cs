@@ -50,4 +50,12 @@ public class LoadoutTests
         Assert.Empty(Charges.Parse(""));
         Assert.Equal([Charge.Exercise, Charge.Bond], Charges.Parse("exercise, Bond,nonsense,Exercise"));
     }
+
+    [Fact]
+    public void AChargeListedAsANumberIsDropped()
+    {
+        // `Enum.TryParse` accepts "99" for an enum with no member 99, and the
+        // fallback element for it counted as a weakness hit.
+        Assert.Equal([Charge.Work], Charges.Parse("99,Work,-1"));
+    }
 }

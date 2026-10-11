@@ -17,8 +17,8 @@ public readonly record struct PlayerStats(int MaxHp, int Attack, int Defense, in
 public static class Progression
 {
     /// <summary>
-    /// Forty-six ranks: four for each of the ten islands on top of the ten
-    /// island 1 was built for. Island <c>k</c> is balanced to be entered at
+    /// Forty-six ranks: the ten island 1 was built for, plus four for each of
+    /// the nine islands after it. Island <c>k</c> is balanced to be entered at
     /// <c>1 + 4(k-1)</c> and its boss beaten at <c>8 + 4(k-1)</c>, which
     /// <c>IslandTests</c> holds.
     /// </summary>
@@ -27,7 +27,7 @@ public static class Progression
     /// <summary>
     /// Total XP needed to *reach* <paramref name="level"/> from nothing.
     ///
-    /// Gentle early, steeper later: level 2 costs 283, level 10 costs 3162. The
+    /// Gentle early, steeper later: level 2 costs 282, level 10 costs 3162. The
     /// exponent is below 2 on purpose - this is a wellness tracker, and a curve
     /// that punishes a quiet fortnight by making the next level unreachable is
     /// a curve that gets the app deleted.

@@ -24,7 +24,7 @@ namespace HeartBeat.Game.Core.Data;
 /// Stat curve: HP roughly doubles across the island while the player's does
 /// not, which is what the level-up rewards and the element chart are for.
 /// `Island1Tests` pins the two ends - stage 1 must be winnable at level 1, and
-/// the boss must be winnable at level 5 - so the middle can be tuned by feel
+/// the boss must be winnable by level 8 (`IslandTests` holds it) - so the middle can be tuned by feel
 /// without anyone discovering a wall by walking into it.
 /// </summary>
 public static class Island1
