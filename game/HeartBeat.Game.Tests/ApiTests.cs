@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using HeartBeat.Game.Core;
 
 namespace HeartBeat.Game.Tests;
@@ -168,19 +169,99 @@ public class ApiTests
         Assert.Null(Api.Act("""{"island":99,"stage":1,"theme":"light"}""", "strike"));
     }
 
-    [Fact]
-    public void MonsterStatsAreLookedUpNotTrustedFromTheState()
+    /// <summary>Edits one field of a state the way someone in the dev tools would.</summary>
+    private static string Edit(string state, Action<JsonNode> change)
     {
-        // The state crosses an untrusted boundary. Editing the monster's HP in
-        // the JSON must not make the monster weaker - the stats come from
-        // Data/, keyed by island and stage.
-        string state = Api.BeginBattle(1, 7, "light", 8, 5)!;
-        string tampered = state.Replace("\"monsterId\":\"i1s7-sedentary-sentinel\"", "\"monsterId\":\"anything\"", StringComparison.Ordinal);
+        JsonNode node = JsonNode.Parse(state)!;
+        change(node);
+        return node.ToJsonString();
+    }
 
-        string? after = Api.Act(tampered, "strike");
-        Assert.NotNull(after);
-        // Still the real boss: a single strike cannot have finished it.
-        Assert.Equal("Fighting", Parse(after).GetProperty("outcome").GetString());
+    [Fact]
+    public void AnEditedStateIsRefusedNotBelieved()
+    {
+        // The state crosses an untrusted boundary and is sealed on the way out.
+        // A one-hit boss, a level-46 player, a different monster: all refused.
+        string state = Api.BeginBattle(1, 7, "light", 8, 5)!;
+
+        Assert.NotNull(Api.Act(state, "strike"));
+        Assert.Null(Api.Act(Edit(state, n => n["monster"]!["hp"] = 1), "strike"));
+        Assert.Null(Api.Act(Edit(state, n => n["player"]!["attack"] = 9999), "strike"));
+        Assert.Null(Api.Act(Edit(state, n => n["level"] = 46), "strike"));
+        Assert.Null(Api.Act(Edit(state, n => n["xpOwed"] = 9999), "strike"));
+        Assert.Null(Api.Act(Edit(state, n => n["monsterId"] = "anything"), "strike"));
+        Assert.Null(Api.MonsterMove(Edit(state, n => n["round"] = 40)));
+    }
+
+    [Fact]
+    public void ARaidSheetEditedMidFightIsRefused()
+    {
+        string state = Api.BeginBattle(1, 7, "light", 8, 5, null, """{"energy":10}""")!;
+        Assert.NotNull(Api.Act(state, "strike"));
+        Assert.Null(Api.Act(Edit(state, n => n["stats"]!["energy"] = 999), "strike"));
+    }
+
+    [Fact]
+    public void AStateWithNoSealOrAForgedOneIsRefused()
+    {
+        string state = Api.BeginBattle(1, 7, "light", 8, 5)!;
+        Assert.Null(Api.Act(Edit(state, n => n["sig"] = null), "strike"));
+        Assert.Null(Api.Act(Edit(state, n => n["sig"] = "AAAA"), "strike"));
+        Assert.Null(Api.Act(Edit(state, n => n["sig"] = "not base64 !"), "strike"));
+    }
+
+    [Fact]
+    public void ChargesAndMoveNamesCanBeAddedWithoutBreakingTheSeal()
+    {
+        // The page adds both before each move: a workout logged mid-fight is
+        // meant to count on the next swing, so they are deliberately unsealed.
+        string state = Api.BeginBattle(1, 7, "light", 8, 5)!;
+        string withCharges = Edit(state, n =>
+        {
+            n["charges"] = new JsonArray("Work");
+            n["moveNames"] = new JsonObject { ["strike"] = "Pounce" };
+        });
+        Assert.NotNull(Api.Act(withCharges, "strike"));
+    }
+
+    [Fact]
+    public void NullAndPartialStatesComeBackNullRatherThanThrowing()
+    {
+        Assert.Null(Api.Act(null, "strike"));
+        Assert.Null(Api.Act(Api.BeginBattle(1, 1, "light", 3, 1), null));
+        Assert.Null(Api.MonsterMove(null));
+        Assert.Null(Api.Act("""{"island":1,"stage":1,"theme":"Light","player":null,"log":null}""", "strike"));
+        string state = Api.BeginBattle(1, 1, "light", 3, 1)!;
+        Assert.Null(Api.Act(Edit(state, n => n["player"] = null), "strike"));
+        Assert.Null(Api.Act(Edit(state, n => n["log"] = null), "strike"));
+        Assert.Null(Api.Act(Edit(state, n => n["monster"]!["effects"] = null), "strike"));
+    }
+
+    [Fact]
+    public void RefusedMovesCannotGrowTheLogWithoutEnd()
+    {
+        string state = Api.BeginBattle(1, 1, "light", 3, 1)!;
+        for (int i = 0; i < 400; i++)
+        {
+            // Not a move, so no turn is spent and the same line is added every time.
+            state = Api.Act(state, "not-a-real-action")!;
+        }
+        Assert.True(Parse(state).GetProperty("log").GetArrayLength() <= Battle.MaxLogLines);
+    }
+
+    [Fact]
+    public void ANumberIsNotAnActivityOrATheme()
+    {
+        Assert.Equal(0, Parse(Api.Award("99", 10)).GetProperty("xp").GetInt32());
+        Assert.NotNull(Api.Stage(1, 1, "99")); // an undefined theme falls back to Light
+    }
+
+    [Fact]
+    public void AwardNearTheTopOfTheRangeClampsInsteadOfWrapping()
+    {
+        JsonElement award = Parse(Api.Award("Exercise", int.MaxValue - 1));
+        Assert.True(award.GetProperty("totalXp").GetInt32() > 0);
+        Assert.Equal(Progression.MaxLevel, award.GetProperty("level").GetInt32());
     }
 
     [Fact]

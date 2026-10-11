@@ -164,6 +164,12 @@ export interface BattleDto {
    * the game core from the same state its next move is, so it is never wrong.
    */
   telegraph?: Telegraph | null;
+  /**
+   * The game core's seal on this state. Hand it back untouched: a state whose
+   * hp, round, level or the like has been edited is refused (`act` answers
+   * `null`), and so is one from before the worker last restarted.
+   */
+  sig?: string | null;
 }
 
 export interface ProgressDto {

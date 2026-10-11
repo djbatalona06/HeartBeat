@@ -74,6 +74,9 @@ public sealed record LineDto(int Round, Side Who, string Text);
 /// <summary>
 /// A whole battle, flattened.
 ///
+/// <c>Sig</c> seals the fields that decide a fight (see <c>Api.Sign</c>), so a
+/// state edited on the way back in is refused rather than believed.
+///
 /// The TypeScript side treats this as opaque state it hands back on the next
 /// call - C# keeps nothing between calls, so a worker that dies mid-fight
 /// costs the fight and nothing else - but it also reads <c>player</c>,
@@ -99,7 +102,8 @@ public sealed record BattleDto(
     RaidStats? Stats = null,
     IReadOnlyDictionary<string, string>? MoveNames = null,
     int TogetherCooldown = 0,
-    string? Telegraph = null);
+    string? Telegraph = null,
+    string? Sig = null);
 
 public sealed record ProgressDto(
     int Xp,

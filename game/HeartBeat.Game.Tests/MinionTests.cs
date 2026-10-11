@@ -109,4 +109,20 @@ public class MinionTests
         Assert.Null(Api.Stage(5, Minions.StageBase + 3, "light"));
         Assert.Equal(Progression.XpForDefeating(MonsterType.Minion), Api.DefeatXp(5, Minions.StageBase + 2));
     }
+
+    [Fact]
+    public void EverySkirmishFoeLeadsWithAnAttack()
+    {
+        // `Behaviours` falls back to the first action, so a minion whose first
+        // action is not an attack would never hurt anyone.
+        foreach (Island island in World.Islands.Where(i => i.Number >= 5))
+        {
+            foreach (int stage in new[] { 101, 102 })
+            {
+                Monster? foe = World.MonsterAt(island.Number, stage, DioramaTheme.Light);
+                Assert.NotNull(foe);
+                Assert.Equal(ActionType.Attack, foe!.Actions[0].Type);
+            }
+        }
+    }
 }
