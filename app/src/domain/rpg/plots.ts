@@ -14,7 +14,7 @@ import type { Tier } from './tiers';
  * room onto the lawn would have been a shortcut that showed.
  *
  * So the garden has its own catalogue of things you grow or stand in soil, and
- * it is deliberately a *small* one. Six plots and eight things, because a
+ * it is deliberately a *small* one. Seven plots and eight things, because a
  * garden with forty slots is a spreadsheet, and because every one of these has
  * to be drawn.
  *
@@ -46,11 +46,11 @@ export interface Plot {
 }
 
 /**
- * Six, in the order `milestones.ts` opens them.
+ * Seven, in the order `milestones.ts` opens them.
  *
  * The positions are hand-placed rather than laid out on a curve, unlike the
  * Raid Gate's arch — an arch is a formal arrangement and a garden is not, and
- * six evenly spaced beds would read as an allotment.
+ * seven evenly spaced beds would read as an allotment.
  */
 export const PLOTS: readonly Plot[] = [
   {

@@ -49,7 +49,7 @@ import { RaidGate } from './gate/RaidGate';
 import { BossGatePrompt } from './gate/BossGatePrompt';
 import { REGATE_DELAY_MS, backToTheGate, promptApplies } from '../../domain/rpg/gatePrompt';
 import { starMilestone } from '../../domain/rpg/starChests';
-import { REDRIVE_DELAY_MS, settle, shouldRedriveMonster } from './round';
+import { MAX_REDRIVE_FAILS, REDRIVE_DELAY_MS, settle, shouldRedriveMonster } from './round';
 import { blowsFor, monsterMissed } from '../../domain/rpg/behaviours';
 import { Compass } from './Compass';
 import { WorldMap } from './WorldMap';
@@ -120,6 +120,8 @@ type Busy = 'idle' | 'acting';
 export function EveGardenPage() {
   const host = useRef<HTMLDivElement | null>(null);
   const scene = useRef<SceneHandle | null>(null);
+  /** Monster moves that have failed in a row, so a broken one is not asked for forever. */
+  const redriveFails = useRef(0);
   const client = useRef<GameClient | null>(null);
 
   const settings = useLiveQuery(loadSettings, []);
@@ -251,13 +253,28 @@ export function EveGardenPage() {
    *  something. State rather than a ref: the reaction *is* a re-render. */
   const [pulse, setPulse] = useState(0);
 
+  /**
+   * True once a gate has opened. "Try again" re-runs this page's effects, and
+   * the gate one must not be among them once there is a gate: it would put the
+   * companion back to nobody and drop the garden the person was standing in.
+   */
+  const gateLoaded = useRef(false);
+
   const openGate = useCallback((askedToChange = false) => {
     let live = true;
+    gateLoaded.current = false;
     openRaidGate({ askedToChange })
       .then((next) => {
         if (!live) return;
+        gateLoaded.current = true;
         setGate(next);
         setCompanion(null);
+        // Each walk through the gate starts clean: no half-answered boss
+        // prompt, no skirmish foe left over, and the party question asked
+        // fresh (a "solo" answer lasts one attempt, not the visit).
+        setAsking(false);
+        setSkirmish(null);
+        setParty(true);
         // Nothing of the last fight may survive a trip through the gate: a
         // stale battle would be handed to a worker that has just been torn down.
         setBattle(null);
@@ -275,7 +292,7 @@ export function EveGardenPage() {
 
   // `reload` is in the deps so "Try again" on a gate fault actually re-opens the
   // gate. `openGate` itself is stable, so this only ever re-runs on a retry.
-  useEffect(() => openGate(false), [openGate, reload]);
+  useEffect(() => (gateLoaded.current ? undefined : openGate(false)), [openGate, reload]);
 
   /**
    * The partner gate exists on a boss stage and nowhere else. Stages 1-6 are
@@ -454,11 +471,16 @@ export function EveGardenPage() {
 
   const begin = useCallback((minionStage?: number) => {
     const game = client.current;
-    if (!game || !progress || !monster) return;
+    // Every way of not starting walks the pet home. The scene latches "engaged"
+    // the moment the pet touches the foe and only `withdraw` clears it, so a
+    // start that quietly gave up left the pet unable to engage again.
+    if (!game || !progress || !monster) { scene.current?.withdraw(); return; }
+    redriveFails.current = 0;
     const fight = (at: number) => game
       .beginBattle(island, at, theme, progress.level, Date.now(), charges, sheet.total)
       .then((next) => {
         setWeakHits([]);
+        if (!next) scene.current?.withdraw();
         setBattle(next ? { ...next, moveNames } : next);
       });
 
@@ -470,14 +492,17 @@ export function EveGardenPage() {
       started = fight(stage);
     } else {
       started = game.stage(island, minionStage, theme).then((dto) => {
-        if (!dto) return undefined;
+        if (!dto) { scene.current?.withdraw(); return undefined; }
         setSkirmish({ stage: minionStage, monster: dto.monster });
         return fight(minionStage);
       });
     }
     // Was silent, which made walking into a monster and having nothing happen
     // indistinguishable from having missed the tile.
-    started.catch((error) => setFault(faultFrom('round', error)));
+    started.catch((error) => {
+      scene.current?.withdraw();
+      setFault(faultFrom('round', error));
+    });
   }, [island, stage, theme, progress, monster, charges, sheet, moveNames]);
 
   // Every walk into a boss is an attempt, and every attempt meets the Boss
@@ -650,6 +675,19 @@ export function EveGardenPage() {
     [charges],
   );
 
+  /**
+   * The game turned a fight down: its seal did not match, or the worker was
+   * restarted since it began. There is nothing to resume, so it is set aside and
+   * the pet walks home, ready to be walked in again. Quietly doing nothing, as
+   * a `null` used to, left every button looking alive and none of them working.
+   */
+  const dropFight = useCallback(() => {
+    setBattle(null);
+    setWeakHits([]);
+    scene.current?.withdraw();
+    setNote('That fight could not carry on, so it was set aside. Walk in again to start a new one.');
+  }, []);
+
   const finish = useCallback(async (ended: BattleDto, foe: MonsterDto) => {
     setBattle(ended);
 
@@ -666,7 +704,7 @@ export function EveGardenPage() {
     // cleared, no star chest is lit, and the boss gate is not involved.
     if (isMinionId(ended.monsterId)) {
       if (ended.outcome !== 'Won') { scene.current?.withdraw(); return; }
-      await scene.current?.defeat();
+      await settle(scene.current?.defeat());
       if (coupleId && memberId) {
         const first = await recordMinionWin(memberId, coupleId, day, ended.monsterId);
         if (first) await awardPetXp(coupleId, `garden-minion-${day}-${ended.monsterId}`, ended.xpOwed);
@@ -686,20 +724,28 @@ export function EveGardenPage() {
       return;
     }
 
-    await scene.current?.defeat();
+    await settle(scene.current?.defeat());
     if (!coupleId) return;
+
+    // What going in together was worth is for the boss and for nothing after
+    // it. It is read once and put away here: held on, it paid double coins and
+    // a bonus purse for every stage of the next island.
+    const bossFight = stageOfMonster(ended.monsterId) === STAGES_PER_ISLAND;
+    const bonus = bossFight ? together.current : NO_BONUS;
+    together.current = NO_BONUS;
 
     // The award id is the monster, not the phone: both partners see the same
     // victory and both will report it, and `awardPetXp` dedups on the id — so
-    // a stage pays once however many devices watched it fall.
-    await awardPetXp(coupleId, `garden-stage-${ended.monsterId}`, ended.xpOwed);
+    // a stage pays once however many devices watched it fall. It says whether
+    // it paid: a replay of a boss already beaten pays nothing, and the banner
+    // and the level below must not announce XP that did not arrive.
+    const stagePaid = await awardPetXp(coupleId, `garden-stage-${ended.monsterId}`, ended.xpOwed);
+    const stageXp = stagePaid ? ended.xpOwed : 0;
     // The partner gate's share, on a boss stage only and only if the other half
     // was at the gate when this fight began. Its own id, per monster, so both
     // phones reporting the same win still pay it once.
-    const bonusXp = stageOfMonster(ended.monsterId) === STAGES_PER_ISLAND
-      ? togetherXp(ended.xpOwed, together.current)
-      : 0;
-    if (bonusXp > 0) await awardPetXp(coupleId, `garden-together-${ended.monsterId}`, bonusXp);
+    let bonusXp = bossFight ? togetherXp(ended.xpOwed, bonus) : 0;
+    if (bonusXp > 0 && !(await awardPetXp(coupleId, `garden-together-${ended.monsterId}`, bonusXp))) bonusXp = 0;
 
     // Coins are the member's own, so this one is per phone: a first clear pays
     // its coins once, and a boss already beaten drops replay loot (capped a day).
@@ -709,8 +755,8 @@ export function EveGardenPage() {
         island: islandOfMonster(ended.monsterId) ?? island,
         stage: stageOfMonster(ended.monsterId) ?? stage,
         day,
-        coinMultiplier: together.current.coinMultiplier,
-        extraPurses: together.current.purses,
+        coinMultiplier: bonus.coinMultiplier,
+        extraPurses: bonus.purses,
       })
       : null;
     const lootText = loot && (loot.coins > 0 || loot.purses.length > 0)
@@ -723,7 +769,7 @@ export function EveGardenPage() {
     const after = await clearStageFor(coupleId, ended.monsterId);
 
     const game = client.current;
-    const next = game ? await game.progress(petXp + ended.xpOwed + bonusXp) : null;
+    const next = game ? await game.progress(petXp + stageXp + bonusXp) : null;
     if (next) setProgress(next);
 
     /**
@@ -737,14 +783,14 @@ export function EveGardenPage() {
      * from the first would have announced a plot opening on the wrong level.
      */
     const petLevelBefore = levelForXp(petXp);
-    const petLevelAfter = levelForXp(petXp + ended.xpOwed + bonusXp);
+    const petLevelAfter = levelForXp(petXp + stageXp + bonusXp);
     const crossed = petLevelAfter > petLevelBefore
       ? milestonesAt(petLevelAfter)
       : [];
 
     setVictory({
       monster: foe,
-      xp: ended.xpOwed + bonusXp,
+      xp: stageXp + bonusXp,
       leveledUp: petLevelAfter > petLevelBefore,
       level: petLevelAfter,
       rewardText: crossed.length > 0
@@ -765,7 +811,7 @@ export function EveGardenPage() {
       // The charges are the one thing the page updates on a battle in flight:
       // a workout logged between turns lands on the very next swing.
       const mine = await game.act({ ...opening, charges, moveNames }, actionId);
-      if (!mine) return;
+      if (!mine) { dropFight(); return; }
       setBattle(mine);
 
       // Flee and a refused action both come back with the turn still ours; only
@@ -830,7 +876,7 @@ export function EveGardenPage() {
       // that misses is left out rather than drawn as a hit.
       const blows = blowsFor(mine.telegraph);
       const theirs = await game.monsterMove(mine);
-      if (!theirs) return;
+      if (!theirs) { dropFight(); return; }
       setBattle(theirs);
       if (!monsterMissed(theirs.log)) {
         for (let blow = 0; blow < blows; blow += 1) {
@@ -844,7 +890,7 @@ export function EveGardenPage() {
     } finally {
       setBusy('idle');
     }
-  }, [opponent, progress, finish, kit, charges, moveNames, edgeOf]);
+  }, [opponent, progress, finish, kit, charges, moveNames, edgeOf, dropFight]);
 
   /** One tap of the move bar. A move is a move: nothing is logged by it. */
   const onAct = useCallback(async (action: ActionDto) => {
@@ -862,6 +908,10 @@ export function EveGardenPage() {
     const game = client.current;
     const foe = opponent;
     if (redriving.current || !game || !foe || !battle || !shouldRedriveMonster(battle, busy)) return undefined;
+    // A move that keeps failing is shown as a fault and left alone. Without
+    // this the turn stayed the monster's, the effect saw that on every idle,
+    // and it asked again every half second for as long as the page was open.
+    if (redriveFails.current >= MAX_REDRIVE_FAILS) return undefined;
     // Only the timer is cancelled on cleanup. Once the move is asked for, taking
     // `busy` below re-runs this effect, and a cancel there would drop the answer.
     const timer = setTimeout(() => {
@@ -878,7 +928,11 @@ export function EveGardenPage() {
           }
           if (theirs.outcome !== 'Fighting') await finish(theirs, foe);
         })
-        .catch((error) => setFault(faultFrom('round', error)))
+        .then(() => { redriveFails.current = 0; })
+        .catch((error) => {
+          redriveFails.current += 1;
+          setFault(faultFrom('round', error));
+        })
         .finally(() => { redriving.current = false; setBusy('idle'); });
     }, REDRIVE_DELAY_MS);
     return () => clearTimeout(timer);
@@ -910,12 +964,19 @@ export function EveGardenPage() {
       let xp = petXp;
       for (const { activity, awardId } of owed) {
         paid.current.add(awardId);
-        const award = await game.award(activity, xp);
-        if (award.xp > 0) {
-          await awardPetXp(coupleId, awardId, award.xp);
-          xp += award.xp;
-          if (!live) continue;
-          setPulse((n) => n + 1);
+        try {
+          const award = await game.award(activity, xp);
+          if (award.xp > 0) {
+            await awardPetXp(coupleId, awardId, award.xp);
+            xp += award.xp;
+            if (!live) continue;
+            setPulse((n) => n + 1);
+          }
+        } catch (error) {
+          // Let it be owed again: the note below promises another go, and a
+          // charge left in `paid` would never get one this visit.
+          paid.current.delete(awardId);
+          throw error;
         }
       }
     })().catch((error) => { if (live && !isClosed(error)) setNote('A charge did not pay out. It will try again.'); });
@@ -929,12 +990,16 @@ export function EveGardenPage() {
     if (battle?.outcome === 'Fighting') void playRound(battle, 'flee');
   }, [battle, playRound]);
 
+  /** Travel and "Change" tear the scene down, which a fight in progress is awaiting. */
+  const fighting = battle?.outcome === 'Fighting';
+  const finishFirst = useCallback(() => setNote('Finish or flee this fight first.'), []);
+
   const onTravel = useCallback(async (to: number) => {
-    if (!coupleId) return;
+    if (!coupleId || fighting) return;
     await travelToIsland(coupleId, to);
     setMapOpen(false);
     setBattle(null);
-  }, [coupleId]);
+  }, [coupleId, fighting]);
 
   const islandDto = islands.find((i) => i.number === island);
   const islandName = islandDto
@@ -1036,12 +1101,16 @@ export function EveGardenPage() {
           progress={islandProgress(world)}
           bossName={faceOf(bossOf(island), dark).name}
           dark={dark}
-          onOpenMap={() => setMapOpen(true)}
+          onOpenMap={() => (fighting ? finishFirst() : setMapOpen(true))}
         />
         <button
           type="button"
           className="garden-companion"
-          onClick={() => { cameFrom.current = companion; openGate(true); }}
+          onClick={() => {
+            if (fighting) { finishFirst(); return; }
+            cameFrom.current = companion;
+            openGate(true);
+          }}
           title={`${kit.mascot} · ${kit.signature.name}`}
         >
           <span className="garden-companion-name">{kit.mascot}</span>

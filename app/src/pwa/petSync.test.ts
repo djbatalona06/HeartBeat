@@ -101,6 +101,11 @@ describe('awardPetXp', () => {
     expect(pet.pendingXp).toHaveLength(1);
   });
 
+  it('says whether it paid, so a replayed victory is not announced as XP', async () => {
+    expect(await awardPetXp(COUPLE, 'a', 40)).toBe(true);
+    expect(await awardPetXp(COUPLE, 'a', 40)).toBe(false);
+  });
+
   it('treats a number that is not one as no gain rather than poisoning the bar', async () => {
     // A NaN in `xp` never moves again: every comparison against it is false,
     // so the bar would be stuck for good, and the queued award would be

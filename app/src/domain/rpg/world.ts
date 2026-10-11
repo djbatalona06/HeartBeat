@@ -212,8 +212,13 @@ export function mergeWorld(local: WorldProgress, pulled: WorldProgress): WorldPr
   };
   if (merged.gate === undefined) delete merged.gate;
 
+  // "Just finished": the union completes the island the newer row was standing
+  // on, and that row had not completed it itself. A couple who travelled back
+  // to replay a beaten island are standing on a finished one by choice, and
+  // moving them on at every sync would take the replay away from them.
   const done = clearedOn(merged, merged.island).length >= STAGES_PER_ISLAND;
-  if (done && merged.island < ISLAND_COUNT) merged = { ...merged, island: merged.island + 1 };
+  const alreadyDone = clearedOn(base, merged.island).length >= STAGES_PER_ISLAND;
+  if (done && !alreadyDone && merged.island < ISLAND_COUNT) merged = { ...merged, island: merged.island + 1 };
 
   if (sameContent(merged, local)) return null;
   return sameContent(merged, pulled) ? merged : { ...merged, updatedAt: at + 1 };
