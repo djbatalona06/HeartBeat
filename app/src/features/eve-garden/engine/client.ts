@@ -70,6 +70,8 @@ export function createGameClient(): GameClient {
   const pending = new Map<number, { resolve(value: unknown): void; reject(error: unknown): void }>();
   let nextId = 1;
   let closed = false;
+  /** Set when the worker dies, so later calls fail at once instead of waiting on a thread that is gone. */
+  let crashed: Error | null = null;
 
   let markReady: () => void;
   let failReady: (error: unknown) => void;
@@ -95,6 +97,7 @@ export function createGameClient(): GameClient {
   // readiness promise and every call behind it would hang rather than fail.
   worker.addEventListener('error', (event: ErrorEvent) => {
     const error = new Error(event.message || 'the game worker failed to start');
+    crashed = error;
     failReady(error);
     for (const waiting of pending.values()) waiting.reject(error);
     pending.clear();
@@ -102,6 +105,7 @@ export function createGameClient(): GameClient {
 
   function send<T>(method: GameMethod, ...args: unknown[]): Promise<T> {
     if (closed) return Promise.reject(new ClosedError());
+    if (crashed) return Promise.reject(crashed);
     const id = nextId++;
     const request: GameRequest = { id, method, args };
     return new Promise<T>((resolve, reject) => {

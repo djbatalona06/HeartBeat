@@ -28,6 +28,9 @@ export function shouldRedriveMonster(battle: TurnView | null, busy: string): boo
 /** How long the monster's opening move waits, so the fight reads as a fight. */
 export const REDRIVE_DELAY_MS = 500;
 
+/** After this many failed monster moves in a row the page stops asking and shows the fault. */
+export const MAX_REDRIVE_FAILS = 3;
+
 /** The longest an animation may hold the round up. The longest tween is ~1.5 s. */
 export const ANIMATION_CAP_MS = 3000;
 

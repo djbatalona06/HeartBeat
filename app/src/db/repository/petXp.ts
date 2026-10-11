@@ -99,7 +99,7 @@ export async function awardPetXp(
   coupleId: string,
   awardId: string,
   amount: number,
-): Promise<void> {
+): Promise<boolean> {
   // Not finite is not a gain. A NaN reaching the row would poison `xp` for
   // good — every later comparison against it is false, so the bar would never
   // move again — and the queued award would be refused by the endpoint on
@@ -109,10 +109,10 @@ export async function awardPetXp(
   // Read and write in one transaction: a flush settling at the same moment
   // does the same read-modify-write on this row, and outside a transaction the
   // later `put` would carry the earlier one's `pendingXp` and drop this award.
-  await db.transaction('rw', db.pet, async () => {
+  return db.transaction('rw', db.pet, async () => {
     const pet = await db.pet.get(coupleId);
     const counted = pet?.awardedXpIds ?? [];
-    if (counted.includes(awardId)) return;
+    if (counted.includes(awardId)) return false;
 
     await db.pet.put({
       coupleId,
@@ -126,6 +126,7 @@ export async function awardPetXp(
       sharedXp: pet?.sharedXp ?? 0,
       awardedXpIds: [...counted, awardId].slice(-PET_XP_AWARD_MEMORY),
     });
+    return true;
   });
 }
 

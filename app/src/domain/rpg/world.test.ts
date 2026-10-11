@@ -209,6 +209,15 @@ describe('merging two phones\' worlds', () => {
     expect(mergeWorld(a, { ...a, updatedAt: AT + 9 })).toBeNull();
   });
 
+  it('leaves a couple replaying a finished island where they chose to stand', () => {
+    // Everything on island 1 is cleared and they have travelled back to it from
+    // island 2. A sync of their own echoed row must not send them forward again.
+    const done = row(ISLAND_1, AT + 5, { island: 1 });
+    const echoed = row(ISLAND_1, AT + 9, { island: 1 });
+    const merged = mergeWorld(done, { ...echoed, gate: { 'member-a': AT + 9 } });
+    expect(merged?.island ?? 1).toBe(1);
+  });
+
   it('moves on when the union finishes the island', () => {
     const local = row(ISLAND_1.slice(0, 4), AT + 5);
     const pulled = row(ISLAND_1.slice(3), AT + 6);
