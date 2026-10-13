@@ -56,9 +56,7 @@ import { WorldMap } from './WorldMap';
 import { BattleLog } from './BattleLog';
 import { FleeButton, MovePad } from './ActionBar';
 import { ChargeChip } from './ChargeMeter';
-import { ActionBar, ActionHint } from './ActionBar';
 import { FightForecast } from './FightForecast';
-import { ChargeMeter } from './ChargeMeter';
 import { VictoryBanner } from './VictoryBanner';
 import { SpinOffer } from '../wheel/SpinOffer';
 import { loadArenaFloor } from './arenaFloor';
@@ -1162,10 +1160,7 @@ export function EveGardenPage() {
         </p>
       )}
 
-      {/* The log is a strip above the board and the pad sits under it, so the
-          thumb never has to cross the picture. See `BattleLog`. */}
-      <BattleLog battle={battle} monster={opponent} weakHits={weakHits} />
-      <ActionHint battle={battle} monster={opponent} level={progress?.level ?? 1} charges={charges} />
+      {/* One line while you walk; in a fight the HUD below is the live strip. */}
       {!fighting && <FightForecast forecast={forecast} monster={monster} />}
 
       <div className="garden-stage-wrap">
