@@ -4,7 +4,7 @@ import { db, loadSettings } from '../../db/database';
 import {
   awardPetXp, chooseRaidCompanion, clearStageFor, coupleVitals, ensureIdentity,
   gardenMomentum, loadWorldProgress, openRaidGate,
-  recordMinionWin, recordRaidRounds, settleGardenClear, spinBossWheel, stampGatePresence, todaysCharges, travelToIsland,
+  recordMinionWin, recordRaidRounds, setBoardKit, settleGardenClear, spinBossWheel, stampGatePresence, todaysCharges, travelToIsland,
 } from '../../db/repository';
 import { todayKey } from '../../domain/day';
 import { levelForXp } from '../../domain/xp';
@@ -60,6 +60,7 @@ import { FightForecast } from './FightForecast';
 import { VictoryBanner } from './VictoryBanner';
 import { SpinOffer } from '../wheel/SpinOffer';
 import { loadArenaFloor } from './arenaFloor';
+import { normalizeBoardKit } from '../../domain/rpg/boards';
 import { arenaTokensForPet } from './arenaTheme';
 import { Icon } from '../../components/icons';
 import { InfoBubble } from '../../ui/InfoBubble';
@@ -126,6 +127,8 @@ export function EveGardenPage() {
   const client = useRef<GameClient | null>(null);
 
   const settings = useLiveQuery(loadSettings, []);
+  // Which look the board wears. Chosen on the gate, so it only changes between visits and never under a fight.
+  const boardKit = normalizeBoardKit(settings?.boardKit);
   const { calm, mode } = useTheme();
   const zone = settings?.timeZone ?? FALLBACK_ZONE;
   const day = todayKey(zone);
@@ -616,7 +619,7 @@ export function EveGardenPage() {
     // selected companion's static 2D floor rather than opening WebGL.
     Promise.all([
       import('./scene/game'),
-      loadArenaFloor(calmRef.current, arenaTokensForPet(companion, sceneMode), arenaFor(sceneIsland, sceneStage), () => !live),
+      loadArenaFloor(calmRef.current, arenaTokensForPet(companion, sceneMode), arenaFor(sceneIsland, sceneStage), boardKit, () => !live),
     ])
       .then(([{ startGarden }, floor]) => {
         if (!live || !host.current) return;
@@ -648,7 +651,7 @@ export function EveGardenPage() {
       scene.current?.destroy();
       scene.current = null;
     };
-  }, [sceneIsland, sceneStage, sceneSprite, petSprite, companion, sceneDark, sceneMode, textMode, reload]);
+  }, [sceneIsland, sceneStage, sceneSprite, petSprite, companion, sceneDark, sceneMode, boardKit, textMode, reload]);
 
   /**
    * Stop rendering while the tab is hidden.
@@ -1094,6 +1097,9 @@ export function EveGardenPage() {
         dark={dark}
         resonance={resonance}
         world={world}
+        boardKit={boardKit}
+        onBoardKit={(kit) => { void setBoardKit(kit); }}
+        mode={mode}
         partner={partner
           ? {
             name: partner.displayName?.trim() || 'Your partner',

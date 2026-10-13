@@ -75,7 +75,16 @@ A later live mode reuses the first two with a persistent renderer. It also fits 
 - Calm, Save-Data and a failed bake draw the flat checker and the pixel walls squashed into the same rows. Same grid, no 3D.
 - Seen in the real scene (Chromium, real build): the bake runs, pets stand upright on their rows, keyboard and tap walking land on the right rows, and calm makes no model request.
 
-**Phase 3 (next): the five kits and the Raid Gate picker.** **Phase 4: iOS landscape and the side rail.**
+**Phase 3 (done): the five kits and the Raid Gate picker.**
+- `domain/rpg/boards.ts` (pure): the five kits, `normalizeBoardKit`, and `kitMarkOf` / `boardMarks`, which say which open-ground tiles carry which mark. Only grass and path carry marks, so a hedge, pond or stone keeps its own look and walkability is untouched.
+- Four marks (`step`, `inlay`, `quilt`, `weave`) are small flat plates built in code (`3d/boardMarks.ts`), coloured by blends of the pack's own tokens (`arenaPaint(...).marks`). The classic board is bare, so Hearth Checker is exactly the phase 2 board. A test holds the domain's marks and the 3D side's roles to the same four.
+- `Settings.boardKit` (optional, not synced) is written by `setBoardKit` in a new repository section (`db/repository/boards.ts`, one line in the barrel). Unknown values are stored as the classic board.
+- The picker lives on the Raid Gate only (`gate/BoardPicker.tsx`): five buttons with `aria-pressed`, each with a flat 2D swatch in the ringed companion's colours drawn from the same `kitMarkOf`. It imports nothing three.js.
+- The cache key now includes the kit. Calm, Save-Data and a failed bake draw the flat classic floor whatever kit is picked; the picker says so.
+- Seen in the real scene for all four non-classic kits. Colours were tuned from what was seen: the inlay ring leans back towards the floor, and a step is 0.1 tall.
+- The earlier note about a name guard (no rights holder's name) is dropped: the five names are plain descriptive words, and there is nothing to guard.
+
+**Phase 4 (next): iOS landscape and the side rail.**
 
 ## Part 4: Landscape on iOS
 

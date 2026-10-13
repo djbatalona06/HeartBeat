@@ -4,9 +4,10 @@ import {
   type BufferGeometry, type Material,
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { ARENA_ROLES, arenaPaint, type ArenaCssTokens, type ArenaRole } from './arenaPalette';
+import { ARENA_ROLES, arenaPaint, type ArenaCssTokens, type ArenaRole, type MarkRole } from './arenaPalette';
 import { finishArenaCanvas, rgbTokens } from './arenaFinish';
 import { boardCamera, boardFrame } from './boardCamera';
+import { buildBoardMarks } from './boardMarks';
 import { buildBoardPieces } from './boardPieces';
 
 /**
@@ -60,6 +61,8 @@ export interface ArenaBakeOptions {
    * stage's own grid by the caller. Omitted, the floor is bare, as it always was.
    */
   layout?: readonly (readonly (string | undefined)[])[];
+  /** What the chosen board kit lays on each ground tile: `marks[row][col]`. Omitted, the classic bare floor. */
+  marks?: readonly (readonly (MarkRole | undefined)[])[];
   /** Asked once the file has loaded: true means nobody is waiting any more, so do not touch the GPU. */
   cancelled?: () => boolean;
 }
@@ -70,7 +73,7 @@ export interface ArenaBakeOptions {
  * of which the caller keeps drawing the pixel tiles it always has.
  */
 export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasElement | null> {
-  const { src, cols, rows, tilePx, cancelled, themeTokens: themeColors, layout, elevationDeg, headroomTiles } = options;
+  const { src, cols, rows, tilePx, cancelled, themeTokens: themeColors, layout, marks, elevationDeg, headroomTiles } = options;
   const tokens = rgbTokens(themeColors);
   if (!tokens) return null;
 
@@ -125,6 +128,14 @@ export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasEl
         material.color.setRGB(...paint.colors[material.name as ArenaRole], SRGBColorSpace);
       }
     });
+
+    if (marks) {
+      const laid = buildBoardMarks(marks, paint.marks);
+      scene.add(laid);
+      laid.traverse((node) => {
+        if (node instanceof Mesh) meshes.push(node);
+      });
+    }
 
     if (layout) {
       const pieces = buildBoardPieces(layout, paint.pieces);

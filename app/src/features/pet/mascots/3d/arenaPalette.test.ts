@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { THEMES } from '../../../../themes';
-import { ARENA_ROLES, PIECE_ROLES, arenaPaint } from './arenaPalette';
+import { ARENA_ROLES, MARK_ROLES, PIECE_ROLES, arenaPaint } from './arenaPalette';
 import { luma, type Rgb, type Tokens } from './gardenPalette';
 
 function hex(h: string): Rgb {
@@ -104,6 +104,22 @@ describe('the arena paint', () => {
       expect(dist(c.tileA, floor), id).toBeLessThan(1e-9);
       expect(dist(c.tileB, mixed(floor, dark ? paper : ink, dark ? 0.14 : 0.16)), id).toBeLessThan(1e-9);
       expect(dist(c.grout, mixed(ink, t.accent, 0.18)), id).toBeLessThan(1e-9);
+    }
+  });
+
+  it('paints every kit mark inside range and visibly apart from both floor squares in every pack and palette', () => {
+    const dist = (a: Rgb, b: Rgb) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    for (const { id, colors } of packs) {
+      const { colors: floor, marks } = arenaPaint(tokensOf(colors));
+      for (const role of MARK_ROLES) {
+        for (const v of marks[role]) {
+          expect(v, `${id} ${role}`).toBeGreaterThanOrEqual(0);
+          expect(v, `${id} ${role}`).toBeLessThanOrEqual(1);
+        }
+        for (const square of [floor.tileA, floor.tileB]) {
+          expect(dist(marks[role], square), `${id} ${role}`).toBeGreaterThan(0.04);
+        }
+      }
     }
   });
 });

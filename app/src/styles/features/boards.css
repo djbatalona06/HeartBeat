@@ -1,0 +1,50 @@
+/* ---- the board picker on the Raid Gate ----------------------------------
+   Five kits in a row that scrolls sideways on a narrow phone, each a button with
+   a small flat swatch of the board in the ringed companion's colours. Pressed
+   is shown by the accent border and by a filled label, never by colour alone. */
+.board-picker { display: grid; gap: var(--space-2); padding-block: var(--space-2); }
+.board-picker-title {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.board-picker-list {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(8.5rem, 1fr);
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
+  scroll-snap-type: x proximity;
+}
+.board-picker-kit {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-height: var(--tap);
+  padding: var(--space-2);
+  text-align: start;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  scroll-snap-align: start;
+}
+.board-picker-kit:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.board-picker-kit[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+.board-picker-kit[aria-pressed='true'] .board-picker-name::after { content: ' \2713'; color: var(--color-accent); }
+.board-picker-swatch {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  image-rendering: pixelated;
+}
+.board-picker-name { font-weight: 700; font-size: var(--text-sm); }
+.board-picker-blurb { font-size: var(--text-xs); color: var(--color-text-muted); line-height: var(--line-tight); }
+.board-picker-note { margin: 0; font-size: var(--text-xs); color: var(--color-text-muted); }

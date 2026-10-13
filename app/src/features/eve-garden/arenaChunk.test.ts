@@ -63,11 +63,12 @@ describe('the baked floor cache', () => {
     expect(floorCacheKey(tokens)).not.toBe(floorCacheKey({ ...tokens, accent: '#0af' }));
   });
 
-  it('is keyed by the stage too, so one stage never shows another stage\'s hedges', () => {
+  it('is keyed by the stage and the kit too, so one stage never shows another stage\'s hedges', () => {
     const [meadow, pond] = ISLAND_1_ARENAS;
-    expect(boardCacheKey(tokens, meadow)).toBe(boardCacheKey(tokens, { ...meadow }));
-    expect(boardCacheKey(tokens, meadow)).not.toBe(boardCacheKey(tokens, pond));
-    expect(boardCacheKey(tokens, meadow)).not.toBe(boardCacheKey({ ...tokens, accent: '#0af' }, meadow));
+    expect(boardCacheKey(tokens, meadow, 'checker')).toBe(boardCacheKey(tokens, { ...meadow }, 'checker'));
+    expect(boardCacheKey(tokens, meadow, 'checker')).not.toBe(boardCacheKey(tokens, pond, 'checker'));
+    expect(boardCacheKey(tokens, meadow, 'checker')).not.toBe(boardCacheKey(tokens, meadow, 'quilt'));
+    expect(boardCacheKey(tokens, meadow, 'checker')).not.toBe(boardCacheKey({ ...tokens, accent: '#0af' }, meadow, 'checker'));
   });
 
   it('reads each stage\'s layout through the arena grid, the shape of the board', () => {

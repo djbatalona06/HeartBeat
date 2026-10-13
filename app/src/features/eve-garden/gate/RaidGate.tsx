@@ -5,6 +5,10 @@ import {
 import { standingIsland, type WorldProgress } from '../../../domain/rpg/world';
 import { bossOf } from '../../../domain/rpg/islands';
 import { favoursWeakness } from '../../../domain/rpg/companionSkills';
+import type { BoardKitId } from '../../../domain/rpg/boards';
+import type { ThemeMode } from '../../../themes/types';
+import { arenaTokensForPet } from '../arenaTheme';
+import { BoardPicker } from './BoardPicker';
 import { GateBackdrop } from './GateBackdrop';
 import { GateBoss } from './GateBoss';
 import { GatePedestal } from './GatePedestal';
@@ -52,13 +56,17 @@ export interface RaidGateProps {
   together?: { partnerName: string; present: boolean; blockedReason: string | null };
   /** The partner's companion, on every stage, whenever a partner is linked. */
   partner?: GatePartnerProps;
+  /** Which look the board wears, and the pick. The previews wear the ringed companion's colours in `mode`. */
+  boardKit: BoardKitId;
+  onBoardKit(kit: BoardKitId): void;
+  mode: ThemeMode;
   onEnter(themeId: string): void;
   /** Absent on a first visit — there is nothing to go back to yet. */
   onCancel?: () => void;
 }
 
 export function RaidGate({
-  cards, verdict, hour, dark, resonance, world, together, partner, onEnter, onCancel,
+  cards, verdict, hour, dark, resonance, world, together, partner, boardKit, onBoardKit, mode, onEnter, onCancel,
 }: RaidGateProps) {
   const island = standingIsland(world);
   const weakness = bossOf(island).weakness;
@@ -118,6 +126,12 @@ export function RaidGate({
           />
         ))}
       </div>
+
+      <BoardPicker
+        kit={boardKit}
+        tokens={arenaTokensForPet(selected?.themeId ?? cards[0]?.themeId ?? '', mode)}
+        onPick={onBoardKit}
+      />
 
       <div className="raid-gate-foot-bar">
         <div className="raid-gate-words">
