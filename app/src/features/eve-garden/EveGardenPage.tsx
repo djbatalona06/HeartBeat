@@ -36,6 +36,7 @@ import type {
 } from './engine/types';
 import type { SceneHandle, StepResult } from './scene/events';
 import { DirectionPad } from './DirectionPad';
+import { walkPadShown } from './dpad';
 import { buzz } from '../../pwa/haptics';
 import { useWakeLock } from '../../pwa/useWakeLock';
 import { useTheme } from '../../themes/ThemeProvider';
@@ -246,6 +247,9 @@ export function EveGardenPage() {
    */
   const [party, setParty] = useState(true);
   const [asking, setAsking] = useState(false);
+  // True from the moment the pet reaches a foe until that fight is over or abandoned.
+  // The walking pad clears on it; `fighting` alone comes a beat too late.
+  const [engaging, setEngaging] = useState(false);
   /** Rounds fought this visit, credited to the companion when a fight ends. */
   const rounds = useRef(0);
   /** Turns since each kit's skill last fired. Refs, not state: a cooldown that
@@ -479,6 +483,11 @@ export function EveGardenPage() {
   // would only queue in front of the moves on the worker. A failure is quiet:
   // the forecast is advice, and the garden works the same without it.
   const fighting = battle?.outcome === 'Fighting';
+  // A fight that has ended gives the walking pad back. Starts clear it through `engaging` and
+  // `fighting` already hides it, so this only ever has to clear.
+  useEffect(() => {
+    if (!fighting) setEngaging(false);
+  }, [fighting]);
   useEffect(() => {
     const game = client.current;
     if (!game || !progress || !monster || fighting) return undefined;
@@ -492,18 +501,24 @@ export function EveGardenPage() {
 
   /* ---- the canvas ---- */
 
+  // Every way of not fighting: the pet walks home and the walking pad comes back.
+  const backOff = useCallback(() => {
+    setEngaging(false);
+    scene.current?.withdraw();
+  }, []);
+
   const begin = useCallback((minionStage?: number) => {
     const game = client.current;
     // Every way of not starting walks the pet home. The scene latches "engaged"
     // the moment the pet touches the foe and only `withdraw` clears it, so a
     // start that quietly gave up left the pet unable to engage again.
-    if (!game || !progress || !monster) { scene.current?.withdraw(); return; }
+    if (!game || !progress || !monster) { backOff(); return; }
     redriveFails.current = 0;
     const fight = (at: number) => game
       .beginBattle(island, at, theme, progress.level, Date.now(), charges, sheet.total)
       .then((next) => {
         setWeakHits([]);
-        if (!next) scene.current?.withdraw();
+        if (!next) backOff();
         setBattle(next ? { ...next, moveNames } : next);
       });
 
@@ -515,7 +530,7 @@ export function EveGardenPage() {
       started = fight(stage);
     } else {
       started = game.stage(island, minionStage, theme).then((dto) => {
-        if (!dto) { scene.current?.withdraw(); return undefined; }
+        if (!dto) { backOff(); return undefined; }
         setSkirmish({ stage: minionStage, monster: dto.monster });
         return fight(minionStage);
       });
@@ -523,15 +538,16 @@ export function EveGardenPage() {
     // Was silent, which made walking into a monster and having nothing happen
     // indistinguishable from having missed the tile.
     started.catch((error) => {
-      scene.current?.withdraw();
+      backOff();
       setFault(faultFrom('round', error));
     });
-  }, [island, stage, theme, progress, monster, charges, sheet, moveNames]);
+  }, [island, stage, theme, progress, monster, charges, sheet, moveNames, backOff]);
 
   // Every walk into a boss is an attempt, and every attempt meets the Boss
   // Gate: first try, a retry after a loss or a flight, or a boss stage reached
   // mid-visit. Stages 1-6 never ask and never mention anybody.
   const onEngage = useCallback((minionStage?: number) => {
+    setEngaging(true);
     // A skirmish never meets the gate: it is not the boss and nobody has to be
     // waited for.
     if (minionStage !== undefined) { begin(minionStage); return; }
@@ -543,13 +559,13 @@ export function EveGardenPage() {
     setAsking(false);
     // Backed out: no fight. Walking the pet home clears the scene's engaged
     // latch, so walking in again asks again.
-    if (result === 'leave') { scene.current?.withdraw(); return; }
+    if (result === 'leave') { backOff(); return; }
     const joined = result === 'party';
     setParty(joined);
     // Decided as this attempt starts and held for it, as `onEnter` does for the gate.
     together.current = togetherBonus(stage, joined && partnerAtGate(world.gate, partner?.id, Date.now()));
     begin();
-  }, [stage, world.gate, partner?.id, begin]);
+  }, [stage, world.gate, partner?.id, begin, backOff]);
 
   // The scene is rebuilt when the stage or the island's face changes, and at no
   // other time. `onEngage` is deliberately absent from the dependencies: it
@@ -1199,9 +1215,9 @@ export function EveGardenPage() {
         {textMode ? null : sprite ? (
           <div className="garden-stage-box">
             <div className="garden-stage" ref={host} aria-label={islandName} role="img" />
-            {/* Walking only: in a fight the move pad is the controller, and a
-                second one beside it would be a pad that does nothing. */}
-            {battle?.outcome !== 'Fighting' && (
+            {/* Walking only. From the moment a foe is reached until the fight is over,
+                the move pad is the controller and a second pad beside it does nothing. */}
+            {walkPadShown({ fighting, asking, engaging }) && (
               <DirectionPad
                 onStep={(dx, dy): StepResult => scene.current?.step(dx, dy) ?? 'busy'}
                 onResult={(result) => {
