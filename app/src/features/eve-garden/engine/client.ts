@@ -1,6 +1,6 @@
 import { isReady, type GameMethod, type GameRequest, type GameResponse } from './protocol';
 import type {
-  Activity, AwardDto, BattleDto, Charge, DioramaTheme, ProgressDto, RaidStatsDto, StageDto, WorldDto,
+  Activity, AwardDto, BattleDto, Charge, DioramaTheme, ForecastDto, ProgressDto, RaidStatsDto, StageDto, WorldDto,
 } from './types';
 
 /**
@@ -25,6 +25,11 @@ export interface GameClient {
     island: number, stage: number, theme: DioramaTheme, level: number, seed: number,
     charges: readonly Charge[], stats: RaidStatsDto,
   ): Promise<BattleDto | null>;
+  /** Whether this build is likely to win, before walking in. Null if the stage is empty. */
+  forecast(
+    island: number, stage: number, theme: DioramaTheme, level: number,
+    charges: readonly Charge[], stats: RaidStatsDto,
+  ): Promise<ForecastDto | null>;
   act(battle: BattleDto, actionId: string): Promise<BattleDto | null>;
   monsterMove(battle: BattleDto): Promise<BattleDto | null>;
   progress(xp: number): Promise<ProgressDto>;
@@ -140,6 +145,11 @@ export function createGameClient(): GameClient {
       json<BattleDto>(
         'beginBattle', island, stage, theme, asInt(level), seed,
         charges.join(','), JSON.stringify(stats),
+      ),
+
+    forecast: (island, stage, theme, level, charges, stats) =>
+      json<ForecastDto>(
+        'forecast', island, stage, theme, asInt(level), charges.join(','), JSON.stringify(stats),
       ),
 
     // The battle state is handed straight back as the string it arrived as

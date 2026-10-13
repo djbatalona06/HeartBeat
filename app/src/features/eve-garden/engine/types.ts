@@ -1,4 +1,5 @@
 import type { MonsterBehavior, Telegraph } from '../../../domain/rpg/behaviours';
+import type { Verdict } from '../../../domain/rpg/forecast';
 
 /**
  * The TypeScript twin of the DTOs in `game/HeartBeat.Game.Core/Dto.cs`.
@@ -195,4 +196,23 @@ export interface AwardDto {
   /** Empty unless a level was crossed. */
   rewardText: string;
   progress: ProgressDto;
+}
+
+/** One "Why?" line. `code` is stable; `text` is the default wording. */
+export interface ForecastReasonDto {
+  code: string;
+  text: string;
+}
+
+/**
+ * The pre-fight read for a stage's monster (`Forecast.cs`). No win rate crosses
+ * on purpose: the screen shows a label, never a percentage.
+ */
+export interface ForecastDto {
+  /** What it was worked out for, so a stale answer can be told from a fresh one. */
+  monsterId: string;
+  verdict: Verdict;
+  assistSuggested: boolean;
+  expectedRounds: number;
+  why: ForecastReasonDto[];
 }

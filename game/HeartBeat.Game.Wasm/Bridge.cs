@@ -42,6 +42,11 @@ public static partial class Bridge
         int island, int stage, string theme, int level, double seed, string charges, string statsJson) =>
         Api.BeginBattle(island, stage, theme, level, seed, charges, statsJson);
 
+    /// <summary>The pre-fight forecast for a stage's monster, or null if that stage does not exist.</summary>
+    [JSExport]
+    internal static string? Forecast(int island, int stage, string theme, int level, string charges, string statsJson) =>
+        Api.Forecast(island, stage, theme, level, charges, statsJson);
+
     /// <summary>The player's turn. Returns the next state, or null if the state was malformed.</summary>
     [JSExport]
     internal static string? Act(string battleJson, string actionId) => Api.Act(battleJson, actionId);

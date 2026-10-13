@@ -249,6 +249,26 @@
 .garden-log-sheet { display: grid; gap: var(--space-2); align-content: start; }
 .garden-log-sheet .garden-log { max-height: 50dvh; }
 
+/* The pre-fight forecast: one line and its "Why?", in the hint's place in the
+   flow, so walking past it costs nothing. The button keeps `.quiet`'s tap height
+   and gives up its full width. */
+.garden-forecast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.garden-forecast-line {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+.garden-forecast .quiet { width: auto; flex: none; margin-top: 0; padding-block: var(--space-2); }
+.garden-forecast-sheet { display: grid; gap: var(--space-2); align-content: start; }
+.garden-forecast-reasons { margin: 0; padding-inline-start: var(--space-4); line-height: var(--line-body); }
+.garden-forecast-reasons li + li { margin-top: var(--space-1); }
+
 /* The controller: the move pad beside today's charge meter, on every width.
    Two-thirds pad, one-third meter; the meter has a floor so its labels stay
    readable on a 360px phone.

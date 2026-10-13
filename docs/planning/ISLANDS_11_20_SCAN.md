@@ -9,7 +9,8 @@
 | Item | State |
 | --- | --- |
 | §2.4 `canBeatEncounter` evaluator | **Built.** `game/HeartBeat.Game.Core/Forecast.cs`, tests in `ForecastTests.cs`. Pure C#, read-only: it changes no fight and no balance value. |
-| §2.4 pre-fight forecast UI, "Why?" sheet, assist opt-in | Not started. Needs an `Api`/`Bridge` entry and a screen. |
+| §2.4 pre-fight forecast line and "Why?" sheet | **Built.** `Api.Forecast` → `Bridge` → `client.forecast`, shown by `features/eve-garden/FightForecast.tsx` above the board while walking. It never blocks walking in. |
+| §2.4 assist opt-in | Not started. Waits on the authored assist variants: a button that does nothing is worse than no button. |
 | §2.4 authored assist variants | Not started. This is a balance change and needs its own PR. |
 | §3 level cap 50, Islands 11–20, 3D chapter, partner row | Not started. |
 | §4 iOS accessibility checks | Not started. |
