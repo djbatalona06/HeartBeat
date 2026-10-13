@@ -1,11 +1,13 @@
 import {
-  DirectionalLight, HemisphereLight, Mesh, MeshStandardMaterial, OrthographicCamera, SRGBColorSpace,
+  DirectionalLight, HemisphereLight, Mesh, MeshStandardMaterial, SRGBColorSpace,
   Scene, WebGLRenderer,
   type BufferGeometry, type Material,
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ARENA_ROLES, arenaPaint, type ArenaCssTokens, type ArenaRole } from './arenaPalette';
 import { finishArenaCanvas, rgbTokens } from './arenaFinish';
+import { boardCamera } from './boardCamera';
+import { buildBoardPieces } from './boardPieces';
 
 /**
  * Draws the battle board's checkerboard **once**, then lets go of the GPU.
@@ -26,6 +28,10 @@ import { finishArenaCanvas, rgbTokens } from './arenaFinish';
  * Straight down, orthographic, and framed to exactly the board: with no
  * perspective, tile (col, row) lands on the same pixels as the sprite grid
  * above it, which is what lets the picture and the walkable grid be one grid.
+ *
+ * The camera is sheared (`boardCamera.ts`), so the hedge, stone and the rest
+ * (`boardPieces.ts`) show their sides and lean up the picture while the floor
+ * stays exactly where a plain top-down camera put it.
  */
 
 export interface ArenaBakeOptions {
@@ -40,6 +46,11 @@ export interface ArenaBakeOptions {
    * which is not the companion's, and the floor quietly changed pack.
    */
   themeTokens: ArenaCssTokens;
+  /**
+   * What stands in each cell, by sprite name: `layout[row][col]`. Read from the
+   * stage's own grid by the caller. Omitted, the floor is bare, as it always was.
+   */
+  layout?: readonly (readonly (string | undefined)[])[];
   /** Asked once the file has loaded: true means nobody is waiting any more, so do not touch the GPU. */
   cancelled?: () => boolean;
 }
@@ -50,7 +61,7 @@ export interface ArenaBakeOptions {
  * of which the caller keeps drawing the pixel tiles it always has.
  */
 export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasElement | null> {
-  const { src, cols, rows, tilePx, cancelled, themeTokens: themeColors } = options;
+  const { src, cols, rows, tilePx, cancelled, themeTokens: themeColors, layout } = options;
   const tokens = rgbTokens(themeColors);
   if (!tokens) return null;
 
@@ -75,6 +86,8 @@ export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasEl
   }
 
   const meshes: Mesh[] = [];
+  const geometries = new Set<BufferGeometry>();
+  const materials = new Set<Material>();
   try {
     renderer.setPixelRatio(1);
     renderer.setSize(width, height, false);
@@ -103,13 +116,15 @@ export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasEl
       }
     });
 
-    // Looking down -Y with -Z up the screen: +X is right and +Z is down, which
-    // is the order a grid of rows is read in.
-    const camera = new OrthographicCamera(-cols / 2, cols / 2, rows / 2, -rows / 2, 0.1, 40);
-    camera.position.set(0, 12, 0);
-    camera.up.set(0, 0, -1);
-    camera.lookAt(0, 0, 0);
-    renderer.render(scene, camera);
+    if (layout) {
+      const pieces = buildBoardPieces(layout, paint.pieces);
+      scene.add(pieces);
+      pieces.traverse((node) => {
+        if (node instanceof Mesh) meshes.push(node);
+      });
+    }
+
+    renderer.render(scene, boardCamera(cols, rows));
 
     // Copied while the buffer is still valid (same task as the draw), so the
     // context can be torn down straight after.
@@ -121,15 +136,20 @@ export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasEl
     ctx.drawImage(renderer.domElement, 0, 0);
     finishArenaCanvas(out, themeColors, cols, rows, tilePx);
     out.dataset.arena3d = 'true';
+    // Tells the scene the hedge, stone, water, beds and gate are in this
+    // picture, so it does not draw them a second time from the pixel art.
+    out.dataset.arenaPieces = layout ? 'true' : 'false';
     out.dataset.accent = themeColors.accent;
     return out;
   } catch {
     return null;
   } finally {
     for (const mesh of meshes) {
-      (mesh.geometry as BufferGeometry).dispose();
-      (mesh.material as Material).dispose();
+      geometries.add(mesh.geometry as BufferGeometry);
+      materials.add(mesh.material as Material);
     }
+    geometries.forEach((g) => g.dispose());
+    materials.forEach((m) => m.dispose());
     renderer.dispose();
     renderer.forceContextLoss();
   }

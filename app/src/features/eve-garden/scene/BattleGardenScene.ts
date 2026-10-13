@@ -61,6 +61,8 @@ interface Look {
 
 /** The ground the 3D floor stands in for. Everything else is still drawn from pixel art. */
 const FLOOR_SPRITES = ['tile-grass', 'tile-path'];
+/** What the 3D bake draws as pieces when it was given the stage's layout. */
+const PIECE_SPRITES = ['tile-hedge', 'tile-stone', 'tile-water', 'tile-bed', 'tile-gate'];
 const FLOOR_KEY = 'arena-floor';
 const BOARD_SHIMMER_KEY = 'arena-board-shimmer';
 /** How big a skirmish is drawn next to a stage's monster. */
@@ -252,6 +254,10 @@ export class BattleGardenScene extends Phaser.Scene {
         // the ground walked can never be two different grids.
         const kind = tileKindAt(this.arena, x, y);
         if (!kind) continue;
+        // Drawn into the picture already, so drawing them again would stack two
+        // hedges. The static floor and a failed bake carry no pieces and keep
+        // the pixel art, which is why this reads the picture's own flag.
+        if (this.floor?.dataset.arenaPieces === 'true' && PIECE_SPRITES.includes(kind.sprite)) continue;
         if (this.floor && FLOOR_SPRITES.includes(kind.sprite)) {
           // The checkerboard is the ground here. The path is the one thing the
           // pixel tiles said that it does not, so it keeps a tint.

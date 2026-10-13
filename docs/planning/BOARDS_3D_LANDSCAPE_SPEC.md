@@ -64,6 +64,23 @@ A later live mode reuses the first two with a persistent renderer. It also fits 
 
 **Cache.** `FLOOR_CACHE_MAX = 3` becomes about 8, since the key now includes the stage. The parsed GLB is cached per kit so a stage change does not refetch.
 
+## Phase 1 status and the 45-degree tilt
+
+**Phase 1 is built** (floor colours pinned, theme-painted raised pieces, grid-preserving shear camera, scene and loader wired). Two small differences from the text above, both on purpose:
+- The raised pieces are built in code (`boardPieces.ts`), not stored in `arena.glb`. The file stays exactly the floor it was, so its tests and look are unchanged.
+- The border hedge on row 0 is lifted like the rest of the ring (0.18) and its top edge is clipped by the picture's edge, instead of being flat.
+
+**Next: tilt the camera to 45 degrees (decided direction, phase 1b).** The shear keeps the grid square, but the board still reads as nearly top-down. A true 45-degree view from the south makes the floor foreshorten and the raised pieces show their fronts, while Phaser's 2D pets stay upright and flat, so they read as 2D standing on a 3D board. A throwaway render at 45 and 60 degrees confirmed it works and that 45 is the better of the two (flatter, more room, the pets overlap the row above like a classic three-quarter view).
+
+What changes, and what that costs:
+- Rows are `sin(45) = 0.707` as tall as columns, so a tile is 48 wide by about 34 tall. One helper, `tileY(row)`, replaces every `row * size` in `BattleGardenScene` (pet, foe, ally, minions, shadows, pedestals, effects, pointer mapping). Sprites keep their 48px size and stand with their feet on the cell's bottom edge.
+- The game canvas gets headroom at the top so a pet in row 0 is not cut off: world height = (rows x tile height) + (sprite height - tile height).
+- `boardCamera` gains an `elevation` and loses the shear; `boardPieces` and the palette are unchanged. Heights then project by `cos(45)`, so pieces should be about 1.4x taller to lean the same amount.
+- Tapping the board to walk gets rows about 30% thinner. The D-pad stays the main control; the tap rule needs a check on a real phone.
+- `depthForRow` already sorts by row, which is what makes overlapping pets and pieces look right.
+- The board is shorter (about 0.8 of today's height), which helps the landscape layout.
+- Tests: the camera test is reused with an elevation (floor cell centres map to the expected pixels; a point's height moves it up by `h * cos(elevation)`); a pure `tileY` test; the full visual walk to see the Phaser scene.
+
 ## Part 4: Landscape on iOS
 
 **What exists:** `viewport-fit=cover`, `100dvh` and safe-area insets are already used. Phaser is `FIT`. The manifest says `orientation: 'portrait'`, but iOS ignores that, so iOS already rotates and the layout just was not designed for it.

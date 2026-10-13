@@ -1,4 +1,4 @@
-import { ARENA_HEIGHT, ARENA_WIDTH } from '../../domain/rpg/arena';
+import { ARENA_HEIGHT, ARENA_WIDTH, tileKindAt, type Arena } from '../../domain/rpg/arena';
 import { drawStaticArenaFloor } from './arenaCanvas';
 import type { ArenaCssTokens } from '../pet/mascots/3d/arenaPalette';
 
@@ -35,12 +35,27 @@ function saveData(): boolean {
   return conn?.saveData === true;
 }
 
-/** The few floors kept: enough for a companion and the other light/dark mode, small enough to be cheap. */
-export const FLOOR_CACHE_MAX = 3;
+/**
+ * The few boards kept. A baked board is decided by the companion's colours *and*
+ * the stage's layout, so there are more of them than there used to be floors;
+ * eight covers walking back and forth across a handful of stages in both modes.
+ */
+export const FLOOR_CACHE_MAX = 8;
 
 /** A floor is fully decided by the five tokens it is painted from. */
 export function floorCacheKey(tokens: ArenaCssTokens): string {
   return [tokens.base, tokens.text, tokens.accent, tokens.success, tokens.danger].join('|');
+}
+
+/** What stands in each cell of a stage, by sprite name, read through the one grid reader movement uses. */
+export function arenaLayout(arena: Arena): (string | undefined)[][] {
+  return Array.from({ length: ARENA_HEIGHT }, (_, y) =>
+    Array.from({ length: ARENA_WIDTH }, (_, x) => tileKindAt(arena, x, y)?.sprite));
+}
+
+/** A baked board is decided by its five colours and by which stage's layout stands on it. */
+export function boardCacheKey(tokens: ArenaCssTokens, arena: Arena): string {
+  return `${floorCacheKey(tokens)}#${arena.rows.join('/')}`;
 }
 
 /** Oldest out first. Re-remembering a key moves it to the back. */
@@ -55,12 +70,12 @@ export function remember<T>(cache: Map<string, T>, key: string, value: T, max = 
 }
 
 /**
- * Baked floors only. A static floor is a few milliseconds of 2D drawing, and a
+ * Baked boards only. A static floor is a few milliseconds of 2D drawing, and a
  * failed bake is not remembered, so a transient failure does not stick.
  *
  * Without this every stage clear rebuilt the scene and baked again: a glTF
  * parse, a WebGL context made and force-lost, and a readback, for a picture that
- * depends only on the companion and the light/dark mode.
+ * depends only on the companion, the light/dark mode and the stage's layout.
  */
 const baked = new Map<string, HTMLCanvasElement>();
 
@@ -76,13 +91,14 @@ const baked = new Map<string, HTMLCanvasElement>();
 export async function loadArenaFloor(
   calm: boolean,
   themeTokens: ArenaCssTokens,
+  arena: Arena,
   cancelled: () => boolean = () => false,
 ): Promise<HTMLCanvasElement | null> {
   const fallback = () => drawStaticArenaFloor(themeTokens, ARENA_WIDTH, ARENA_HEIGHT, FLOOR_TILE_PX);
   const src = arenaModelSrc(calm, saveData(), import.meta.env.BASE_URL);
   if (!src) return fallback();
 
-  const key = floorCacheKey(themeTokens);
+  const key = boardCacheKey(themeTokens, arena);
   const known = baked.get(key);
   if (known) {
     remember(baked, key, known);
@@ -100,6 +116,7 @@ export async function loadArenaFloor(
       rows: ARENA_HEIGHT,
       tilePx: FLOOR_TILE_PX,
       themeTokens,
+      layout: arenaLayout(arena),
       cancelled: () => gaveUp || cancelled(),
     }))
     .catch(() => null);
