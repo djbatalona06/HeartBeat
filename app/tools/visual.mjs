@@ -162,6 +162,21 @@ const SCREENS = [
 ];
 
 /**
+ * The two ways a phone is held. Upright is the walk this file always did; on its
+ * side the tab bar becomes a rail down the left edge (`05-chrome.css`), which is
+ * a layout of its own and breaks in ways the upright one cannot show -- content
+ * under the rail, a page wider than the phone. Two screens are enough to prove it
+ * for the shell they share; the garden's own landscape layout is walked by hand
+ * on a real phone, since reaching it takes a paired couple.
+ */
+const UPRIGHT = { suffix: '', viewport: { width: 390, height: 844 }, screens: SCREENS };
+const SIDEWAYS = {
+  suffix: '-landscape',
+  viewport: { width: 844, height: 390 },
+  screens: SCREENS.filter((screen) => ['home', 'shop'].includes(screen.name)),
+};
+
+/**
  * Two, not five, and each pinned to a mode.
  *
  * The mode matters as much as the pack. `readStoredMode` in ThemeProvider.tsx
@@ -362,9 +377,9 @@ async function prime(page) {
   return false;
 }
 
-async function walk({ id: themeId, mode }) {
+async function walk({ id: themeId, mode }, view = UPRIGHT) {
   const page = await browser.newPage({
-    viewport: { width: 390, height: 844 },
+    viewport: view.viewport,
     deviceScaleFactor: 1,
     hasTouch: true,
     isMobile: true,
@@ -432,7 +447,7 @@ async function walk({ id: themeId, mode }) {
   }
   check(`${themeId} got past the first-run gates`, true);
 
-  for (const screen of SCREENS) {
+  for (const screen of view.screens) {
     await page.goto(`${base}/${screen.hash}`, { waitUntil: 'load' });
     await page.waitForTimeout(500);
 
@@ -443,16 +458,36 @@ async function walk({ id: themeId, mode }) {
     // passes forever and nobody looks at it again.
     const landed = await page.evaluate(() => location.hash || '#/');
     if (landed !== screen.hash) {
-      check(`${themeId} ${screen.name} is reachable`, false,
+      check(`${themeId} ${screen.name}${view.suffix} is reachable`, false,
         `redirected to ${landed} — the walk did not get past FirstRunGate/PairGate`);
       continue;
     }
     await page.addStyleTag({ content: FREEZE });
     await page.waitForTimeout(150);
 
-    const label = `${themeId}-${mode}-${screen.name}`;
+    const label = `${themeId}-${mode}-${screen.name}${view.suffix}`;
     const shot = join(SHOTS, `${label}.png`);
     await page.screenshot({ path: shot, fullPage: false });
+
+    // ---- sideways only: the rail is where it should be and nothing spills ----
+    if (view === SIDEWAYS) {
+      const geometry = await page.evaluate(() => {
+        const bar = document.querySelector('.tabbar')?.getBoundingClientRect();
+        const shell = document.querySelector('.shell')?.getBoundingClientRect();
+        return {
+          railLeft: bar ? Math.round(bar.left) : null,
+          railWidth: bar ? Math.round(bar.width) : null,
+          railTall: bar ? Math.round(bar.height) : null,
+          shellLeft: shell ? Math.round(shell.left) : null,
+          wide: document.documentElement.scrollWidth - window.innerWidth,
+          high: window.innerHeight,
+        };
+      });
+      check(`${label} has the tab bar as a rail down the left edge`,
+        geometry.railLeft === 0 && geometry.railWidth > 0 && geometry.railWidth < 120 && geometry.railTall >= geometry.high - 1,
+        JSON.stringify(geometry));
+      check(`${label} is no wider than the phone`, geometry.wide <= 0, `${geometry.wide}px too wide`);
+    }
 
     // ---- the comparison ----
     const baseline = join(BASELINES, `${label}.png`);
@@ -513,6 +548,8 @@ for (const theme of THEMES) {
   // round, shinobi is dark and sharp, which is the widest gap the packs offer.
   console.log(`\n=== ${theme.id} · ${theme.mode} ===`);
   await walk(theme);
+  console.log(`\n=== ${theme.id} · ${theme.mode} · on its side ===`);
+  await walk(theme, SIDEWAYS);
 }
 
 await browser.close();

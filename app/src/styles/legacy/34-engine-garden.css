@@ -1118,3 +1118,45 @@
    pills sit on its bottom-right corner. They come back the moment it ends. */
 body:has(.pad-grid) .chat-pill,
 body:has(.pad-grid) .cmd-pill { display: none; }
+
+/* ---- a phone on its side ------------------------------------------------------
+   Landscape and short, the same test the tab rail uses (`05-chrome.css`). The page
+   becomes two columns: the board and the walking pad on the left, held in view,
+   and the foe strip, the move pad and today's charges on the right, which scroll.
+
+   The board is as wide as its column (a container query, so no number here has to
+   know how wide the rail or the notch is) and never taller than the screen leaves
+   after the walking pad, so on a phone about 390px tall it is the biggest thing
+   on screen. Phaser's FIT mode scales the canvas into whichever of the two runs
+   out first. The shell's 560px cap is lifted for this one page: two columns do not
+   fit in a phone-width column. `:has` is iOS 16+; where it is missing the page is
+   the portrait layout in a 560px column, which is still usable. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .shell:has(.garden) { max-width: none; }
+
+  .garden {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(17rem, 1fr);
+    column-gap: var(--space-3);
+    align-items: start;
+  }
+  .garden > * { grid-column: 2; min-width: 0; }
+  /* The island chip and the companion button are side by side upright; the right
+     column is too narrow for that, so they wrap instead of running off the screen. */
+  .garden-top { flex-wrap: wrap; gap: var(--space-2); }
+  .garden > .garden-stage-wrap {
+    grid-column: 1;
+    grid-row: 1 / span 12;
+    align-self: start;
+    container-type: inline-size;
+  }
+  /* The right column is narrow: the move pad gets it whole, and today's charges go under it. */
+  .garden-controls { grid-template-columns: minmax(0, 1fr); }
+  /* The canvas is 528 by 252 logical pixels. The 10rem is the walking pad and its gap. */
+  .garden-stage {
+    height: min(
+      calc(100cqw * 252 / 528),
+      calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--space-4) - 10rem)
+    );
+  }
+}

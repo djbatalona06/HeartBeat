@@ -84,7 +84,13 @@ A later live mode reuses the first two with a persistent renderer. It also fits 
 - Seen in the real scene for all four non-classic kits. Colours were tuned from what was seen: the inlay ring leans back towards the floor, and a step is 0.1 tall.
 - The earlier note about a name guard (no rights holder's name) is dropped: the five names are plain descriptive words, and there is nothing to guard.
 
-**Phase 4 (next): iOS landscape and the side rail.**
+**Phase 4 (done): iOS landscape and the side rail.** One definition of "a phone on its side" (`orientation: landscape` and `max-height: 520px`) is used by both the rail and the garden, so an iPad or a desktop window is untouched.
+- The same `<nav class="tabbar">` becomes a column on the left edge: six tabs with their labels, the menu button as the rail's first row. The bar's height token is 0 there (it is written inline by the theme engine, so the rule is `!important` and sits after the wide-screen rule that also matches a phone on its side), which drops every dock and sheet to the screen edge by itself. A new `--rail-w` (0 elsewhere, 72px on the rail) moves the shell, the menu button and the menu panel in; the shell's width grows by the same amount so content stays centred in what the rail leaves.
+- The garden becomes two columns: the board and the walking pad on the left (sticky), the foe strip, move pad and charges on the right. The board is as wide as its column (a container query) and never taller than the screen leaves after the pad. The shell's 560px cap is lifted for this page (`:has`, iOS 16+; without it the portrait layout in a 560px column remains). The header chips wrap so they cannot push the page wider than the phone, and the move pad takes the right column whole.
+- Rotation: `game.ts` watches the size of the box the canvas lives in (a `ResizeObserver`) and re-fits on the next frame, with `orientationchange` as a backup. iOS reports a stale window size right after turning, which is why the box is watched and not the window.
+- The manifest is untouched (iOS only, as decided).
+- `visual.mjs` now also walks Home and Shop on an 844x390 phone in both packs and checks that the tab bar is a rail at the left edge, full height, and that the page is no wider than the phone. `styles/rail.test.ts` holds the CSS facts it depends on.
+- Not checkable here: the notch and home-indicator insets (`env(safe-area-inset-*)` cannot be faked in a desktop browser), and how it feels in the hand. Those need a real iPhone.
 
 ## Part 4: Landscape on iOS
 

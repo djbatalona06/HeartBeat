@@ -79,6 +79,25 @@ export function startGarden(
   });
 
   /**
+   * Turning a phone on its side changes the size of the box the canvas lives in,
+   * and iOS reports a stale window size for a moment afterwards, so the window's
+   * own `resize` can fit the board to the old shape. The box itself is measured
+   * after layout and is always current, so it is watched, and the fit is asked for
+   * on the next frame once the page has settled. `orientationchange` covers the
+   * browsers that move the box without resizing it.
+   */
+  let frame = 0;
+  const refit = () => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => {
+      try { game.scale.refresh(); } catch { /* the game was torn down between the turn and the frame */ }
+    });
+  };
+  const watcher = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(refit);
+  watcher?.observe(parent);
+  window.addEventListener('orientationchange', refit);
+
+  /**
    * The scene is constructed before Phaser boots it, so a call that lands in
    * the first frame or two would reach a scene with no sprites. Every method
    * below goes through here and no-ops until `create()` has run, which is
@@ -113,6 +132,11 @@ export function startGarden(
     // `destroy(true)` removes the canvas and releases the WebGL context.
     // Leaving the context alive across route changes is how a phone runs out of
     // them after half a dozen navigations.
-    destroy: () => game.destroy(true),
+    destroy: () => {
+      watcher?.disconnect();
+      window.removeEventListener('orientationchange', refit);
+      cancelAnimationFrame(frame);
+      game.destroy(true);
+    },
   };
 }

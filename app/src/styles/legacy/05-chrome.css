@@ -208,7 +208,9 @@
 .menu-button {
   position: fixed;
   top: calc(env(safe-area-inset-top) + var(--space-2));
-  left: calc(env(safe-area-inset-left) + var(--space-2));
+  /* `--rail-w` is 0 except on a phone on its side, where the tab bar is a rail
+     down the left edge and this button is the rail's first row, centred in it. */
+  left: calc(env(safe-area-inset-left) + max(var(--space-2), (var(--rail-w) - var(--tap)) / 2));
   z-index: 4;
   display: grid;
   place-items: center;
@@ -384,7 +386,7 @@
     /* Anchored under the button, which is fixed at the same two offsets. */
     top: calc(env(safe-area-inset-top) + var(--space-2) + var(--tap) + var(--space-2));
     bottom: auto;
-    left: calc(env(safe-area-inset-left) + var(--space-2));
+    left: calc(env(safe-area-inset-left) + var(--rail-w) + var(--space-2));
     right: auto;
     width: min(560px, calc(100vw - var(--space-6)));
     max-height: calc(100dvh - env(safe-area-inset-top) - var(--tap) - var(--space-7));
@@ -402,6 +404,43 @@
   :root { --tabbar-h: 68px !important; }
   .tabbar { justify-content: center; }
   .tabbar-glyph { width: 56px; }
+}
+
+/* ---- the rail: the same six tabs down the left edge of a phone on its side ----
+   A phone held sideways is about 390px tall and 800 wide. A bar along the bottom
+   spends a sixth of that height on six buttons, and the board and the move pad
+   need every pixel of it. So, only there (landscape and short: no iPad, no
+   desktop window), the same `<nav>` is laid out as a column along the left edge.
+   Same six `PRIMARY_TABS`, same labels, same markup -- not a second navigation,
+   which is the mistake the rail this replaced was made to avoid. The reason that
+   rail was dropped was fourteen destinations; six fit in a column on any phone
+   (six rows of 56px is 336px, and the shortest iPhone leaves about 354).
+
+   Everything that was a calc over `--tabbar-h` -- the shell's bottom padding, the
+   sheets, the garden's docked pad -- drops to the screen edge by itself once the
+   bar's height is 0, and the new `--rail-w` moves the left edge in by the rail's
+   width. The `!important` is for the same reason the wide-screen rule above
+   needs one (the theme engine writes `--tabbar-h` inline), and it sits after that
+   rule so that, at equal strength, this one is the one that wins. */
+:root { --rail-w: 0px; }
+@media (orientation: landscape) and (max-height: 520px) {
+  :root { --tabbar-h: 0px !important; --rail-w: 72px; }
+  .tabbar {
+    top: 0;
+    right: auto;
+    bottom: 0;
+    left: 0;
+    width: calc(var(--rail-w) + env(safe-area-inset-left));
+    height: auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(6, minmax(0, 1fr));
+    /* The top is left clear for the menu button, which is the rail's first row. */
+    padding-block: calc(env(safe-area-inset-top) + var(--space-2) + var(--tap) + var(--space-2)) env(safe-area-inset-bottom);
+    padding-inline: env(safe-area-inset-left) 0;
+    border-top: 0;
+    border-inline-end: 0.5px solid var(--hairline);
+  }
+  .tabbar-glyph { width: 46px; }
 }
 
 :root[data-calm='true'] .tabbar-tab.active .tabbar-glyph { transform: none; }
