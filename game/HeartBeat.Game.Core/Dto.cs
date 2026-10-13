@@ -128,6 +128,24 @@ public sealed record AwardDto(
     string RewardText,
     ProgressDto Progress);
 
+/// <summary>One "Why?" line: a stable code for the screen, and its default wording.</summary>
+public sealed record ForecastReasonDto(string Code, string Text);
+
+/// <summary>
+/// The pre-fight read for the monster on a stage.
+///
+/// No win rate crosses the boundary on purpose: the screen shows a label, and a
+/// number it cannot print is a number it will not be tempted to.
+/// <c>MonsterId</c> is what the forecast was worked out for, so a page that has
+/// moved on to the next stage can tell a stale answer from a fresh one.
+/// </summary>
+public sealed record ForecastDto(
+    string MonsterId,
+    Verdict Verdict,
+    bool AssistSuggested,
+    int ExpectedRounds,
+    IReadOnlyList<ForecastReasonDto> Why);
+
 /// <summary>
 /// Source-generated JSON, and the reason the runtime can be trimmed.
 ///
@@ -148,6 +166,7 @@ public sealed record AwardDto(
 [JsonSerializable(typeof(BattleDto))]
 [JsonSerializable(typeof(ProgressDto))]
 [JsonSerializable(typeof(AwardDto))]
+[JsonSerializable(typeof(ForecastDto))]
 [JsonSerializable(typeof(ActionDto))]
 [JsonSerializable(typeof(RaidStats))]
 [JsonSerializable(typeof(IReadOnlyList<ActionDto>))]

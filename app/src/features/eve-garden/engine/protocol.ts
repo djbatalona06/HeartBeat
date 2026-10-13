@@ -12,6 +12,7 @@ export type GameMethod =
   | 'world'
   | 'stage'
   | 'beginBattle'
+  | 'forecast'
   | 'act'
   | 'monsterMove'
   | 'progress'

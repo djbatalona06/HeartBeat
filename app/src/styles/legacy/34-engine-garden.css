@@ -197,6 +197,128 @@
 .garden-log-sheet { display: grid; gap: var(--space-2); align-content: start; }
 .garden-log-sheet .garden-log { max-height: 50dvh; }
 
+/* The pre-fight forecast: one line and its "Why?", in the hint's place in the
+   flow, so walking past it costs nothing. The button keeps `.quiet`'s tap height
+   and gives up its full width. */
+.garden-forecast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.garden-forecast-line {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+}
+.garden-forecast .quiet { width: auto; flex: none; margin-top: 0; padding-block: var(--space-2); }
+.garden-forecast-sheet { display: grid; gap: var(--space-2); align-content: start; }
+.garden-forecast-reasons { margin: 0; padding-inline-start: var(--space-4); line-height: var(--line-body); }
+.garden-forecast-reasons li + li { margin-top: var(--space-1); }
+
+/* The controller: the move pad beside today's charge meter, on every width.
+   Two-thirds pad, one-third meter; the meter has a floor so its labels stay
+   readable on a 360px phone.
+
+   Docked just above the tab bar so it stays under the thumb while the board
+   scrolls. The offset is the same recipe the bottom sheets use: the bar's
+   height plus the home indicator's. */
+.garden-controls {
+  position: sticky;
+  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-2));
+  z-index: 2;
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(6.5rem, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+/* The move pad: a 2x2 of the companion's moves, the couple's move across the
+   bottom. Moves only — logging lives on the pages that own it. */
+.garden-actions { display: grid; gap: var(--space-2); min-width: 0; }
+.garden-action-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.garden-action {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--motion-easing),
+    transform var(--motion-fast) var(--motion-easing);
+}
+.garden-action:hover:not(:disabled),
+.garden-action:focus-visible { border-color: var(--color-accent); }
+.garden-action:active:not(:disabled) { transform: translateY(1px); }
+.garden-action:disabled { opacity: 0.55; cursor: default; }
+/* Long move names wrap onto an even second line instead of a short orphan that
+   crowds the boost bar. */
+.garden-action-name {
+  font-weight: 600;
+  line-height: var(--line-tight);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.garden-action-note {
+  font-size: var(--text-sm);
+  line-height: var(--line-tight);
+  color: var(--color-text-muted);
+}
+.garden-action-list .is-wide { grid-column: 1 / -1; }
+/* The boost bar: how much today's charges and the raid sheet lift this move.
+   A track and a fill, both from the palette, so it reads in every pack. */
+.garden-action-boost {
+  display: block;
+  height: 4px;
+  margin-top: var(--space-1);
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--color-accent) var(--boost, 0%), var(--color-surface-muted) var(--boost, 0%));
+}
+.garden-action.is-strong .garden-action-boost {
+  background: linear-gradient(to right, var(--color-success) var(--boost, 0%), var(--color-surface-muted) var(--boost, 0%));
+}
+@media (max-width: 420px) {
+  .garden-action { padding: var(--space-1) var(--space-2); }
+  .garden-action-name { font-size: var(--text-sm); }
+  /* One line of note on a small phone, so every move keeps the same height. */
+  .garden-action-note {
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+/* Effectiveness is carried by a border, not a colour swap, so it survives every
+   pack and both variants. */
+.garden-action.is-strong { border-color: var(--color-success); }
+/* One stripe per fighting style, down the leading edge, so the three kinds of
+   move read apart before the names do. */
+.garden-action.is-physical { box-shadow: inset 3px 0 0 var(--color-danger); }
+.garden-action.is-defensive { box-shadow: inset 3px 0 0 var(--color-success); }
+.garden-action.is-magic { box-shadow: inset 3px 0 0 var(--color-accent); }
+.garden-action.is-mend { box-shadow: inset 3px 0 0 var(--color-text-muted); }
+.garden-action.is-charged .garden-action-note { color: var(--color-text); }
+
 /* ---- today's charge meter -------------------------------------------------
    A picture of the day, opened from the dock's charge chip, never a control. Eight segments
    stacked: the six loggable charges, a gap, then the two earned ones. A lit

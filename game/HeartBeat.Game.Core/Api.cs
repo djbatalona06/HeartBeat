@@ -74,6 +74,28 @@ public static class Api
     }
 
     /// <summary>
+    /// Whether this build is likely to beat the monster on a stage, before the
+    /// fight starts. Takes what <see cref="BeginBattle"/> takes, minus the seed:
+    /// the forecast plays its own seeded fights (<see cref="Core.Forecast"/>).
+    /// Returns <c>null</c> if there is nothing on that stage.
+    /// </summary>
+    public static string? Forecast(
+        int island, int stage, string theme, int level,
+        string? charges = null, string? statsJson = null)
+    {
+        Monster? monster = Data.World.MonsterAt(island, stage, ParseTheme(theme));
+        if (monster is null) return null;
+
+        int rank = Math.Clamp(level, 1, Progression.MaxLevel);
+        ForecastResult f = Core.Forecast.For(monster, rank, new Boosts(Charges.Parse(charges), ReadStats(statsJson)));
+        return Write(
+            new ForecastDto(
+                monster.Id, f.Verdict, f.AssistSuggested, f.ExpectedRounds,
+                f.Why.Select(r => new ForecastReasonDto(r.Code, r.Text)).ToList()),
+            GameJson.Default.ForecastDto);
+    }
+
+    /// <summary>
     /// The player's turn. <paramref name="actionId"/> is an id from
     /// <see cref="Actions"/>, or <c>"flee"</c>.
     /// </summary>

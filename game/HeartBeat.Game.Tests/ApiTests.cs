@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using HeartBeat.Game.Core;
+using HeartBeat.Game.Core.Data;
+using HeartBeat.Game.Core.Models;
 
 namespace HeartBeat.Game.Tests;
 
@@ -367,4 +369,52 @@ public class ApiTests
     public void ABadStatsArgumentIsNoStatsRatherThanAFailure() =>
         Assert.Equal(0, Parse(Api.BeginBattle(1, 1, "light", 3, 1, "", "{not json")!)
             .GetProperty("stats").GetProperty("burden").GetInt32());
+
+    [Fact]
+    public void ForecastCrossesAsAVerdictAndReasonsWithNoRate()
+    {
+        // The screen prints a label, never a percentage, so no rate crosses.
+        JsonElement f = Parse(Api.Forecast(1, 7, "light", 1));
+        Assert.Equal("i1s7-sedentary-sentinel", f.GetProperty("monsterId").GetString());
+        Assert.Equal("Tough", f.GetProperty("verdict").GetString());
+        Assert.True(f.GetProperty("assistSuggested").GetBoolean());
+        Assert.True(f.GetProperty("expectedRounds").GetInt32() > 0);
+        JsonElement why = f.GetProperty("why");
+        Assert.InRange(why.GetArrayLength(), 1, Forecast.MaxReasons);
+        Assert.False(string.IsNullOrWhiteSpace(why[0].GetProperty("code").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(why[0].GetProperty("text").GetString()));
+        foreach (JsonProperty p in f.EnumerateObject()) Assert.DoesNotContain("rate", p.Name, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ForecastAgreesWithTheCoreAndHearsChargesAndStats()
+    {
+        Monster boss = World.MonsterAt(10, 7, DioramaTheme.Light)!;
+        Assert.Equal(Forecast.For(boss, 42).Verdict.ToString(), Parse(Api.Forecast(10, 7, "light", 42)).GetProperty("verdict").GetString());
+
+        // A raid sheet moves the read (Tough to Close on the Warden two levels early).
+        var stats = """{"energy":40,"resilience":40,"resonance":40,"burden":40,"fortify":40,"reveal":40,"recovery":40}""";
+        Assert.Equal("Close", Parse(Api.Forecast(10, 7, "light", 42, "", stats)).GetProperty("verdict").GetString());
+
+        // Today's charge on the weakness is heard and named.
+        Monster first = World.MonsterAt(1, 1, DioramaTheme.Light)!;
+        Charge answer = Enum.GetValues<Charge>().First(c => Charges.ElementOf(c) == first.Weakness);
+        JsonElement why = Parse(Api.Forecast(1, 1, "light", 1, answer.ToString())).GetProperty("why");
+        Assert.Contains(why.EnumerateArray(), r => r.GetProperty("code").GetString() == "weakness-lit");
+    }
+
+    [Fact]
+    public void ForecastForAStageThatDoesNotExistIsNull()
+    {
+        Assert.Null(Api.Forecast(99, 1, "light", 5));
+        Assert.Null(Api.Forecast(1, 9, "light", 5));
+    }
+
+    [Fact]
+    public void ForecastSurvivesSillyLevels()
+    {
+        Assert.NotNull(Api.Forecast(1, 1, "light", 0));
+        Assert.NotNull(Api.Forecast(1, 1, "light", int.MaxValue));
+        Assert.NotNull(Api.Forecast(1, 1, "dark", -5, "not,a,charge", "{bad json"));
+    }
 }
