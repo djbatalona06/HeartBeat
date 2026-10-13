@@ -1,4 +1,5 @@
 import { ARENA_HEIGHT, ARENA_WIDTH, tileKindAt, type Arena } from '../../domain/rpg/arena';
+import { BOARD_ELEVATION_DEG, HEADROOM_TILES } from '../../domain/rpg/boardView';
 import { drawStaticArenaFloor } from './arenaCanvas';
 import type { ArenaCssTokens } from '../pet/mascots/3d/arenaPalette';
 
@@ -117,6 +118,8 @@ export async function loadArenaFloor(
       tilePx: FLOOR_TILE_PX,
       themeTokens,
       layout: arenaLayout(arena),
+      elevationDeg: BOARD_ELEVATION_DEG,
+      headroomTiles: HEADROOM_TILES,
       cancelled: () => gaveUp || cancelled(),
     }))
     .catch(() => null);

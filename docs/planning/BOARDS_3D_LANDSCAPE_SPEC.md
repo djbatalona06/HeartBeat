@@ -64,22 +64,18 @@ A later live mode reuses the first two with a persistent renderer. It also fits 
 
 **Cache.** `FLOOR_CACHE_MAX = 3` becomes about 8, since the key now includes the stage. The parsed GLB is cached per kit so a stage change does not refetch.
 
-## Phase 1 status and the 45-degree tilt
+## Phase status
 
-**Phase 1 is built** (floor colours pinned, theme-painted raised pieces, grid-preserving shear camera, scene and loader wired). Two small differences from the text above, both on purpose:
-- The raised pieces are built in code (`boardPieces.ts`), not stored in `arena.glb`. The file stays exactly the floor it was, so its tests and look are unchanged.
-- The border hedge on row 0 is lifted like the rest of the ring (0.18) and its top edge is clipped by the picture's edge, instead of being flat.
+**Phase 1 (done): raised pieces in the pet's colours.** Floor colours pinned by a test; hedge, stone, water, beds and gate are theme-painted solids (`boardPieces.ts`), built in code, so `arena.glb` stays exactly the floor it was. The ring hedge on row 0 is lifted like the rest of the ring.
 
-**Next: tilt the camera to 45 degrees (decided direction, phase 1b).** The shear keeps the grid square, but the board still reads as nearly top-down. A true 45-degree view from the south makes the floor foreshorten and the raised pieces show their fronts, while Phaser's 2D pets stay upright and flat, so they read as 2D standing on a 3D board. A throwaway render at 45 and 60 degrees confirmed it works and that 45 is the better of the two (flatter, more room, the pets overlap the row above like a classic three-quarter view).
+**Phase 2 (done): the 45-degree view.** The shear camera was a stepping stone and is gone. The camera now sits in front of the board and looks down at 45 degrees, still orthographic, so every tile is one rectangle of the picture.
+- One source of numbers: `domain/rpg/boardView.ts` (`ROW_RATIO = sin 45 = 0.707`, `HEADROOM_TILES = 1 - ROW_RATIO`, `cellTop`, `footY`, `spriteY`, `rowAt`). The bake gets the elevation and headroom as plain numbers (nothing under `3d/` may import from outside it); `boardCamera.test.ts` holds the bake and the scene to the same cell for every tile.
+- The Phaser scene routes every row-to-pixel spot through those helpers. Sprites keep their 48px size with their feet on the row's bottom edge; the canvas is 528x252 instead of 528x336; taps use `rowAt`.
+- Piece heights did not need to change: a height `h` rises `h * cos 45` and a row is `sin 45` tall, so a piece leans the same fraction of a row as before.
+- Calm, Save-Data and a failed bake draw the flat checker and the pixel walls squashed into the same rows. Same grid, no 3D.
+- Seen in the real scene (Chromium, real build): the bake runs, pets stand upright on their rows, keyboard and tap walking land on the right rows, and calm makes no model request.
 
-What changes, and what that costs:
-- Rows are `sin(45) = 0.707` as tall as columns, so a tile is 48 wide by about 34 tall. One helper, `tileY(row)`, replaces every `row * size` in `BattleGardenScene` (pet, foe, ally, minions, shadows, pedestals, effects, pointer mapping). Sprites keep their 48px size and stand with their feet on the cell's bottom edge.
-- The game canvas gets headroom at the top so a pet in row 0 is not cut off: world height = (rows x tile height) + (sprite height - tile height).
-- `boardCamera` gains an `elevation` and loses the shear; `boardPieces` and the palette are unchanged. Heights then project by `cos(45)`, so pieces should be about 1.4x taller to lean the same amount.
-- Tapping the board to walk gets rows about 30% thinner. The D-pad stays the main control; the tap rule needs a check on a real phone.
-- `depthForRow` already sorts by row, which is what makes overlapping pets and pieces look right.
-- The board is shorter (about 0.8 of today's height), which helps the landscape layout.
-- Tests: the camera test is reused with an elevation (floor cell centres map to the expected pixels; a point's height moves it up by `h * cos(elevation)`); a pure `tileY` test; the full visual walk to see the Phaser scene.
+**Phase 3 (next): the five kits and the Raid Gate picker.** **Phase 4: iOS landscape and the side rail.**
 
 ## Part 4: Landscape on iOS
 

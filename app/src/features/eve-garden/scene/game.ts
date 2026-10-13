@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { SPRITE_SIZE } from '../../../domain/rpg/sprites';
-import { ARENA_HEIGHT, ARENA_WIDTH } from '../../../domain/rpg/arena';
+import { ARENA_WIDTH } from '../../../domain/rpg/arena';
+import { boardPixelHeight } from '../../../domain/rpg/boardView';
 import { BattleGardenScene } from './BattleGardenScene';
 import type { Blow, MinionSpot, SceneHandle, SceneHooks } from './events';
 
@@ -59,7 +60,8 @@ export function startGarden(
     type: Phaser.AUTO,
     parent,
     width: ARENA_WIDTH * SPRITE_SIZE * scale,
-    height: ARENA_HEIGHT * SPRITE_SIZE * scale,
+    // The board is seen at an angle, so it is shorter than it is wide by the rows' foreshortening.
+    height: boardPixelHeight(SPRITE_SIZE * scale),
     // Nearest-neighbour, or 16x16 art scaled 3x turns to mush.
     pixelArt: true,
     // So `ThemeBackdrop` shows through and the five packs still read as themes.
