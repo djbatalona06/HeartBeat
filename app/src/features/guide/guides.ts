@@ -191,7 +191,7 @@ export const GUIDES = {
     steps: [
       'Pick a companion. Strong here means it really hits harder on this boss.',
       'Walk to the monster with the direction pad to start the fight.',
-      'Choose a move each turn; today\'s charges boost them.',
+      'Choose a move each turn. At level 8 your companion learns its own big finisher.',
       'Every try at stage 7, the boss, asks if you are going in together for a bigger payout.',
     ],
     game: 'Clearing a stage pays pet XP, and the first clear pays coins. Together on the boss: +50% pet XP, 2× coins and a purse.',

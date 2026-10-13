@@ -150,12 +150,45 @@ public class BattleTests
     }
 
     [Fact]
-    public void OnlyTogetherEverRecharges()
+    public void OnlyTogetherAndUltimateEverRecharge()
     {
         foreach (PlayerAction action in Actions.All)
         {
             Assert.Equal(action.Style != Style.Together, Battle.IsReady(AtLevelFive() with { TogetherCooldown = 1 }, action));
+            Assert.Equal(action.Style != Style.Ultimate, Battle.IsReady(AtLevelFive() with { UltimateCooldown = 1 }, action));
         }
+    }
+
+    [Fact]
+    public void TheUltimateHitsHardestAndWaitsThreeTurnsToComeBack()
+    {
+        BattleState start = AtLevelFive();
+        Assert.True(
+            Battle.PreviewDamage(start, Actions.Ultimate, Sentinel) > Battle.PreviewDamage(start, Actions.Together, Sentinel));
+
+        BattleState used = Battle.Act(start, Actions.Ultimate.Id, Sentinel, Actions.Ultimate.UnlockLevel);
+        Assert.Equal(Battle.UltimateCooldownTurns, used.UltimateCooldown);
+
+        // Three other moves in between, and then it is ready; Together is not blocked by it.
+        BattleState state = used;
+        for (int turn = 0; turn < Battle.UltimateCooldownTurns; turn++)
+        {
+            Assert.False(Battle.IsReady(state, Actions.Ultimate));
+            state = Battle.MonsterMove(state, Sentinel) with { Turn = Side.Player };
+            state = Battle.Act(state, Actions.Strike.Id, Sentinel, 12);
+        }
+        Assert.Equal(0, state.UltimateCooldown);
+        Assert.True(Battle.IsReady(state, Actions.Ultimate));
+    }
+
+    [Fact]
+    public void TheUltimateIgnoresDefenseLikeASpell()
+    {
+        BattleState state = AtLevelFive();
+        BattleState armoured = state with { Monster = state.Monster with { Defense = 60 } };
+        Assert.Equal(
+            Battle.PreviewDamage(state, Actions.Ultimate, Sentinel),
+            Battle.PreviewDamage(armoured, Actions.Ultimate, Sentinel));
     }
 
     [Fact]

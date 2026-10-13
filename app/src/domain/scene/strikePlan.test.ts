@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  FIGHT_TIMING, TOGETHER_BEATS, roundLength, strikePlan, togetherBeats, togetherRoundLength,
+  FIGHT_TIMING, TOGETHER_BEATS, ULTIMATE_BEATS, roundLength, strikePlan, togetherBeats, togetherRoundLength,
+  ultimateBeats, ultimateRoundLength,
 } from './strikePlan';
 
 /** A round longer than this starts to feel like waiting for the game. */
@@ -46,6 +47,27 @@ describe('fight round timing', () => {
 
     it('keeps a whole round that plays it under the ceiling', () => {
       expect(togetherRoundLength(strikePlan({ calm: false }))).toBeLessThan(ROUND_CEILING_MS);
+    });
+  });
+
+  describe('the finisher', () => {
+    /** Rarer than the couple's move, so it may hold the screen a little longer. */
+    const ULTIMATE_CEILING_MS = 3200;
+
+    it('splits into beats that add up to the whole move', () => {
+      const total = Object.values(ULTIMATE_BEATS).reduce((sum, fraction) => sum + fraction, 0);
+      expect(total).toBeCloseTo(1, 10);
+      for (const ms of Object.values(ultimateBeats(FIGHT_TIMING))) expect(ms).toBeGreaterThanOrEqual(100);
+    });
+
+    it('takes nothing at all under calm', () => {
+      const calm = strikePlan({ calm: true });
+      for (const ms of Object.values(ultimateBeats(calm))) expect(ms).toBe(0);
+      expect(ultimateRoundLength(calm)).toBe(0);
+    });
+
+    it('keeps a whole round that plays it under its own ceiling', () => {
+      expect(ultimateRoundLength(strikePlan({ calm: false }))).toBeLessThan(ULTIMATE_CEILING_MS);
     });
   });
 

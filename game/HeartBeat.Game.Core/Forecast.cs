@@ -130,7 +130,9 @@ public static class Forecast
         // its next-best attack.
         BattleState opening = state;
         List<PlayerAction> attacks = available
-            .Where(a => a.Type == ActionType.Attack)
+            // The finisher is not part of the policy every balance threshold was
+            // measured with; it can only ever make a fight easier.
+            .Where(a => a.Type == ActionType.Attack && a.Style != Style.Ultimate)
             .OrderByDescending(a => Battle.PreviewDamage(opening, a, monster))
             .ToList();
 

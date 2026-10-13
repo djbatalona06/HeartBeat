@@ -198,6 +198,8 @@ describe('coverage', () => {
       // One per mascot, resolved by `spriteKeyForTheme` off the theme id, so
       // nothing in TypeScript names them as literals for this to follow.
       ...COMPANION_KITS.map((kit) => spriteKeyForTheme(kit.themeId)),
+      // Each companion's finisher, named on its kit.
+      ...COMPANION_KITS.map((kit) => kit.ultimate.sprite),
     ]);
     for (const key of Object.keys(SPRITES)) {
       expect(referenced.has(key), `${key} is drawn but never used`).toBe(true);

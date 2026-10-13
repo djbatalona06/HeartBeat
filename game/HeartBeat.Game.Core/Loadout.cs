@@ -62,6 +62,7 @@ public static class Loadout
         Style.Defensive => Curve(stats.Fortify, WardCap),
         Style.Mend => Curve(stats.Recovery, MendCap),
         Style.Together => Curve(stats.Resonance, TogetherCap),
+        Style.Ultimate => Curve(stats.Resonance, TogetherCap),
         _ => 0,
     };
 

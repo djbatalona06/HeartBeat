@@ -54,9 +54,9 @@ import { blowsFor, monsterMissed } from '../../domain/rpg/behaviours';
 import { Compass } from './Compass';
 import { WorldMap } from './WorldMap';
 import { BattleLog } from './BattleLog';
-import { ActionBar, ActionHint } from './ActionBar';
+import { FleeButton, MovePad } from './ActionBar';
+import { ChargeChip } from './ChargeMeter';
 import { FightForecast } from './FightForecast';
-import { ChargeMeter } from './ChargeMeter';
 import { VictoryBanner } from './VictoryBanner';
 import { SpinOffer } from '../wheel/SpinOffer';
 import { loadArenaFloor } from './arenaFloor';
@@ -872,6 +872,11 @@ export function EveGardenPage() {
         // companion's lunge and spark.
         if (action?.style === 'Together') {
           await settle(scene.current?.together(edge));
+        } else if (action?.style === 'Ultimate') {
+          // The companion's finisher: its own name over the board, then its own
+          // sprite flying at the foe. C# has priced it; this is the picture.
+          setFlourish(kit.ultimate.name);
+          await settle(scene.current?.ultimate(kit.themeId, kit.ultimate.sprite, edge));
         } else {
           await settle(scene.current?.strike(
             'player-hits',
@@ -1155,13 +1160,13 @@ export function EveGardenPage() {
         </p>
       )}
 
-      {/* The log is a strip above the board and the pad sits under it, so the
-          thumb never has to cross the picture. See `BattleLog`. */}
-      <BattleLog battle={battle} monster={opponent} weakHits={weakHits} />
-      <ActionHint battle={battle} monster={opponent} level={progress?.level ?? 1} charges={charges} />
+      {/* One line while you walk; in a fight the HUD below is the live strip. */}
       {!fighting && <FightForecast forecast={forecast} monster={monster} />}
 
       <div className="garden-stage-wrap">
+        {/* The HUD rides with the board, so both bars stay in view while you fight,
+            and the pad sits under it so the thumb never crosses the picture. */}
+        <BattleLog battle={battle} monster={opponent} charges={charges} weakHits={weakHits} />
         {/* Behind the canvas, which is transparent so this shows through — see
             the header of `GardenBackdrop`. */}
         {/* Radiance is the couple's glow — it dims towards a floor it never
@@ -1226,11 +1231,11 @@ export function EveGardenPage() {
 
       </div>
 
-      {/* The controller: the move pad on the left, today's charges on the right,
-          side by side on every width. The meter is a picture of the day, never
-          a control — logging happens on the pages that own it. */}
-      <div className="garden-controls" data-no-pull>
-        <ActionBar
+      {/* The dock: six move tiles in a fight (one line out of one), and under
+          them the charge chip and the way out. The chip is a picture of the day,
+          never a control — logging happens on the pages that own it. */}
+      <div className="garden-dock" data-no-pull>
+        <MovePad
           actions={progress?.actions ?? []}
           allActions={allActions}
           battle={battle}
@@ -1239,10 +1244,13 @@ export function EveGardenPage() {
           kit={kit}
           charges={charges}
           stats={sheet.total}
+          level={progress?.level ?? 1}
           onAct={(action) => { void onAct(action); }}
-          onFlee={onFlee}
         />
-        <ChargeMeter charges={charges} weakness={opponent?.weakness} />
+        <div className="garden-dock-foot">
+          <ChargeChip charges={charges} weakness={opponent?.weakness} />
+          <FleeButton battle={battle} busy={busy !== 'idle'} onFlee={onFlee} />
+        </div>
       </div>
 
       {mapOpen && (

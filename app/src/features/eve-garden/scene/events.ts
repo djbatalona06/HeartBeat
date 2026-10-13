@@ -85,6 +85,12 @@ export interface SceneHandle {
    */
   together(effectiveness: 'weak' | 'plain' | 'strong'): Promise<void>;
   /**
+   * A companion's finisher: its own sprite gathers, flies at the foe along that
+   * companion's own path and lands. About two seconds, nothing under calm.
+   * `kit` is the theme id (`ULTIMATE_VFX`), `sprite` the key in `SPRITES`.
+   */
+  ultimate(kit: string, sprite: string, effectiveness: 'weak' | 'plain' | 'strong'): Promise<void>;
+  /**
    * Mark the monster as about to do something worth a warning (the game core's
    * `telegraph` kind), or clear the mark with null. A small pulsing sign above
    * it; nothing under calm, where the card's text carries the warning.

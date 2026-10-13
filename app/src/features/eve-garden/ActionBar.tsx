@@ -2,54 +2,49 @@ import { useBuzz } from '../../pwa/haptics';
 import type { ActionDto, BattleDto, Charge, MonsterDto, MoveStyle, RaidStatsDto } from './engine/types';
 import { Icon } from '../../components/icons';
 import type { IconName } from '../../nav';
+import { PixelSprite } from './gate/PixelSprite';
 import {
-  MOVE_STYLE_NAMES, moveKeyFor, type CompanionKit,
+  ULTIMATE_COOLDOWN_TURNS, moveKeyFor, type CompanionKit,
 } from '../../domain/rpg/companionSkills';
-import {
-  CHARGE_COPY, FEEDS, LIFT_FULL, chargeForElement, chargeOnWeakness, moveLift,
-} from '../../domain/rpg/charges';
+import { FEEDS, chargeOnWeakness, moveLift } from '../../domain/rpg/charges';
 
 /**
- * The move pad.
+ * The move pad: six tiles, three across, always in the same places.
  *
- * Every button is one of the companion's moves — Wishbell's Hoofbeat,
- * Foxglove's Foxfire — and pressing it logs nothing. What the couple logged
- * today arrives as charges (drawn beside this in `ChargeMeter`), and each
- * move carries a boost bar saying what those charges and the raid sheet are
- * doing to it, because a bonus nobody can see is a bonus nobody plays towards.
+ * Top row is the fighting basics (physical, defensive, magic). The bottom row
+ * is the heal, the couple's move and this companion's own finisher, which wears
+ * its own sprite and is the only tile with a border of its own colour.
  *
- * Locked moves are rendered rather than hidden: the level curve is a promise
- * about what is coming, and an empty bar makes no promises.
+ * A tile says its name and at most one short badge ("+25%", "Lv 8", "in 2");
+ * everything longer is the tooltip and the screen-reader label. What today's
+ * charges and gear are worth still arrives as that badge, because a bonus
+ * nobody can see is a bonus nobody plays towards.
+ *
+ * In a fight the pad is the controller, locked tiles included: the level curve
+ * is a promise and an empty tile makes none. Out of a fight there is nothing
+ * to press, so the pad folds away and one line names what comes next.
  */
 
-export interface ActionBarProps {
+export interface MovePadProps {
+  /** What is unlocked now. */
   actions: ActionDto[];
-  /** Everything the couple will eventually have, for the locked rows. */
+  /** Everything the couple will eventually have, for the locked tiles. */
   allActions: ActionDto[];
   battle: BattleDto | null;
   monster: MonsterDto | null;
   busy: boolean;
   kit: CompanionKit;
   charges: readonly Charge[];
-  /** The raid sheet's totals, for the gear line on each move. */
+  /** The raid sheet's totals, for the gear badge on each move. */
   stats: RaidStatsDto;
+  /** The pet's combat rank, for the idle line. */
+  level: number;
   onAct(action: ActionDto): void;
-  onFlee(): void;
 }
 
-/** What to log to hit this monster's weakness, in a sentence. */
-function weaknessHint(monster: MonsterDto): string {
-  const answer = CHARGE_COPY[chargeForElement(monster.weakness)];
-  return `It is weak to ${monster.weakness.toLowerCase()}: log ${answer.nudge} today and it will feel every hit.`;
-}
+const PAD_ORDER: readonly MoveStyle[] = ['Physical', 'Defensive', 'Magic', 'Mend', 'Together', 'Ultimate'];
 
-function moveName(action: ActionDto, kit: CompanionKit): string {
-  const key = moveKeyFor(action.style);
-  return key ? kit.moves[key].name : action.name;
-}
-
-/** One drawing per kind of move, so the pad reads before its words do. */
-const STYLE_ICON: Record<MoveStyle, IconName> = {
+const STYLE_ICON: Record<Exclude<MoveStyle, 'Ultimate'>, IconName> = {
   Physical: 'sword',
   Defensive: 'shield',
   Magic: 'sparkle',
@@ -57,129 +52,115 @@ const STYLE_ICON: Record<MoveStyle, IconName> = {
   Together: 'friends',
 };
 
-function styleName(style: MoveStyle): string {
+const STYLE_LABEL: Record<MoveStyle, string> = {
+  Physical: 'Physical', Defensive: 'Defensive', Magic: 'Magic', Mend: 'Mend',
+  Together: 'The couple’s move', Ultimate: 'Finisher',
+};
+
+function nameOf(style: MoveStyle, kit: CompanionKit): string {
+  if (style === 'Ultimate') return kit.ultimate.name;
   const key = moveKeyFor(style);
-  return key ? MOVE_STYLE_NAMES[key] : 'Together';
+  return key ? kit.moves[key].name : 'Together';
 }
 
-export function ActionBar({
-  actions, allActions, battle, monster, busy, kit, charges, stats, onAct, onFlee,
-}: ActionBarProps) {
+function describe(style: MoveStyle, kit: CompanionKit): string | undefined {
+  if (style === 'Ultimate') return kit.ultimate.description;
+  const key = moveKeyFor(style);
+  return key ? kit.moves[key].description : undefined;
+}
+
+export function MovePad({
+  actions, allActions, battle, monster, busy, kit, charges, stats, level, onAct,
+}: MovePadProps) {
   const buzz = useBuzz();
   const fighting = battle?.outcome === 'Fighting';
   const yourTurn = fighting && battle?.turn === 'Player';
   const unlocked = new Set(actions.map((a) => a.id));
-  // Not in a fight: the pad is docked in thumb reach and every row costs board.
-  const locked = fighting ? [] : allActions.filter((a) => !unlocked.has(a.id)).slice(0, 2);
   const onWeakness = chargeOnWeakness(charges, monster?.weakness);
   const lit = new Set(charges);
 
-  return (
-    <div className="garden-actions">
-      <ul className="garden-action-list">
-        {actions.map((action) => {
-          const fed = FEEDS[action.style];
-          const charged = fed !== undefined && lit.has(fed);
-          const lift = moveLift({
-            charges, stats, style: action.style,
-            weakness: monster?.weakness, strength: monster?.strength,
-          });
-          const strong = fighting && action.type === 'Attack' && onWeakness !== undefined;
-          // Together sits out the turn after it is used; C# refuses it and the
-          // button says why rather than silently doing nothing.
-          const recharging = action.style === 'Together' && (battle?.togetherCooldown ?? 0) > 0;
-          return (
-            <li key={action.id} className={action.style === 'Together' ? 'is-wide' : undefined}>
-              <button
-                type="button"
-                className={`garden-action is-${action.style.toLowerCase()}${strong ? ' is-strong' : ''}${charged ? ' is-charged' : ''}${recharging ? ' is-recharging' : ''}`}
-                // Outside a fight there is nothing to press them at.
-                disabled={busy || !yourTurn || recharging}
-                // Buzz before anything async: iOS only ticks inside the tap itself.
-                onClick={() => { buzz('tap'); onAct(action); }}
-                title={(() => {
-                  const key = moveKeyFor(action.style);
-                  return key ? kit.moves[key].description : undefined;
-                })()}
-              >
-                <span className="garden-action-name">
-                  <Icon name={STYLE_ICON[action.style]} />
-                  {moveName(action, kit)}
-                </span>
-                <span className="garden-action-note">
-                  {styleName(action.style)}
-                  {recharging ? ' · recharging' : ''}
-                  {!recharging && lift > 0 ? ` · +${lift}%` : ''}
-                  {!recharging && strong ? ' · it feels this' : ''}
-                </span>
-                {/* The boost bar. Full at +LIFT_FULL%; the number above keeps
-                    counting past it, the bar does not pretend to. */}
-                <span
-                  className="garden-action-boost"
-                  aria-hidden="true"
-                  style={{ '--boost': `${Math.min(100, (lift / LIFT_FULL) * 100)}%` } as React.CSSProperties}
-                />
-              </button>
-            </li>
-          );
-        })}
+  if (!fighting) {
+    const next = allActions.find((a) => !unlocked.has(a.id));
+    return (
+      <p className="garden-idle">
+        {`Level ${level}. Walk into something to start a fight.`}
+        {next ? ` Next move: ${nameOf(next.style, kit)} at level ${next.unlockLevel}.` : ''}
+      </p>
+    );
+  }
 
-        {locked.map((action) => (
-          <li key={action.id}>
-            <button type="button" className="garden-action is-locked" disabled>
-              <span className="garden-action-name">
-                <Icon name={STYLE_ICON[action.style]} />
-                {moveName(action, kit)}
+  return (
+    <ul className="pad-grid">
+      {PAD_ORDER.map((style) => {
+        const action = allActions.find((a) => a.style === style);
+        if (!action) return null;
+        const open = unlocked.has(action.id);
+        const wait = style === 'Together' ? (battle?.togetherCooldown ?? 0)
+          : style === 'Ultimate' ? (battle?.ultimateCooldown ?? 0) : 0;
+        const fed = FEEDS[style];
+        const charged = fed !== undefined && lit.has(fed);
+        const strong = action.type === 'Attack' && onWeakness !== undefined;
+        const lift = moveLift({
+          charges, stats, style, weakness: monster?.weakness, strength: monster?.strength,
+        });
+        const badge = !open ? `Lv ${action.unlockLevel}`
+          : wait > 0 ? (style === 'Ultimate' ? `in ${wait}` : 'resting')
+            : style === 'Ultimate' ? 'Ready'
+              : lift > 0 ? `+${lift}%` : '';
+        const name = nameOf(style, kit);
+        const classes = [
+          'pad-tile', `is-${style.toLowerCase()}`,
+          strong && open && wait === 0 ? 'is-strong' : '',
+          charged ? 'is-charged' : '',
+          wait > 0 ? 'is-recharging' : '',
+          open ? '' : 'is-locked',
+        ].filter(Boolean).join(' ');
+
+        return (
+          <li key={style}>
+            <button
+              type="button"
+              className={classes}
+              disabled={!open || busy || !yourTurn || wait > 0}
+              // Buzz before anything async: iOS only ticks inside the tap itself.
+              onClick={() => { buzz('tap'); onAct(action); }}
+              title={describe(style, kit)}
+              aria-label={`${name}. ${STYLE_LABEL[style]}.${badge ? ` ${badge}.` : ''}${strong && open && wait === 0 ? ' It feels this.' : ''}`}
+            >
+              <span className="pad-art" aria-hidden="true">
+                {style === 'Ultimate'
+                  ? <PixelSprite spriteKey={kit.ultimate.sprite} label="" className="pad-sprite" />
+                  : <Icon name={STYLE_ICON[style]} />}
               </span>
-              <span className="garden-action-note">Level {action.unlockLevel}</span>
+              <span className="pad-name">{name}</span>
+              <span className="pad-badge" aria-hidden="true">
+                {style === 'Ultimate' && open && wait > 0
+                  ? Array.from({ length: ULTIMATE_COOLDOWN_TURNS }, (_, i) => (
+                    <i key={i} data-on={i < ULTIMATE_COOLDOWN_TURNS - wait || undefined} />
+                  ))
+                  : badge}
+              </span>
             </button>
           </li>
-        ))}
-      </ul>
-
-      {fighting && (
-        <button
-          type="button"
-          className="garden-flee"
-          disabled={busy || !yourTurn}
-          onClick={() => { buzz('tap'); onFlee(); }}
-        >
-          <Icon name="arrow" turn="left" />
-          Walk away
-        </button>
-      )}
-
-    </div>
+        );
+      })}
+    </ul>
   );
 }
 
-export interface ActionHintProps {
-  battle: BattleDto | null;
-  monster: MonsterDto | null;
-  level: number;
-  charges: readonly Charge[];
-}
-
-/**
- * The one-line instruction above the board, kept out of the docked controls so
- * the dock is only the moves, the flee button and the meter. It reads the same
- * battle and charges as the pad, so the two never disagree.
- */
-export function ActionHint({ battle, monster, level, charges }: ActionHintProps) {
-  const fighting = battle?.outcome === 'Fighting';
-  const yourTurn = fighting && battle?.turn === 'Player';
-  const onWeakness = chargeOnWeakness(charges, monster?.weakness);
+/** Backing away. Small and apart from the pad, so it is never hit by accident. */
+export function FleeButton({ battle, busy, onFlee }: { battle: BattleDto | null; busy: boolean; onFlee(): void }) {
+  const buzz = useBuzz();
+  if (battle?.outcome !== 'Fighting') return null;
   return (
-    <p className="garden-actions-hint">
-      {!fighting
-        ? `Level ${level}. Walk into something to start a fight.`
-        : !yourTurn
-          ? 'Waiting on them.'
-          : onWeakness
-            ? `Your move. Today's ${CHARGE_COPY[onWeakness].label.toLowerCase()} is on its weakness — every hit lands harder.`
-            : monster
-              ? `Your move. ${weaknessHint(monster)}`
-              : 'Your move.'}
-    </p>
+    <button
+      type="button"
+      className="garden-flee"
+      disabled={busy || battle.turn !== 'Player'}
+      onClick={() => { buzz('tap'); onFlee(); }}
+    >
+      <Icon name="arrow" turn="left" />
+      Walk away
+    </button>
   );
 }

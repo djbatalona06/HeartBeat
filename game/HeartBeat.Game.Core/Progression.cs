@@ -117,6 +117,7 @@ public static class Progression
         // level-up line named a move two levels late and another five late.
         if (level == Actions.Mend.UnlockLevel) return "Mend: your companion can heal.";
         if (level == Actions.Together.UnlockLevel) return "Together: the couple's move.";
+        if (level == Actions.Ultimate.UnlockLevel) return "Ultimate: your companion's own finishing move.";
 
         PlayerStats gain = GainAt(level, StatsAt(level - 1));
         var parts = new List<string>();

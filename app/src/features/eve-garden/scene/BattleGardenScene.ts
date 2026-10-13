@@ -6,10 +6,10 @@ import {
 } from '../../../domain/rpg/arena';
 import { lightingAt } from '../../../domain/rpg/diorama';
 import { bakeAll } from '../../rpg/overworld/bake';
-import { strikePlan, togetherBeats, type FightTiming } from '../../../domain/scene/strikePlan';
+import { strikePlan, togetherBeats, ultimateBeats, type FightTiming } from '../../../domain/scene/strikePlan';
 import { depthForRow, hopFor, liftAt } from '../../../domain/scene/walk';
 import {
-  effectColours, moveVfxFor, shapeFor, type EffectPalette, type EffectToken, type VfxShape,
+  effectColours, moveVfxFor, shapeFor, ultimateVfxFor, type EffectPalette, type EffectToken, type VfxShape,
 } from './vfx';
 import { signatureFor, type SignaturePiece } from './signatures';
 import type { MinionSpot, Blow, Cast, SceneHooks, StepResult } from './events';
@@ -785,6 +785,127 @@ export class BattleGardenScene extends Phaser.Scene {
             }
             this.time.delayedCall(beats.settle, finish);
           });
+        });
+      });
+    });
+  }
+
+  /**
+   * A companion's finisher: its own sprite gathers over the pet, flies at the
+   * foe along that companion's own path (`ULTIMATE_VFX`), and lands hard.
+   *
+   * Four beats, like `together`: **gather** (the board dims, the sprite swells
+   * over you in rings and motes), **charge** (it travels, leaving afterimages),
+   * **impact** (a bloom, a shake, the foe thrown back further than any plain
+   * hit) and **settle**. About two seconds, the longest thing in a fight, and
+   * the rarest. Only `x` is tweened on the pet, for the reason `together`
+   * gives. Under calm it resolves at once and nothing is drawn.
+   */
+  ultimate(kit: string, sprite: string, effectiveness: 'weak' | 'plain' | 'strong'): Promise<void> {
+    const lead = this.pet;
+    const foe = this.foe;
+    if (!lead || !foe || this.still || !this.textures.exists(sprite)) return Promise.resolve();
+
+    const z = this.zoom;
+    const size = this.size;
+    const look = ultimateVfxFor(kit);
+    const beats = ultimateBeats(this.timing);
+    const { fill, edge } = this.colours(look.token);
+    const strong = effectiveness === 'strong' ? 2 : 0;
+    const away = foe.x >= lead.x ? 1 : -1;
+    const centre = (img: Phaser.GameObjects.Image): Point => ({ x: img.x + size / 2, y: img.y + size / 2 });
+    const home = lead.x;
+    const paced = (ms: number) => ms / Math.max(1, this.timing.skill);
+
+    const dim = this.add.rectangle(0, 0, ARENA_WIDTH * size, ARENA_HEIGHT * size, 0x000000, 0)
+      .setOrigin(0, 0).setDepth(8.5);
+    const piece = this.add.image(0, 0, sprite).setDisplaySize(size * 2, size * 2).setDepth(14).setAlpha(0);
+    const startAt = (): Point => ({ x: centre(lead).x, y: lead.y - size * 0.7 });
+    piece.setPosition(startAt().x, startAt().y);
+
+    const path = (t: number, from: Point, to: Point): Point => {
+      const x = from.x + (to.x - from.x) * t;
+      const y = from.y + (to.y - from.y) * t;
+      switch (look.travel) {
+        case 'arc': return { x, y: y - Math.sin(Math.PI * t) * size * 2.2 };
+        case 'roll': return { x, y: to.y + size * 0.25 };
+        case 'swirl': return { x, y: y + Math.sin(t * Math.PI * 4) * size * 1.1 * (1 - t) };
+        case 'drop': {
+          // Up and over to above the foe, then straight down onto it.
+          const top = { x: to.x, y: to.y - size * 4.5 };
+          return t < 0.5
+            ? { x: from.x + (top.x - from.x) * (t * 2), y: from.y + (top.y - from.y) * (t * 2) }
+            : { x: top.x, y: top.y + (to.y - top.y) * ((t - 0.5) * 2) ** 2 };
+        }
+        default: return { x, y };
+      }
+    };
+
+    return new Promise((resolve) => {
+      const finish = () => {
+        dim.destroy();
+        piece.destroy();
+        lead.x = home;
+        resolve();
+      };
+
+      // 1. Gather: the board dims, the sprite swells over the pet.
+      this.tweens.add({ targets: dim, alpha: 0.4, duration: beats.gather, ease: 'Sine.easeOut' });
+      this.tweens.add({ targets: piece, alpha: 1, duration: beats.gather * 0.6 });
+      this.tweens.add({
+        targets: piece, displayWidth: size * 3, displayHeight: size * 3,
+        duration: beats.gather, ease: 'Back.easeOut',
+      });
+      this.tweens.add({ targets: lead, x: home - away * z * 3, duration: beats.gather, ease: 'Sine.easeOut' });
+      void this.playShape('ring', centre(lead), centre(lead), { fill, edge, count: 2, pace: paced(beats.gather) });
+      void this.playShape('motes', centre(lead), centre(lead), { fill, edge, count: 7, pace: paced(beats.gather) });
+
+      this.time.delayedCall(beats.gather, () => {
+        // 2. Charge: along its path, a ghost left behind every few frames.
+        const from = { x: piece.x, y: piece.y };
+        const to = centre(foe);
+        let ghosts = 0;
+        this.tweens.add({ targets: lead, x: home + away * (size * 0.3), duration: beats.charge, ease: 'Quad.easeIn' });
+        this.tweens.addCounter({
+          from: 0,
+          to: 1,
+          duration: beats.charge,
+          ease: look.travel === 'drop' ? 'Linear' : 'Quad.easeIn',
+          onUpdate: (counter) => {
+            const t = counter.getValue() ?? 0;
+            const at = path(t, from, to);
+            piece.setPosition(at.x, at.y);
+            if (look.travel === 'roll') piece.setDisplaySize(size * (3 + t * 1.5), size * (3 + t * 1.5));
+            if (t * 10 >= ghosts) {
+              ghosts += 1;
+              const ghost = this.add.image(at.x, at.y, sprite).setDisplaySize(piece.displayWidth, piece.displayHeight)
+                .setTint(fill).setAlpha(0.5).setDepth(13);
+              this.tweens.add({ targets: ghost, alpha: 0, duration: 260, onComplete: () => ghost.destroy() });
+            }
+          },
+          onComplete: () => {
+            // 3. Impact: it lands, blooms, shakes the board, and the foe is thrown.
+            void this.playShape(look.impact, to, to, { fill, edge, count: look.blasts + strong, pace: paced(beats.impact) * 1.2 });
+            void this.playShape('ring', to, to, { fill, edge, count: 2, pace: paced(beats.impact) });
+            this.cameras.main.shake(beats.impact, 0.004 * look.shake);
+            this.tweens.add({
+              targets: piece, scale: piece.scale * 1.8, alpha: 0, duration: beats.impact, ease: 'Quad.easeOut',
+            });
+            const foeHome = foe.x;
+            foe.setTintFill(0xffffff);
+            this.time.delayedCall(this.timing.hurt / 3, () => this.applyLighting());
+            this.tweens.add({
+              targets: foe, x: foeHome + away * KNOCKBACK * z * 2.5, duration: beats.impact / 2,
+              yoyo: true, ease: 'Quad.easeOut', onComplete: () => { foe.x = foeHome; },
+            });
+
+            this.time.delayedCall(beats.impact, () => {
+              // 4. Settle: the light comes back and the pet walks home.
+              this.tweens.add({ targets: dim, alpha: 0, duration: beats.settle });
+              this.tweens.add({ targets: lead, x: home, duration: beats.settle, ease: 'Sine.easeInOut' });
+              this.time.delayedCall(beats.settle, finish);
+            });
+          },
         });
       });
     });

@@ -25,7 +25,7 @@
    card sliding, and a shadow change alone reads as the light moving. Together
    they read as a finger pushing something into the page.
 
-   `.garden-action:active` further down has done exactly this since the fight
+   `.pad-tile:active` in the garden has done exactly this since the fight
    screen was built; this is that gesture made shared rather than local. */
 .tile:active {
   transform: translateY(var(--press));

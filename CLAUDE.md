@@ -261,9 +261,12 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   round rug do not go outdoors. `FLORA` is the garden's own, and nothing in it
   is mythic — the top rung should be something you won, and `KIND_TIERS` in
   `chests.ts` reads the catalogue to work that out for itself.
-- **A move is not a log, and a log is not a move.** The move bar is the
-  companion's physical / defensive / magic moves (plus Mend at 2 and Together
-  at 5), named per kit in `companionSkills.ts` and priced in C#. Logging a
+- **A move is not a log, and a log is not a move.** The move pad is six
+  tiles, three across: the companion's physical / defensive / magic moves, Mend
+  at 2, Together at 5 and the **Ultimate** at 8, named per kit in
+  `companionSkills.ts` and priced in C#. Together and the Ultimate are the only
+  moves that recharge (1 and 3 turns: `BattleState.TogetherCooldown` /
+  `UltimateCooldown`). Logging a
   workout, a study session or a mood lights a **charge** for the day
   (`domain/rpg/charges.ts` decides which, `Charges.cs` what each is worth); a
   charge on the monster's weakness makes every hit land at 1.5×. **The garden
@@ -501,6 +504,9 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   per skirmish (`Avatar.minionDay`/`minionsBeaten`). `minions.test.ts` parses the
   C# to hold the mirror, and `minionSpots` refuses a tile that would wall the
   monster off (the stage-4 hedge gap is why).
+
+- **The Ultimate is priced once and drawn five ways.** `Actions.Ultimate` (power 50, ignores defence like a spell, 3-turn wait) is the same arithmetic whoever you bring; the kit's `ultimate` (name, line, sprite key `ult-<theme>`, drawn in `domain/rpg/ultimateSprites.ts`) and `ULTIMATE_VFX` in `scene/vfx.ts` (one flight path per companion, `BattleGardenScene.ultimate`) are the only things that differ, and `vfx.test.ts` holds the table against the kits. **`Forecast` and `Battle.HitsLeft` leave it out on purpose**: every balance threshold was measured without it, so it can only make a fight easier, and `HitsLeft` would otherwise swing with a cooldown the couple does not control. The pad's "in 2" reads `ultimateCooldown` off the battle, and `ULTIMATE_COOLDOWN_TURNS` is held against `Battle.cs` by a test.
+- **The garden's HUD rides with the board and the dock carries only the moves.** `BattleLog` (the HUD: both bars, whose move it is, a weakness chip, one line of log that opens the sheet) renders *inside* `.garden-stage-wrap`, so it sticks with the board. The dock is `MovePad` + `ChargeChip` + `FleeButton`; the vial opens from the chip in a sheet. Out of a fight the pad folds to one line naming the next unlock. A fight hides the global message and search pills (`body:has(.pad-grid)`) because they sat on the pad's bottom-right corner. New garden styles live in `styles/features/garden.css`; **class names there must not collide with a legacy partial's** — `.move-name` already belongs to the activities page, which is why the tiles are `pad-*`.
 
 ## Ponytail (sister repo)
 

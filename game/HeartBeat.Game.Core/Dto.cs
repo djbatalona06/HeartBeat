@@ -102,6 +102,7 @@ public sealed record BattleDto(
     RaidStats? Stats = null,
     IReadOnlyDictionary<string, string>? MoveNames = null,
     int TogetherCooldown = 0,
+    int UltimateCooldown = 0,
     string? Telegraph = null,
     string? Sig = null);
 

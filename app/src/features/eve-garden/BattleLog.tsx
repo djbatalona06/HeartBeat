@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { SecondaryAction } from '../../ui/SecondaryAction';
 import { Sheet } from '../../ui/Sheet';
-import type { BattleDto, MonsterDto } from './engine/types';
-import { WEAKNESS_MULTIPLIER } from '../../domain/rpg/charges';
+import type { BattleDto, Charge, MonsterDto } from './engine/types';
+import { CHARGE_COPY, WEAKNESS_MULTIPLIER, chargeForElement, chargeOnWeakness } from '../../domain/rpg/charges';
 import { behaviorBlurb, telegraphText } from '../../domain/rpg/behaviours';
 
 /**
  * What just happened, and what you are fighting.
  *
- * A strip above the board: the monster's name, both health bars, any warning,
- * and only the *latest* line of the log. The move pad sits under the board in
- * thumb reach, so this is read at a glance rather than scrolled. The whole log,
- * and the monster's card, open in a bottom sheet from "Full log".
+ * A strip above the board: both health bars side by side, whose move it is,
+ * what the foe is weak to, any warning, and only the *latest* line of the log.
+ * The move pad sits under the board in thumb reach, so this is read at a glance
+ * rather than scrolled. The whole log, the monster's card and the "about N more
+ * hits" read open in a bottom sheet from "Log".
  *
  * The strip is the page's live region, so every new line is still heard; the
  * sheet is for looking back and is deliberately not live, which would read the
@@ -22,6 +22,8 @@ import { behaviorBlurb, telegraphText } from '../../domain/rpg/behaviours';
 export interface BattleLogProps {
   battle: BattleDto | null;
   monster: MonsterDto | null;
+  /** Today's charges, for the weakness chip. */
+  charges: readonly Charge[];
   /**
    * Indices of player lines whose hit was on the weakness. The picture shows
    * it with extra sparks; this is the same fact in words, inside the live
@@ -30,20 +32,22 @@ export interface BattleLogProps {
   weakHits?: readonly number[];
 }
 
-function Bar({ label, value, max, tone }: { label: string; value: number; max: number; tone: string }) {
+function Meter({ name, value, max, shield = 0, tone }: {
+  name: string; value: number; max: number; shield?: number; tone: 'foe' | 'you';
+}) {
   const percent = max <= 0 ? 0 : Math.round(Math.min(1, Math.max(0, value / max)) * 100);
   return (
-    <div className={`garden-bar garden-bar-${tone}`}>
-      <span className="garden-bar-label">{label}</span>
-      <span className="garden-bar-track">
-        <span className="garden-bar-fill" style={{ width: `${percent}%` }} />
+    <div className={`hud-meter is-${tone}`}>
+      <span className="hud-meter-head">
+        <span className="hud-name">{name}</span>
+        <span className="hud-value">{value}/{max}{shield > 0 ? ` +${shield} ward` : ''}</span>
       </span>
-      <span className="garden-bar-value">{value}/{max}</span>
+      <span className="hud-track"><span className="hud-fill" style={{ width: `${percent}%` }} /></span>
     </div>
   );
 }
 
-export function BattleLog({ battle, monster, weakHits = [] }: BattleLogProps) {
+export function BattleLog({ battle, monster, charges, weakHits = [] }: BattleLogProps) {
   const tail = useRef<HTMLLIElement | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -67,43 +71,48 @@ export function BattleLog({ battle, monster, weakHits = [] }: BattleLogProps) {
   const lineText = (line: BattleDto['log'][number], index: number) =>
     `${line.text}${weakHits.includes(index) ? ` On its weakness · ×${WEAKNESS_MULTIPLIER}.` : ''}`;
   const last = battle.log.length - 1;
+  const fighting = battle.outcome === 'Fighting';
+  const yourTurn = fighting && battle.turn === 'Player';
 
-  // Ward, hits left and effects on one line: they used to be three paragraphs,
-  // which is what made the panel taller than the board.
-  const status = [
-    battle.player.shield > 0 ? `Ward holding ${battle.player.shield}` : null,
-    battle.outcome === 'Fighting' && battle.hitsLeft > 0
-      ? `About ${battle.hitsLeft} more ${battle.hitsLeft === 1 ? 'hit' : 'hits'}`
-      : null,
-    ...battle.player.effects.map((e) => `${e.kind} ${e.turnsLeft} ${e.turnsLeft === 1 ? 'turn' : 'turns'}`),
-  ].filter(Boolean).join(' · ');
+  // What to log to make the next hit count, or the fact that it already does.
+  const answer = chargeOnWeakness(charges, monster.weakness);
+  const weak = answer
+    ? `✦ ${CHARGE_COPY[answer].label} lit · hits ×${WEAKNESS_MULTIPLIER}`
+    : `Weak to ${monster.weakness.toLowerCase()} · log ${CHARGE_COPY[chargeForElement(monster.weakness)].nudge}`;
 
-  const warning = battle.outcome === 'Fighting' && battle.turn === 'Player'
-    ? telegraphText(monster.name, battle.telegraph)
-    : null;
+  const effects = battle.player.effects.map((e) => `${e.kind} ${e.turnsLeft}`);
+  const warning = yourTurn ? telegraphText(monster.name, battle.telegraph) : null;
 
   return (
     <>
-      <aside className="garden-battle" aria-live="polite">
-        <div className="garden-foe">
-          <div className="garden-foe-head">
-            <h3 className="garden-foe-name">{monster.name}</h3>
-            <SecondaryAction aria-haspopup="dialog" onClick={() => setOpen(true)}>Full log</SecondaryAction>
-          </div>
-
-          <Bar label="Them" value={battle.monster.hp} max={battle.monster.maxHp} tone="foe" />
-          <Bar label="You" value={battle.player.hp} max={battle.player.maxHp} tone="you" />
-
-          {/* The same warning the scene draws as a sign, in words and inside the
-              live region — which is the only place calm and a screen reader get it. */}
-          {warning && <p className="garden-foe-warning" role="status">{warning}</p>}
-          {status && <p className="garden-foe-note">{status}.</p>}
-          {last >= 0 && (
-            <p className={`garden-log-latest ${battle.log[last].who === 'Player' ? 'is-you' : 'is-them'}`}>
-              {lineText(battle.log[last], last)}
-            </p>
-          )}
+      <aside className="garden-hud" aria-live="polite">
+        <div className="hud-bars">
+          <Meter name={monster.name} value={battle.monster.hp} max={battle.monster.maxHp} tone="foe" />
+          <Meter name="You" value={battle.player.hp} max={battle.player.maxHp} shield={battle.player.shield} tone="you" />
         </div>
+
+        <div className="hud-meta">
+          <span className="hud-turn" data-mine={yourTurn || undefined}>
+            {fighting ? (yourTurn ? 'Your move' : 'Their move') : battle.outcome}
+          </span>
+          {fighting && <span className="hud-chip" data-lit={answer ? true : undefined}>{weak}</span>}
+          {fighting && effects.map((text) => <span key={text} className="hud-chip">{text}</span>)}
+        </div>
+
+        {/* The same warning the scene draws as a sign, in words and inside the
+            live region — which is the only place calm and a screen reader get it. */}
+        {warning && <p className="garden-foe-warning" role="status">{warning}</p>}
+        {last >= 0 && (
+          <button
+            type="button"
+            className={`hud-line ${battle.log[last].who === 'Player' ? 'is-you' : 'is-them'}`}
+            aria-haspopup="dialog"
+            onClick={() => setOpen(true)}
+          >
+            <span>{lineText(battle.log[last], last)}</span>
+            <span className="hud-line-more" aria-label="Open the full log">Log ›</span>
+          </button>
+        )}
       </aside>
 
       <Sheet
@@ -128,6 +137,11 @@ export function BattleLog({ battle, monster, weakHits = [] }: BattleLogProps) {
         </p>
         {behaviorBlurb(monster.behavior) && (
           <p className="garden-foe-note">{behaviorBlurb(monster.behavior)}</p>
+        )}
+        {fighting && battle.hitsLeft > 0 && (
+          <p className="garden-foe-note">
+            About {battle.hitsLeft} more plain {battle.hitsLeft === 1 ? 'hit' : 'hits'}.
+          </p>
         )}
         <ol className="garden-log">
           {battle.log.map((line, index) => (

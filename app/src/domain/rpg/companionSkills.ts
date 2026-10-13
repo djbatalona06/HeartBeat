@@ -36,6 +36,9 @@ import type { Element, MoveStyle } from '../../features/eve-garden/engine/types'
  * already does for the collectibles.
  */
 
+/** Your turns the finisher sits out after use. Mirrors `Battle.UltimateCooldownTurns`. */
+export const ULTIMATE_COOLDOWN_TURNS = 3;
+
 /** The four moves a kit names. Together is the couple's, and nobody's to rename. */
 export type MoveKey = 'physical' | 'defensive' | 'magic' | 'mend';
 
@@ -129,6 +132,20 @@ export interface CompanionSkill {
   oncePerRaid: boolean;
 }
 
+/**
+ * The sixth move: this companion's own finisher.
+ *
+ * Priced in C# like every move (`Actions.Ultimate`), so the name, the line and
+ * the picture are all a kit gets to choose. `sprite` is a key in `SPRITES`
+ * (`ultimateSprites.ts`); how it travels is `ULTIMATE_VFX` in `scene/vfx.ts`.
+ */
+export interface CompanionUltimate {
+  id: string;
+  name: string;
+  description: string;
+  sprite: string;
+}
+
 export interface CompanionPassive {
   id: string;
   name: string;
@@ -145,6 +162,7 @@ export interface CompanionKit {
   signature: CompanionSkill;
   support: CompanionSkill;
   passive: CompanionPassive;
+  ultimate: CompanionUltimate;
 }
 
 /**
@@ -158,6 +176,12 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
   {
     themeId: 'pony',
     mascot: 'Wishbell',
+    ultimate: {
+      id: 'wish-comet',
+      name: 'Wish Comet',
+      description: 'Every wish she kept spare, thrown at once. It arrives like weather.',
+      sprite: 'ult-pony',
+    },
     moves: {
       physical: {
         name: 'Hoofbeat',
@@ -209,6 +233,12 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
   {
     themeId: 'avatar',
     mascot: 'Cirrus',
+    ultimate: {
+      id: 'stormfront',
+      name: 'Stormfront',
+      description: 'The whole sky folded into one bolt, then let go.',
+      sprite: 'ult-avatar',
+    },
     moves: {
       physical: {
         name: 'Tail Lash',
@@ -260,6 +290,12 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
   {
     themeId: 'sponge',
     mascot: 'Marigold',
+    ultimate: {
+      id: 'rogue-wave',
+      name: 'Rogue Wave',
+      description: 'All the sea she has ever soaked up, released in one go.',
+      sprite: 'ult-sponge',
+    },
     moves: {
       physical: {
         name: 'Sponge Slam',
@@ -311,6 +347,12 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
   {
     themeId: 'kitty',
     mascot: 'Mochi',
+    ultimate: {
+      id: 'moonlit-pounce',
+      name: 'Moonlit Pounce',
+      description: 'Waits under the moon until it is exactly right, then lands with it.',
+      sprite: 'ult-kitty',
+    },
     moves: {
       physical: {
         name: 'Pounce',
@@ -362,6 +404,12 @@ export const COMPANION_KITS: readonly CompanionKit[] = [
   {
     themeId: 'shinobi',
     mascot: 'Foxglove',
+    ultimate: {
+      id: 'ninefold-flame',
+      name: 'Ninefold Flame',
+      description: 'Nine tails, nine flames, one very long morning of training.',
+      sprite: 'ult-shinobi',
+    },
     moves: {
       physical: {
         name: 'Ink Claw',
@@ -433,9 +481,10 @@ export function skillForMove(kit: CompanionKit, move: MoveKey): CompanionSkill |
 
 /** The kit's name for every C# action id, for the move bar and the log line. */
 export function moveNamesFor(kit: CompanionKit): Record<string, string> {
-  return Object.fromEntries(
-    MOVE_KEYS.map((key) => [ACTION_FOR_MOVE[key], kit.moves[key].name]),
-  );
+  return {
+    ...Object.fromEntries(MOVE_KEYS.map((key) => [ACTION_FOR_MOVE[key], kit.moves[key].name])),
+    ultimate: kit.ultimate.name,
+  };
 }
 
 /* -- firing one ------------------------------------------------------------- */

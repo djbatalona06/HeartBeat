@@ -14,13 +14,16 @@
 
 .garden-top {
   display: flex;
-  justify-content: flex-start;
+  align-items: center;
+  gap: var(--space-2);
   margin-bottom: var(--space-2);
 }
 
 /* The compass. The only navigation this page has, so it is a real button with a
    real tap target rather than a decorative chip. */
 .garden-compass {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -157,53 +160,12 @@
   .garden-dpad button { border-color: ButtonText; }
 }
 
-/* The fight panel: who you are against, and what just happened. */
-.garden-battle {
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
-}
-.garden-foe-name {
-  margin: 0;
-  font-family: var(--font-display);
-  letter-spacing: var(--font-display-tracking);
-  font-size: var(--text-base);
-}
 .garden-foe-kind,
 .garden-foe-note {
   margin: 0;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
-
-.garden-bar {
-  display: grid;
-  grid-template-columns: 3.5rem 1fr auto;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-}
-.garden-bar-label { color: var(--color-text-muted); }
-.garden-bar-track {
-  height: 8px;
-  border-radius: 4px;
-  background: var(--color-surface-muted);
-  overflow: hidden;
-}
-.garden-bar-fill {
-  display: block;
-  height: 100%;
-  transition: width var(--motion-medium) var(--motion-easing);
-}
-/* The two sides read differently without relying on hue alone: yours is the
-   accent, theirs is muted ink. A red/green pair would fail for the people most
-   likely to be using a wellness tracker on a bad day. */
-.garden-bar-you .garden-bar-fill { background: var(--color-accent); }
-.garden-bar-foe .garden-bar-fill { background: var(--color-text-muted); }
-.garden-bar-value { font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
 
 .garden-effects {
   display: flex;
@@ -232,20 +194,6 @@
 .garden-log li { margin-bottom: 2px; }
 .garden-log .is-them { color: var(--color-text-muted); }
 
-/* The strip above the board (`BattleLog`): name and the full-log button on one
-   row, then both bars, then only the newest line. Everything else is in the sheet. */
-.garden-foe-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.garden-log-latest {
-  margin: 0;
-  font-size: var(--text-sm);
-  line-height: var(--line-body);
-}
-.garden-log-latest.is-them { color: var(--color-text-muted); }
 .garden-log-sheet { display: grid; gap: var(--space-2); align-content: start; }
 .garden-log-sheet .garden-log { max-height: 50dvh; }
 
@@ -269,110 +217,8 @@
 .garden-forecast-reasons { margin: 0; padding-inline-start: var(--space-4); line-height: var(--line-body); }
 .garden-forecast-reasons li + li { margin-top: var(--space-1); }
 
-/* The controller: the move pad beside today's charge meter, on every width.
-   Two-thirds pad, one-third meter; the meter has a floor so its labels stay
-   readable on a 360px phone.
-
-   Docked just above the tab bar so it stays under the thumb while the board
-   scrolls. The offset is the same recipe the bottom sheets use: the bar's
-   height plus the home indicator's. */
-.garden-controls {
-  position: sticky;
-  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-2));
-  z-index: 2;
-  padding: var(--space-2);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(6.5rem, 1fr);
-  gap: var(--space-3);
-  align-items: start;
-}
-
-/* The move pad: a 2x2 of the companion's moves, the couple's move across the
-   bottom. Moves only — logging lives on the pages that own it. */
-.garden-actions { display: grid; gap: var(--space-2); min-width: 0; }
-.garden-action-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.garden-action {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  width: 100%;
-  min-height: var(--tap);
-  padding: var(--space-1) var(--space-2);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color var(--motion-fast) var(--motion-easing),
-    transform var(--motion-fast) var(--motion-easing);
-}
-.garden-action:hover:not(:disabled),
-.garden-action:focus-visible { border-color: var(--color-accent); }
-.garden-action:active:not(:disabled) { transform: translateY(1px); }
-.garden-action:disabled { opacity: 0.55; cursor: default; }
-/* Long move names wrap onto an even second line instead of a short orphan that
-   crowds the boost bar. */
-.garden-action-name {
-  font-weight: 600;
-  line-height: var(--line-tight);
-  overflow-wrap: anywhere;
-  text-wrap: balance;
-}
-.garden-action-note {
-  font-size: var(--text-sm);
-  line-height: var(--line-tight);
-  color: var(--color-text-muted);
-}
-.garden-action-list .is-wide { grid-column: 1 / -1; }
-/* The boost bar: how much today's charges and the raid sheet lift this move.
-   A track and a fill, both from the palette, so it reads in every pack. */
-.garden-action-boost {
-  display: block;
-  height: 4px;
-  margin-top: var(--space-1);
-  border-radius: 999px;
-  background: linear-gradient(to right, var(--color-accent) var(--boost, 0%), var(--color-surface-muted) var(--boost, 0%));
-}
-.garden-action.is-strong .garden-action-boost {
-  background: linear-gradient(to right, var(--color-success) var(--boost, 0%), var(--color-surface-muted) var(--boost, 0%));
-}
-@media (max-width: 420px) {
-  .garden-action { padding: var(--space-1) var(--space-2); }
-  .garden-action-name { font-size: var(--text-sm); }
-  /* One line of note on a small phone, so every move keeps the same height. */
-  .garden-action-note {
-    font-size: var(--text-xs);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-}
-/* Effectiveness is carried by a border, not a colour swap, so it survives every
-   pack and both variants. */
-.garden-action.is-strong { border-color: var(--color-success); }
-/* One stripe per fighting style, down the leading edge, so the three kinds of
-   move read apart before the names do. */
-.garden-action.is-physical { box-shadow: inset 3px 0 0 var(--color-danger); }
-.garden-action.is-defensive { box-shadow: inset 3px 0 0 var(--color-success); }
-.garden-action.is-magic { box-shadow: inset 3px 0 0 var(--color-accent); }
-.garden-action.is-mend { box-shadow: inset 3px 0 0 var(--color-text-muted); }
-.garden-action.is-charged .garden-action-note { color: var(--color-text); }
-
 /* ---- today's charge meter -------------------------------------------------
-   A picture of the day beside the move pad, never a control. Eight segments
+   A picture of the day, opened from the dock's charge chip, never a control. Eight segments
    stacked: the six loggable charges, a gap, then the two earned ones. A lit
    segment fills; the one on the monster's weakness carries a ✦ in the label
    (so the cue is never colour alone) and a slow pulse. */
@@ -461,8 +307,6 @@
 @media (prefers-reduced-motion: reduce) {
   .garden-vial-band { animation: none; }
 }
-.garden-action.is-locked { opacity: 0.4; }
-
 .garden-flee {
   justify-self: start;
   min-height: var(--tap);
@@ -476,11 +320,7 @@
 }
 .garden-flee:disabled { opacity: 0.5; cursor: default; }
 
-.garden-actions-hint,
 .garden-note { margin-top: var(--space-2); }
-/* The hint sits between the log and the pinned board now, not in the dock, so
-   it needs air below as well as above. */
-.garden-actions-hint { margin-bottom: var(--space-2); }
 
 /* A fault the garden survives — a picture that would not load, a move that did
    not land. Deliberately a card rather than the full-page `.nothere`: the
@@ -1181,7 +1021,7 @@
 
 /* Who came with you, and the way back to the arch. */
 .garden-companion {
-  margin-left: auto;
+  flex: none;
   display: grid;
   gap: 0;
   min-height: var(--tap);
@@ -1200,16 +1040,13 @@
 /* Icon and word side by side, on the garden's and the gate's controls — the
    same pairing the menu and the list rows use. `.icon` is a block by default,
    so each of these lays its two children out in a row. */
-.garden-action-name, .garden-companion-swap, .garden-flee, .raid-gate-enter, .raid-gate-back {
+.garden-companion-swap, .garden-flee, .raid-gate-enter, .raid-gate-back {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
 }
-/* The icon sits closer to its word than the default gap, and the gap is in em
-   so it grows and shrinks with the name's own size. */
-.garden-action-name { justify-content: flex-start; gap: 0.35em; }
-.garden-action-name .icon, .raid-gate-enter .icon { flex-shrink: 0; }
+.raid-gate-enter .icon { flex-shrink: 0; }
 .garden-vial-legend .icon, .garden-vial-earned .icon {
   display: inline-block;
   vertical-align: -0.125em;
@@ -1276,3 +1113,8 @@
   font-size: var(--text-sm);
   line-height: var(--line-body);
 }
+
+/* In a fight the move pad is the controller, and the floating message and search
+   pills sit on its bottom-right corner. They come back the moment it ends. */
+body:has(.pad-grid) .chat-pill,
+body:has(.pad-grid) .cmd-pill { display: none; }
