@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { THEMES } from '../../../../themes';
-import { ARENA_ROLES, arenaPaint } from './arenaPalette';
+import { ARENA_ROLES, PIECE_ROLES, arenaPaint } from './arenaPalette';
 import { luma, type Rgb, type Tokens } from './gardenPalette';
 
 function hex(h: string): Rgb {
@@ -59,6 +59,51 @@ describe('the arena paint', () => {
       const dark = arenaPaint(tokensOf(theme.colors));
       const light = arenaPaint(tokensOf(theme.light.colors));
       expect(light.ambient, theme.id).toBeGreaterThanOrEqual(dark.ambient);
+    }
+  });
+
+  it('paints every raised piece with channels in range, for every pack in both palettes', () => {
+    for (const { id, colors } of packs) {
+      const { pieces } = arenaPaint(tokensOf(colors));
+      for (const role of PIECE_ROLES) {
+        for (const v of pieces[role]) {
+          expect(v, `${id} ${role}`).toBeGreaterThanOrEqual(0);
+          expect(v, `${id} ${role}`).toBeLessThanOrEqual(1);
+        }
+      }
+    }
+  });
+
+  /**
+   * A hedge the colour of the floor is a floor. Distance in sRGB is crude, but
+   * it is the same crude measure for every pack, and it catches a role that
+   * collapses onto the ground.
+   */
+  it('keeps every raised piece apart from both floor squares in every pack and palette', () => {
+    const dist = (a: Rgb, b: Rgb) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    for (const { id, colors } of packs) {
+      const { colors: floor, pieces } = arenaPaint(tokensOf(colors));
+      for (const role of PIECE_ROLES) {
+        for (const square of [floor.tileA, floor.tileB]) {
+          expect(dist(pieces[role], square), `${id} ${role}`).toBeGreaterThan(0.06);
+        }
+      }
+    }
+  });
+
+  /** The board the player already knows must not move when pieces arrive: pinned to the shipped formulas. */
+  it('leaves the three floor colours exactly as they were', () => {
+    const dist = (a: Rgb, b: Rgb) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    const mixed = (a: Rgb, b: Rgb, t: number): Rgb => [0, 1, 2].map((i) => a[i] + (b[i] - a[i]) * t) as Rgb;
+    for (const { id, colors } of packs) {
+      const t = tokensOf(colors);
+      const dark = luma(t.base) < 0.35;
+      const [ink, paper] = luma(t.base) < luma(t.text) ? [t.base, t.text] : [t.text, t.base];
+      const floor = mixed(t.base, t.accent, dark ? 0.2 : 0.3);
+      const { colors: c } = arenaPaint(t);
+      expect(dist(c.tileA, floor), id).toBeLessThan(1e-9);
+      expect(dist(c.tileB, mixed(floor, dark ? paper : ink, dark ? 0.14 : 0.16)), id).toBeLessThan(1e-9);
+      expect(dist(c.grout, mixed(ink, t.accent, 0.18)), id).toBeLessThan(1e-9);
     }
   });
 });

@@ -13,6 +13,17 @@ import { luma, mix, type Rgb, type Tokens } from './gardenPalette';
  */
 export const ARENA_ROLES = ['tileA', 'tileB', 'grout'] as const;
 export type ArenaRole = (typeof ARENA_ROLES)[number];
+
+/**
+ * The raised pieces stood on the floor: hedge, stone, water, beds and the gate.
+ *
+ * Kept apart from `ARENA_ROLES` on purpose: that list is what `arena.glb`'s
+ * material names are checked against, and these pieces are built in code by
+ * `boardPieces.ts`, not stored in the file. Same rule for the colours though --
+ * every one is a blend of the five tokens the pack already owns.
+ */
+export const PIECE_ROLES = ['hedge', 'stone', 'water', 'bed', 'gate'] as const;
+export type PieceRole = (typeof PIECE_ROLES)[number];
 export interface ArenaCssTokens {
   base: string;
   text: string;
@@ -23,6 +34,8 @@ export interface ArenaCssTokens {
 
 export interface ArenaPaint {
   colors: Record<ArenaRole, Rgb>;
+  /** The raised pieces' colours. The floor's `colors` above are unchanged by their arrival. */
+  pieces: Record<PieceRole, Rgb>;
   /** Theme-derived lighting tones for the tactile rim and grain. */
   highlight: Rgb;
   shadow: Rgb;
@@ -44,6 +57,14 @@ export function arenaPaint(t: Tokens): ArenaPaint {
       tileA: floor,
       tileB: mix(floor, dark ? paper : ink, dark ? 0.14 : 0.16),
       grout: mix(ink, t.accent, 0.18),
+    },
+    pieces: {
+      hedge: mix(mix(ink, t.success, 0.6), paper, dark ? 0.04 : 0),
+      stone: mix(mix(ink, paper, 0.42), t.accent, 0.18),
+      // Darker than the floor in every pack, so a pond reads as a hollow and not another tile.
+      water: mix(mix(t.accent, t.success, 0.5), ink, 0.35),
+      bed: mix(t.success, t.accent, 0.4),
+      gate: mix(t.accent, paper, 0.35),
     },
     highlight: mix(paper, t.accent, 0.08),
     shadow: mix(ink, t.accent, 0.16),

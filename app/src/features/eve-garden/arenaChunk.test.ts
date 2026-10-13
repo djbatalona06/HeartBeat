@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { FLOOR_CACHE_MAX, floorCacheKey, remember } from './arenaFloor';
+import { ISLAND_1_ARENAS, ARENA_HEIGHT, ARENA_WIDTH } from '../../domain/rpg/arena';
+import { FLOOR_CACHE_MAX, arenaLayout, boardCacheKey, floorCacheKey, remember } from './arenaFloor';
 
 /**
  * Eve's Garden may import the arena floor's colour maths, and must never import
@@ -62,6 +63,21 @@ describe('the baked floor cache', () => {
     expect(floorCacheKey(tokens)).not.toBe(floorCacheKey({ ...tokens, accent: '#0af' }));
   });
 
+  it('is keyed by the stage too, so one stage never shows another stage\'s hedges', () => {
+    const [meadow, pond] = ISLAND_1_ARENAS;
+    expect(boardCacheKey(tokens, meadow)).toBe(boardCacheKey(tokens, { ...meadow }));
+    expect(boardCacheKey(tokens, meadow)).not.toBe(boardCacheKey(tokens, pond));
+    expect(boardCacheKey(tokens, meadow)).not.toBe(boardCacheKey({ ...tokens, accent: '#0af' }, meadow));
+  });
+
+  it('reads each stage\'s layout through the arena grid, the shape of the board', () => {
+    const layout = arenaLayout(ISLAND_1_ARENAS[1]);
+    expect(layout).toHaveLength(ARENA_HEIGHT);
+    for (const row of layout) expect(row).toHaveLength(ARENA_WIDTH);
+    expect(layout[0][0]).toBe('tile-hedge');
+    expect(layout[2][4]).toBe('tile-water');
+  });
+
   it('keeps the most recent few and drops the oldest', () => {
     const cache = new Map<string, number>();
     for (let i = 0; i < FLOOR_CACHE_MAX + 2; i += 1) remember(cache, `k${i}`, i);
@@ -72,11 +88,12 @@ describe('the baked floor cache', () => {
 
   it('treats a repeat as fresh, so a floor in use is not the one dropped', () => {
     const cache = new Map<string, number>();
-    remember(cache, 'a', 1);
-    remember(cache, 'b', 2);
-    remember(cache, 'c', 3);
-    remember(cache, 'a', 1); // used again
-    remember(cache, 'd', 4); // pushes out the oldest, which is now b
+    // A cache of three, named here: the rule under test is the eviction order, not the app's size.
+    remember(cache, 'a', 1, 3);
+    remember(cache, 'b', 2, 3);
+    remember(cache, 'c', 3, 3);
+    remember(cache, 'a', 1, 3); // used again
+    remember(cache, 'd', 4, 3); // pushes out the oldest, which is now b
     expect([...cache.keys()]).toEqual(['c', 'a', 'd']);
   });
 });
