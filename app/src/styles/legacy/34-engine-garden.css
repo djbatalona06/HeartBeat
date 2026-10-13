@@ -95,7 +95,11 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 36dvh;
+  /* The board is seen at an angle, so it is wider than it is tall (528 by 252).
+     The box takes that shape, and 36dvh is only a ceiling for a short screen --
+     it used to be the height itself, which left empty bands above and below. */
+  aspect-ratio: 528 / 252;
+  max-height: 36dvh;
 }
 .garden-stage canvas {
   max-width: 100%;
@@ -1129,10 +1133,22 @@ body:has(.pad-grid) .cmd-pill { display: none; }
    after the walking pad, so on a phone about 390px tall it is the biggest thing
    on screen. Phaser's FIT mode scales the canvas into whichever of the two runs
    out first. The shell's 560px cap is lifted for this one page: two columns do not
-   fit in a phone-width column. `:has` is iOS 16+; where it is missing the page is
-   the portrait layout in a 560px column, which is still usable. */
+   fit in a phone-width column. `:has` is iOS 16+; where it is missing the two columns
+   are squeezed into the 560px column instead, which is cramped but still works. */
 @media (orientation: landscape) and (max-height: 520px) {
-  .shell:has(.garden) { max-width: none; }
+  /* The top band the shell keeps for the menu button is not needed: in landscape the
+     button is the rail's first row, so the board can start at the top of the screen. */
+  .shell:has(.garden) {
+    max-width: none;
+    padding-top: calc(env(safe-area-inset-top) + var(--space-2));
+  }
+  /* The status chip floats at the top right, over the right column's first row. Its
+     own row keeps the column clear of it; the board column does not need one. */
+  .garden::before {
+    content: '';
+    grid-column: 2;
+    height: calc(var(--tap) + var(--space-2));
+  }
 
   .garden {
     display: grid;
@@ -1150,10 +1166,10 @@ body:has(.pad-grid) .cmd-pill { display: none; }
     align-self: start;
     container-type: inline-size;
   }
-  /* The right column is narrow: the move pad gets it whole, and today's charges go under it. */
-  .garden-controls { grid-template-columns: minmax(0, 1fr); }
   /* The canvas is 528 by 252 logical pixels. The 10rem is the walking pad and its gap. */
   .garden-stage {
+    aspect-ratio: auto;
+    max-height: none;
     height: min(
       calc(100cqw * 252 / 528),
       calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--space-4) - 10rem)
