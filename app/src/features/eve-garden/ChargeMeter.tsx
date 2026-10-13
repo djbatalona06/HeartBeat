@@ -1,13 +1,18 @@
-import { useId, type CSSProperties } from 'react';
+import { useId, useState, type CSSProperties } from 'react';
 import type { Charge, Element } from './engine/types';
 import { CHARGE_COPY, CHARGE_ELEMENT, LOGGABLE, chargeOnWeakness } from '../../domain/rpg/charges';
 import { SAND, SAND_LABEL, VIAL_SLOTS, vialFor, type LoggableCharge } from '../../domain/rpg/vial';
 import { Icon } from '../../components/icons';
 import { InfoBubble } from '../../ui/InfoBubble';
+import { Sheet } from '../../ui/Sheet';
 import { GUIDES } from '../guide/guides';
 
 /**
- * Today's charges, as a heart-shaped vial of coloured sand beside the move pad.
+ * Today's charges, as a heart-shaped vial of coloured sand.
+ *
+ * The dock only carries `ChargeChip`: six dots, one per kind of log, lit in that
+ * log's own sand colour. Tapping it opens the full vial and its legend in a
+ * sheet, so the picture of the day is one tap away and never in the way.
  *
  * Display only, on purpose: the garden has no logging controls. Every band is
  * poured by a row the rest of the app already writes -- a workout on the
@@ -154,5 +159,44 @@ export function ChargeMeter({ charges, weakness }: ChargeMeterProps) {
         </p>
       ) : null}
     </aside>
+  );
+}
+
+/** The six dots, and the way to the full vial. */
+export function ChargeChip({ charges, weakness }: ChargeMeterProps) {
+  const [open, setOpen] = useState(false);
+  const lit = new Set(charges);
+  const count = LOGGABLE.filter(({ charge }) => lit.has(charge)).length;
+  return (
+    <>
+      <button
+        type="button"
+        className="garden-chip"
+        aria-haspopup="dialog"
+        aria-label={`Today's charges, ${count} of ${VIAL_SLOTS}. Open the vial.`}
+        onClick={() => setOpen(true)}
+      >
+        <span className="garden-chip-dots" aria-hidden="true">
+          {LOGGABLE.map(({ charge }) => (
+            <i
+              key={charge}
+              data-on={lit.has(charge) || undefined}
+              style={{ '--sand': SAND[charge as LoggableCharge] } as CSSProperties}
+            />
+          ))}
+        </span>
+        <span aria-hidden="true">Charge {count}/{VIAL_SLOTS}</span>
+      </button>
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        label="Today's charges"
+        scrimClassName="menu-scrim"
+        panelClassName="menu-panel garden-log-sheet"
+        draggable
+      >
+        <ChargeMeter charges={charges} weakness={weakness} />
+      </Sheet>
+    </>
   );
 }

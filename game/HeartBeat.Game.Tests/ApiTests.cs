@@ -44,6 +44,17 @@ public class ApiTests
     }
 
     [Fact]
+    public void TheUltimateCooldownSurvivesTheRoundTripAsUltimateCooldown()
+    {
+        string state = Api.BeginBattle(1, 7, "light", 12, 31)!;
+        Assert.Equal(0, Parse(state).GetProperty("ultimateCooldown").GetInt32());
+        while (Parse(state).GetProperty("turn").GetString() != "Player") state = Api.MonsterMove(state)!;
+
+        string used = Api.Act(state, "ultimate")!;
+        Assert.Equal(Battle.UltimateCooldownTurns, Parse(used).GetProperty("ultimateCooldown").GetInt32());
+    }
+
+    [Fact]
     public void WorldListsTenIslandsWithCamelCaseFields()
     {
         JsonElement world = Parse(Api.World());

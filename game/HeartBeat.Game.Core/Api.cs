@@ -200,6 +200,7 @@ public static class Api
         Stats: s.Boosts.Stats,
         MoveNames: moveNames,
         TogetherCooldown: s.TogetherCooldown,
+        UltimateCooldown: s.UltimateCooldown,
         // What the monster is about to do, if it is the kind of move worth a
         // warning. The same call the monster's turn makes, so it is never wrong.
         Telegraph: Behaviours.Telegraph(s, monster));
@@ -215,6 +216,7 @@ public static class Api
         // ones (Nourish, Gratitude, Balance) have already done their work.
         Boosts = new Boosts(d.Charges?.Distinct().ToList() ?? [], d.Stats ?? RaidStats.None),
         TogetherCooldown = Math.Max(0, d.TogetherCooldown),
+        UltimateCooldown = Math.Max(0, d.UltimateCooldown),
     };
 
     private static Combatant FromDto(CombatantDto c) => new(
@@ -314,7 +316,7 @@ public static class Api
         }
 
         Put(d.MonsterId); Put(d.Island); Put(d.Stage); Put(d.Theme); Put(d.Level);
-        Put(d.Round); Put(d.Turn); Put(d.Outcome); Put(d.Seed); Put(d.XpOwed); Put(d.TogetherCooldown);
+        Put(d.Round); Put(d.Turn); Put(d.Outcome); Put(d.Seed); Put(d.XpOwed); Put(d.TogetherCooldown); Put(d.UltimateCooldown);
         RaidStats r = d.Stats ?? RaidStats.None;
         Put(r.Energy); Put(r.Resilience); Put(r.Resonance); Put(r.Burden); Put(r.Fortify); Put(r.Reveal); Put(r.Recovery);
         Side(d.Player);

@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  DRAWN_MOVES, EFFECT_CONTRAST, FALLBACK_SHAPE, effectColours, KNOWN_VFX, MEND_VFX, MOVE_VFX, moveVfxFor, shapeFor,
+  DRAWN_MOVES, EFFECT_CONTRAST, FALLBACK_SHAPE, FALLBACK_ULTIMATE, effectColours, KNOWN_VFX, MEND_VFX, MOVE_VFX, ULTIMATE_VFX,
+  moveVfxFor, shapeFor, ultimateVfxFor,
 } from './vfx';
 import { SIGNATURES, signatureFor } from './signatures';
 import { THEMES } from '../../../themes/index';
@@ -109,6 +110,33 @@ describe('move pictures stay visible on every ground', () => {
     const palette = { accent: 'rgba(0,0,0,0.5)', success: '#000000', danger: '#000000', text: '#ffffff', base: '#000000' };
     expect(effectColours('accent', palette).edge).toBe('#ffffff');
   });
+});
+
+describe('finisher pictures', () => {
+  it('has one path per companion, and none that nobody casts', () => {
+    expect(Object.keys(ULTIMATE_VFX).sort()).toEqual(COMPANION_KITS.map((k) => k.themeId).sort());
+  });
+
+  it('never sends two companions along the same path', () => {
+    const paths = Object.values(ULTIMATE_VFX).map((look) => look.travel);
+    expect(new Set(paths).size).toBe(paths.length);
+  });
+
+  it('still throws something for a kit it has never met', () => {
+    expect(ultimateVfxFor('a-kit-from-the-future')).toBe(FALLBACK_ULTIMATE);
+  });
+
+  for (const theme of THEMES) {
+    for (const [mode, variant] of [['dark', darkVariantOf(theme)], ['light', theme.light]] as const) {
+      it(`stays visible in ${theme.name} (${mode})`, () => {
+        const { accent, success, danger, text, base } = variant.colors;
+        for (const [kit, look] of Object.entries(ULTIMATE_VFX)) {
+          const { fill, edge } = effectColours(look.token, { accent, success, danger, text, base });
+          expect(contrast(edge ?? fill, base), kit).toBeGreaterThanOrEqual(EFFECT_CONTRAST);
+        }
+      });
+    }
+  }
 });
 
 describe('signature pieces', () => {

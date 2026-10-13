@@ -59,8 +59,22 @@ public static class Actions
         Type: ActionType.Attack,
         UnlockLevel: 5);
 
+    /// <summary>
+    /// The companion's own finisher. A spell (ignores defense, like
+    /// <see cref="Spell"/>) with the biggest power in the list, paid for with a
+    /// long wait (<see cref="Battle.UltimateCooldownTurns"/>). The move is the
+    /// same arithmetic whoever you bring; the name and the picture are the kit's.
+    /// </summary>
+    public static readonly PlayerAction Ultimate = new(
+        Id: "ultimate",
+        Name: "Ultimate",
+        Power: 50,
+        Style: Style.Ultimate,
+        Type: ActionType.Attack,
+        UnlockLevel: 8);
+
     public static readonly IReadOnlyList<PlayerAction> All =
-        [Strike, Guard, Spell, Mend, Together];
+        [Strike, Guard, Spell, Mend, Together, Ultimate];
 
     /// <summary>Everything available at a level, in unlock order.</summary>
     public static IReadOnlyList<PlayerAction> UnlockedAt(int level) =>

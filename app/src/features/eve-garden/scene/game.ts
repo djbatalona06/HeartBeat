@@ -91,6 +91,7 @@ export function startGarden(
     strike: (blow: Blow, effectiveness, cast) => live()?.strike(blow, effectiveness, cast) ?? Promise.resolve(),
     skill: (vfx: string) => live()?.skill(vfx) ?? Promise.resolve(),
     together: (effectiveness) => live()?.together(effectiveness) ?? Promise.resolve(),
+    ultimate: (kit, sprite, effectiveness) => live()?.ultimate(kit, sprite, effectiveness) ?? Promise.resolve(),
     telegraph: (kind) => live()?.telegraph(kind),
     defeat: () => live()?.defeat() ?? Promise.resolve(),
     withdraw: () => live()?.withdraw(),

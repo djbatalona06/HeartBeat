@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  ACTION_FOR_MOVE, COMPANION_KITS, FALLBACK_KIT_ID, MOVE_KEYS, POTENCY_AT_MAX,
+  ACTION_FOR_MOVE, COMPANION_KITS, ULTIMATE_COOLDOWN_TURNS, FALLBACK_KIT_ID, MOVE_KEYS, POTENCY_AT_MAX,
   fireSkill, kitFor, moveKeyFor, moveNamesFor, potencyAt, resolveModifiers, skillForMove, skillsOf,
   favoursWeakness, withinHours, type CompanionKit, type TurnContext,
 } from './companionSkills';
+import { hasSprite } from './sprites';
 import { MASCOT_ROSTER } from '../../features/pet/mascots/roster';
 
 const ctx = (over: Partial<TurnContext> = {}): TurnContext => ({
@@ -14,6 +15,25 @@ const ctx = (over: Partial<TurnContext> = {}): TurnContext => ({
 
 const kit = (themeId: string): CompanionKit =>
   COMPANION_KITS.find((k) => k.themeId === themeId)!;
+
+describe('ultimates', () => {
+  it('gives every companion its own finisher, with a picture that exists', () => {
+    const names = COMPANION_KITS.map((k) => k.ultimate.name);
+    expect(new Set(names).size).toBe(names.length);
+    for (const k of COMPANION_KITS) {
+      expect(k.ultimate.description, k.themeId).toBeTruthy();
+      expect(hasSprite(k.ultimate.sprite), k.themeId).toBe(true);
+    }
+  });
+
+  it('keeps the C# action id the kit renames', () => {
+    const cs = readFileSync(resolve(__dirname, '../../../../game/HeartBeat.Game.Core/Actions.cs'), 'utf8');
+    expect(cs).toContain('Id: "ultimate"');
+    const battle = readFileSync(resolve(__dirname, '../../../../game/HeartBeat.Game.Core/Battle.cs'), 'utf8');
+    expect(battle).toContain(`UltimateCooldownTurns = ${ULTIMATE_COOLDOWN_TURNS};`);
+    expect(moveNamesFor(kitFor('shinobi')).ultimate).toBe('Ninefold Flame');
+  });
+});
 
 describe('moves', () => {
   it('names all four moves for every kit, each one its own', () => {
@@ -29,7 +49,7 @@ describe('moves', () => {
 
   it('keys the kit names by the C# action ids, and maps every C# style but the couple\'s', () => {
     expect(Object.keys(moveNamesFor(kitFor('pony'))).sort())
-      .toEqual(Object.values(ACTION_FOR_MOVE).sort());
+      .toEqual([...Object.values(ACTION_FOR_MOVE), 'ultimate'].sort());
     expect(moveNamesFor(kitFor('pony')).spell).toBe('Wishfire');
     expect(moveKeyFor('Physical')).toBe('physical');
     expect(moveKeyFor('Together')).toBeUndefined();

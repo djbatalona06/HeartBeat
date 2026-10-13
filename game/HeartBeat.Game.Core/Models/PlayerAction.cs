@@ -36,6 +36,8 @@ public enum Style
     Magic,
     Mend,
     Together,
+    /// <summary>The companion's own finishing move: a spell, hits hardest, long wait.</summary>
+    Ultimate,
 }
 
 /// <summary>

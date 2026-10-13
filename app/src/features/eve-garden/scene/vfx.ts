@@ -122,6 +122,49 @@ export function moveVfxFor(kit: string, move: string): MoveVfx | undefined {
   return MOVE_VFX[kit]?.[move as DrawnMove];
 }
 
+/**
+ * How each companion's finisher gets from them to the foe.
+ *
+ * The picture itself is the kit's own sprite (`CompanionUltimate.sprite`); this
+ * is the part the scene owns: the path it flies, the colour of what it throws
+ * off, and how it lands. Five kits, five different paths, so the finisher reads
+ * as that companion's before its colour does. `vfx.test.ts` keeps the table in
+ * step with the kits and every colour above 3:1.
+ *
+ * - `arc`   leaves the pet in a high curve, a comet.
+ * - `drop`  hangs above the foe, then falls onto it.
+ * - `roll`  runs along the ground and swells as it comes.
+ * - `rush`  straight and fast, the sky arriving all at once.
+ * - `swirl` spirals outward from the pet before it straightens.
+ */
+export type UltimateTravel = 'arc' | 'drop' | 'roll' | 'rush' | 'swirl';
+
+export interface UltimateVfx {
+  travel: UltimateTravel;
+  /** What the picture throws off on the way and where it lands. */
+  token: EffectToken;
+  /** How it blooms on the foe. */
+  impact: VfxShape;
+  /** How many of that bloom, and how hard the board shakes (0 to 1). */
+  blasts: number;
+  shake: number;
+}
+
+export const ULTIMATE_VFX: Record<string, UltimateVfx> = {
+  pony: { travel: 'arc', token: 'accent', impact: 'burst', blasts: 3, shake: 0.5 },
+  avatar: { travel: 'rush', token: 'text', impact: 'ring', blasts: 3, shake: 1 },
+  sponge: { travel: 'roll', token: 'success', impact: 'motes', blasts: 9, shake: 0.7 },
+  kitty: { travel: 'drop', token: 'danger', impact: 'ring', blasts: 2, shake: 0.6 },
+  shinobi: { travel: 'swirl', token: 'danger', impact: 'burst', blasts: 5, shake: 0.8 },
+};
+
+/** A kit the table has not met gets the plainest path, rather than none. */
+export const FALLBACK_ULTIMATE: UltimateVfx = ULTIMATE_VFX.pony;
+
+export function ultimateVfxFor(kit: string): UltimateVfx {
+  return ULTIMATE_VFX[kit] ?? FALLBACK_ULTIMATE;
+}
+
 /** WCAG 1.4.11: a graphic that carries meaning needs 3:1 against what it sits on. */
 export const EFFECT_CONTRAST = 3;
 

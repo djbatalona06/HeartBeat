@@ -81,4 +81,10 @@ public sealed record BattleState(
     /// a state built without thinking about it starts ready.
     /// </summary>
     public int TogetherCooldown { get; init; }
+
+    /// <summary>
+    /// Player turns until <c>Ultimate</c> is ready again, 0 when it is. Same
+    /// shape as <see cref="TogetherCooldown"/>, longer wait.
+    /// </summary>
+    public int UltimateCooldown { get; init; }
 }

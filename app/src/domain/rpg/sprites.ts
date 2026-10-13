@@ -1,4 +1,5 @@
 import { ELDER_SPRITES, ISLAND_SPRITES, ISLAND_SPRITE_ORDER } from './monsterSprites';
+import { ULTIMATE_SPRITES } from './ultimateSprites';
 
 /**
  * Every pixel in the overworld, as text.
@@ -590,6 +591,9 @@ export const SPRITES: Record<string, Sprite> = {
 
   // --- islands 2 to 7, from their own file (8 to 10 are derived below). ---
   ...ISLAND_SPRITES,
+
+  // --- each companion's finishing move ---
+  ...ULTIMATE_SPRITES,
 };
 
 /**

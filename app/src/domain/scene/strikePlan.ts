@@ -32,11 +32,16 @@ export const FIGHT_TIMING = {
    * a small scene of its own rather than a lunge — see `togetherBeats`.
    */
   together: 1500,
+  /**
+   * The companion's finisher: it gathers, flies, lands, and settles. The longest
+   * thing in a fight on purpose, because it is the rarest — see `ultimateBeats`.
+   */
+  ultimate: 2000,
 } as const;
 
 export type FightTiming = { readonly [K in keyof typeof FIGHT_TIMING]: number };
 
-const STILL: FightTiming = { strike: 0, hurt: 0, skill: 0, defeat: 0, turnGap: 0, together: 0 };
+const STILL: FightTiming = { strike: 0, hurt: 0, skill: 0, defeat: 0, turnGap: 0, together: 0, ultimate: 0 };
 
 export function strikePlan({ calm }: { calm: boolean }): FightTiming {
   return calm ? STILL : FIGHT_TIMING;
@@ -80,4 +85,23 @@ export function togetherBeats(plan: FightTiming): TogetherBeats {
  */
 export function togetherRoundLength(plan: FightTiming): number {
   return plan.together + plan.turnGap + plan.strike + plan.hurt;
+}
+
+/** How the finisher divides its time. Fractions, so calm stays zero; they sum to one. */
+export const ULTIMATE_BEATS = { gather: 0.36, charge: 0.24, impact: 0.28, settle: 0.12 } as const;
+
+export type UltimateBeats = { readonly [K in keyof typeof ULTIMATE_BEATS]: number };
+
+export function ultimateBeats(plan: FightTiming): UltimateBeats {
+  return {
+    gather: plan.ultimate * ULTIMATE_BEATS.gather,
+    charge: plan.ultimate * ULTIMATE_BEATS.charge,
+    impact: plan.ultimate * ULTIMATE_BEATS.impact,
+    settle: plan.ultimate * ULTIMATE_BEATS.settle,
+  };
+}
+
+/** A round in which the finisher is played: it, the gap, and the monster's swing. */
+export function ultimateRoundLength(plan: FightTiming): number {
+  return plan.ultimate + plan.turnGap + plan.strike + plan.hurt;
 }

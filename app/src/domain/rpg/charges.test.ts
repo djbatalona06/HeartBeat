@@ -51,7 +51,7 @@ describe('chargesFor', () => {
 
 describe('moveLift', () => {
   it('is nothing with nothing lit and no gear', () => {
-    for (const style of ['Physical', 'Defensive', 'Magic', 'Mend', 'Together'] as const) {
+    for (const style of ['Physical', 'Defensive', 'Magic', 'Mend', 'Together', 'Ultimate'] as const) {
       expect(moveLift({ charges: [], stats: NO_GEAR, style }), style).toBe(0);
     }
   });

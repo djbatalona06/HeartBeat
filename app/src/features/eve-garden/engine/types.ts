@@ -30,7 +30,7 @@ export type Charge =
   | 'Exercise' | 'Work' | 'Mood' | 'Rest' | 'Gratitude' | 'Nourish' | 'Bond' | 'Balance';
 
 /** The kind of move. Matches the C# `Style` enum. */
-export type MoveStyle = 'Physical' | 'Defensive' | 'Magic' | 'Mend' | 'Together';
+export type MoveStyle = 'Physical' | 'Defensive' | 'Magic' | 'Mend' | 'Together' | 'Ultimate';
 
 /** A move. Its companion-specific name comes from the kit, not from here. */
 export interface ActionDto {
@@ -159,6 +159,8 @@ export interface BattleDto {
    * from before the cooldown existed does not carry it, and reads as ready.
    */
   togetherCooldown?: number;
+  /** Your turns until the Ultimate is ready again; 0 when it is. Same rules as `togetherCooldown`. */
+  ultimateCooldown?: number;
   /**
    * What the monster is about to do, when that is worth a warning. Computed by
    * the game core from the same state its next move is, so it is never wrong.

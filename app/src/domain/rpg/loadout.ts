@@ -366,6 +366,7 @@ export const FIGHT_CAPS = {
   Defensive: { stat: 'fortify', cap: 0.3 },
   Mend: { stat: 'recovery', cap: 0.3 },
   Together: { stat: 'resonance', cap: 0.3 },
+  Ultimate: { stat: 'resonance', cap: 0.3 },
 } as const satisfies Record<string, { stat: RaidStatKey; cap: number }>;
 
 /** The sheet's lift on one move style, as a whole percentage. */

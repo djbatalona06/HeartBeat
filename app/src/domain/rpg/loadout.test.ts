@@ -250,7 +250,7 @@ describe('gearLift', () => {
 
   it('uses the curve and caps the fight uses', () => {
     expect(cs).toContain(`HalfAt = ${FIGHT_HALF_AT};`);
-    const names = { Physical: 'PhysicalCap', Magic: 'MagicCap', Defensive: 'WardCap', Mend: 'MendCap', Together: 'TogetherCap' };
+    const names = { Physical: 'PhysicalCap', Magic: 'MagicCap', Defensive: 'WardCap', Mend: 'MendCap', Together: 'TogetherCap', Ultimate: 'TogetherCap' };
     for (const [style, { cap }] of Object.entries(FIGHT_CAPS)) {
       expect(cs, style).toContain(`${names[style as keyof typeof names]} = ${cap};`);
     }

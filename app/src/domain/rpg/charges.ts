@@ -164,7 +164,7 @@ export function moveLift({ charges, stats, style, weakness, strength }: LiftInpu
     if (CHARGE_ELEMENT[fed] === strength) bonus /= 2;
     multiplier *= 1 + bonus;
   }
-  const hits = style === 'Physical' || style === 'Magic' || style === 'Together';
+  const hits = style === 'Physical' || style === 'Magic' || style === 'Together' || style === 'Ultimate';
   if (hits && chargeOnWeakness(charges, weakness)) multiplier *= WEAKNESS_MULTIPLIER;
   if (hits && charges.includes('Bond')) multiplier *= 1 + BOND_BONUS;
   multiplier *= 1 + gearLift(stats, style) / 100;

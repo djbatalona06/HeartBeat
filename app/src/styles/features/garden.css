@@ -1,0 +1,173 @@
+/* ---- Eve's Garden: the HUD above the board and the dock under it ----------
+   Two quiet strips around one picture. The HUD is what is happening (both
+   bars, whose move it is, one line of log); the dock is what you can do (six
+   move tiles, the charge chip, the way out). Nothing else sits between them
+   and the board, and everything is a theme token, so all five packs and both
+   faces recolour it with the sprites. */
+
+.garden-hud {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+}
+.hud-bars { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.hud-meter { display: grid; gap: 2px; min-width: 0; }
+.hud-meter-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+}
+.hud-name { min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-value { color: var(--color-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hud-track { display: block; height: 6px; border-radius: 3px; background: var(--color-surface-muted); overflow: hidden; }
+.hud-fill { display: block; height: 100%; transition: width var(--motion-medium) var(--motion-easing); }
+/* Yours is the accent and theirs is muted ink: a red/green pair would fail for
+   the people most likely to be using a wellness tracker on a bad day. */
+.hud-meter.is-you .hud-fill { background: var(--color-accent); }
+.hud-meter.is-foe .hud-fill { background: var(--color-text-muted); }
+
+.hud-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.hud-turn,
+.hud-chip {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.hud-turn[data-mine] { border-color: var(--color-accent); color: var(--color-text); font-weight: 600; }
+.hud-chip[data-lit] { border-color: var(--color-success); color: var(--color-text); }
+.hud-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: var(--line-body);
+  text-align: left;
+  cursor: pointer;
+}
+.hud-line.is-them { color: var(--color-text-muted); }
+.hud-line-more { flex: none; font-size: var(--text-xs); color: var(--color-text-muted); }
+
+/* Docked just above the tab bar so it stays under the thumb while the board
+   scrolls. The offset is the bar's height plus the home indicator's. */
+.garden-dock {
+  position: sticky;
+  bottom: calc(env(safe-area-inset-bottom) + var(--tabbar-h) + var(--space-2));
+  z-index: 2;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+}
+.garden-idle { margin: 0; font-size: var(--text-sm); color: var(--color-text-muted); }
+.garden-dock-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+
+/* Six tiles, three across. */
+.pad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pad-tile {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0;
+  width: 100%;
+  min-height: 3.5rem;
+  padding: var(--space-1);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--motion-easing),
+    transform var(--motion-fast) var(--motion-easing);
+}
+.pad-tile:hover:not(:disabled),
+.pad-tile:focus-visible { border-color: var(--color-accent); }
+.pad-tile:active:not(:disabled) { transform: translateY(1px); }
+.pad-tile:disabled { opacity: 0.55; cursor: default; }
+.pad-tile.is-locked { opacity: 0.4; }
+.pad-art { display: grid; place-items: center; height: 1.4rem; }
+.pad-art .icon { width: 1.1rem; height: 1.1rem; }
+.pad-sprite { width: 1.4rem; height: 1.4rem; image-rendering: pixelated; }
+.pad-name {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: var(--line-tight);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.pad-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 1em;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.pad-tile.is-charged .pad-badge { color: var(--color-text); }
+/* Effectiveness is a border, not a colour swap, so it survives every pack. */
+.pad-tile.is-strong { border-color: var(--color-success); }
+/* One stripe across the top per kind of move, so they read apart before the
+   names do. */
+.pad-tile.is-physical { box-shadow: inset 0 3px 0 var(--color-danger); }
+.pad-tile.is-defensive { box-shadow: inset 0 3px 0 var(--color-success); }
+.pad-tile.is-magic { box-shadow: inset 0 3px 0 var(--color-accent); }
+.pad-tile.is-mend { box-shadow: inset 0 3px 0 var(--color-text-muted); }
+.pad-tile.is-together { box-shadow: inset 0 3px 0 var(--color-text); }
+/* The finisher is the one tile with a border of its own colour, and a slow
+   glow while it is ready. */
+.pad-tile.is-ultimate { border-color: var(--color-accent); box-shadow: inset 0 3px 0 var(--color-accent); }
+.pad-tile.is-ultimate:not(:disabled) { animation: pad-ready 2.4s var(--motion-easing) infinite; }
+.pad-tile.is-ultimate:not(:disabled) .pad-badge { color: var(--color-text); font-weight: 600; }
+.pad-badge i { width: 0.45rem; height: 0.45rem; border: 1px solid currentColor; border-radius: 999px; }
+.pad-badge i[data-on] { background: var(--color-accent); border-color: var(--color-accent); }
+@keyframes pad-ready {
+  50% { box-shadow: inset 0 3px 0 var(--color-accent), 0 0 0.6rem var(--color-accent); }
+}
+:root[data-calm='true'] .pad-tile.is-ultimate { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .pad-tile.is-ultimate { animation: none; }
+}
+
+/* The charge chip: six dots, one per kind of log, in that log's own sand. */
+.garden-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.garden-chip-dots { display: inline-flex; gap: 3px; }
+.garden-chip-dots i { width: 0.55rem; height: 0.55rem; border-radius: 999px; background: var(--sand); opacity: 0.3; }
+.garden-chip-dots i[data-on] { opacity: 1; }

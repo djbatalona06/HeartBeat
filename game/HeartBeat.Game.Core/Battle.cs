@@ -43,15 +43,26 @@ public static class Battle
     /// </summary>
     public const int TogetherCooldownTurns = 1;
 
-    /// <summary>The cooldown after a turn in which <paramref name="used"/> was played.</summary>
-    private static int CooldownAfter(BattleState state, PlayerAction? used) =>
-        used?.Style == Style.Together
-            ? TogetherCooldownTurns
-            : Math.Max(0, state.TogetherCooldown - 1);
+    /// <summary>
+    /// How many of the player's own turns <c>Ultimate</c> sits out: use it, make
+    /// three other moves, and it is ready again.
+    /// </summary>
+    public const int UltimateCooldownTurns = 3;
 
-    /// <summary>Whether a move can be played this turn. Only <c>Together</c> ever cannot.</summary>
-    public static bool IsReady(BattleState state, PlayerAction action) =>
-        !(action.Style == Style.Together && state.TogetherCooldown > 0);
+    /// <summary>Both recharging moves, ticked down one turn and re-armed by their own use.</summary>
+    private static BattleState Recharge(BattleState state, PlayerAction? used) => state with
+    {
+        TogetherCooldown = used?.Style == Style.Together ? TogetherCooldownTurns : Math.Max(0, state.TogetherCooldown - 1),
+        UltimateCooldown = used?.Style == Style.Ultimate ? UltimateCooldownTurns : Math.Max(0, state.UltimateCooldown - 1),
+    };
+
+    /// <summary>Whether a move can be played this turn. Only <c>Together</c> and <c>Ultimate</c> ever cannot.</summary>
+    public static bool IsReady(BattleState state, PlayerAction action) => action.Style switch
+    {
+        Style.Together => state.TogetherCooldown == 0,
+        Style.Ultimate => state.UltimateCooldown == 0,
+        _ => true,
+    };
 
     /// <summary>
     /// A fresh fight.
@@ -267,7 +278,7 @@ public static class Battle
         Combatant ticked = TickEffects(next.Player, out int drained);
         if (drained > 0) next = Say(next, Side.Player, $"The drain takes {drained}.");
 
-        return Settle(next with { Player = ticked, Turn = Side.Monster, TogetherCooldown = CooldownAfter(state, action) }, monster);
+        return Settle(Recharge(next with { Player = ticked, Turn = Side.Monster }, action), monster);
     }
 
     /// <summary>
@@ -291,7 +302,7 @@ public static class Battle
             return Say(state with { Outcome = Outcome.Fled }, Side.Player, "You back away, and it lets you.");
         }
         // A turn spent, so the couple's move gets its breath back like any other.
-        return Say(state with { Turn = Side.Monster, TogetherCooldown = CooldownAfter(state, null) }, Side.Player, "You try to back away. It follows.");
+        return Say(Recharge(state with { Turn = Side.Monster }, null), Side.Player, "You try to back away. It follows.");
     }
 
     /// <summary>
@@ -420,7 +431,7 @@ public static class Battle
     {
         double multiplier = Charges.DamageMultiplier(state.Boosts.Charges, action.Style, monster)
             * Loadout.StyleMultiplier(state.Boosts.Stats, action.Style);
-        int defense = action.Style == Style.Magic ? 0 : state.Monster.Defense;
+        int defense = action.Style is Style.Magic or Style.Ultimate ? 0 : state.Monster.Defense;
         return Damage(
             state.Player.Attack,
             action.Power,
@@ -438,7 +449,9 @@ public static class Battle
     public static int HitsLeft(BattleState state, Monster monster, int level)
     {
         int perHit = Actions.UnlockedAt(level)
-            .Where(a => a.Type == ActionType.Attack && IsReady(state, a))
+            // The finisher is left out: this is the "plain hits" read, and it
+            // would swing with a cooldown the couple does not control.
+            .Where(a => a.Type == ActionType.Attack && a.Style != Style.Ultimate && IsReady(state, a))
             .Select(a => PreviewDamage(state, a, monster))
             .DefaultIfEmpty(1)
             .Max();
