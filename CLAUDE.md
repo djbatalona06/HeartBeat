@@ -323,7 +323,9 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   move and every balance threshold moves with it. `Forecast.For` reads the
   fight's own inputs (level, moves, `Boosts`, the monster) and **nothing about
   the person** — no mood, week, streak or partner — and it changes no fight;
-  `ForecastTests` holds both. The plan it belongs to is
+  `ForecastTests` holds both. The screen (`FightForecast.tsx`) prints a
+  label from `domain/rpg/forecast.ts`, **never a percentage**, and no rate
+  crosses the wasm boundary. The plan it belongs to is
   `docs/planning/ISLANDS_11_20_SCAN.md`.
 - **A fight can open on the monster's turn.** `Battle.Begin` hands the first
   move to the monster when the player is slower and a seeded flip says so;

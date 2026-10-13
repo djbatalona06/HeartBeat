@@ -32,7 +32,7 @@ import {
 } from '../../domain/rpg/world';
 import { createGameClient, isClosed, type GameClient } from './engine/client';
 import type {
-  ActionDto, BattleDto, Charge, DioramaTheme, IslandDto, MonsterDto, ProgressDto,
+  ActionDto, BattleDto, Charge, DioramaTheme, ForecastDto, IslandDto, MonsterDto, ProgressDto,
 } from './engine/types';
 import type { SceneHandle, StepResult } from './scene/events';
 import { DirectionPad } from './DirectionPad';
@@ -55,6 +55,7 @@ import { Compass } from './Compass';
 import { WorldMap } from './WorldMap';
 import { BattleLog } from './BattleLog';
 import { ActionBar, ActionHint } from './ActionBar';
+import { FightForecast } from './FightForecast';
 import { ChargeMeter } from './ChargeMeter';
 import { VictoryBanner } from './VictoryBanner';
 import { SpinOffer } from '../wheel/SpinOffer';
@@ -205,6 +206,7 @@ export function EveGardenPage() {
    */
   const [weakHits, setWeakHits] = useState<readonly number[]>([]);
   const [battle, setBattle] = useState<BattleDto | null>(null);
+  const [forecast, setForecast] = useState<ForecastDto | null>(null);
   // A fight is watched as much as touched: don't let the phone dim mid-round.
   useWakeLock(battle?.outcome === 'Fighting');
   const [busy, setBusy] = useState<Busy>('idle');
@@ -466,6 +468,24 @@ export function EveGardenPage() {
     // `companion` for the same reason as the progress effect above: the client
     // is created by the gate's pick, which changes none of the other deps.
   }, [island, stage, theme, companion, reload]);
+
+  /* ---- the pre-fight forecast ---- */
+
+  // Asked again whenever what it reads changes: the monster, the level, today's
+  // charges, the raid sheet. Not during a fight, where it is hidden anyway and
+  // would only queue in front of the moves on the worker. A failure is quiet:
+  // the forecast is advice, and the garden works the same without it.
+  const fighting = battle?.outcome === 'Fighting';
+  useEffect(() => {
+    const game = client.current;
+    if (!game || !progress || !monster || fighting) return undefined;
+    let live = true;
+    game.forecast(island, stage, theme, progress.level, charges, sheet.total)
+      .then((next) => { if (live) setForecast(next); })
+      .catch(() => { if (live) setForecast(null); });
+    return () => { live = false; };
+    // `companion` for the reason the effects above give: the client only exists after the pick.
+  }, [island, stage, theme, progress, monster, charges, sheet, fighting, companion]);
 
   /* ---- the canvas ---- */
 
@@ -991,7 +1011,6 @@ export function EveGardenPage() {
   }, [battle, playRound]);
 
   /** Travel and "Change" tear the scene down, which a fight in progress is awaiting. */
-  const fighting = battle?.outcome === 'Fighting';
   const finishFirst = useCallback(() => setNote('Finish or flee this fight first.'), []);
 
   const onTravel = useCallback(async (to: number) => {
@@ -1140,6 +1159,7 @@ export function EveGardenPage() {
           thumb never has to cross the picture. See `BattleLog`. */}
       <BattleLog battle={battle} monster={opponent} weakHits={weakHits} />
       <ActionHint battle={battle} monster={opponent} level={progress?.level ?? 1} charges={charges} />
+      {!fighting && <FightForecast forecast={forecast} monster={monster} />}
 
       <div className="garden-stage-wrap">
         {/* Behind the canvas, which is transparent so this shows through — see
