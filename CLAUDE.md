@@ -317,6 +317,14 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   The partner's pet on the second pedestal is handed to the scene live
   (`SceneHandle.setAlly`), never as a start dependency, and falls back to the
   default bird when their pick and mascot have not synced yet.
+- **The pre-fight forecast and the balance tests are one policy.** `Forecast.Play`
+  (`game/.../Forecast.cs`) is the simple player every `IslandTests` win rate is
+  measured with; the test project's `Sim` only calls it. Change how it picks a
+  move and every balance threshold moves with it. `Forecast.For` reads the
+  fight's own inputs (level, moves, `Boosts`, the monster) and **nothing about
+  the person** — no mood, week, streak or partner — and it changes no fight;
+  `ForecastTests` holds both. The plan it belongs to is
+  `docs/planning/ISLANDS_11_20_SCAN.md`.
 - **A fight can open on the monster's turn.** `Battle.Begin` hands the first
   move to the monster when the player is slower and a seeded flip says so;
   `shouldRedriveMonster` (`eve-garden/round.ts`) is what plays it. Every scene

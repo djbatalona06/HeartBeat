@@ -53,14 +53,14 @@ public static class Behaviours
     /// <summary>The chance a Trickster's attack misses; its hits are scaled to match.</summary>
     public const double TricksterMissChance = 0.15;
 
-    private const double TricksterHitScale = 1.1;
-    private const double BruiserHeavyScale = 1.35;
+    public const double TricksterHitScale = 1.1;
+    public const double BruiserHeavyScale = 1.35;
     private const double BruiserJabScale = 0.65;
     private const double GuardianBlowScale = 1.0;
-    private const double DrainerBlowScale = 0.65;
+    public const double DrainerBlowScale = 0.65;
 
     /// <summary>The two halves of a Swarm's flurry, each a little over half so the total holds.</summary>
-    private const double SwarmHitScale = 0.5;
+    public const double SwarmHitScale = 0.5;
 
     /// <summary>A Healer mends itself below this share of its health.</summary>
     private const double HealerHurtFraction = 0.5;
