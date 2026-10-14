@@ -41,6 +41,7 @@ function storeFor(kind: HoldingKind) {
     case 'cheer': return db.cheers;
     case 'world': return db.worldProgress;
     case 'wager': return db.wagers;
+    case 'care': return db.careActs;
   }
 }
 

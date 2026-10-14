@@ -14,6 +14,7 @@
 export * from './achievements';
 export * from './assets';
 export * from './boards';
+export * from './care';
 export * from './charges';
 export * from './chat';
 export * from './cheers';

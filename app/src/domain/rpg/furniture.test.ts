@@ -227,7 +227,14 @@ describe('the drawing order', () => {
     // in front of it, the floor is nearer, and a perch stands in front of all
     // of it. The bird is drawn after this whole list — see the note on
     // HOUSE_SLOTS for what went wrong when it was not.
-    expect([...HOUSE_SLOTS]).toEqual(['window', 'wall', 'floor', 'perch']);
+    expect([...HOUSE_SLOTS]).toEqual(['window', 'wall', 'floor', 'kitchen', 'perch']);
+  });
+
+  it('puts the kitchen on the floor\'s side of the bird, behind a perch', () => {
+    // The bowl stands on the ground in front of the wall, and a perch still
+    // stands in front of the lot -- the same back-to-front rule as the rest.
+    expect(HOUSE_SLOTS.indexOf('kitchen')).toBeGreaterThan(HOUSE_SLOTS.indexOf('floor'));
+    expect(HOUSE_SLOTS.indexOf('kitchen')).toBeLessThan(HOUSE_SLOTS.indexOf('perch'));
   });
 
   it('covers every slot exactly once, so nothing is silently undrawable', () => {

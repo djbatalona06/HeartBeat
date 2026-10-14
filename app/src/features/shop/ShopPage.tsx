@@ -57,6 +57,7 @@ import { BorderGlow } from '../../components/BorderGlow';
 import { GearIcon } from '../party/art/gear/GearIcon';
 import { petArt } from '../party/art/pets';
 import { ChestAlcove } from '../party/ChestAlcove';
+import { CarePanel } from './CarePanel';
 import { GardenPlots } from './GardenPlots';
 import { CompanionFilterBar } from './CompanionFilterBar';
 import {
@@ -349,6 +350,18 @@ function BirbView({ ctx }: { ctx: ShopContext }) {
         label="Birb"
         tabs
         panes={[
+          {
+            id: 'care',
+            label: 'Care',
+            content: (
+              <CarePanel
+                memberId={identity.memberId}
+                coupleId={identity.coupleId}
+                day={ctx.day}
+                say={ctx.say}
+              />
+            ),
+          },
           {
             id: 'companions',
             label: 'Companions',

@@ -25,6 +25,7 @@
 @import './features/home.css' layer(features);
 @import './features/account.css' layer(features);
 @import './features/boards.css' layer(features);
+@import './features/care.css' layer(features);
 @import './features/companions.css' layer(features);
 @import './features/garden.css' layer(features);
 @import './features/native.css' layer(features);

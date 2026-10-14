@@ -24,6 +24,7 @@ import { track } from './_track';
  */
 export const KINDS = [
   'inventory', 'pet', 'avatar', 'quest', 'task', 'lifeEvent', 'cheer', 'world', 'wager',
+  'care',
 ] as const;
 type Kind = (typeof KINDS)[number];
 

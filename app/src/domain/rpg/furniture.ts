@@ -13,7 +13,7 @@
  * is placed into a house both of you see, which is the point of buying it.
  */
 
-export type HouseSlot = 'perch' | 'wall' | 'floor' | 'window';
+export type HouseSlot = 'perch' | 'wall' | 'floor' | 'window' | 'kitchen';
 
 /**
  * Drawing order, back to front — and the bird is drawn after all of them.
@@ -26,12 +26,13 @@ export type HouseSlot = 'perch' | 'wall' | 'floor' | 'window';
  * the far wall, things hang on the wall in front of it, the floor is nearer
  * still, and a perch stands in front of the lot.
  */
-export const HOUSE_SLOTS: readonly HouseSlot[] = ['window', 'wall', 'floor', 'perch'];
+export const HOUSE_SLOTS: readonly HouseSlot[] = ['window', 'wall', 'floor', 'kitchen', 'perch'];
 
 export const HOUSE_SLOT_NAMES: Record<HouseSlot, string> = {
   window: 'Window',
   wall: 'Wall',
   floor: 'Floor',
+  kitchen: 'Kitchen',
   perch: 'Perch',
 };
 
@@ -95,6 +96,24 @@ export const FURNITURE: readonly Furniture[] = [
     name: 'Houseplant',
     blurb: 'Still alive, which is the whole achievement.',
     slot: 'floor',
+    price: 180,
+  },
+  // The kitchen is where feeding happens (see `domain/rpg/care.ts`): the
+  // pantry on the Birb page puts food in front of whichever of these is placed.
+  // Cosmetic like the rest of the room, and no more useful for owning one -- a
+  // pet is fed from the pantry whether or not there is a bowl to eat it from.
+  {
+    id: 'decor-kitchen-bowl',
+    name: 'Food bowl',
+    blurb: 'Chipped at the rim. Declared its favourite on day one.',
+    slot: 'kitchen',
+    price: 120,
+  },
+  {
+    id: 'decor-kitchen-pantry',
+    name: 'Pantry crate',
+    blurb: 'Jars of things that were each a good idea at the time.',
+    slot: 'kitchen',
     price: 180,
   },
   {

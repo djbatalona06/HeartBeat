@@ -467,6 +467,22 @@ Full deploy walkthrough: `docs/DEPLOY.md`
   steps past pulled rows that are `mine`.
 - **A new holding kind means four edits**, and only a test keeps them in step: `HOLDING_KINDS` (client), `KINDS` (`app/functions/api/holdings.ts`), the D1 `CHECK` (a new migration — SQLite cannot alter one in place, so rebuild the table as `0005_entry_kinds.sql` does), and a `storeFor` case. `worker/src/holdings.test.ts` asserts all four agree.
 
+- **Looking after the pet is one synced kind, `care`, and food is derived.**
+  `domain/rpg/care.ts` has feeding (meal / snack / treat, earned from the
+  `ateWell` flag, a logged workout and the `grateful` flag) and three rituals
+  (pet / play / rest). Both are a `CareAct` row, so there is one holdings kind,
+  visible to both phones and writable by neither. **The pantry is rebuilt from
+  the day log minus the acts, never counted**: `PANTRY_DAYS` (2) of earned food
+  is read each time, and an item is eaten when any act names its key.
+  **Feeding for each other** works because an act records `memberId` (who fed,
+  and the row's only writer) and `earnerId` (whose logging earned it); the feeder
+  is in the act id, so both partners feeding one item write two rows and the
+  pantry counts keys, not rows. `earnerId` is in `REKEY_TABLES` too — left out,
+  a re-key strands a feeding on a retired id and the meal returns to the pantry.
+  Nothing drains and nothing is sad: an unfed pet is `peckish`
+  (`care.test.ts` fails on a guilt word in the copy). The `kitchen` house slot
+  is cosmetic like the others. `Pet.fedAt` is still unused and is not read by
+  any of this; appetite is derived from the acts.
 - **Stat colours are TypeScript, and a name always travels with a hue.**
   `domain/rpg/raidStatColours.ts` gives each of the seven raid stats one fixed
   colour (0.10–0.30 luminance, 3:1 against white and black, like the vial's sand

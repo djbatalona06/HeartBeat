@@ -1,4 +1,5 @@
 import type { Avatar, Cheer, LifeEvent, Task } from '../rpg/types';
+import type { CareAct } from '../rpg/care';
 import type { InventoryItem } from '../rpg/inventory';
 import type { PetInstance } from '../rpg/pets';
 import type { Quest, Wager } from '../types';
@@ -23,6 +24,7 @@ import type { WorldProgress } from '../rpg/world';
 
 export const HOLDING_KINDS = [
   'inventory', 'pet', 'avatar', 'quest', 'task', 'lifeEvent', 'cheer', 'world', 'wager',
+  'care',
 ] as const;
 export type HoldingKind = (typeof HOLDING_KINDS)[number];
 
@@ -69,6 +71,10 @@ export const PARTNER_VISIBLE_KINDS: readonly HoldingKind[] = [
   // whose member is not the caller -- and `inventory` stays private, so what
   // they own is still theirs; only what they wear and walk with is on show.
   'avatar', 'pet',
+  // Feeding and the rituals: you see your partner feed the pet. Visible, not
+  // writable -- each act has one writer for life, which is why the feeder is in
+  // the act's id (`feedActId`). Two partners feeding one item write two rows.
+  'care',
 ];
 
 export function isPartnerWritable(kind: HoldingKind): boolean {
@@ -82,7 +88,7 @@ export function isPartnerVisible(kind: HoldingKind): boolean {
 /** A local row of any of the nine kinds. All of them carry `updatedAt`. */
 export type HoldingRow =
   | InventoryItem | PetInstance | Avatar | Quest | Task | LifeEvent | Cheer | WorldProgress
-  | Wager;
+  | Wager | CareAct;
 
 export interface WireHolding {
   /** The local primary key, carried through unchanged. */
