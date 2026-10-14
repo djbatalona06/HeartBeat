@@ -81,6 +81,10 @@ describe('the wire shape', () => {
       pet: () => ({ id: 'p1', updatedAt: AT }),
       task: () => ({ id: 't1', updatedAt: AT }),
       lifeEvent, cheer,
+      care: () => ({
+        id: 'ritual:2026-10-14:pet:me', coupleId: 'c1', memberId: ME, kind: 'pet',
+        day: '2026-10-14', createdAt: AT, updatedAt: AT,
+      }),
       // Keyed by coupleId and carrying no `id` at all — the shape that makes
       // `keyOf` more than `row.id`.
       world: () => ({ coupleId: 'couple-1', island: 1, cleared: [], updatedAt: AT }),
@@ -146,7 +150,7 @@ describe('which kinds are writable, and which are merely visible', () => {
 
   it('shows both of you the shared kinds, plus each other\'s avatar and companions', () => {
     expect(PARTNER_VISIBLE_KINDS).toEqual([
-      'quest', 'lifeEvent', 'cheer', 'world', 'wager', 'avatar', 'pet',
+      'quest', 'lifeEvent', 'cheer', 'world', 'wager', 'avatar', 'pet', 'care',
     ]);
   });
 
@@ -182,6 +186,24 @@ describe('writerOf', () => {
 
   it('gives a quest no single writer, because it belongs to the couple', () => {
     expect(writerOf('quest', quest())).toBeUndefined();
+  });
+
+  /**
+   * "Feed it for each other" is a display feature, not a write permission. A
+   * partner who feeds an item *you* earned writes a row under their own id; they
+   * never overwrite yours. This is the test that catches it widening.
+   */
+  it('reads a care act as written by whoever did it, even when it ate their partner\'s food', () => {
+    const act = {
+      id: `feed:2026-10-14:meal:${ME}:${THEM}`, coupleId: 'c1', memberId: THEM,
+      kind: 'meal' as const, day: '2026-10-14', earnerId: ME, earnedDay: '2026-10-14',
+      createdAt: AT, updatedAt: AT,
+    };
+    expect(writerOf('care', act)).toBe(THEM);
+    expect(isPartnerVisible('care')).toBe(true);
+    expect(isPartnerWritable('care')).toBe(false);
+    expect(mineToPush('care', [act], ME)).toEqual([]);
+    expect(mineToPush('care', [act], THEM)).toEqual([act]);
   });
 
   it('reads a cheer as written by whoever left it', () => {

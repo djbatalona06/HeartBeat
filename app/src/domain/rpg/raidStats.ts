@@ -170,6 +170,8 @@ export const FURNITURE_RAID_ORDER: Record<HouseSlot, readonly RaidStatKey[]> = {
   window: ['reveal', 'resonance', 'recovery', 'energy'],
   wall: ['resonance', 'reveal', 'fortify', 'resilience'],
   floor: ['recovery', 'resilience', 'energy', 'fortify'],
+  // Fed is how you keep going: energy first, then getting back up.
+  kitchen: ['energy', 'recovery', 'resilience', 'fortify'],
   perch: ['resilience', 'recovery', 'resonance', 'fortify'],
 };
 

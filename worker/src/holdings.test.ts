@@ -117,7 +117,7 @@ describe('the holdings upsert', () => {
     // them — that is the entire point of the feed — and neither may rewrite the
     // other's. This is the test that catches visibility leaking into write
     // permission, which is the one way the split could go wrong quietly.
-    for (const kind of ['inventory', 'pet', 'avatar', 'task', 'lifeEvent', 'cheer']) {
+    for (const kind of ['inventory', 'pet', 'avatar', 'task', 'lifeEvent', 'cheer', 'care']) {
       write('her', { id: `x-${kind}`, kind, payload: '{"mine":true}', updatedAt: NOW });
       expect(
         write('him', { id: `x-${kind}`, kind, payload: '{"mine":false}', updatedAt: NOW + 9999 }),

@@ -7,6 +7,7 @@ import { DEFAULT_SETTINGS } from '../domain/types';
 import type {
   Avatar, Cheer, LifeEvent, LifeEventSettlement, Redemption, Reward, Task,
 } from '../domain/rpg/types';
+import type { CareAct } from '../domain/rpg/care';
 import type { InventoryItem } from '../domain/rpg/inventory';
 import type { PetInstance } from '../domain/rpg/pets';
 import type { Reflection } from '../domain/selfcare/reflections';
@@ -57,6 +58,9 @@ export class HeartBeatDB extends Dexie {
 
   // v11 — the weekly wager: one row per couple per week.
   wagers!: Table<Wager, string>;
+
+  // v13 — looking after the pet: every feeding and ritual, one row per act.
+  careActs!: Table<CareAct, string>;
 
   constructor() {
     super('heartbeat');
@@ -216,6 +220,14 @@ export class HeartBeatDB extends Dexie {
     this.version(12).stores({
       studyProgress: null,
       studySessions: null,
+    });
+
+    // v13 adds the care acts behind feeding and the pet rituals. `memberId` is
+    // indexed because the holdings push reads "my rows" by it; `day` because
+    // every screen asks "what was done today"; `[day+kind]` for the ritual
+    // rows that are looked up by both.
+    this.version(13).stores({
+      careActs: 'id, coupleId, memberId, day, kind, [day+kind]',
     });
   }
 }

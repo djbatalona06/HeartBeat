@@ -123,6 +123,18 @@ export const REKEY_TABLES: readonly TableRekey[] = [
   // started before pairing therefore survives it, which is the point: the
   // week's effort was real.
   { table: 'wagers', primaryKey: 'id', memberFields: [], coupleFields: ['coupleId'] },
+  // A care act's id embeds the member who did it, the same as a cheer, so it is
+  // re-keyed in place with the old id still baked in -- harmless, since the id
+  // only has to be stable and the pantry counts item keys, never act ids.
+  // `earnerId` is whose logging earned the food: it is a member id too, and a
+  // feeding left pointing at a retired id would stop matching its own item and
+  // put the meal back in the pantry.
+  {
+    table: 'careActs',
+    primaryKey: 'id',
+    memberFields: ['memberId', 'earnerId'],
+    coupleFields: ['coupleId'],
+  },
   { table: 'achievements', primaryKey: 'id', memberFields: [], coupleFields: ['coupleId'] },
   { table: 'messages', primaryKey: 'id', memberFields: ['memberId'], coupleFields: ['coupleId'] },
   // Not `oneRowPerDay`: a person can write more than once in a day, and the

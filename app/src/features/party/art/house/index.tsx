@@ -92,6 +92,35 @@ function Houseplant() {
   );
 }
 
+/*
+ * The kitchen pieces sit low and to the right, clear of the bird in the middle
+ * (x 30-70) and of the rug and plant already on the floor.
+ */
+function FoodBowl() {
+  return (
+    <>
+      <ellipse cx="80" cy="85" rx="9" ry="1.8" fill={WALL} opacity="0.25" />
+      <path d="M71 79h18l-2.6 6.4h-12.8Z" fill={WALL} />
+      <ellipse cx="80" cy="79" rx="9" ry="1.9" fill={WARM} opacity="0.85" />
+      <circle cx="76.5" cy="77.6" r="1.1" fill={WARM} />
+      <circle cx="80.5" cy="77" r="1.1" fill={WARM} opacity="0.8" />
+      <circle cx="83.5" cy="77.8" r="1.1" fill={WARM} />
+    </>
+  );
+}
+
+function PantryCrate() {
+  return (
+    <>
+      <rect x="70" y="73" width="20" height="13" rx="1.5" fill="none" stroke={WALL} strokeWidth="1.6" />
+      <path d="M70 79.5h20M77 73v13M83 73v13" stroke={WALL} strokeWidth="1" opacity="0.6" />
+      <rect x="72.5" y="66" width="5.5" height="7" rx="1.2" fill={WARM} opacity="0.8" />
+      <rect x="80" y="68" width="5" height="5" rx="1.1" fill={WARM} opacity="0.55" />
+      <rect x="72.5" y="64.8" width="5.5" height="1.6" rx="0.8" fill={WALL} />
+    </>
+  );
+}
+
 function Swing() {
   return (
     <>
@@ -120,6 +149,8 @@ const ART: Record<string, ComponentType> = {
   'decor-wall-shelf': LittleShelf,
   'decor-floor-rug': RoundRug,
   'decor-floor-plant': Houseplant,
+  'decor-kitchen-bowl': FoodBowl,
+  'decor-kitchen-pantry': PantryCrate,
   'decor-perch-swing': Swing,
   'decor-perch-branch': BirchBranch,
 };

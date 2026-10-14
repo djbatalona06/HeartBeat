@@ -1,0 +1,77 @@
+/* ---- Looking after the pet -------------------------------------------------
+   The Care pane on the Birb page (`features/shop/CarePanel.tsx`). Tokens only,
+   so all five packs and both palettes work without knowing it exists. Buttons
+   are the shared `.quiet` ones, so the tap size comes from them. */
+
+.care-heading {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.care-caption {
+  margin-bottom: var(--space-2);
+}
+
+.care-pantry,
+.care-rituals,
+.care-earn,
+.care-recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.care-pantry,
+.care-rituals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* A column, not a row: the shared `.quiet` button is full-width and its rule
+   sits in the `legacy` layer, which outranks this one, so a button squeezed
+   beside the text spreads over it. Stacked, it is the same full-bleed secondary
+   action the rest of the app uses. */
+.care-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-large);
+}
+
+.care-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.care-item-name {
+  font-weight: 600;
+}
+
+.care-item-who,
+.care-ritual-note,
+.care-recent,
+.care-earn {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-body);
+}
+
+.care-recent {
+  margin-top: var(--space-3);
+}
+
+.care-ritual {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.care-days {
+  margin-top: var(--space-4);
+}
