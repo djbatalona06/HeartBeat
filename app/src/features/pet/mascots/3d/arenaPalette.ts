@@ -24,6 +24,15 @@ export type ArenaRole = (typeof ARENA_ROLES)[number];
  */
 export const PIECE_ROLES = ['hedge', 'stone', 'water', 'bed', 'gate'] as const;
 export type PieceRole = (typeof PIECE_ROLES)[number];
+
+/**
+ * What the board kits lay on the ground tiles: stepped slabs, an inlay ring, a
+ * third patchwork tone, woven lines. Blends of the pack's own tokens like the
+ * rest. `domain/rpg/boards.ts` names the same four as `BoardMark`; a test holds
+ * the two lists together.
+ */
+export const MARK_ROLES = ['step', 'inlay', 'quilt', 'weave'] as const;
+export type MarkRole = (typeof MARK_ROLES)[number];
 export interface ArenaCssTokens {
   base: string;
   text: string;
@@ -36,6 +45,8 @@ export interface ArenaPaint {
   colors: Record<ArenaRole, Rgb>;
   /** The raised pieces' colours. The floor's `colors` above are unchanged by their arrival. */
   pieces: Record<PieceRole, Rgb>;
+  /** What a board kit lays on the ground. Bare for the classic board, so unused there. */
+  marks: Record<MarkRole, Rgb>;
   /** Theme-derived lighting tones for the tactile rim and grain. */
   highlight: Rgb;
   shadow: Rgb;
@@ -52,11 +63,22 @@ export function arenaPaint(t: Tokens): ArenaPaint {
   // the floor; they differ from each other by a clear step, so it reads as a
   // checkerboard on a small phone and still does when the sprites sit on top.
   const floor = mix(t.base, t.accent, dark ? 0.2 : 0.3);
+  const tileB = mix(floor, dark ? paper : ink, dark ? 0.14 : 0.16);
   return {
     colors: {
       tileA: floor,
-      tileB: mix(floor, dark ? paper : ink, dark ? 0.14 : 0.16),
+      tileB,
       grout: mix(ink, t.accent, 0.18),
+    },
+    marks: {
+      // A slab one step up has to stand apart from both squares. On a dark page
+      // lighter does it; a light page's floor is already close to paper, so there
+      // the slab leans into the pack's accent instead.
+      step: dark ? mix(floor, paper, 0.3) : mix(floor, t.accent, 0.4),
+      // Glowing, but a tone of the board and not a lamp: leaned back towards the floor.
+      inlay: mix(floor, mix(t.accent, paper, 0.3), 0.6),
+      quilt: mix(floor, mix(t.accent, t.success, 0.5), 0.4),
+      weave: mix(tileB, ink, 0.3),
     },
     pieces: {
       hedge: mix(mix(ink, t.success, 0.6), paper, dark ? 0.04 : 0),

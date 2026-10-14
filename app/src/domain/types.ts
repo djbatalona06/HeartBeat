@@ -367,6 +367,12 @@ export interface ChatMessage {
 
 export interface Settings {
   id: 'settings';
+  /**
+   * Which look the battle board wears (`domain/rpg/boards.ts`). Optional, so no
+   * migration: absent means the classic board. A choice of look on this phone,
+   * not something owned, so it is not synced and not part of the raid sheet.
+   */
+  boardKit?: string;
   coupleId?: CoupleId;
   memberId?: MemberId;
   timeZone: string;

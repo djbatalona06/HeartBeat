@@ -1,4 +1,6 @@
 import { ARENA_HEIGHT, ARENA_WIDTH, tileKindAt, type Arena } from '../../domain/rpg/arena';
+import { BOARD_ELEVATION_DEG, HEADROOM_TILES } from '../../domain/rpg/boardView';
+import { boardMarks, type BoardKitId } from '../../domain/rpg/boards';
 import { drawStaticArenaFloor } from './arenaCanvas';
 import type { ArenaCssTokens } from '../pet/mascots/3d/arenaPalette';
 
@@ -7,7 +9,8 @@ import type { ArenaCssTokens } from '../pet/mascots/3d/arenaPalette';
  * it as a picture without ever loading three.js on a phone that should not.
  *
  * Calm, reduced motion and Save-Data get **no request at all** and use a static
- * Canvas 2D floor in the selected pet's palette. Any 3D failure uses that same
+ * Canvas 2D floor in the selected pet's palette. That flat floor is the classic
+ * board whatever kit is chosen: the kits are 3D dressing. Any 3D failure uses that same
  * static fallback, so the fight never waits on a floor or opens WebGL twice.
  * The old pixel tiles remain the last-resort fallback if Canvas 2D is absent.
  *
@@ -53,9 +56,9 @@ export function arenaLayout(arena: Arena): (string | undefined)[][] {
     Array.from({ length: ARENA_WIDTH }, (_, x) => tileKindAt(arena, x, y)?.sprite));
 }
 
-/** A baked board is decided by its five colours and by which stage's layout stands on it. */
-export function boardCacheKey(tokens: ArenaCssTokens, arena: Arena): string {
-  return `${floorCacheKey(tokens)}#${arena.rows.join('/')}`;
+/** A baked board is decided by its five colours, which stage's layout stands on it, and the kit it is dressed in. */
+export function boardCacheKey(tokens: ArenaCssTokens, arena: Arena, kit: BoardKitId): string {
+  return `${floorCacheKey(tokens)}#${arena.rows.join('/')}#${kit}`;
 }
 
 /** Oldest out first. Re-remembering a key moves it to the back. */
@@ -92,13 +95,14 @@ export async function loadArenaFloor(
   calm: boolean,
   themeTokens: ArenaCssTokens,
   arena: Arena,
+  kit: BoardKitId,
   cancelled: () => boolean = () => false,
 ): Promise<HTMLCanvasElement | null> {
   const fallback = () => drawStaticArenaFloor(themeTokens, ARENA_WIDTH, ARENA_HEIGHT, FLOOR_TILE_PX);
   const src = arenaModelSrc(calm, saveData(), import.meta.env.BASE_URL);
   if (!src) return fallback();
 
-  const key = boardCacheKey(themeTokens, arena);
+  const key = boardCacheKey(themeTokens, arena, kit);
   const known = baked.get(key);
   if (known) {
     remember(baked, key, known);
@@ -117,6 +121,9 @@ export async function loadArenaFloor(
       tilePx: FLOOR_TILE_PX,
       themeTokens,
       layout: arenaLayout(arena),
+      marks: boardMarks(kit, arena),
+      elevationDeg: BOARD_ELEVATION_DEG,
+      headroomTiles: HEADROOM_TILES,
       cancelled: () => gaveUp || cancelled(),
     }))
     .catch(() => null);

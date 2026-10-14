@@ -64,22 +64,35 @@ A later live mode reuses the first two with a persistent renderer. It also fits 
 
 **Cache.** `FLOOR_CACHE_MAX = 3` becomes about 8, since the key now includes the stage. The parsed GLB is cached per kit so a stage change does not refetch.
 
-## Phase 1 status and the 45-degree tilt
+## Phase status
 
-**Phase 1 is built** (floor colours pinned, theme-painted raised pieces, grid-preserving shear camera, scene and loader wired). Two small differences from the text above, both on purpose:
-- The raised pieces are built in code (`boardPieces.ts`), not stored in `arena.glb`. The file stays exactly the floor it was, so its tests and look are unchanged.
-- The border hedge on row 0 is lifted like the rest of the ring (0.18) and its top edge is clipped by the picture's edge, instead of being flat.
+**Phase 1 (done): raised pieces in the pet's colours.** Floor colours pinned by a test; hedge, stone, water, beds and gate are theme-painted solids (`boardPieces.ts`), built in code, so `arena.glb` stays exactly the floor it was. The ring hedge on row 0 is lifted like the rest of the ring.
 
-**Next: tilt the camera to 45 degrees (decided direction, phase 1b).** The shear keeps the grid square, but the board still reads as nearly top-down. A true 45-degree view from the south makes the floor foreshorten and the raised pieces show their fronts, while Phaser's 2D pets stay upright and flat, so they read as 2D standing on a 3D board. A throwaway render at 45 and 60 degrees confirmed it works and that 45 is the better of the two (flatter, more room, the pets overlap the row above like a classic three-quarter view).
+**Phase 2 (done): the 45-degree view.** The shear camera was a stepping stone and is gone. The camera now sits in front of the board and looks down at 45 degrees, still orthographic, so every tile is one rectangle of the picture.
+- One source of numbers: `domain/rpg/boardView.ts` (`ROW_RATIO = sin 45 = 0.707`, `HEADROOM_TILES = 1 - ROW_RATIO`, `cellTop`, `footY`, `spriteY`, `rowAt`). The bake gets the elevation and headroom as plain numbers (nothing under `3d/` may import from outside it); `boardCamera.test.ts` holds the bake and the scene to the same cell for every tile.
+- The Phaser scene routes every row-to-pixel spot through those helpers. Sprites keep their 48px size with their feet on the row's bottom edge; the canvas is 528x252 instead of 528x336; taps use `rowAt`.
+- Piece heights did not need to change: a height `h` rises `h * cos 45` and a row is `sin 45` tall, so a piece leans the same fraction of a row as before.
+- Calm, Save-Data and a failed bake draw the flat checker and the pixel walls squashed into the same rows. Same grid, no 3D.
+- Seen in the real scene (Chromium, real build): the bake runs, pets stand upright on their rows, keyboard and tap walking land on the right rows, and calm makes no model request.
 
-What changes, and what that costs:
-- Rows are `sin(45) = 0.707` as tall as columns, so a tile is 48 wide by about 34 tall. One helper, `tileY(row)`, replaces every `row * size` in `BattleGardenScene` (pet, foe, ally, minions, shadows, pedestals, effects, pointer mapping). Sprites keep their 48px size and stand with their feet on the cell's bottom edge.
-- The game canvas gets headroom at the top so a pet in row 0 is not cut off: world height = (rows x tile height) + (sprite height - tile height).
-- `boardCamera` gains an `elevation` and loses the shear; `boardPieces` and the palette are unchanged. Heights then project by `cos(45)`, so pieces should be about 1.4x taller to lean the same amount.
-- Tapping the board to walk gets rows about 30% thinner. The D-pad stays the main control; the tap rule needs a check on a real phone.
-- `depthForRow` already sorts by row, which is what makes overlapping pets and pieces look right.
-- The board is shorter (about 0.8 of today's height), which helps the landscape layout.
-- Tests: the camera test is reused with an elevation (floor cell centres map to the expected pixels; a point's height moves it up by `h * cos(elevation)`); a pure `tileY` test; the full visual walk to see the Phaser scene.
+**Phase 3 (done): the five kits and the Raid Gate picker.**
+- `domain/rpg/boards.ts` (pure): the five kits, `normalizeBoardKit`, and `kitMarkOf` / `boardMarks`, which say which open-ground tiles carry which mark. Only grass and path carry marks, so a hedge, pond or stone keeps its own look and walkability is untouched.
+- Four marks (`step`, `inlay`, `quilt`, `weave`) are small flat plates built in code (`3d/boardMarks.ts`), coloured by blends of the pack's own tokens (`arenaPaint(...).marks`). The classic board is bare, so Hearth Checker is exactly the phase 2 board. A test holds the domain's marks and the 3D side's roles to the same four.
+- `Settings.boardKit` (optional, not synced) is written by `setBoardKit` in a new repository section (`db/repository/boards.ts`, one line in the barrel). Unknown values are stored as the classic board.
+- The picker lives on the Raid Gate only (`gate/BoardPicker.tsx`): five buttons with `aria-pressed`, each with a flat 2D swatch in the ringed companion's colours drawn from the same `kitMarkOf`. It imports nothing three.js.
+- The cache key now includes the kit. Calm, Save-Data and a failed bake draw the flat classic floor whatever kit is picked; the picker says so.
+- Seen in the real scene for all four non-classic kits. Colours were tuned from what was seen: the inlay ring leans back towards the floor, and a step is 0.1 tall.
+- The earlier note about a name guard (no rights holder's name) is dropped: the five names are plain descriptive words, and there is nothing to guard.
+
+**Phase 4 (done): iOS landscape and the side rail.** One definition of "a phone on its side" (`orientation: landscape` and `max-height: 520px`) is used by both the rail and the garden, so an iPad or a desktop window is untouched.
+- The same `<nav class="tabbar">` becomes a column on the left edge: six tabs with their labels, the menu button as the rail's first row. The bar's height token is 0 there (it is written inline by the theme engine, so the rule is `!important` and sits after the wide-screen rule that also matches a phone on its side), which drops every dock and sheet to the screen edge by itself. A new `--rail-w` (0 elsewhere, 72px on the rail) moves the shell, the menu button and the menu panel in; the shell's width grows by the same amount so content stays centred in what the rail leaves.
+- The garden becomes two columns: the board and the walking pad on the left (sticky), the foe strip, move pad and charges on the right. The board is as wide as its column (a container query) and never taller than the screen leaves after the pad. The shell's 560px cap is lifted for this page (`:has`, iOS 16+; without it the portrait layout in a 560px column remains). The header chips wrap so they cannot push the page wider than the phone, and the move pad takes the right column whole.
+- Rotation: `game.ts` watches the size of the box the canvas lives in (a `ResizeObserver`) and re-fits on the next frame, with `orientationchange` as a backup. iOS reports a stale window size right after turning, which is why the box is watched and not the window.
+- The board's box takes the board's own shape (528 by 252) with 36dvh as a ceiling only. It used to be 36dvh tall, which suited the old taller board and left empty bands above and below the new one, and pushed the walking pad down under the dock in portrait. In landscape the ceiling is lifted and the box is sized from its column.
+- Main's dock redesign landed while this was being built (`.garden-dock`, the fight HUD inside the board's sticky wrapper). The landscape layout was rebuilt against it and checked in a real fight: HUD above the board on the left, all six move tiles, the charge chip and "Walk away" on the right, nothing scrolling.
+- The manifest is untouched (iOS only, as decided).
+- `visual.mjs` now also walks Home and Shop on an 844x390 phone in both packs and checks that the tab bar is a rail at the left edge, full height, and that the page is no wider than the phone. `styles/rail.test.ts` holds the CSS facts it depends on.
+- Not checkable here: the notch and home-indicator insets (`env(safe-area-inset-*)` cannot be faked in a desktop browser), and how it feels in the hand. Those need a real iPhone.
 
 ## Part 4: Landscape on iOS
 

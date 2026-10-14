@@ -13,6 +13,7 @@
  */
 export * from './achievements';
 export * from './assets';
+export * from './boards';
 export * from './charges';
 export * from './chat';
 export * from './cheers';

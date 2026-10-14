@@ -31,3 +31,14 @@ export const DIRECTIONS: readonly Direction[] = [
  * away as `busy` every other tick.
  */
 export const HOLD_REPEAT_MS = 180;
+
+/**
+ * Whether the walking pad is on screen. It clears the moment the pet reaches a
+ * foe, not when the fight's first turn arrives: the gap between the two is
+ * the boss prompt, or the start of the fight, and a pad that is still there
+ * in that gap invites a step that is refused anyway. It comes back once the
+ * fight is over, or once a start is abandoned.
+ */
+export function walkPadShown(state: { fighting: boolean; asking: boolean; engaging: boolean }): boolean {
+  return !state.fighting && !state.asking && !state.engaging;
+}

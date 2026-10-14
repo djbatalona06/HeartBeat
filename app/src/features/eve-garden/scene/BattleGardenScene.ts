@@ -9,6 +9,9 @@ import { bakeAll } from '../../rpg/overworld/bake';
 import { strikePlan, togetherBeats, ultimateBeats, type FightTiming } from '../../../domain/scene/strikePlan';
 import { depthForRow, hopFor, liftAt } from '../../../domain/scene/walk';
 import {
+  boardPixelHeight, cellTop, footY, rowAt, rowHeight, spriteY,
+} from '../../../domain/rpg/boardView';
+import {
   effectColours, moveVfxFor, shapeFor, ultimateVfxFor, type EffectPalette, type EffectToken, type VfxShape,
 } from './vfx';
 import { signatureFor, type SignaturePiece } from './signatures';
@@ -214,6 +217,28 @@ export class BattleGardenScene extends Phaser.Scene {
     return SPRITE_SIZE * this.zoom;
   }
 
+  /**
+   * The board is seen at an angle (`domain/rpg/boardView.ts`): a row is shorter
+   * than a column is wide, and a sprite is drawn at its own size with its feet
+   * on its row's bottom edge. These are the only places a row becomes a pixel.
+   */
+  private rowTop(row: number): number {
+    return cellTop(row, this.size);
+  }
+
+  private rowFoot(row: number): number {
+    return footY(row, this.size);
+  }
+
+  /** Where the top of a sprite is drawn for a creature standing in `row`. */
+  private spriteTop(row: number): number {
+    return spriteY(row, this.size);
+  }
+
+  private get boardHeight(): number {
+    return boardPixelHeight(this.size);
+  }
+
   preload(): void {
     // Nothing is fetched. Every texture is drawn from the character grids in
     // `domain/rpg/sprites.ts`, in the palette the app is currently wearing.
@@ -244,7 +269,12 @@ export class BattleGardenScene extends Phaser.Scene {
     const size = this.size;
 
     if (this.floor) {
-      this.add.image(0, 0, FLOOR_KEY).setOrigin(0, 0).setDisplaySize(ARENA_WIDTH * size, ARENA_HEIGHT * size);
+      // The baked picture is the whole board, headroom included. The static
+      // floor is just the rows, so it is squashed into where the rows are.
+      const whole = this.floor.dataset.arena3d === 'true';
+      this.add.image(0, whole ? 0 : this.rowTop(0), FLOOR_KEY)
+        .setOrigin(0, 0)
+        .setDisplaySize(ARENA_WIDTH * size, whole ? this.boardHeight : ARENA_HEIGHT * rowHeight(size));
       if (shouldAnimateArena(this.still, this.floor.dataset.arena3d === 'true')) this.startBoardShimmer();
     }
 
@@ -262,11 +292,12 @@ export class BattleGardenScene extends Phaser.Scene {
           // The checkerboard is the ground here. The path is the one thing the
           // pixel tiles said that it does not, so it keeps a tint.
           if (kind.sprite === 'tile-path') {
-            this.add.rectangle(x * size, y * size, size, size, this.pathTint(), 0.18).setOrigin(0, 0);
+            this.add.rectangle(x * size, this.rowTop(y), size, rowHeight(size), this.pathTint(), 0.18).setOrigin(0, 0);
           }
           continue;
         }
-        this.add.image(x * size, y * size, kind.sprite).setOrigin(0, 0);
+        // Squashed to the row's height, like the floor under it.
+        this.add.image(x * size, this.rowTop(y), kind.sprite).setOrigin(0, 0).setDisplaySize(size, rowHeight(size));
       }
     }
 
@@ -278,7 +309,7 @@ export class BattleGardenScene extends Phaser.Scene {
     this.petShadow = this.addShadow(this.arena.spawn.x, this.arena.spawn.y);
 
     this.foe = this.add
-      .image(this.arena.monster.x * size, this.arena.monster.y * size, this.monsterSprite)
+      .image(this.arena.monster.x * size, this.spriteTop(this.arena.monster.y), this.monsterSprite)
       .setOrigin(0, 0)
       .setDepth(depthForRow(this.arena.monster.y, ARENA_HEIGHT));
     this.mainFoe = this.foe;
@@ -288,7 +319,7 @@ export class BattleGardenScene extends Phaser.Scene {
     this.minionFoes = this.minionSpots.map((spot) => {
       const inset = (size - size * MINION_SCALE) / 2;
       const image = this.add
-        .image(spot.x * size + inset, spot.y * size + size - size * MINION_SCALE - 2, spot.sprite)
+        .image(spot.x * size + inset, this.rowFoot(spot.y) - size * MINION_SCALE - 2, spot.sprite)
         .setOrigin(0, 0)
         .setScale(MINION_SCALE)
         .setDepth(depthForRow(spot.y, ARENA_HEIGHT));
@@ -297,7 +328,7 @@ export class BattleGardenScene extends Phaser.Scene {
 
     this.tile = { ...this.arena.spawn };
     this.pet = this.add
-      .image(this.tile.x * size, this.tile.y * size, this.petSprite)
+      .image(this.tile.x * size, this.spriteTop(this.tile.y), this.petSprite)
       .setOrigin(0, 0)
       .setDepth(depthForRow(this.tile.y, ARENA_HEIGHT));
 
@@ -342,7 +373,7 @@ export class BattleGardenScene extends Phaser.Scene {
     this.addPedestal(this.allyAt.x, this.allyAt.y);
     this.allyShadow = this.addShadow(this.allyAt.x, this.allyAt.y);
     this.ally = this.add
-      .image(this.allyAt.x * size, this.allyAt.y * size, sprite)
+      .image(this.allyAt.x * size, this.spriteTop(this.allyAt.y), sprite)
       .setOrigin(0, 0)
       .setFlipX(this.allyAt.x > this.arena.monster.x)
       .setDepth(depthForRow(this.allyAt.y, ARENA_HEIGHT));
@@ -358,7 +389,7 @@ export class BattleGardenScene extends Phaser.Scene {
   private addPedestal(tx: number, ty: number): void {
     const size = this.size;
     const cx = tx * size + size / 2;
-    const top = ty * size + size - size * 0.12;
+    const top = this.rowFoot(ty) - size * 0.12;
     this.add.rectangle(cx, top + size * 0.07, size * 0.74, size * 0.14, 0x000000, 0.22).setDepth(7);
     this.add.ellipse(cx, top, size * 0.78, size * 0.22, 0x000000, 0.18)
       .setStrokeStyle(Math.max(1, this.zoom - 1), this.accent, 0.7)
@@ -368,7 +399,7 @@ export class BattleGardenScene extends Phaser.Scene {
   private addShadow(tx: number, ty: number): Phaser.GameObjects.Ellipse {
     const size = this.size;
     return this.add
-      .ellipse(tx * size + size / 2, ty * size + size - 2, size * 0.6, size * 0.2, 0x000000, 0.28)
+      .ellipse(tx * size + size / 2, this.rowFoot(ty) - 2, size * 0.6, size * 0.2, 0x000000, 0.28)
       .setDepth(8);
   }
 
@@ -401,7 +432,8 @@ export class BattleGardenScene extends Phaser.Scene {
       let color = [255, 255, 255];
       try {
         const tileCenterX = Math.floor(this.floor.width / ARENA_WIDTH / 2);
-        const tileCenterY = Math.floor(this.floor.height / ARENA_HEIGHT / 2);
+        // Sampled from the middle of the picture's first row of ground, not its headroom.
+        const tileCenterY = Math.floor(this.floor.height * (this.rowTop(0) + rowHeight(this.size) / 2) / this.boardHeight);
         const pixel = this.floor.getContext('2d')?.getImageData(
           tileCenterX, tileCenterY, 1, 1,
         ).data;
@@ -421,7 +453,7 @@ export class BattleGardenScene extends Phaser.Scene {
       this.textures.addCanvas(BOARD_SHIMMER_KEY, canvas);
     }
     const boardWidth = ARENA_WIDTH * this.size;
-    const boardHeight = ARENA_HEIGHT * this.size;
+    const boardHeight = this.boardHeight;
     const stripWidth = boardWidth * 0.28;
     this.boardShimmer = this.add.image(-stripWidth, boardHeight / 2, BOARD_SHIMMER_KEY)
       .setOrigin(0, 0.5)
@@ -478,7 +510,7 @@ export class BattleGardenScene extends Phaser.Scene {
       shadow.setScale(0.5 + light.shadowLength, 1);
       shadow.setAlpha(this.dark ? 0.16 : 0.1 + light.elevation * 0.22);
       shadow.x = at.x * size + size / 2 + Math.cos(light.shadowDirection) * light.shadowLength * 6;
-      shadow.y = at.y * size + size - 2;
+      shadow.y = this.rowFoot(at.y) - 2;
     }
   }
 
@@ -546,7 +578,7 @@ export class BattleGardenScene extends Phaser.Scene {
     const from = { x: this.pet.x, y: this.pet.y };
     const shadowFrom = { x: this.petShadow.x, y: this.petShadow.y };
     const dx = to.x * size - from.x;
-    const dy = to.y * size - from.y;
+    const dy = this.spriteTop(to.y) - from.y;
     this.petBob?.remove();
     this.petBob = undefined;
     // Draw order changes as the step starts, so walking up behind the monster
@@ -554,7 +586,7 @@ export class BattleGardenScene extends Phaser.Scene {
     this.pet.setDepth(depthForRow(to.y, ARENA_HEIGHT));
 
     const land = () => {
-      this.pet.setPosition(to.x * size, to.y * size);
+      this.pet.setPosition(to.x * size, this.spriteTop(to.y));
       this.tile = { ...to };
       this.applyLighting();
       this.petBob = this.idle(this.pet);
@@ -1270,7 +1302,7 @@ export class BattleGardenScene extends Phaser.Scene {
   private onPointer(pointer: Phaser.Input.Pointer): void {
     const size = this.size;
     const tx = Math.floor(pointer.worldX / size);
-    const ty = Math.floor(pointer.worldY / size);
+    const ty = rowAt(pointer.worldY, size);
     const dx = tx - this.tile.x;
     const dy = ty - this.tile.y;
     if (dx === 0 && dy === 0) return;

@@ -4,9 +4,10 @@ import {
   type BufferGeometry, type Material,
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { ARENA_ROLES, arenaPaint, type ArenaCssTokens, type ArenaRole } from './arenaPalette';
+import { ARENA_ROLES, arenaPaint, type ArenaCssTokens, type ArenaRole, type MarkRole } from './arenaPalette';
 import { finishArenaCanvas, rgbTokens } from './arenaFinish';
-import { boardCamera } from './boardCamera';
+import { boardCamera, boardFrame } from './boardCamera';
+import { buildBoardMarks } from './boardMarks';
 import { buildBoardPieces } from './boardPieces';
 
 /**
@@ -29,9 +30,10 @@ import { buildBoardPieces } from './boardPieces';
  * perspective, tile (col, row) lands on the same pixels as the sprite grid
  * above it, which is what lets the picture and the walkable grid be one grid.
  *
- * The camera is sheared (`boardCamera.ts`), so the hedge, stone and the rest
- * (`boardPieces.ts`) show their sides and lean up the picture while the floor
- * stays exactly where a plain top-down camera put it.
+ * The camera is tilted (`boardCamera.ts`): in front of the board, looking down
+ * at 45 degrees, still orthographic. Rows foreshorten, and the hedge, stone and
+ * the rest (`boardPieces.ts`) show their fronts. Orthographic keeps every tile
+ * one rectangle of the picture, so it is still one grid with the sprites above.
  */
 
 export interface ArenaBakeOptions {
@@ -40,6 +42,14 @@ export interface ArenaBakeOptions {
   rows: number;
   /** Pixels per tile in the picture. */
   tilePx: number;
+  /**
+   * How the board is seen, as plain numbers from `domain/rpg/boardView.ts`
+   * (which this file may not import): the elevation of the camera in degrees,
+   * and the room above the top row in tiles. The picture comes out
+   * `cols * tilePx` wide and as tall as `boardFrame` says.
+   */
+  elevationDeg: number;
+  headroomTiles: number;
   /**
    * Tokens from the selected Raid Gate companion, in the current light/dark
    * mode. Required: with none the old code read the *app's* theme off the DOM,
@@ -51,6 +61,8 @@ export interface ArenaBakeOptions {
    * stage's own grid by the caller. Omitted, the floor is bare, as it always was.
    */
   layout?: readonly (readonly (string | undefined)[])[];
+  /** What the chosen board kit lays on each ground tile: `marks[row][col]`. Omitted, the classic bare floor. */
+  marks?: readonly (readonly (MarkRole | undefined)[])[];
   /** Asked once the file has loaded: true means nobody is waiting any more, so do not touch the GPU. */
   cancelled?: () => boolean;
 }
@@ -61,7 +73,7 @@ export interface ArenaBakeOptions {
  * of which the caller keeps drawing the pixel tiles it always has.
  */
 export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasElement | null> {
-  const { src, cols, rows, tilePx, cancelled, themeTokens: themeColors, layout } = options;
+  const { src, cols, rows, tilePx, cancelled, themeTokens: themeColors, layout, marks, elevationDeg, headroomTiles } = options;
   const tokens = rgbTokens(themeColors);
   if (!tokens) return null;
 
@@ -76,8 +88,9 @@ export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasEl
   }
   if (cancelled?.()) return null;
 
-  const width = cols * tilePx;
-  const height = rows * tilePx;
+  const frame = boardFrame(cols, rows, elevationDeg, headroomTiles);
+  const width = Math.round(frame.widthTiles * tilePx);
+  const height = Math.round(frame.heightTiles * tilePx);
   let renderer: WebGLRenderer;
   try {
     renderer = new WebGLRenderer({ canvas: document.createElement('canvas'), alpha: true, antialias: true });
@@ -100,11 +113,11 @@ export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasEl
     const sky = new HemisphereLight(0xffffff, 0xffffff, paint.ambient);
     sky.color.setRGB(...paint.sky, SRGBColorSpace);
     sky.groundColor.setRGB(...paint.bounce, SRGBColorSpace);
-    // From the upper left, as the pixel tiles are lit, so every bevel catches
-    // light on the same two sides.
+    // From the upper left and in front, as the pixel tiles are lit, so the
+    // tops and the fronts of the pieces both catch light.
     const sun = new DirectionalLight(0xffffff, paint.sun);
     sun.color.setRGB(...paint.sky, SRGBColorSpace);
-    sun.position.set(-4, 9, -3);
+    sun.position.set(-4, 9, 4);
     scene.add(sky, sun, gltf.scene);
 
     gltf.scene.traverse((node) => {
@@ -116,6 +129,14 @@ export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasEl
       }
     });
 
+    if (marks) {
+      const laid = buildBoardMarks(marks, paint.marks);
+      scene.add(laid);
+      laid.traverse((node) => {
+        if (node instanceof Mesh) meshes.push(node);
+      });
+    }
+
     if (layout) {
       const pieces = buildBoardPieces(layout, paint.pieces);
       scene.add(pieces);
@@ -124,7 +145,7 @@ export async function bakeArena(options: ArenaBakeOptions): Promise<HTMLCanvasEl
       });
     }
 
-    renderer.render(scene, boardCamera(cols, rows));
+    renderer.render(scene, boardCamera(cols, rows, elevationDeg, headroomTiles));
 
     // Copied while the buffer is still valid (same task as the draw), so the
     // context can be torn down straight after.

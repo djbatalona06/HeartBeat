@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { SPRITE_SIZE } from '../../../domain/rpg/sprites';
-import { ARENA_HEIGHT, ARENA_WIDTH } from '../../../domain/rpg/arena';
+import { ARENA_WIDTH } from '../../../domain/rpg/arena';
+import { boardPixelHeight } from '../../../domain/rpg/boardView';
 import { BattleGardenScene } from './BattleGardenScene';
 import type { Blow, MinionSpot, SceneHandle, SceneHooks } from './events';
 
@@ -59,7 +60,8 @@ export function startGarden(
     type: Phaser.AUTO,
     parent,
     width: ARENA_WIDTH * SPRITE_SIZE * scale,
-    height: ARENA_HEIGHT * SPRITE_SIZE * scale,
+    // The board is seen at an angle, so it is shorter than it is wide by the rows' foreshortening.
+    height: boardPixelHeight(SPRITE_SIZE * scale),
     // Nearest-neighbour, or 16x16 art scaled 3x turns to mush.
     pixelArt: true,
     // So `ThemeBackdrop` shows through and the five packs still read as themes.
@@ -75,6 +77,25 @@ export function startGarden(
     audio: { noAudio: true },
     banner: false,
   });
+
+  /**
+   * Turning a phone on its side changes the size of the box the canvas lives in,
+   * and iOS reports a stale window size for a moment afterwards, so the window's
+   * own `resize` can fit the board to the old shape. The box itself is measured
+   * after layout and is always current, so it is watched, and the fit is asked for
+   * on the next frame once the page has settled. `orientationchange` covers the
+   * browsers that move the box without resizing it.
+   */
+  let frame = 0;
+  const refit = () => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => {
+      try { game.scale.refresh(); } catch { /* the game was torn down between the turn and the frame */ }
+    });
+  };
+  const watcher = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(refit);
+  watcher?.observe(parent);
+  window.addEventListener('orientationchange', refit);
 
   /**
    * The scene is constructed before Phaser boots it, so a call that lands in
@@ -111,6 +132,11 @@ export function startGarden(
     // `destroy(true)` removes the canvas and releases the WebGL context.
     // Leaving the context alive across route changes is how a phone runs out of
     // them after half a dozen navigations.
-    destroy: () => game.destroy(true),
+    destroy: () => {
+      watcher?.disconnect();
+      window.removeEventListener('orientationchange', refit);
+      cancelAnimationFrame(frame);
+      game.destroy(true);
+    },
   };
 }

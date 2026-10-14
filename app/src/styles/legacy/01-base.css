@@ -92,8 +92,10 @@
     calc(env(safe-area-inset-top) + var(--shell-top) + var(--tap))
     calc(env(safe-area-inset-right) + var(--shell-gutter))
     calc(env(safe-area-inset-bottom) + var(--shell-bottom-clear))
-    calc(env(safe-area-inset-left) + var(--shell-gutter));
-  max-width: var(--shell-max);
+    calc(env(safe-area-inset-left) + var(--rail-w) + var(--shell-gutter));
+  /* The rail's width on top of the column's, so the content keeps its width and
+     centres in what the rail leaves. Nothing is added when there is no rail. */
+  max-width: calc(var(--shell-max) + var(--rail-w));
   margin: 0 auto;
 }
 
