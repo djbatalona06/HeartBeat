@@ -38,9 +38,17 @@ describe('the three chests', () => {
   });
 
   it('maps to the tier table the plan wrote down', () => {
-    expect(poolOf(chest('wooden'))).toEqual(['common', 'rare']);
-    expect(poolOf(chest('silver'))).toEqual(['rare', 'epic']);
+    expect(poolOf(chest('wooden'))).toEqual(['common', 'rare', 'epic']);
+    expect(poolOf(chest('silver'))).toEqual(['rare', 'epic', 'legendary']);
     expect(poolOf(chest('gilded'))).toEqual(['epic', 'legendary', 'mythic']);
+  });
+
+  it('holds exactly three rarities, each on its own percentage', () => {
+    for (const c of CHESTS) {
+      const pool = poolOf(c);
+      expect(pool.length, c.id).toBe(3);
+      expect(new Set(pool.map((tier) => c.weights[tier])).size, c.id).toBe(3);
+    }
   });
 
   it('weighs each pool to one', () => {
@@ -97,11 +105,11 @@ describe('pity windows', () => {
    * out nothing only when **all three** of its items miss. So reaching a window
    * costs `miss ** (PRIZES_PER_CHEST * pityAt)` rather than `miss ** pityAt`:
    *
-   * | chest  | pityAt | one item | as shipped |
-   * |--------|--------|----------|------------|
-   * | wooden | 6      | 1 in 4   | 1 in 56    |
-   * | silver | 9      | 1 in 6   | 1 in 212   |
-   * | gilded | 12     | 1 in 15  | 1 in 3081  |
+   * | chest  | pityAt | as shipped  |
+   * |--------|--------|-------------|
+   * | wooden | 6      | 1 in 3081   |
+   * | silver | 9      | 1 in 74527  |
+   * | gilded | 12     | 1 in 136782 |
    *
    * 6/9/12 are published numbers and were kept deliberately. The consequence is
    * that the floors are a backstop which fires rarely rather than one which
@@ -141,7 +149,7 @@ describe('pity windows', () => {
    */
   it('reaches each floor about as often as it is written down as doing', () => {
     const odds = CHESTS.map((c) => Math.round(1 / missChance(c) ** (PRIZES_PER_CHEST * c.pityAt)));
-    expect(odds).toEqual([56, 212, 3081]);
+    expect(odds).toEqual([3081, 74527, 136782]);
   });
 
   it('holds off the floor until the count is reached', () => {
@@ -368,7 +376,7 @@ describe('opening one', () => {
     expect(low.prizes.map((p) => p.tier)).toEqual(['common', 'common', 'common']);
     expect(low.pity).toBe(5);
 
-    // One rare anywhere in the chest clears it.
+    // One item at the floor tier or better anywhere in the chest clears it.
     const good = openChest(c, three({ tier: 0 }), 0, 4);
     expect(good.pity).toBe(0);
   });
@@ -376,11 +384,11 @@ describe('opening one', () => {
   it('clears the counter on the best item, not the last one', () => {
     const c = chest('wooden');
     const mixed = openChest(c, [
-      { ...one, tier: 0 },       // rare
+      { ...one, tier: 0 },       // epic, the wooden chest's tail
       { ...one, tier: 0.999 },   // common
       { ...one, tier: 0.999 },   // common
     ], 0, 4);
-    expect(mixed.prizes[0].tier).toBe('rare');
+    expect(mixed.prizes[0].tier).toBe('epic');
     expect(mixed.prizes[2].tier).toBe('common');
     expect(mixed.pity).toBe(0);
   });

@@ -25,13 +25,20 @@ import {
  * are per chest, because a bad run on the cheap chest is not insurance you have
  * paid for on the dear one.
  *
+ * ## Where the odds come from
+ *
+ * Every chest holds exactly three rarities, and their weights are the base
+ * rarity frequencies in `BASE_DROP_CHANCES` (`pets.ts`) -- 61.2 / 25 / 10 / 3 /
+ * 0.8 -- taken three rungs at a time and scaled to 100: wooden is common, rare,
+ * epic; silver is rare, epic, legendary; gilded is epic, legendary, mythic.
+ *
  * The windows were chosen when a chest held one item and reaching one took
  * between one run in four and one in fifteen. A chest holds three now and only
- * counts as a miss when all three missed, so the same windows are reached far
- * more rarely — 1 in 56, 1 in 212 and 1 in 3081. `pityAt` was kept at 6/9/12
- * because those numbers are published. `chests.test.ts` holds the figures, the
- * argument for keeping them, and a tripwire that fails if any of the three
- * inputs moves.
+ * counts as a miss when all three missed, and each pool now reaches a rung
+ * higher, so the same windows are reached far more rarely -- 1 in 3081, 1 in
+ * 74527 and 1 in 136782. `pityAt` was kept at 6/9/12 because those numbers are
+ * published. `chests.test.ts` holds the figures, the argument for keeping them,
+ * and a tripwire that fails if any of the three inputs moves.
  *
  * Unlike the egg's, these counters are shown. `pityLine` is the sentence, and
  * it is on the chest rather than buried: a floor nobody can see is not a
@@ -87,7 +94,7 @@ export const CHESTS: readonly Chest[] = [
     name: 'Wooden Chest',
     blurb: 'Nailed together out of something else. Opens more often than it impresses.',
     price: 90,
-    weights: { common: 0.8, rare: 0.2 },
+    weights: { common: 0.64, rare: 0.26, epic: 0.1 },
     pityAt: 6,
     pityTier: 'rare',
     kindWeights: { gear: 0.45, decor: 0.25, dye: 0.18, companion: 0.12 },
@@ -97,7 +104,7 @@ export const CHESTS: readonly Chest[] = [
     name: 'Silver Chest',
     blurb: 'Tarnished at the hinges, which is how you know it has been opened before.',
     price: 260,
-    weights: { rare: 0.82, epic: 0.18 },
+    weights: { rare: 0.66, epic: 0.26, legendary: 0.08 },
     pityAt: 9,
     pityTier: 'epic',
     kindWeights: { gear: 0.45, companion: 0.27, decor: 0.22, dye: 0.06 },
@@ -107,7 +114,7 @@ export const CHESTS: readonly Chest[] = [
     name: 'Gilded Chest',
     blurb: 'Gold leaf over the same wood. Everybody knows, and it works anyway.',
     price: 700,
-    weights: { epic: 0.8, legendary: 0.17, mythic: 0.03 },
+    weights: { epic: 0.72, legendary: 0.22, mythic: 0.06 },
     pityAt: 12,
     pityTier: 'legendary',
     kindWeights: { companion: 0.48, gear: 0.47, decor: 0.04, dye: 0.01 },
