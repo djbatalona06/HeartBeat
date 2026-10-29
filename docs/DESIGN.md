@@ -638,20 +638,32 @@ never a table for a draw in general, and it is never behind a purchase.
   comparable — and it has a consequence worth stating plainly, because a floor
   nobody reaches is decoration:
 
-  | chest | window | reached, one item | reached, as shipped |
-  |---|---|---|---|
-  | wooden | 6 | 1 in 4 | 1 in 56 |
-  | silver | 9 | 1 in 6 | 1 in 212 |
-  | gilded | 12 | 1 in 15 | 1 in 3081 |
+  | chest | window | reached, as shipped |
+  |---|---|---|
+  | wooden | 6 | 1 in 3,081 |
+  | silver | 9 | 1 in 74,527 |
+  | gilded | 12 | 1 in 136,782 |
 
-  The windows were chosen when a chest held one item. They were kept because
-  they are published, which makes the floors a backstop that fires rarely
-  rather than one that fires: three items is itself the protection against a
-  bad run, and the floor catches the runs three items did not. Restoring the
-  old reach would mean windows of roughly 6/8/7, which breaks the rule that
-  each chest's window is wider than the last. `chests.test.ts` carries the
-  figures and a tripwire that fails if the item count, a chest's weights or a
-  window moves.
+  The windows were chosen when a chest held one item and two rarities. They
+  were kept because they are published, which makes the floors a backstop that
+  practically never fires: three items and three rarities per chest are
+  themselves the protection against a bad run. Moving each floor to its
+  chest's top rung would make them fire again, at the price of changing the
+  published guarantee. `chests.test.ts` carries the figures and a tripwire that
+  fails if the item count, a chest's weights or a window moves.
+- **Every chest holds exactly three rarities, weighted from the base rarity
+  frequencies.** `BASE_DROP_CHANCES` in `pets.ts` (common 61.2, rare 25, epic
+  10, legendary 3, mythic 0.8) is taken three rungs at a time and scaled to
+  100, which gives the chests these tables:
+
+  | chest | rarities | weights |
+  |---|---|---|
+  | wooden | common · rare · epic | 64 / 26 / 10 |
+  | silver | rare · epic · legendary | 66 / 26 / 8 |
+  | gilded | epic · legendary · mythic | 72 / 22 / 6 |
+
+  Star chests open on the silver and gilded tables, so these are also what a
+  semi-boss and a boss pay out.
 - **The floor lifts one item, not three.** "Guaranteed epic or better" is a
   promise about the chest. Applied to every item it would be a jackpot wearing
   the word insurance, and the odds footnote says which it is.

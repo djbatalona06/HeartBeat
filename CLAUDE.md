@@ -220,8 +220,9 @@ Full deploy walkthrough: `docs/DEPLOY.md`
 - **A chest holds `PRIZES_PER_CHEST` items and the counter steps once per
   chest.** A chest counts as a miss only when all three items missed, so the
   published 6/9/12 windows are reached far more rarely than the one-item
-  arithmetic they were chosen with — 1 in 56, 1 in 212, 1 in 3081. They were
-  kept because they are published; `chests.test.ts` holds the figures, the
+  arithmetic they were chosen with — 1 in 3081, 1 in 74527, 1 in 136782. Every
+  chest holds exactly three rarities, weighted from `BASE_DROP_CHANCES` in
+  `pets.ts`. The windows were kept because they are published; `chests.test.ts` holds the figures, the
   argument, and a tripwire that fails if the item count, a chest's weights or a
   window moves. **The floor lifts one item, not all three** — applied to every
   item it is a jackpot wearing the word insurance.
