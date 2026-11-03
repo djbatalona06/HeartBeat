@@ -37,7 +37,7 @@
     "jsdom": "^30.0.1",
     "typescript": "^5.7.2",
     "unplugin-dotnet-wasm": "^1.5.2",
-    "vite": "^6.0.7",
+    "vite": "^6.4.5",
     "vite-plugin-pwa": "^0.21.1",
     "vitest": "^5.0.1",
     "workbox-cacheable-response": "^7.3.0",
